@@ -219,23 +219,39 @@
       var days = new Date(m.getFullYear(), m.getMonth() + 1, 0).getDate();
       var partners = [];
       for (var b = 1; b <= 31; b++) if (b !== a && M.sharedWatches(a, b).length === 6) partners.push(b);
-      function datesShared(x) {
+      function datesShared(x, y) {
+        if (y === undefined) { y = x; x = a; }
         var o = [];
         for (var i = 1; i <= days; i++) {
           var w = M.watchFor(new Date(m.getFullYear(), m.getMonth(), i));
-          if (M.tourWorks(a, w) && M.tourWorks(x, w)) o.push(i);
+          if (M.tourWorks(x, w) && M.tourWorks(y, w)) o.push(i);
         }
         return o;
       }
-      var tourSel = '<select id="six-tour" aria-label="Tour">' + Array.apply(null, Array(31)).map(function (_, i) {
-        return '<option value="' + (i + 1) + '"' + (i + 1 === a ? " selected" : "") + ">Tour " + (i + 1) + "</option>";
-      }).join("") + "</select>";
+      function tourSel(id, label, sel) {
+        return '<select id="' + id + '" aria-label="' + label + '">' + Array.apply(null, Array(31)).map(function (_, i) {
+          return '<option value="' + (i + 1) + '"' + (i + 1 === sel ? " selected" : "") + ">" + (i + 1) + "</option>";
+        }).join("") + "</select>";
+      }
+      // The comparison box: the page's tour (a) against a second tour (sixPair, default its first 6-of-9 partner).
+      var pb = st.sixPair || partners[0];
+      var both = M.sharedWatches(a, pb), bothDates = datesShared(a, pb);
+      var compare = '<div class="card compare"><h3>Compare two tours</h3>' +
+        '<div class="cmp-row"><label class="cmp-pick"><span>Tour</span>' + tourSel("six-tour", "First tour", a) + "</label>" +
+        '<span class="cmp-amp" aria-hidden="true">&amp;</span>' +
+        '<label class="cmp-pick"><span>Tour</span>' + tourSel("six-pair", "Second tour", pb) + "</label>" +
+        '<div class="cmp-count" aria-live="polite"><b>' + both.length + "</b><span>of 9 shifts together</span></div></div>" +
+        '<div class="cmp-detail">' +
+        (pb === a ? '<span class="tag">Same tour</span>' : both.length === 6 ? '<span class="tag tag-acting">6 of 9 partners</span>' : "") +
+        '<div class="kv"><span class="k">Shared watches</span><span class="v">' + (both.length ? both.join(" ") : "None") + "</span></div>" +
+        '<div class="kv"><span class="k">Together in ' + api.MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><span class="v">' +
+        (bothDates.length ? bothDates.join(", ") : "No days") + "</span></div></div></div>";
       var mine = [];
       for (var w = 1; w <= 31; w++) if (M.tourWorks(a, w)) mine.push(w);
       var cards = partners.map(function (x) {
         var off = ((x - a) % 31 + 31) % 31, label = off > 15 ? "−" + (31 - off) : "+" + off;
         var shared = M.sharedWatches(a, x), ds = datesShared(x);
-        return '<div class="card six-card' + (st.sixPair === x ? " sel" : "") + '"><div class="six-head"><b>Tour ' + x + '</b><span class="hint">' + label + " days</span></div>" +
+        return '<div class="card six-card' + (pb === x ? " sel" : "") + '"><div class="six-head"><b>Tour ' + x + '</b><span class="hint">' + label + " days</span></div>" +
           '<div class="kv"><span class="k">Shared watches</span><span class="v">' + shared.join(" ") + "</span></div>" +
           '<div class="kv"><span class="k">Together in ' + api.MONTHS[m.getMonth()].slice(0, 3) + '</span><span class="v">' + (ds.length ? ds.join(", ") : "—") + "</span></div></div>";
       }).join("");
@@ -245,18 +261,20 @@
           var r = i + 1;
           return '<tr><th scope="row">' + r + "</th>" + Array.apply(null, Array(31)).map(function (_, j) {
             var c = j + 1, n = M.sharedWatches(r, c).length;
-            var cls = (n === 9 ? "diag" : n === 6 ? "six" : n >= 4 ? "mid" : "") + (r === a ? " cur" : "") + (r === a && c === st.sixPair ? " pick" : "");
+            var cls = (n === 9 ? "diag" : n === 6 ? "six" : n >= 4 ? "mid" : "") + (r === a ? " cur" : "") + (r === a && c === pb ? " pick" : "");
             return '<td class="' + cls + '" data-a="' + r + '" data-b="' + c + '" title="Tours ' + r + " and " + c + ": " + n + ' of 9 shifts together">' + n + "</td>";
           }).join("") + "</tr>";
         }).join("") + "</tbody></table>";
       out.innerHTML =
-        '<div class="controls">' + tourSel + '<div class="stepper"><button class="btn icon" id="six-prev" aria-label="Previous month">&lsaquo;</button>' +
+        '<div class="controls"><div class="stepper"><button class="btn icon" id="six-prev" aria-label="Previous month">&lsaquo;</button>' +
         '<span class="month-label">' + api.MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="six-next" aria-label="Next month">&rsaquo;</button></div></div>' +
+        compare +
         '<p class="lede">Tour ' + a + " works watches " + mine.join(" ") + ". These four tours work <b>6 of the same 9</b> shifts with it:</p>" +
         '<div class="six-cards">' + cards + "</div>" +
-        '<div class="card"><h3>Shifts in common, every pair of tours</h3><p class="hint">Each cell is how many of the 9 shifts two tours work together. 6 = the "6 of 9" partners. Click a cell to pick that pair.</p>' +
+        '<div class="card"><h3>Shifts in common, every pair of tours</h3><p class="hint">Each cell is how many of the 9 shifts two tours work together. 6 = the "6 of 9" partners. Click a cell to compare that pair above.</p>' +
         '<div class="table-wrap">' + matrix + "</div></div>";
       $("six-tour").onchange = function () { st.sixTour = +this.value; st.sixPair = null; st.sixTouched = true; renderSix(); };
+      $("six-pair").onchange = function () { st.sixPair = +this.value; renderSix(); };
       $("six-prev").onclick = function () { st.sixMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderSix(); };
       $("six-next").onclick = function () { st.sixMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderSix(); };
       out.querySelector(".six-matrix").onclick = function (e) {
@@ -264,8 +282,10 @@
         if (!td) return;
         st.sixTour = +td.dataset.a;
         st.sixTouched = true;
-        st.sixPair = +td.dataset.b === st.sixTour ? null : +td.dataset.b;
+        st.sixPair = +td.dataset.b;
         renderSix();
+        var box = out.querySelector(".compare");
+        if (box && box.scrollIntoView) box.scrollIntoView({ block: "nearest", behavior: "smooth" });
       };
     }
 

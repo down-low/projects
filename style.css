@@ -401,3 +401,18 @@ table.six-matrix td.diag { background: var(--fg); color: var(--bg); }
 table.six-matrix tr td.cur { outline: 1px solid var(--today); outline-offset: -1px; }
 table.six-matrix td.pick { box-shadow: inset 0 0 0 2px var(--today); }
 form.dates input[type="date"] { width: 100%; }
+
+/* ---------- 6 of 9: compare two tours ---------- */
+.compare { display: flex; flex-direction: column; gap: 12px; }
+.compare h3 { margin: 0; }
+.cmp-row { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px 14px; }
+.cmp-pick { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; min-width: 96px; }
+.cmp-pick span { background: var(--line); color: var(--fg); text-align: center; font-weight: 600; font-size: 0.8rem; padding: 3px 8px; }
+.cmp-pick select { border: 0; border-radius: 0; text-align: center; font-family: var(--font-data); font-size: 1.05rem; background: var(--accent-soft); }
+.cmp-amp { align-self: center; font-family: var(--font-display); font-weight: 700; font-size: 1.8rem; color: var(--muted); }
+.cmp-count { flex: 1 1 160px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px;
+  background: var(--fg); color: var(--bg); padding: 6px 12px; min-height: 64px; }
+.cmp-count b { font-family: var(--font-display); font-size: 2.4rem; line-height: 1; font-variant-numeric: tabular-nums; }
+.cmp-count span { font-size: 0.78rem; opacity: 0.85; }
+.cmp-detail { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
+@media (prefers-reduced-motion: reduce) { .compare { scroll-behavior: auto; } }
