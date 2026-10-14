@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S"}
 ROLES = ("member", "editor", "admin")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -210,7 +210,8 @@ class App:
         self.conn.commit()
         with open(os.path.join(ROOT, "data", "positions.json")) as f:
             self.positions = {p["pos"]: p for p in json.load(f)}
-        self.companies = {p["company"] for p in self.positions.values() if p.get("company")}
+        # Roster companies plus the balance report's codes for rescue captains (RC1-RC4).
+        self.companies = {p["company"] for p in self.positions.values() if p.get("company")} | {"RC1", "RC2", "RC3", "RC4"}
         with open(os.path.join(ROOT, "docs", "index.json")) as f:
             self.docs = {d["file"] for d in json.load(f)}
 

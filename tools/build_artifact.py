@@ -32,6 +32,7 @@ def main():
         f"{body}\n"
         f"<script>window.POSITIONS={data};window.DOCS={docs};</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
+        f"<script>\n{read('organization.js')}</script>\n"
         f"<script>\n{read('store.js')}</script>\n"
         f"<script>\n{read('admin.js')}</script>\n"
         f"<script>\n{read('dashboard.js')}</script>\n"

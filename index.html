@@ -48,9 +48,9 @@
       </div>
       <button class="btn" id="dash-today">Today</button>
       <select id="dash-group" aria-label="Group by">
-        <option value="apparatus">Group by apparatus</option>
-        <option disabled>Battalion (coming later)</option>
-        <option disabled>Division (coming later)</option>
+        <option value="division">Group by division</option>
+        <option value="battalion">Group by battalion</option>
+        <option value="apparatus">Apparatus only</option>
       </select>
       <input type="search" id="dash-q" class="grow" placeholder="Search apparatus, e.g. E10" aria-label="Search apparatus" />
     </div>
@@ -132,6 +132,7 @@
 </div>
 <!-- app:end -->
 <script src="schedule.js"></script>
+<script src="organization.js"></script>
 <script src="store.js"></script>
 <script src="admin.js"></script>
 <script src="dashboard.js"></script>

@@ -416,3 +416,10 @@ form.dates input[type="date"] { width: 100%; }
 .cmp-count span { font-size: 0.78rem; opacity: 0.85; }
 .cmp-detail { display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: center; }
 @media (prefers-reduced-motion: reduce) { .compare { scroll-behavior: auto; } }
+
+/* Dashboard grouping: division -> battalion -> apparatus */
+table.dash tr.grp th, table.dash tr.grp td { font-weight: 600; }
+table.dash tr.grp.lvl-0 { background: color-mix(in srgb, var(--line) 45%, transparent); }
+table.dash tr.lvl-1 > th { padding-left: 30px; }
+table.dash tr.lvl-2 > th { padding-left: 48px; }
+table.dash tr.grp .pill { font-size: 0.75rem; padding: 0 8px; }

@@ -12,10 +12,10 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - **Seats left behind** become vacant from the same date unless another award fills them.
 
 ## Later
-- Dashboard grouping by division and battalion (apparatus → battalion → division), as in the department summary screens.
 - Additional status codes (light duty, injury) if needed.
 
 ## Shipped
 - Google sign-in, My page, Admin; claim-and-approve, and requests from people not on the vacancy list.
 - Tour changes, VA/S/D leave, cover assignments, added people.
 - Dashboard (staffing summary by apparatus, stat summary), "6 of 9" tour intersections, Documents menu.
+- Dashboard grouping by division and battalion, from the Daily Balance Report (`organization.js`).

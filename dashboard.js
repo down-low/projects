@@ -4,10 +4,11 @@
 (function (root) {
   "use strict";
   var M = root.TourMath;
+  var Org = root.Organization;
 
   root.DashboardViews = function (api) {
     var $ = api.$, esc = api.esc;
-    var dash = { sort: "total", dir: 1, q: "", short: false, open: {}, editing: null, msg: "" };
+    var dash = { sort: "co", dir: 1, q: "", short: false, open: {}, editing: null, msg: "", group: "division" };
     var defaultsCache = { key: null, map: null };
     var statsReq = 0;
 
@@ -22,7 +23,7 @@
         api.slots().forEach(function (p) {
           var s = api.shift(p, d);
           if (!s) return;
-          var co = s.co || api.home(p);
+          var co = Org.apparatus(s.co || api.home(p));
           perCo[co] = (perCo[co] || 0) + 1;
         });
         Object.keys(perCo).forEach(function (co) {
@@ -32,6 +33,9 @@
       }
       var map = {};
       Object.keys(counts).forEach(function (co) {
+        // Days with nobody scheduled at this apparatus count as 0 seats.
+        var seen = Object.keys(counts[co]).reduce(function (a, n) { return a + counts[co][n]; }, 0);
+        if (seen < 31) counts[co][0] = (counts[co][0] || 0) + 31 - seen;
         var best = 0, bestN = -1;
         Object.keys(counts[co]).forEach(function (n) {
           var f = counts[co][n];
@@ -55,7 +59,7 @@
         return by[co] || (by[co] = { co: co, people: [], short: [], seats: 0 });
       }
       rows.forEach(function (r) {
-        var b = bucket(r.co);
+        var b = bucket(Org.apparatus(r.co));
         if (!r.acting) b.seats++;
         if (r.name && !r.off) { b.people.push(r); return; }
         if (r.acting) { b.short.push(r.name + " (covering) · " + api.STATUS_LABEL[r.status]); return; }
@@ -112,13 +116,15 @@
       var canAdmin = api.backend() && api.backend().canAdmin();
       var st = stats(d);
 
-      var cols = [["co", "Apparatus"], ["required", "Required"], ["working", "Working"], ["extra", "Extra"], ["missing", "Missing"], ["total", "Total"]];
+      var cols = [["co", dash.group === "division" ? "Division / battalion / apparatus" : dash.group === "battalion" ? "Battalion / apparatus" : "Apparatus"], ["required", "Required"], ["working", "Working"], ["extra", "Extra"], ["missing", "Missing"], ["total", "Total"]];
       var head = "<tr>" + cols.map(function (c) {
         var on = dash.sort === c[0];
         return '<th scope="col" aria-sort="' + (on ? (dash.dir > 0 ? "ascending" : "descending") : "none") + '"><button class="sort' + (on ? " on" : "") +
           '" data-sort="' + c[0] + '">' + c[1] + (on ? (dash.dir > 0 ? " ▲" : " ▼") : "") + "</button></th>";
       }).join("") + "</tr>";
-      var body = list.map(function (r) {
+      var body = dash.group === "apparatus" ? list.map(function (r) { return appRow(r, 0); }).join("") : groupedRows(all, list);
+
+      function appRow(r, level) {
         var open = !!dash.open[r.co];
         var req = dash.editing === r.co
           ? '<form class="req-form" data-co="' + esc(r.co) + '"><input type="number" min="0" max="30" value="' + r.required + '" aria-label="Required staffing for ' + esc(r.co) + '">' +
@@ -126,7 +132,7 @@
             '<button class="btn tiny" type="button" data-cancel="1">Cancel</button></form>'
           : (canAdmin ? '<button class="linkish req" data-edit="' + esc(r.co) + '" title="Change required staffing">' + r.required + "</button>" : r.required) +
             (r.overridden ? ' <span class="hint" title="Set by an admin; default ' + r.defaultRequired + '">set</span>' : "");
-        var row = '<tr class="dash-row' + (r.total < 0 ? " neg" : r.total > 0 ? " pos" : "") + (open ? " open" : "") + '" data-co="' + esc(r.co) + '">' +
+        var row = '<tr class="dash-row lvl-' + level + (r.total < 0 ? " neg" : r.total > 0 ? " pos" : "") + (open ? " open" : "") + '" data-co="' + esc(r.co) + '">' +
           '<th scope="row"><button class="linkish drill" aria-expanded="' + open + '" data-drill="' + esc(r.co) + '">' + (open ? "▾ " : "▸ ") + esc(r.co) + "</button></th>" +
           '<td class="num">' + req + '</td><td class="num">' + r.working + '</td><td class="num">' + r.extra + '</td><td class="num">' + r.missing +
           '</td><td class="num total">' + (r.total > 0 ? "+" : "") + r.total + "</td></tr>";
@@ -141,7 +147,66 @@
           }).join("") + "</ul>" : '<p class="hint">Nobody scheduled.</p>') + "</div>" +
           "<div><h4>Short or off (" + r.short.length + ")</h4>" + (r.short.length ? "<ul>" + r.short.map(function (t) { return "<li>" + esc(t) + "</li>"; }).join("") + "</ul>"
             : '<p class="hint">No open seats.</p>') + "</div></div></td></tr>";
-      }).join("");
+      }
+
+      // Division -> battalion -> apparatus, with subtotals. Subtotals cover every apparatus in the group;
+      // search and "Only short" decide which apparatus are listed under it.
+      function groupedRows(allRows, shown) {
+        var byCo = {}, shownSet = {};
+        allRows.forEach(function (r) { byCo[r.co] = r; });
+        shown.forEach(function (r) { shownSet[r.co] = true; });
+        var filtering = !!q || dash.short;
+        function sub(rows) {
+          var t = { required: 0, working: 0, extra: 0, missing: 0 };
+          rows.forEach(function (r) { t.required += r.required; t.working += r.working; t.extra += r.extra; t.missing += r.missing; });
+          t.total = t.extra + t.missing;
+          return t;
+        }
+        function sortRows(rows) {
+          return rows.sort(function (a, b) {
+            var k = dash.sort;
+            var cmp = k === "co" ? (a.sortName || api.coKey(a.co)).localeCompare(b.sortName || api.coKey(b.co), undefined, { numeric: true }) : a[k] - b[k];
+            return cmp * dash.dir;
+          });
+        }
+        var mapped = {};
+        var divisions = Org.DIVISIONS.map(function (dv) {
+          var bts = dv.battalions.map(function (bt) {
+            var rows = bt.apparatus.filter(function (co) { return byCo[co]; }).map(function (co) { mapped[co] = true; return byCo[co]; });
+            return Object.assign(sub(rows), { key: "g:" + bt.id, name: bt.name, sortName: bt.name, rows: rows });
+          });
+          var allRowsDv = [].concat.apply([], bts.map(function (b) { return b.rows; }));
+          return Object.assign(sub(allRowsDv), { key: "g:" + dv.id, name: dv.name, sortName: dv.name, bts: bts });
+        });
+        var other = allRows.filter(function (r) { return !mapped[r.co]; });
+        if (other.length) {
+          var ob = Object.assign(sub(other), { key: "g:OTHER", name: "Not in balance report", sortName: "zz", rows: other });
+          divisions.push(Object.assign(sub(other), { key: "g:DVOTHER", name: "Other", sortName: "zz", bts: [ob] }));
+        }
+        function isOpen(key, dflt) { return filtering ? true : dash.open[key] != null ? dash.open[key] : dflt; }
+        function groupRow(g, level, open, label) {
+          return '<tr class="grp lvl-' + level + (g.total < 0 ? " neg" : g.total > 0 ? " pos" : "") + '"><th scope="row"><button class="linkish drill" aria-expanded="' + open +
+            '" data-drill="' + esc(g.key) + '">' + (open ? "▾ " : "▸ ") + esc(g.name) + "</button>" + (label || "") + "</th>" +
+            '<td class="num">' + g.required + '</td><td class="num">' + g.working + '</td><td class="num">' + g.extra + '</td><td class="num">' + g.missing +
+            '</td><td class="num total">' + (g.total > 0 ? "+" : "") + g.total + "</td></tr>";
+        }
+        function btRows(bt, level) {
+          var rows = sortRows(bt.rows.filter(function (r) { return shownSet[r.co]; }));
+          if (filtering && !rows.length) return "";
+          var open = isOpen(bt.key, false);
+          return groupRow(bt, level, open) + (open ? rows.map(function (r) { return appRow(r, level + 1); }).join("") : "");
+        }
+        if (dash.group === "battalion") {
+          var bts = [].concat.apply([], divisions.map(function (dv) { return dv.bts; }));
+          return sortRows(bts).map(function (bt) { return btRows(bt, 0); }).join("");
+        }
+        return sortRows(divisions).map(function (dv) {
+          var inner = sortRows(dv.bts).map(function (bt) { return btRows(bt, 1); }).join("");
+          if (filtering && !inner) return "";
+          var open = isOpen(dv.key, true);
+          return groupRow(dv, 0, open, ' <b class="pill ' + (dv.total < 0 ? "bad" : "ok") + '">' + (dv.total > 0 ? "+" : "") + dv.total + "</b>") + (open ? inner : "");
+        }).join("");
+      }
 
       out.innerHTML =
         '<div class="dash-totals"><span>Total Working Staff <b class="pill ok">' + working + "</b></span>" +
@@ -156,7 +221,7 @@
         '<div class="card summary-card"><div class="cal-head"><h3>Schedule summary</h3>' +
         '<label class="toggle"><input type="checkbox" id="dash-short"' + (dash.short ? " checked" : "") + "> Only short</label></div>" +
         (dash.msg ? '<p class="msg" role="status">' + esc(dash.msg) + "</p>" : "") +
-        (list.length ? '<div class="table-wrap"><table class="list dash"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>"
+        (body ? '<div class="table-wrap"><table class="list dash"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>"
           : '<p class="hint">No apparatus matches.</p>') +
         '<p class="hint">Required = the usual number of positions scheduled at that apparatus' + (canAdmin ? " (click a number to change it)" : "") +
         ". Missing counts vacant seats and people off who aren't covered.</p></div></div>";
@@ -184,7 +249,7 @@
         if (t.dataset.sort) {
           dash.dir = dash.sort === t.dataset.sort ? -dash.dir : (t.dataset.sort === "co" ? 1 : 1);
           dash.sort = t.dataset.sort;
-        } else if (t.dataset.drill) dash.open[t.dataset.drill] = !dash.open[t.dataset.drill];
+        } else if (t.dataset.drill) dash.open[t.dataset.drill] = t.getAttribute("aria-expanded") !== "true";
         else if (t.dataset.edit) dash.editing = t.dataset.edit;
         else if (t.dataset.cancel) dash.editing = null;
         else if (t.dataset.reset) return saveReq(t.dataset.reset, null);
@@ -200,6 +265,8 @@
         saveReq(f.dataset.co, n);
       });
       $("dash-q").oninput = function () { dash.q = this.value; renderDash(); };
+      $("dash-group").value = dash.group;
+      $("dash-group").onchange = function () { dash.group = this.value; renderDash(); };
       $("dash-date").onchange = function () { if (this.value) { api.state().dashDate = api.fromIso(this.value); renderDash(); } };
       $("dash-prev").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, -1); renderDash(); };
       $("dash-next").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, 1); renderDash(); };
