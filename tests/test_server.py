@@ -259,5 +259,59 @@ class ServerTest(unittest.TestCase):
         self.assertFalse([x for x in recs["statuses"] if x["pos"] == key])
 
 
+    def test_request_staffing_profiles_docs(self):
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        n = self.client()
+        n.google_login("newhire@example.org")
+        self.assertEqual(n.req("GET", "/docs/2026-watch-calendar.pdf")[0], 403)
+        bad = [{"name": "Smith,J", "rank": "Lieutenant", "company": "E10", "tour": 32},
+               {"name": "Smith,J", "rank": "Lieutenant", "company": "X99", "tour": 12},
+               {"name": "", "rank": "Lieutenant", "company": "E10", "tour": 12},
+               {"name": "Smith,J", "rank": "Lieutenant", "company": "E10"}]
+        for b in bad:
+            self.assertEqual(n.req("POST", "/api/me/claim", {"request": b})[0], 400, b)
+        st, me, _ = n.req("POST", "/api/me/claim", {"request": {"name": "Smith,J", "rank": "Lieutenant", "company": "e10", "tour": 12}})
+        self.assertEqual((st, me["claimRequest"]["company"], me["claimRequest"]["tour"]), (200, "E10", 12))
+        _, users, _ = admin.req("GET", "/api/admin/users")
+        nid = next(u["id"] for u in users if u["googleEmail"] == "newhire@example.org")
+        st, u, _ = admin.req("POST", f"/api/admin/users/{nid}", {"action": "approve"})
+        self.assertEqual((st, u["status"], u["posName"]), (200, "active", "Smith,J"))
+        self.assertTrue(u["pos"].startswith("person:"))
+        _, recs, _ = n.req("GET", "/api/records")
+        smith = next(x for x in recs["people"] if x["name"] == "Smith,J")
+        self.assertEqual((smith["company"], smith["tour"]), ("E10", 12))
+
+        # documents: allowlisted only, PDFs for active users
+        st, body, headers = n.req("GET", "/docs/2026-watch-calendar.pdf")
+        self.assertEqual((st, headers["Content-Type"], body[:5]), (200, "application/pdf", b"%PDF-"))
+        self.assertEqual(n.req("GET", "/docs/secret.pdf")[0], 404)
+
+        # staffing overrides: admin only
+        self.assertEqual(n.req("PUT", "/api/staffing/E10", {"required": 5})[0], 403)
+        self.assertEqual(admin.req("PUT", "/api/staffing/E10", {"required": 99})[0], 400)
+        self.assertEqual(admin.req("PUT", "/api/staffing/ZZ9", {"required": 5})[0], 400)
+        self.assertEqual(admin.req("PUT", "/api/staffing/E10", {"required": 5})[0], 200)
+        self.assertIn({"company": "E10", "required": 5}, n.req("GET", "/api/records")[1]["staffing"])
+        admin.req("PUT", "/api/staffing/E10", {"required": None})
+        self.assertEqual(n.req("GET", "/api/records")[1]["staffing"], [])
+
+        # profiles: self or admin, validated, private; stats are averages only
+        key = u["pos"]
+        self.assertEqual(n.req("PUT", "/api/profiles/10EOC03M", {"birthDate": "1980-01-01"})[0], 403)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "2020-01-01"})[0], 400)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "1980-01-01", "hireDate": "1979-01-01"})[0], 400)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"hireDate": "2999-01-01"})[0], 400)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "1980-01-01", "hireDate": "2005-01-01"})[0], 200)
+        self.assertEqual(admin.req("PUT", "/api/profiles/10EOC03M", {"birthDate": "1970-01-01", "hireDate": "1995-01-01"})[0], 200)
+        self.assertEqual(n.req("GET", "/api/admin/profiles")[0], 403)
+        self.assertEqual(len(admin.req("GET", "/api/admin/profiles")[1]), 2)
+        self.assertEqual(n.req("GET", "/api/me")[1]["profile"]["hireDate"], "2005-01-01")
+        st, stats, _ = n.req("GET", "/api/stats?date=2026-10-14")
+        self.assertEqual((st, stats["nAge"], stats["nYos"]), (200, 2, 2))
+        self.assertAlmostEqual(stats["avgAge"], 51.8, delta=0.1)
+        self.assertNotIn("birthDate", json.dumps(stats))
+
+
 if __name__ == "__main__":
     unittest.main()

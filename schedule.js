@@ -97,7 +97,15 @@
     return own;
   }
 
+  // Watches (1-31) that tours a and b both work. Tours 3 or 10 days apart share 6 of 9 ("6 of 9").
+  function sharedWatches(a, b) {
+    var out = [];
+    for (var w = 1; w <= 31; w++) if (tourWorks(a, w) && tourWorks(b, w)) out.push(w);
+    return out;
+  }
+
   var api = {
+    sharedWatches: sharedWatches,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
     coverOn: coverOn, coveringOn: coveringOn, dayFor: dayFor,

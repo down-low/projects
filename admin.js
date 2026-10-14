@@ -44,7 +44,12 @@
       }
 
       // Signed in but pending approval
-      var waiting = me.claimPos
+      var req = me.claimRequest;
+      var waiting = req
+        ? '<div class="claim-wait"><p><b>Waiting for approval.</b> You asked to be added as <b>' + esc(req.name) + "</b> · " + esc(req.rank) +
+          " · " + esc(req.company) + " · Tour " + esc(req.tour) + ". An admin will review it; you'll get access as soon as it's approved.</p>" +
+          '<button class="btn small" id="claim-change">Change my request</button></div>'
+        : me.claimPos
         ? '<div class="claim-wait"><p><b>Waiting for approval.</b> You asked to be linked to <b>' + esc(me.claimName || me.claimPos) +
           "</b> (" + esc(me.claimPos) + "). An admin will review it; you'll get access as soon as it's approved.</p>" +
           '<button class="btn small" id="claim-change">Change my request</button></div>'
@@ -60,10 +65,39 @@
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
         '<label for="claim-note">Note for the admin (optional)</label><input type="text" id="claim-note" maxlength="300" placeholder="e.g. Captain E33, Tour 12">' +
         '<div class="row"><button class="btn primary" type="submit">Send request</button><span class="msg" id="claim-msg" role="status"></span></div>' +
-        "</form></div>";
+        '<p><button class="linkish" type="button" id="not-listed">I\'m not on the list</button></p>' +
+        "</form>" +
+        '<form class="edit claim-form" id="req-form" hidden novalidate>' +
+        "<p>Tell us where you work. An admin checks it and adds you to the schedule.</p>" +
+        '<div class="row"><label>Your name<input type="text" id="rq-name" maxlength="80" placeholder="Last,First initial (e.g. Smith,J)"></label>' +
+        '<label>Rank<select id="rq-rank">' + api.RANKS.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + "</select></label></div>" +
+        '<div class="row"><label>Apparatus<input type="text" id="rq-company" maxlength="6" placeholder="e.g. E10"></label>' +
+        '<label>Tour<select id="rq-tour"><option value="">Pick your tour</option>' +
+        Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '">Tour ' + (i + 1) + "</option>"; }).join("") + "</select></label></div>" +
+        '<label>Note for the admin (optional)<input type="text" id="rq-note" maxlength="300" placeholder="e.g. new hire, academy class 125"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Send request</button><span class="msg" id="rq-msg" role="status"></span>' +
+        '<button class="linkish" type="button" id="back-to-list">Back to the roster search</button></div></form></div>';
 
       $("gate-out").onclick = function () { api.backend().signOut(); };
-      if ($("claim-change")) $("claim-change").onclick = function () { $("claim-form").hidden = false; this.parentNode.hidden = true; };
+      if ($("claim-change")) $("claim-change").onclick = function () {
+        this.parentNode.hidden = true;
+        if (req) {
+          $("req-form").hidden = false;
+          $("rq-name").value = req.name; $("rq-rank").value = req.rank; $("rq-company").value = req.company; $("rq-tour").value = req.tour; $("rq-note").value = req.note || "";
+        } else $("claim-form").hidden = false;
+      };
+      $("not-listed").onclick = function () { $("claim-form").hidden = true; $("req-form").hidden = false; $("rq-name").focus(); };
+      $("back-to-list").onclick = function () { $("req-form").hidden = true; $("claim-form").hidden = false; };
+      $("req-form").onsubmit = function (e) {
+        e.preventDefault();
+        var msg = $("rq-msg"), name = $("rq-name").value.trim(), co = $("rq-company").value.trim().toUpperCase(), tour = $("rq-tour").value;
+        if (name.length < 2) return api.say(msg, "Enter your name, e.g. Smith,J.", true);
+        if (!/^[A-Z]{1,3}\d{1,2}$/.test(co)) return api.say(msg, "Enter your apparatus as a company code, like E10 or T01.", true);
+        if (!tour) return api.say(msg, "Pick your tour.", true);
+        api.say(msg, "Sending…");
+        api.backend().claimRequest({ name: name, rank: $("rq-rank").value, company: co, tour: +tour, note: $("rq-note").value.trim() })
+          .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
+      };
       var listEl = $("claim-list");
       function showMatches() {
         var q = $("claim-q").value.trim().toLowerCase();
@@ -112,7 +146,7 @@
         var up = api.recs().tourChanges.filter(function (c) { return c.pos === p.pos && c.effective > api.iso(t); })
           .sort(function (a, c) { return a.effective.localeCompare(c.effective); })[0];
         var st = api.statusFor(p.pos, t);
-        html += kv("Position", p.title + " · " + p.pos) +
+        html += kv("Position", p.added ? p.title : p.title + " · " + p.pos) +
           '<div class="kv"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
           (up ? kv("Tour change", "→ " + up.tour + " from " + api.shortDate(api.fromIso(up.effective))) : "") +
           (st ? '<div class="kv"><span class="k">Today</span><span class="v">' + api.statusPill(st) + " " + esc(api.STATUS_LABEL[st]) + "</span></div>" : "") +
@@ -151,10 +185,26 @@
         '<p class="hint">When this is on, anyone signed in to the schedule sees your contact email and phone numbers on your schedule page. ' +
         "When it's off, only admins can see them.</p>" +
         '<div class="row"><button class="btn primary" type="submit">Save contact info</button><span class="msg" id="mc-msg" role="status"></span></div></form>';
+      if (me.pos) {
+        var pf = me.profile || {};
+        html += '<form class="card edit dates" id="me-dates" novalidate><h3>Birth and hire dates</h3>' +
+          '<p class="hint">Private. Only you and admins can see these. The dashboard shows department averages (age and years of service), never yours.</p>' +
+          '<div class="row"><label>Birth date<input type="date" id="md-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
+          '<label>Hire date<input type="date" id="md-hire" value="' + esc(pf.hireDate || "") + '"></label></div>' +
+          '<div class="row"><button class="btn primary" type="submit">Save dates</button><span class="msg" id="md-msg" role="status"></span></div></form>';
+      }
       html += "</div>";
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
+      if ($("me-dates")) $("me-dates").onsubmit = function (e) {
+        e.preventDefault();
+        var bd = $("md-birth").value, hd = $("md-hire").value;
+        if (bd && hd && hd <= bd) return api.say($("md-msg"), "The hire date must be after the birth date.", true);
+        api.say($("md-msg"), "Saving…");
+        b.setProfile(me.pos, { birthDate: bd || null, hireDate: hd || null })
+          .then(function () { api.say($("md-msg"), "Saved."); }, function (er) { api.say($("md-msg"), er.message, true); });
+      };
       $("me-contact").onsubmit = function (e) {
         e.preventDefault();
         var email = $("mc-email").value.trim();
@@ -201,8 +251,13 @@
       $("admin-pending").innerHTML = pending.length ? '<ul class="hist pending">' + pending.map(function (u) {
         return '<li><div><b>' + esc(u.name) + "</b> " + '<span class="hint">' + esc(u.googleEmail) + "</span><br>" +
           (u.claimPos ? "Claims " + posLabel(u.claimPos) + (u.claimNote ? '<div class="hint">“' + esc(u.claimNote) + "”</div>" : "")
+            : u.claimRequest ? 'Not on the list. Asks to be added as <b>' + esc(u.claimRequest.name) + "</b> · " + esc(u.claimRequest.rank) + " · " +
+              esc(u.claimRequest.company) + " · Tour " + esc(u.claimRequest.tour) + (u.claimRequest.note ? '<div class="hint">“' + esc(u.claimRequest.note) + "”</div>" : "")
             : '<span class="hint">Hasn\'t picked a roster entry yet.</span>') + "</div>" +
-          '<div class="acts">' + (u.claimPos
+          '<div class="acts">' + (u.claimRequest && !u.claimPos
+            ? '<button class="btn small primary" data-act="approve" data-id="' + esc(u.id) + '">Approve and add to roster</button>' +
+              '<button class="btn small" data-act="reject" data-id="' + esc(u.id) + '">Reject request</button>'
+            : u.claimPos
             ? '<button class="btn small primary" data-act="approve" data-id="' + esc(u.id) + '">Approve</button>' +
               '<button class="btn small" data-act="reject" data-id="' + esc(u.id) + '">Reject claim</button>'
             : '<button class="btn small" data-act="approve" data-id="' + esc(u.id) + '">Approve without roster link</button>') +
@@ -258,7 +313,8 @@
         b.dataset.confirm = "1"; b.textContent = "Confirm " + a; b.classList.add("danger");
         return;
       }
-      var msgs = { approve: "Approved " + u.name + ".", reject: "Rejected the claim from " + u.name + ".", unlink: "Unlinked " + u.name + ".",
+      var msgs = { approve: "Approved " + u.name + (u.claimRequest && !u.claimPos ? " and added " + u.claimRequest.name + " to the roster" : "") + ".",
+        reject: "Rejected the request from " + u.name + ".", unlink: "Unlinked " + u.name + ".",
         disable: "Disabled " + u.name + ". They are signed out.", enable: "Enabled " + u.name + "." };
       act(id, { action: a }, msgs[a]);
     }

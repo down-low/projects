@@ -8,16 +8,28 @@
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
  *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
  *   kind = "statuses" | "tourChanges" | "covers" | "people".
+ * Both add staffing overrides and personal dates: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate}),
+ * profiles() (admins), stats(isoDate) -> {avgAge, nAge, avgYos, nYos} or null, canAdmin().
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
  */
 (function (root) {
   "use strict";
-  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people" };
+  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
 
   function nowIso() { return new Date().toISOString(); }
+  // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
+  function averages(rows, isoDate) {
+    var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
+    rows.forEach(function (r) {
+      if (r.birthDate) ages.push((on - new Date(r.birthDate + "T00:00:00")) / yr);
+      if (r.hireDate && r.hireDate <= isoDate) yos.push((on - new Date(r.hireDate + "T00:00:00")) / yr);
+    });
+    var avg = function (xs) { return xs.length ? Math.round(xs.reduce(function (a, b) { return a + b; }, 0) / xs.length * 10) / 10 : null; };
+    return { avgAge: avg(ages), nAge: ages.length, avgYos: avg(yos), nYos: yos.length };
+  }
 
   /* ---------- claude.ai page database ---------- */
   function dbAdapter(onChange) {
@@ -25,8 +37,11 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [] };
-      function emit() { onChange({ statuses: records.statuses, tourChanges: records.tourChanges, covers: records.covers, people: records.people }); }
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [] };
+      function emit() {
+        onChange({ statuses: records.statuses, tourChanges: records.tourChanges, covers: records.covers, people: records.people,
+          staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }) });
+      }
       var editable = false, uid = null, failed = false;
       Object.keys(COLLECTIONS).forEach(function (kind) {
         db.collection(COLLECTIONS[kind]).onSnapshot(function (snap) {
@@ -62,6 +77,20 @@
           addTourChange: function (rec) { return write("tourChanges", rec); },
           addCover: function (rec) { return write("covers", rec); },
           addPerson: function (rec) { return write("people", rec); },
+          canAdmin: function () { return editable && !failed; },
+          setStaffing: function (company, n) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var ref = db.collection("staffing").doc(company);
+            return n == null ? ref.delete() : ref.set({ required: n, updatedAt: nowIso(), updatedBy: uid });
+          },
+          setProfile: function (key, dates) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection("profiles").doc(key).set({ birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso() });
+          },
+          profiles: function () {
+            return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+          },
+          stats: function (isoDate) { return Promise.resolve(editable ? averages(records.profiles, isoDate) : null); },
           endCover: function (id, end) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             return db.collection("covers").doc(id).update({ end: end });
@@ -115,7 +144,7 @@
       return Promise.all([getJson("api/records"), getJson("api/contacts")]).then(function (res) {
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
-          people: res[0].people || [], contacts: contacts });
+          people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -140,6 +169,7 @@
             contacts: function () { return contacts; },
             signOut: function () { return call("POST", "auth/logout").then(function () { location.href = location.pathname; }); },
             claim: function (pos, note) { return call("POST", "api/me/claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+            claimRequest: function (req) { return call("POST", "api/me/claim", { request: req }).then(function (j) { me = j; return j; }); },
             rosterNames: function () { return getJson("api/roster-names"); },
             saveContact: function (c) { return thenRefresh(call("PUT", "api/me/contact", c).then(function (j) { me = j; return j; })); },
             adminUsers: function () { return getJson("api/admin/users"); },
@@ -147,6 +177,16 @@
             addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
             addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
             addCover: function (rec) { return thenRefresh(call("POST", "api/covers", rec)); },
+            canAdmin: function () { return active() && me.role === "admin"; },
+            setStaffing: function (company, n) { return thenRefresh(call("PUT", "api/staffing/" + encodeURIComponent(company), { required: n })); },
+            setProfile: function (key, dates) {
+              return call("PUT", "api/profiles/" + encodeURIComponent(key), dates).then(function (j) {
+                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate };
+                return j;
+              });
+            },
+            profiles: function () { return getJson("api/admin/profiles"); },
+            stats: function (isoDate) { return getJson("api/stats?date=" + encodeURIComponent(isoDate)); },
             addPerson: function (rec) { return thenRefresh(call("POST", "api/people", rec)); },
             endCover: function (id, end) { return thenRefresh(call("PATCH", "api/covers/" + encodeURIComponent(id), { end: end })); },
             remove: function (kind, id) {
@@ -169,6 +209,11 @@
     addCover: function () { return Promise.reject(new Error("Editing is not available here.")); },
     addPerson: function () { return Promise.reject(new Error("Editing is not available here.")); },
     endCover: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    canAdmin: function () { return false; },
+    setStaffing: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    setProfile: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    profiles: function () { return Promise.resolve([]); },
+    stats: function () { return Promise.resolve(null); },
     remove: function () { return Promise.reject(new Error("Editing is not available here.")); },
   };
 

@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S"}
 ROLES = ("member", "editor", "admin")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -49,6 +49,12 @@ KINDS = {"statuses": "statuses", "tour-changes": "tour_changes", "covers": "cove
 RANKS = ("Battalion Chief", "Rescue Captain", "Captain", "Lieutenant", "ISS", "FF/Paramedic", "Firefighter",
          "Pilot", "Marine Engineer")
 PERSON_PREFIX = "person:"
+COMPANY_RE = re.compile(r"^[A-Z]{1,3}\d{1,2}$")
+MIGRATIONS = [  # columns added after the first release; applied when missing
+    ("users", "claim_request", "TEXT"),
+    ("people", "company", "TEXT"),
+    ("people", "tour", "INTEGER"),
+]
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
 SESSION_DAYS = 30
@@ -84,6 +90,12 @@ CREATE TABLE IF NOT EXISTS covers (
 );
 CREATE TABLE IF NOT EXISTS people (
   id TEXT PRIMARY KEY, name TEXT NOT NULL, rank TEXT NOT NULL, note TEXT, createdAt TEXT NOT NULL, createdBy TEXT
+);
+CREATE TABLE IF NOT EXISTS staffing (
+  company TEXT PRIMARY KEY, required INTEGER NOT NULL, updatedAt TEXT, updatedBy TEXT
+);
+CREATE TABLE IF NOT EXISTS profiles (
+  key TEXT PRIMARY KEY, birthDate TEXT, hireDate TEXT, updatedAt TEXT, updatedBy TEXT
 );
 CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL, actor_id TEXT, action TEXT NOT NULL, detail TEXT
@@ -191,8 +203,16 @@ class App:
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self.conn.row_factory = sqlite3.Row
         self.conn.executescript(SCHEMA)
+        for table, col, typ in MIGRATIONS:
+            cols = {r[1] for r in self.conn.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                self.conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {typ}")
+        self.conn.commit()
         with open(os.path.join(ROOT, "data", "positions.json")) as f:
             self.positions = {p["pos"]: p for p in json.load(f)}
+        self.companies = {p["company"] for p in self.positions.values() if p.get("company")}
+        with open(os.path.join(ROOT, "docs", "index.json")) as f:
+            self.docs = {d["file"] for d in json.load(f)}
 
     # ---------- db helpers ----------
     def all(self, sql, params=()):
@@ -265,7 +285,8 @@ class App:
             return None
         if key.startswith(PERSON_PREFIX):
             row = self.one("SELECT * FROM people WHERE id = ?", (key[len(PERSON_PREFIX):],))
-            return row and {"pos": key, "name": row["name"], "title": row["rank"] + " (added)"}
+            return row and {"pos": key, "name": row["name"], "title": row["rank"] + (" " + row["company"] if row["company"] else "") + " (added)",
+                            "company": row["company"], "tour": row["tour"]}
         return self.positions.get(key)
 
     def me_json(self, u):
@@ -277,9 +298,35 @@ class App:
             "claimPos": u["claim_pos"], "claimName": claim and claim.get("name"), "claimNote": u["claim_note"],
             "contactEmail": u["contact_email"], "phoneMobile": u["phone_mobile"], "phoneOther": u["phone_other"],
             "shareContact": bool(u["share_contact"]),
+            "claimRequest": json.loads(u["claim_request"]) if u.get("claim_request") else None,
+            "profile": self.profile(u["pos"]) if u["pos"] else None,
         }
 
+    def clean_person_fields(self, body):
+        name = clean_text(body.get("name"), "name", 80)
+        if len(name) < 2:
+            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
+        rank = body.get("rank")
+        if rank not in RANKS:
+            raise BadRequest("rank must be one of: " + ", ".join(RANKS))
+        company = clean_text(body.get("company"), "company", 6).upper() or None
+        if company and (not COMPANY_RE.match(company) or company not in self.companies):
+            raise BadRequest("Apparatus must be a company on the roster, like E10 or T01")
+        tour = body.get("tour")
+        if tour in (None, ""):
+            tour = None
+        elif not isinstance(tour, int) or isinstance(tour, bool) or not 1 <= tour <= 31:
+            raise BadRequest("tour must be a whole number from 1 to 31")
+        return {"name": name, "rank": rank, "company": company, "tour": tour, "note": clean_text(body.get("note"), "note")}
+
     def claim(self, u, body):
+        if isinstance(body.get("request"), dict):
+            req = self.clean_person_fields(body["request"])
+            if not req["company"] or not req["tour"]:
+                raise BadRequest("Pick your apparatus and tour")
+            self.write("UPDATE users SET claim_request = ?, claim_pos = NULL, claim_note = NULL WHERE id = ?", (json.dumps(req), u["id"]))
+            self.audit(u, "request", req)
+            return
         pos = body.get("pos")
         entry = self.lookup(pos) if isinstance(pos, str) else None
         if not entry or not entry.get("name"):
@@ -287,7 +334,7 @@ class App:
         if self.one("SELECT id FROM users WHERE pos = ? AND id != ?", (pos, u["id"])):
             raise HttpError(409, "That roster entry is already linked to another account. Ask an admin for help.")
         note = clean_text(body.get("note"), "Note", 300)
-        self.write("UPDATE users SET claim_pos = ?, claim_note = ? WHERE id = ?", (pos, note, u["id"]))
+        self.write("UPDATE users SET claim_pos = ?, claim_note = ?, claim_request = NULL WHERE id = ?", (pos, note, u["id"]))
         self.audit(u, "claim", {"pos": pos})
 
     def save_contact(self, u, body):
@@ -332,7 +379,12 @@ class App:
             raise HttpError(404, "No such user")
         action = body.get("action")
         last_admin = target["role"] == "admin" and target["status"] == "active" and self.active_admins() <= 1
-        if action == "approve":
+        if action == "approve" and target.get("claim_request") and not target["claim_pos"]:
+            req = json.loads(target["claim_request"])
+            person = self.add_person(req, actor["display_name"] or actor["google_email"])
+            key = PERSON_PREFIX + person["id"]
+            self.write("UPDATE users SET pos = ?, claim_request = NULL, status = 'active' WHERE id = ?", (key, user_id))
+        elif action == "approve":
             pos = target["claim_pos"]
             if pos and self.one("SELECT id FROM users WHERE pos = ? AND id != ?", (pos, user_id)):
                 raise HttpError(409, "That roster entry is already linked to another account")
@@ -341,7 +393,7 @@ class App:
             else:
                 self.write("UPDATE users SET status = 'active' WHERE id = ?", (user_id,))
         elif action == "reject":
-            self.write("UPDATE users SET claim_pos = NULL, claim_note = NULL WHERE id = ?", (user_id,))
+            self.write("UPDATE users SET claim_pos = NULL, claim_note = NULL, claim_request = NULL WHERE id = ?", (user_id,))
         elif action == "role":
             role = body.get("role")
             if role not in ROLES:
@@ -377,7 +429,8 @@ class App:
         return {"statuses": self.all('SELECT * FROM statuses ORDER BY start, createdAt'),
                 "tourChanges": self.all('SELECT * FROM tour_changes ORDER BY effective, createdAt'),
                 "covers": self.all('SELECT * FROM covers ORDER BY start, createdAt'),
-                "people": self.all('SELECT * FROM people ORDER BY name')}
+                "people": self.all('SELECT * FROM people ORDER BY name'),
+                "staffing": self.all('SELECT company, required FROM staffing')}
 
     def _position(self, body):
         pos = body.get("pos")
@@ -446,16 +499,63 @@ class App:
         return self.one("SELECT * FROM covers WHERE id = ?", (rec_id,))
 
     def add_person(self, body, who):
-        name = clean_text(body.get("name"), "name", 80)
-        if len(name) < 2:
-            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
-        rank = body.get("rank")
-        if rank not in RANKS:
-            raise BadRequest("rank must be one of: " + ", ".join(RANKS))
-        rec = {"id": uuid.uuid4().hex, "name": name, "rank": rank, "note": clean_text(body.get("note"), "note"),
-               "createdAt": now(), "createdBy": who}
-        self.write("INSERT INTO people (id,name,rank,note,createdAt,createdBy) VALUES (:id,:name,:rank,:note,:createdAt,:createdBy)", rec)
+        rec = self.clean_person_fields(body)
+        rec.update({"id": uuid.uuid4().hex, "createdAt": now(), "createdBy": who})
+        self.write("INSERT INTO people (id,name,rank,company,tour,note,createdAt,createdBy) "
+                   "VALUES (:id,:name,:rank,:company,:tour,:note,:createdAt,:createdBy)", rec)
         return rec
+
+    # ---------- staffing, profiles, stats ----------
+    def set_staffing(self, company, body, who):
+        if company not in self.companies:
+            raise BadRequest("Unknown apparatus")
+        req = body.get("required")
+        if req is None:
+            self.write("DELETE FROM staffing WHERE company = ?", (company,))
+            return {"company": company, "required": None}
+        if not isinstance(req, int) or isinstance(req, bool) or not 0 <= req <= 30:
+            raise BadRequest("required must be a whole number from 0 to 30")
+        self.write("INSERT INTO staffing (company, required, updatedAt, updatedBy) VALUES (?,?,?,?) "
+                   "ON CONFLICT(company) DO UPDATE SET required = excluded.required, updatedAt = excluded.updatedAt, "
+                   "updatedBy = excluded.updatedBy", (company, req, now(), who))
+        return {"company": company, "required": req}
+
+    def profile(self, key):
+        row = self.one("SELECT birthDate, hireDate FROM profiles WHERE key = ?", (key,))
+        return row or {"birthDate": None, "hireDate": None}
+
+    def set_profile(self, key, body, who):
+        if not self.lookup(key):
+            raise BadRequest("Unknown person")
+        birth = valid_date(body.get("birthDate"), "birthDate", required=False)
+        hire = valid_date(body.get("hireDate"), "hireDate", required=False)
+        today = dt.date.today()
+        if birth:
+            age = (today - dt.date.fromisoformat(birth)).days / 365.25
+            if not 18 <= age <= 80:
+                raise BadRequest("Birth date must make the person between 18 and 80 years old")
+        if hire and dt.date.fromisoformat(hire) > today:
+            raise BadRequest("Hire date can't be in the future")
+        if birth and hire and hire <= birth:
+            raise BadRequest("Hire date must be after the birth date")
+        self.write("INSERT INTO profiles (key, birthDate, hireDate, updatedAt, updatedBy) VALUES (?,?,?,?,?) "
+                   "ON CONFLICT(key) DO UPDATE SET birthDate = excluded.birthDate, hireDate = excluded.hireDate, "
+                   "updatedAt = excluded.updatedAt, updatedBy = excluded.updatedBy", (key, birth, hire, now(), who))
+        return {"key": key, "birthDate": birth, "hireDate": hire}
+
+    def stats(self, on):
+        """Averages only: individual dates never leave the server except to admins and their owner."""
+        on = dt.date.fromisoformat(on) if on else dt.date.today()
+        ages, yos = [], []
+        for r in self.all("SELECT key, birthDate, hireDate FROM profiles"):
+            if not self.lookup(r["key"]):
+                continue
+            if r["birthDate"]:
+                ages.append((on - dt.date.fromisoformat(r["birthDate"])).days / 365.25)
+            if r["hireDate"] and dt.date.fromisoformat(r["hireDate"]) <= on:
+                yos.append((on - dt.date.fromisoformat(r["hireDate"])).days / 365.25)
+        avg = lambda xs: round(sum(xs) / len(xs), 1) if xs else None
+        return {"avgAge": avg(ages), "nAge": len(ages), "avgYos": avg(yos), "nYos": len(yos)}
 
     def delete(self, kind, rec_id):
         table = KINDS[kind]  # fixed allowlist, never user text
@@ -544,7 +644,7 @@ def make_handler(app):
 
         # ---------- request helpers ----------
         def path_only(self):
-            return urllib.parse.urlsplit(self.path).path
+            return urllib.parse.unquote(urllib.parse.urlsplit(self.path).path)
 
         def query(self):
             return urllib.parse.parse_qs(urllib.parse.urlsplit(self.path).query)
@@ -615,6 +715,24 @@ def make_handler(app):
                 return self.send_json(200, app.records())
             if path == "/api/contacts":
                 return self.send_json(200, app.contacts(self.require("active")))
+            if path == "/api/stats":
+                self.require("active")
+                on = (self.query().get("date") or [None])[0]
+                return self.send_json(200, app.stats(valid_date(on, "date", required=False)))
+            if path == "/api/admin/profiles":
+                self.require("admin")
+                return self.send_json(200, app.all("SELECT key, birthDate, hireDate FROM profiles"))
+            m = re.fullmatch(r"/docs/([A-Za-z0-9-]+\.pdf)", path)
+            if m:
+                self.require("active")
+                if m.group(1) not in app.docs:
+                    raise HttpError(404, "Not found")
+                self.path = "/docs/" + m.group(1)
+                return super().do_GET()
+            if path == "/docs/index.json":
+                self.require("active")
+                self.path = "/docs/index.json"
+                return super().do_GET()
             if path == "/api/roster-names":
                 self.require("signed-in")
                 return self.send_json(200, app.roster_names())
@@ -729,11 +847,27 @@ def make_handler(app):
 
         def _put(self):
             self.check_csrf()
-            if self.path_only() != "/api/me/contact":
-                raise HttpError(404, "Not found")
-            u = self.require("active")
-            app.save_contact(u, self.body())
-            return self.send_json(200, app.me_json(self.user()))
+            path = self.path_only()
+            if path == "/api/me/contact":
+                u = self.require("active")
+                app.save_contact(u, self.body())
+                return self.send_json(200, app.me_json(self.user()))
+            m = re.fullmatch(r"/api/staffing/([A-Z]{1,3}\d{1,2})", path)
+            if m:
+                u = self.require("admin")
+                rec = app.set_staffing(m.group(1), self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "staffing", rec)
+                return self.send_json(200, rec)
+            m = re.fullmatch(r"/api/profiles/([A-Za-z0-9:]{3,64})", path)
+            if m:
+                u = self.require("active")
+                key = m.group(1)
+                if u["role"] != "admin" and key != u["pos"]:
+                    raise HttpError(403, "You can only change your own dates")
+                rec = app.set_profile(key, self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "profile", {"key": key})
+                return self.send_json(200, rec)
+            raise HttpError(404, "Not found")
 
         def do_DELETE(self):
             self.run(self._delete)

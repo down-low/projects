@@ -16,12 +16,20 @@
       <p class="sub">SFFD 31-day watch rotation · positions from Vacancy List 26 A-071</p>
     </div>
     <div class="top-right">
+      <div class="hdr-links">
+        <details class="docs-menu" id="docs-menu" hidden>
+          <summary>Documents</summary>
+          <ul id="docs-list"></ul>
+        </details>
+        <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
+      </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
     </div>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="View">
+    <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash">Dashboard</button>
     <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date">Who's working</button>
     <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person">By person</button>
     <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
@@ -30,6 +38,29 @@
   </nav>
 
   <section class="gate" id="gate" hidden></section>
+
+  <section class="view" id="view-dash" role="tabpanel" aria-labelledby="tab-dash" hidden>
+    <div class="controls">
+      <div class="stepper">
+        <button class="btn icon" id="dash-prev" aria-label="Previous day">&lsaquo;</button>
+        <input type="date" id="dash-date" aria-label="Date" />
+        <button class="btn icon" id="dash-next" aria-label="Next day">&rsaquo;</button>
+      </div>
+      <button class="btn" id="dash-today">Today</button>
+      <select id="dash-group" aria-label="Group by">
+        <option value="apparatus">Group by apparatus</option>
+        <option disabled>Battalion (coming later)</option>
+        <option disabled>Division (coming later)</option>
+      </select>
+      <input type="search" id="dash-q" class="grow" placeholder="Search apparatus, e.g. E10" aria-label="Search apparatus" />
+    </div>
+    <div id="dash-detail"></div>
+  </section>
+
+  <section class="view" id="view-six" role="region" aria-label="6 of 9 tour intersections" hidden>
+    <h2 class="view-title">6 of 9 · tour intersections</h2>
+    <div id="six-detail"></div>
+  </section>
 
   <section class="view" id="view-date" role="tabpanel" aria-labelledby="tab-date">
     <div class="controls">
@@ -60,6 +91,10 @@
       <div class="row">
         <label>Name<input type="text" id="ap-name" maxlength="80" placeholder="Last,First initial (e.g. Lester,D)"></label>
         <label>Rank<select id="ap-rank"></select></label>
+      </div>
+      <div class="row">
+        <label>Apparatus (optional)<input type="text" id="ap-company" maxlength="6" placeholder="e.g. E10"></label>
+        <label>Tour (optional)<select id="ap-tour"><option value="">No tour</option></select></label>
       </div>
       <label>Note<input type="text" id="ap-note" maxlength="500" placeholder="Optional"></label>
       <div class="row"><button class="btn primary" type="submit">Add person</button><span class="msg" id="ap-msg" role="status"></span></div>
@@ -99,6 +134,7 @@
 <script src="schedule.js"></script>
 <script src="store.js"></script>
 <script src="admin.js"></script>
+<script src="dashboard.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

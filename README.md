@@ -31,6 +31,17 @@ Editors can record, per person (on the **By person** tab):
 - **Cover assignment** (temporary acting, e.g. covering an injured captain): on the covering person's page, **Cover another position**, pick the position, a start date and optionally an end date. While it runs, that person works the covered position's tour and company and shows as "Acting for" the holder; the holder shows "Covered by"; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover.
 - **Add a person** not on the vacancy list (relief, detailed or new staff): **Not on the list? Add a person** under the person search, then give them a cover assignment.
 
+## Dashboard, 6 of 9, Documents
+
+- **Dashboard** (first tab): for any date, **Total Working Staff** and **Positions Needing Staff**, then a table per apparatus with Required, Working, Extra, Missing and Total (Total = Working − Required; Extra and Missing are its positive and negative parts). Click an apparatus to drill down to who is working and which seats are short and why (vacant seat, leave not covered, acting elsewhere). Sort by any column, search, or show only short apparatus. **Required** defaults to the usual number of positions scheduled at that apparatus across a 31-day cycle (E10 = 4, T01 = 5); admins can click the number to override it or reset it. Grouping by battalion and division is planned (see `RELEASES.md`).
+- **Stats summary**: full duty, VA, S, D, acting/covering, spots open for bid, vacant seats, and **average age** and **average years of service** from birth and hire dates. Dates are entered by the person on My page or by an admin on the By person page; they are private, and the dashboard only shows averages.
+- **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
+- **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
+
+## Signing up when you're not on the vacancy list
+
+After signing in with Google, someone who can't find their name picks **I'm not on the list** and enters their name, rank, apparatus and tour. An admin sees the request on the Admin page; **Approve and add to roster** adds them with that apparatus and tour (tagged "Added") and gives them access.
+
 Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; anything else matches names and titles.
 
 Vacancy-list rows showing a starred name with "Vacant" (e.g. `* Lt. SSwing E10 10ENL31M Lester,D Vacant`) are treated as the person still working the position while the spot is up for bid ("Spot open for bid"). Rows with a starred replacement name show only the replacement.
@@ -88,6 +99,9 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
 | `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, note?}`, `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
 | `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
+| `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
+| `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
+| `PUT /api/staffing/<company>` `{required: n or null}`, `PUT /api/profiles/<key>`, `GET /api/admin/profiles` | admins |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 
