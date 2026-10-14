@@ -19,13 +19,34 @@ From the Vacancy List (26 A-071 Att. A):
 - When a position lists a starred replacement name, only the starred name is shown.
 - Swing and super-swing positions use the "Assigned Rotations" pages for the company covered on each watch.
 
-The math lives in `schedule.js`; positions are in `data/positions.json`.
+The math lives in `schedule.js`; positions are in `data/positions.json`; storage adapters are in `store.js`.
 
-## Running it
+## Tour changes and leave (VA / S / D)
+
+Editors can record, per person (on the **By person** tab):
+
+- **Status**: VA vacation, S sick or D disabled, for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
+- **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
+
+Records are keyed by position number. There are two places they can be stored:
+
+1. **The schedule server (`server.py`)**: SQLite in `data/schedule.db`. Anyone who can reach the server can view; editing needs a token.
+2. **The shared claude.ai page**: `dist/tour-schedule.html` published as an artifact with its page database. Only people given Editor access on the page can make changes; Viewers see the schedule read-only.
+
+The two stores are separate. Opening the page any other way (for example `python3 -m http.server`) is view-only.
+
+## Running the server
 
 ```sh
-python3 -m http.server   # then open http://localhost:8000
+EDIT_TOKENS="chief:$(openssl rand -hex 16),clerk:$(openssl rand -hex 16)" python3 server.py --port 8000
+# open http://localhost:8000 and use "Sign in to edit" with one of the tokens
 ```
+
+- `EDIT_TOKENS` is a comma-separated list of `name:token`. The name is recorded on each change as `createdBy`.
+- The server listens on 127.0.0.1 by default. Use `--host 0.0.0.0` to accept other machines, and put it behind HTTPS (for example a reverse proxy) before sending tokens over a network.
+- Back up `data/schedule.db` to keep the records.
+
+API (JSON): `GET /api/records`, `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `DELETE /api/statuses/<id>`, `DELETE /api/tour-changes/<id>`. Writes need `Authorization: Bearer <token>`.
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 

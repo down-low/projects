@@ -31,6 +31,7 @@ def main():
         f"{body}\n"
         f"<script>window.POSITIONS={data};</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
+        f"<script>\n{read('store.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)

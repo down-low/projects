@@ -15,7 +15,10 @@
       <h1>Tour Schedule</h1>
       <p class="sub">SFFD 31-day watch rotation · positions from Vacancy List 26 A-071</p>
     </div>
-    <div class="today" id="today-chip"></div>
+    <div class="top-right">
+      <div class="today" id="today-chip"></div>
+      <div class="edit-chip" id="edit-chip" hidden></div>
+    </div>
   </header>
 
   <nav class="tabs" role="tablist" aria-label="View">
@@ -66,11 +69,12 @@
   </section>
 
   <footer class="foot">
-    <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown.</p>
+    <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown. Editors can record tour changes (from an effective date) and leave: VA vacation, S sick, D disabled. A person on leave still appears on their scheduled days, marked off.</p>
   </footer>
 </div>
 <!-- app:end -->
 <script src="schedule.js"></script>
+<script src="store.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

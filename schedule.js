@@ -18,16 +18,54 @@
     for (var t = 1; t <= 31; t++) if (tourWorks(t, watch)) out.push(t);
     return out;
   }
-  // Returns the shift a position works on a date, or null. Swing positions report the company they cover.
-  function shiftFor(p, d) {
-    var w = watchFor(d);
-    if (!tourWorks(p.tour, w)) return null;
-    var s = null;
-    if (p.swing) for (var i = 0; i < p.swing.length; i++) if (p.swing[i].watch === w) s = p.swing[i];
-    return { watch: w, co: s ? s.co : p.company, role: s ? s.role : null, swing: !!s };
+  function isoDate(d) {
+    var m = d.getMonth() + 1, day = d.getDate();
+    return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (day < 10 ? "0" : "") + day;
+  }
+  // Records are compared newest-first by createdAt so a later entry overrides an earlier one.
+  function newer(a, b) { return String(b.createdAt || "").localeCompare(String(a.createdAt || "")); }
+
+  // Tour on a date: the latest tour change effective on or before it, else the vacancy-list tour.
+  function effectiveTour(p, d, changes) {
+    var day = isoDate(d), best = null;
+    if (changes) for (var i = 0; i < changes.length; i++) {
+      var c = changes[i];
+      if (c.pos !== p.pos || c.effective > day) continue;
+      if (!best || c.effective > best.effective || (c.effective === best.effective && newer(c, best) < 0)) best = c;
+    }
+    return best ? best.tour : p.tour;
   }
 
-  var api = { watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor, TOUR_OFFSETS: TOUR_OFFSETS };
+  // Status code (VA, D, S) covering a date, or null. Open-ended when end is null. Newest record wins on overlap.
+  function statusFor(pos, d, statuses) {
+    var day = isoDate(d), best = null;
+    if (statuses) for (var i = 0; i < statuses.length; i++) {
+      var s = statuses[i];
+      if (s.pos !== pos || s.start > day || (s.end && s.end < day)) continue;
+      if (!best || newer(s, best) < 0) best = s;
+    }
+    return best ? best.code : null;
+  }
+
+  // Returns the shift a position works on a date, or null. Swing positions report the company they cover.
+  // opts: {changes, statuses} records from the editor backend. A swing rotation only applies on the original tour.
+  function shiftFor(p, d, opts) {
+    opts = opts || {};
+    var w = watchFor(d);
+    var tour = effectiveTour(p, d, opts.changes);
+    if (!tourWorks(tour, w)) return null;
+    var s = null;
+    if (p.swing && tour === p.tour) for (var i = 0; i < p.swing.length; i++) if (p.swing[i].watch === w) s = p.swing[i];
+    return {
+      watch: w, tour: tour, co: s ? s.co : p.company, role: s ? s.role : null, swing: !!s,
+      status: statusFor(p.pos, d, opts.statuses),
+    };
+  }
+
+  var api = {
+    watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
+    effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
+  };
   root.TourMath = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;
 })(typeof window !== "undefined" ? window : globalThis);
