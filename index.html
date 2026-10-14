@@ -25,7 +25,11 @@
     <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date">Who's working</button>
     <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person">By person</button>
     <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
+    <button class="tab" role="tab" id="tab-me" data-view="me" aria-controls="view-me" hidden>My page</button>
+    <button class="tab" role="tab" id="tab-admin" data-view="admin" aria-controls="view-admin" hidden>Admin</button>
   </nav>
+
+  <section class="gate" id="gate" hidden></section>
 
   <section class="view" id="view-date" role="tabpanel" aria-labelledby="tab-date">
     <div class="controls">
@@ -68,6 +72,14 @@
     <div class="grid-wrap" id="rank-grid"></div>
   </section>
 
+  <section class="view" id="view-me" role="tabpanel" aria-labelledby="tab-me" hidden>
+    <div id="me-detail"></div>
+  </section>
+
+  <section class="view" id="view-admin" role="tabpanel" aria-labelledby="tab-admin" hidden>
+    <div id="admin-detail"></div>
+  </section>
+
   <footer class="foot">
     <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown. Editors can record tour changes (from an effective date) and leave: VA vacation, S sick, D disabled. A person on leave still appears on their scheduled days, marked off.</p>
   </footer>
@@ -75,6 +87,7 @@
 <!-- app:end -->
 <script src="schedule.js"></script>
 <script src="store.js"></script>
+<script src="admin.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

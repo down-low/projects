@@ -2,25 +2,19 @@
  *
  * ScheduleStore.connect(onChange) resolves an adapter for wherever the page is running:
  *   - "db":     the shared claude.ai page database (single-file build opened on claude.ai)
- *   - "server": the repo's server.py (/api/*), editors sign in with a token
+ *   - "server": the repo's server.py (/api/*), people sign in with Google; roles decide who edits
  *   - "none":   read-only (plain static hosting or a local file)
  * onChange({statuses, tourChanges}) fires whenever the records change.
- * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signIn(token), signOut(),
- *           addStatus(rec), addTourChange(rec), remove(kind, id)}  kind = "statuses" | "tourChanges"
+ * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
+ *           remove(kind, id)}  kind = "statuses" | "tourChanges".
+ * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
+ * saveContact(), adminUsers(), adminAction().
  */
 (function (root) {
   "use strict";
-  var TOKEN_KEY = "tour-schedule:editor-token";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges" };
 
   function nowIso() { return new Date().toISOString(); }
-  function session(k, v) {
-    try {
-      if (v === undefined) return sessionStorage.getItem(k);
-      if (v === null) sessionStorage.removeItem(k); else sessionStorage.setItem(k, v);
-    } catch (e) { /* storage unavailable */ }
-    return null;
-  }
 
   /* ---------- claude.ai page database ---------- */
   function dbAdapter(onChange) {
@@ -59,7 +53,6 @@
           canEdit: function () { return editable && !failed; },
           editorName: function () { return null; },
           needsSignIn: function () { return false; },
-          signIn: function () { return Promise.resolve(false); },
           signOut: function () {},
           addStatus: function (rec) { return write("statuses", rec); },
           addTourChange: function (rec) { return write("tourChanges", rec); },
@@ -72,61 +65,68 @@
     }).catch(function () { return null; });
   }
 
-  /* ---------- server.py ---------- */
+  /* ---------- server.py (Google sign-in, session cookie) ---------- */
   function serverAdapter(onChange) {
     if (!root.fetch || location.protocol === "file:") return Promise.resolve(null);
-    return fetch("api/health", { cache: "no-store" }).then(function (r) {
-      if (!r.ok) return null;
-      return r.json().then(function (health) {
-        var token = session(TOKEN_KEY), name = null;
-        function headers(json) {
-          var h = {};
-          if (json) h["Content-Type"] = "application/json";
-          if (token) h.Authorization = "Bearer " + token;
-          return h;
-        }
-        function refresh() {
-          return fetch("api/records", { cache: "no-store" }).then(function (r2) { return r2.json(); }).then(onChange);
-        }
-        function call(method, path, body) {
-          return fetch(path, { method: method, headers: headers(!!body), body: body ? JSON.stringify(body) : undefined })
-            .then(function (r2) {
-              return r2.json().catch(function () { return {}; }).then(function (j) {
-                if (r2.status === 401) { token = null; name = null; session(TOKEN_KEY, null); }
-                if (!r2.ok) throw new Error(j.error || "The server refused the change (" + r2.status + ").");
-                return refresh().then(function () { return j; });
-              });
-            });
-        }
-        function whoami() {
-          if (!token) return Promise.resolve(null);
-          return fetch("api/whoami", { headers: headers(false), cache: "no-store" }).then(function (r2) {
-            return r2.ok ? r2.json().then(function (j) { return j.name; }) : null;
+    var me = null, contacts = {};
+    function getJson(path) {
+      return fetch(path, { cache: "no-store", credentials: "same-origin" }).then(function (r) {
+        return r.json().catch(function () { return {}; }).then(function (j) {
+          if (!r.ok) throw new Error(j.error || "The server returned " + r.status + ".");
+          return j;
+        });
+      });
+    }
+    function call(method, path, body) {
+      var h = { "X-Requested-With": "tour-schedule" };
+      if (body) h["Content-Type"] = "application/json";
+      return fetch(path, { method: method, headers: h, credentials: "same-origin", body: body ? JSON.stringify(body) : undefined })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (j) {
+            if (r.status === 401) me = { signedIn: false };
+            if (!r.ok) throw new Error(j.error || "The server refused the change (" + r.status + ").");
+            return j;
           });
-        }
+        });
+    }
+    function active() { return !!(me && me.signedIn && me.status === "active"); }
+    function refresh() {
+      if (!active()) return Promise.resolve();
+      return Promise.all([getJson("api/records"), getJson("api/contacts")]).then(function (res) {
+        contacts = res[1];
+        onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, contacts: contacts });
+      });
+    }
+    function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
+
+    return fetch("api/me", { cache: "no-store", credentials: "same-origin" }).then(function (r) {
+      if (!r.ok) return null;
+      var type = r.headers.get("Content-Type") || "";
+      if (type.indexOf("application/json") === -1) return null;
+      return r.json().then(function (j) {
+        if (typeof j.signedIn !== "boolean") return null;
+        me = j;
         setInterval(function () { if (!document.hidden) refresh().catch(function () {}); }, 60000);
-        return Promise.all([refresh(), whoami()]).then(function (res) {
-          name = res[1];
-          if (!name) { token = null; session(TOKEN_KEY, null); }
+        return refresh().then(function () {
           return {
             mode: "server",
-            editingEnabled: !!health.editing,
-            canEdit: function () { return !!name; },
-            editorName: function () { return name; },
-            needsSignIn: function () { return !!health.editing && !name; },
-            signIn: function (t) {
-              token = (t || "").trim();
-              return whoami().then(function (n) {
-                name = n;
-                if (n) session(TOKEN_KEY, token); else { token = null; session(TOKEN_KEY, null); }
-                return !!n;
-              });
-            },
-            signOut: function () { token = null; name = null; session(TOKEN_KEY, null); },
-            addStatus: function (rec) { return call("POST", "api/statuses", rec); },
-            addTourChange: function (rec) { return call("POST", "api/tour-changes", rec); },
+            me: function () { return me; },
+            isActive: active,
+            isAdmin: function () { return active() && me.role === "admin"; },
+            canEdit: function () { return active() && (me.role === "editor" || me.role === "admin"); },
+            editorName: function () { return me && me.signedIn ? me.name || me.googleEmail : null; },
+            needsSignIn: function () { return !(me && me.signedIn); },
+            contacts: function () { return contacts; },
+            signOut: function () { return call("POST", "auth/logout").then(function () { location.href = location.pathname; }); },
+            claim: function (pos, note) { return call("POST", "api/me/claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+            rosterNames: function () { return getJson("api/roster-names"); },
+            saveContact: function (c) { return thenRefresh(call("PUT", "api/me/contact", c).then(function (j) { me = j; return j; })); },
+            adminUsers: function () { return getJson("api/admin/users"); },
+            adminAction: function (id, body) { return thenRefresh(call("POST", "api/admin/users/" + encodeURIComponent(id), body)); },
+            addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
+            addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
             remove: function (kind, id) {
-              return call("DELETE", "api/" + (kind === "statuses" ? "statuses" : "tour-changes") + "/" + encodeURIComponent(id));
+              return thenRefresh(call("DELETE", "api/" + (kind === "statuses" ? "statuses" : "tour-changes") + "/" + encodeURIComponent(id)));
             },
           };
         });
@@ -139,7 +139,6 @@
     canEdit: function () { return false; },
     editorName: function () { return null; },
     needsSignIn: function () { return false; },
-    signIn: function () { return Promise.resolve(false); },
     signOut: function () {},
     addStatus: function () { return Promise.reject(new Error("Editing is not available here.")); },
     addTourChange: function () { return Promise.reject(new Error("Editing is not available here.")); },

@@ -274,3 +274,46 @@ form.edit select, form.edit input[type="date"] { width: 100%; }
 .btn.danger { border-color: var(--accent); color: var(--accent); }
 .msg { font-size: 0.82rem; color: var(--ok); }
 .msg.err { color: var(--accent); }
+
+/* ---------- Accounts: sign-in gate, My page, Admin ---------- */
+.page.gated .tabs, .page.gated .view, .page.gated .foot { display: none; }
+.gate { display: flex; justify-content: center; }
+.gate-card { max-width: 560px; width: 100%; display: flex; flex-direction: column; gap: 12px; }
+.gate-card h2, .person.me h2 { font-family: var(--font-display); font-weight: 700; font-size: 1.8rem; margin: 0; text-transform: uppercase; }
+.gate-card p { margin: 0; }
+.btn.big { display: inline-flex; align-items: center; justify-content: center; min-height: 46px; font-size: 1rem; text-decoration: none; align-self: flex-start; }
+.btn.tiny { min-height: 24px; padding: 1px 7px; font-size: 0.72rem; }
+.dev-login { display: flex; flex-direction: column; gap: 6px; border-top: 1px dashed var(--line); padding-top: 12px; }
+.dev-login label { font-size: 0.75rem; color: var(--muted); }
+.dev-login .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.dev-login input { flex: 1 1 12em; min-width: 0; }
+ul.pick { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; max-height: 300px; overflow-y: auto; }
+.pick-btn { width: 100%; text-align: left; background: none; border: 1px solid transparent; border-radius: 6px; padding: 7px 10px; font: inherit; color: inherit; cursor: pointer; }
+.pick-btn:hover, .pick-btn:focus-visible { background: var(--accent-soft); }
+.claim-chosen { background: var(--accent-soft); border-radius: 6px; padding: 8px 10px; }
+.claim-wait { display: flex; flex-direction: column; gap: 8px; align-items: flex-start; }
+form.claim-form { border-top: 0; margin-top: 0; padding-top: 0; }
+form.edit input[type="search"], form.edit input[type="email"], form.edit input[type="tel"] {
+  font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; min-height: 38px;
+}
+.role-pill { font-family: var(--font-data); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; }
+.contact-kv { flex-basis: 100%; }
+.contact-v { font-family: var(--font-body); display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.contact-v .sep { color: var(--muted); }
+.contact-v a { color: inherit; }
+.person.me form.contact { margin: 0; padding-top: 16px; border-top: 1px solid var(--line); }
+.person.me form.contact h3 { margin-bottom: 0; }
+.share { font-weight: 500; color: var(--fg) !important; }
+h3.sub-h { margin-top: 18px; }
+#admin-detail { display: flex; flex-direction: column; gap: 16px; }
+#admin-detail .msg:empty { display: none; }
+#admin-detail .cal-head h3 { margin: 0; }
+#admin-detail .cal-head input { max-width: 320px; }
+ul.pending li { align-items: center; }
+ul.pending .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+table.users td { white-space: normal; vertical-align: top; }
+table.users td:first-child { min-width: 12em; }
+.small-link { font-size: 0.8rem; color: var(--muted); }
+.link-form { display: flex; gap: 6px; margin-top: 6px; }
+.link-form input { font: inherit; font-size: 0.85rem; min-width: 14em; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+table.users select { min-height: 32px; padding: 3px 6px; }

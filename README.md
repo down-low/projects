@@ -30,23 +30,57 @@ Editors can record, per person (on the **By person** tab):
 
 Records are keyed by position number. There are two places they can be stored:
 
-1. **The schedule server (`server.py`)**: SQLite in `data/schedule.db`. Anyone who can reach the server can view; editing needs a token.
-2. **The shared claude.ai page**: `dist/tour-schedule.html` published as an artifact with its page database. Only people given Editor access on the page can make changes; Viewers see the schedule read-only.
+1. **The schedule server (`server.py`)**: SQLite in `data/schedule.db`, with Google sign-in and user accounts (below).
+2. **The shared claude.ai page**: `dist/tour-schedule.html` published as an artifact with its page database. Only people given Editor access on the page can make changes; Viewers see the schedule read-only. Google sign-in, My page and Admin are not available there.
 
 The two stores are separate. Opening the page any other way (for example `python3 -m http.server`) is view-only.
 
+## Accounts (server)
+
+People sign in with Google. Viewing the schedule requires an approved account.
+
+1. A new person signs in and picks themselves from the roster (**Claim your record**).
+2. An admin approves the claim on the **Admin** tab, which links the Google account to that position. Admins can also link, unlink or change the link later, approve staff without a roster position, and disable accounts (which signs them out).
+3. Access levels: **Member** (schedule and My page), **Editor** (also records tour changes and leave), **Admin** (also manages users). There is always at least one admin.
+
+**My page** shows the person's current tour, any upcoming tour change, their next shifts and leave on record, and lets them set a contact email (separate from their Google sign-in), a mobile and another phone number. A **Share my contact info for shift swaps** switch decides who sees it: when on, anyone signed in sees it on that person's schedule page; when off, only admins do.
+
 ## Running the server
 
+1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an **OAuth client ID** of type **Web application**. Add the authorized redirect URI `https://YOUR-HOST/auth/callback`. (Configure the OAuth consent screen first if asked; the app only requests your name and email.)
+2. Start the server:
+
 ```sh
-EDIT_TOKENS="chief:$(openssl rand -hex 16),clerk:$(openssl rand -hex 16)" python3 server.py --port 8000
-# open http://localhost:8000 and use "Sign in to edit" with one of the tokens
+GOOGLE_CLIENT_ID=xxxx.apps.googleusercontent.com \
+GOOGLE_CLIENT_SECRET=xxxx \
+BASE_URL=https://YOUR-HOST \
+ADMIN_EMAILS=chief@example.org \
+ALLOWED_DOMAINS=example.org \
+python3 server.py --port 8000
 ```
 
-- `EDIT_TOKENS` is a comma-separated list of `name:token`. The name is recorded on each change as `createdBy`.
-- The server listens on 127.0.0.1 by default. Use `--host 0.0.0.0` to accept other machines, and put it behind HTTPS (for example a reverse proxy) before sending tokens over a network.
-- Back up `data/schedule.db` to keep the records.
+| Setting | Meaning |
+|---|---|
+| `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` | The OAuth client from step 1. Keep the secret out of the repo. |
+| `BASE_URL` | The public address people use. Must match the redirect URI you registered. |
+| `ADMIN_EMAILS` | Comma-separated Google emails that become admins when they sign in. Needed for the first admin. |
+| `ALLOWED_DOMAINS` | Optional. Only Google accounts from these email domains may sign in. |
 
-API (JSON): `GET /api/records`, `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `DELETE /api/statuses/<id>`, `DELETE /api/tour-changes/<id>`. Writes need `Authorization: Bearer <token>`.
+- Serve it over **HTTPS** (for example behind a reverse proxy such as Caddy or nginx); session cookies are marked Secure when `BASE_URL` is https. The server listens on 127.0.0.1 by default; use `--host 0.0.0.0` only behind a proxy.
+- `data/schedule.db` now holds contact details. Keep it private and back it up.
+- For local testing without Google, `DEV_LOGIN=1 ADMIN_EMAILS=you@example.org python3 server.py` adds a "Developer sign-in" box that signs in as any email. It only works on 127.0.0.1. Never use it in production.
+
+Tests: `python3 -m unittest discover -s tests` (uses a stub in place of Google).
+
+API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedule`):
+
+| Route | Who |
+|---|---|
+| `GET /api/me`, `POST /auth/logout` | anyone |
+| `POST /api/me/claim` `{pos, note}` | pending accounts |
+| `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
+| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `DELETE /api/statuses/<id>`, `DELETE /api/tour-changes/<id>` | editors, admins |
+| `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 

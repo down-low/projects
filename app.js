@@ -12,6 +12,7 @@
   var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick" };
   var recs = { statuses: [], tourChanges: [] }; // tour changes + work statuses from the editor backend
   var backend = null;
+  var contacts = {}; // pos -> {email, phoneMobile, phoneOther, shared}, from the server when signed in
   function opts() { return { statuses: recs.statuses, changes: recs.tourChanges }; }
   function shift(p, d) { return M.shiftFor(p, d, opts()); }
   function tourOn(p, d) { return M.effectiveTour(p, d, recs.tourChanges); }
@@ -46,7 +47,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["date", "person", "rank"].forEach(function (k) {
+    ["date", "person", "rank", "me", "admin"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -57,6 +58,8 @@
   function render() {
     if (state.view === "date") renderDate();
     else if (state.view === "person") renderPerson();
+    else if (state.view === "me") Accounts.renderMe();
+    else if (state.view === "admin") Accounts.renderAdmin();
     else renderRank();
   }
 
@@ -216,7 +219,7 @@
       (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
       kv("Works watches", watchesFor(tourNow).join(" ")) +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      "</div>" +
+      contactHtml(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" +
@@ -278,7 +281,6 @@
   }
   function editHint() {
     if (!backend || backend.mode === "none") return '<p class="hint">Editing needs the shared page or the schedule server. See the README.</p>';
-    if (backend.needsSignIn()) return '<p class="hint">Sign in as an editor (top right) to record leave or tour changes.</p>';
     return '<p class="hint">Only editors can record leave or tour changes.</p>';
   }
   function wireEditForms(p) {
@@ -315,6 +317,17 @@
     if (!el) return;
     el.textContent = text;
     el.classList.toggle("err", !!isErr);
+  }
+  function contactHtml(p) {
+    var c = contacts[p.pos];
+    if (!c || !(c.email || c.phoneMobile || c.phoneOther)) return "";
+    var bits = [];
+    if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
+    [["Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+      if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
+    });
+    return '<div class="kv contact-kv"><span class="k">Contact for swaps' + (c.shared ? "" : " · not shared, admins only") + '</span><span class="v contact-v">' +
+      bits.join('<span class="sep"> · </span>') + "</span></div>";
   }
   function kv(k, v) { return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>"; }
   function watchesFor(tour) {
@@ -427,29 +440,41 @@
       if (b) choosePerson(b.dataset.pos);
     });
 
+    document.addEventListener("click", function (e) {
+      var c = e.target.closest("button[data-copy]");
+      if (!c) return;
+      var text = c.dataset.copy;
+      var done = function () { c.textContent = "Copied"; setTimeout(function () { c.textContent = "Copy"; }, 1500); };
+      try {
+        navigator.clipboard.writeText(text).then(done, function () { selectText(c.previousElementSibling); });
+      } catch (err) { selectText(c.previousElementSibling); }
+    });
+
     var savedPerson = recall("person");
     if (savedPerson && byPos[savedPerson] && byPos[savedPerson].name) {
       state.personPos = savedPerson;
       $("person-input").value = byPos[savedPerson].name;
     }
+    booted = true;
+    applyAccountUi();
     var v = recall("view");
-    setView(v === "person" || v === "rank" ? v : "date");
-
-    window.ScheduleStore.connect(function (r) {
-      recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [] };
-      renderAll();
-    }).then(function (b) {
-      backend = b;
-      renderEditChip();
-      renderAll(true);
-    });
+    setView(tabAllowed(v) ? v : "date");
+  }
+  function selectText(el) {
+    if (!el) return;
+    var r = document.createRange();
+    r.selectNodeContents(el);
+    var sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(r);
   }
 
   // Re-render the current view. Background refreshes wait while someone is filling in an edit form.
-  var deferred = false;
+  var deferred = false, booted = false;
   function renderAll(force) {
+    if (!booted) return;
     var a = document.activeElement;
-    if (!force && state.view === "person" && a && a.closest && a.closest("form.edit")) {
+    if (!force && (state.view === "person" || state.view === "me") && a && a.closest && a.closest("form.edit")) {
       if (!deferred) { deferred = true; a.closest("form.edit").addEventListener("focusout", function once(e) {
         if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("form.edit")) return;
         this.removeEventListener("focusout", once);
@@ -458,40 +483,78 @@
       }); }
       return;
     }
+    if (!force && state.view === "admin") return; // the admin page reloads itself after each action
     deferred = false;
     render();
   }
 
+  /* ---------- Accounts (server mode) ---------- */
+  function serverMode() { return backend && backend.mode === "server"; }
+  function tabAllowed(v) {
+    if (v === "date" || v === "person" || v === "rank") return true;
+    if (v === "me") return serverMode() && backend.isActive();
+    if (v === "admin") return serverMode() && backend.isAdmin();
+    return false;
+  }
+  function applyAccountUi() {
+    $("tab-me").hidden = !tabAllowed("me");
+    $("tab-admin").hidden = !tabAllowed("admin");
+    if (!tabAllowed(state.view) && booted) setView("date");
+    renderEditChip();
+  }
   function renderEditChip() {
     var el = $("edit-chip");
     if (!backend || backend.mode === "none") { el.hidden = true; return; }
     el.hidden = false;
-    if (backend.canEdit()) {
-      el.innerHTML = '<span class="dot on"></span>Editing' + (backend.editorName() ? " as " + esc(backend.editorName()) : "") +
-        (backend.mode === "server" ? ' <button class="linkish" id="sign-out">Sign out</button>' : "");
-      if ($("sign-out")) $("sign-out").onclick = function () { backend.signOut(); renderEditChip(); renderAll(true); };
-    } else if (backend.needsSignIn()) {
-      el.innerHTML = '<form id="sign-in" class="sign-in"><input type="password" id="sign-token" placeholder="Editor token" aria-label="Editor token" autocomplete="current-password">' +
-        '<button class="btn small" type="submit">Sign in to edit</button><span class="msg err" id="sign-msg" role="status"></span></form>';
-      $("sign-in").onsubmit = function (e) {
-        e.preventDefault();
-        backend.signIn($("sign-token").value).then(function (ok) {
-          if (ok) { renderEditChip(); renderAll(true); } else say($("sign-msg"), "That token was not recognized.", true);
-        });
-      };
-    } else {
-      el.innerHTML = '<span class="dot"></span>View only';
+    if (serverMode()) {
+      var me = backend.me();
+      if (!me.signedIn) { el.hidden = true; return; }
+      el.innerHTML = '<span class="dot' + (backend.canEdit() ? " on" : "") + '"></span>' + esc(me.name || me.googleEmail) +
+        ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
+        ' <button class="linkish" id="sign-out">Sign out</button>';
+      $("sign-out").onclick = function () { backend.signOut(); };
+      return;
     }
+    el.innerHTML = backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  function gate(on) {
+    document.querySelector(".page").classList.toggle("gated", on);
+    $("gate").hidden = !on;
   }
 
-  var load = window.POSITIONS
-    ? Promise.resolve(window.POSITIONS)
-    : fetch("data/positions.json").then(function (r) {
+  var Accounts = window.AccountViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; },
+    people: function () { return people; }, recs: function () { return recs; }, shift: shift, tourOn: tourOn,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, statusPill: statusPill, STATUS_LABEL: STATUS_LABEL,
+    today: today, addDays: addDays, iso: iso, fromIso: fromIso, shortDate: shortDate, choosePerson: choosePerson,
+    renderAll: renderAll, gate: gate,
+  });
+
+  /* ---------- Start ---------- */
+  function onRecords(r) {
+    recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [] };
+    if (r.contacts) contacts = r.contacts;
+    renderAll();
+  }
+  function loadError(err) {
+    $("date-results").innerHTML = '<div class="empty">Could not load the roster (' + esc(err.message) +
+      "). Serve this folder over HTTP, for example with <code>python3 server.py</code>, then reload.</div>";
+  }
+  if (window.POSITIONS) {
+    // Single-file build: show the schedule at once, then light up editing when the page database answers.
+    boot(window.POSITIONS);
+    window.ScheduleStore.connect(onRecords).then(function (b) { backend = b; applyAccountUi(); renderAll(true); });
+  } else {
+    window.ScheduleStore.connect(onRecords).then(function (b) {
+      backend = b;
+      if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
+      return fetch("data/positions.json", { credentials: "same-origin" }).then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
+      }).then(function (rows) {
+        if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
+        boot(rows);
       });
-  load.then(boot).catch(function (err) {
-    $("date-results").innerHTML = '<div class="empty">Could not load data/positions.json (' + esc(err.message) +
-      "). Serve this folder over HTTP, for example with <code>python3 -m http.server</code>, then reload.</div>";
-  });
+    }).catch(loadError);
+  }
 })();
