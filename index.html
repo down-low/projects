@@ -2,54 +2,75 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Calendar Date Picker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>SFFD Tour Schedule</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="page">
-    <h1>Calendar Date Picker</h1>
-
-    <div class="picker-wrapper">
-      <label for="date-input">Select a date</label>
-      <div class="input-row">
-        <input
-          type="text"
-          id="date-input"
-          class="date-input"
-          placeholder="MM / DD / YYYY"
-          readonly
-          aria-haspopup="true"
-          aria-expanded="false"
-        />
-        <button class="clear-btn" id="clear-btn" aria-label="Clear date" hidden>&#x2715;</button>
-      </div>
-
-      <div class="calendar" id="calendar" role="dialog" aria-label="Date picker" hidden>
-        <div class="cal-header">
-          <button class="nav-btn" id="prev-year" aria-label="Previous year">&laquo;</button>
-          <button class="nav-btn" id="prev-month" aria-label="Previous month">&lsaquo;</button>
-          <div class="month-year" id="month-year"></div>
-          <button class="nav-btn" id="next-month" aria-label="Next month">&rsaquo;</button>
-          <button class="nav-btn" id="next-year" aria-label="Next year">&raquo;</button>
-        </div>
-
-        <div class="cal-weekdays">
-          <span>Su</span><span>Mo</span><span>Tu</span>
-          <span>We</span><span>Th</span><span>Fr</span><span>Sa</span>
-        </div>
-
-        <div class="cal-grid" id="cal-grid" role="grid" aria-label="Calendar days"></div>
-
-        <div class="cal-footer">
-          <button class="today-btn" id="today-btn">Today</button>
-        </div>
-      </div>
+<!-- app:start -->
+<div class="page">
+  <header class="top">
+    <div>
+      <h1>Tour Schedule</h1>
+      <p class="sub">SFFD 31-day watch rotation · positions from Vacancy List 26 A-071</p>
     </div>
+    <div class="today" id="today-chip"></div>
+  </header>
 
-    <p class="selected-display" id="selected-display"></p>
-  </div>
+  <nav class="tabs" role="tablist" aria-label="View">
+    <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date">Who's working</button>
+    <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person">By person</button>
+    <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
+  </nav>
 
-  <script src="datepicker.js"></script>
+  <section class="view" id="view-date" role="tabpanel" aria-labelledby="tab-date">
+    <div class="controls">
+      <div class="stepper">
+        <button class="btn icon" id="date-prev" aria-label="Previous day">&lsaquo;</button>
+        <input type="date" id="date-input" aria-label="Date" />
+        <button class="btn icon" id="date-next" aria-label="Next day">&rsaquo;</button>
+      </div>
+      <button class="btn" id="date-today">Today</button>
+      <select id="date-rank" aria-label="Rank"></select>
+      <input type="search" id="date-filter" class="grow" placeholder="Filter by name, company or tour" aria-label="Filter" />
+      <label class="toggle"><input type="checkbox" id="date-vacant" /> Show vacancies</label>
+    </div>
+    <div class="summary" id="date-summary"></div>
+    <div id="date-results"></div>
+  </section>
+
+  <section class="view" id="view-person" role="tabpanel" aria-labelledby="tab-person" hidden>
+    <div class="search">
+      <label for="person-input">Find a person</label>
+      <input type="search" id="person-input" autocomplete="off" placeholder="Last name, company (E01) or position number" role="combobox" aria-controls="person-list" aria-expanded="false" />
+      <ul class="suggest" id="person-list" role="listbox" hidden></ul>
+    </div>
+    <div id="person-detail"></div>
+  </section>
+
+  <section class="view" id="view-rank" role="tabpanel" aria-labelledby="tab-rank" hidden>
+    <div class="controls">
+      <select id="rank-select" aria-label="Rank"></select>
+      <select id="rank-company" aria-label="Company"></select>
+      <select id="rank-tour" aria-label="Tour"></select>
+      <div class="stepper">
+        <button class="btn icon" id="rank-prev" aria-label="Previous month">&lsaquo;</button>
+        <span class="month-label" id="rank-month"></span>
+        <button class="btn icon" id="rank-next" aria-label="Next month">&rsaquo;</button>
+      </div>
+      <label class="toggle"><input type="checkbox" id="rank-vacant" /> Show vacancies</label>
+    </div>
+    <p class="hint" id="rank-count"></p>
+    <div class="grid-wrap" id="rank-grid"></div>
+  </section>
+
+  <footer class="foot">
+    <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown.</p>
+  </footer>
+</div>
+<!-- app:end -->
+<script src="schedule.js"></script>
+<script src="app.js"></script>
 </body>
 </html>
