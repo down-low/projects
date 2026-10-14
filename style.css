@@ -317,3 +317,23 @@ table.users td:first-child { min-width: 12em; }
 .link-form { display: flex; gap: 6px; margin-top: 6px; }
 .link-form input { font: inherit; font-size: 0.85rem; min-width: 14em; padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
 table.users select { min-height: 32px; padding: 3px 6px; }
+
+/* ---------- Cover assignments ---------- */
+:root { --acting: #0f7a75; --acting-soft: #d3efed; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --acting: #4fd1c5; --acting-soft: #163b39; } }
+:root[data-theme="dark"] { --acting: #4fd1c5; --acting-soft: #163b39; }
+.tag-acting { background: var(--acting-soft); color: var(--acting); }
+.tag-away { background: var(--off-soft); color: var(--off); }
+.tag-open { background: var(--line); color: var(--fg); font-weight: 500; }
+.st-A { background: var(--acting-soft); color: var(--acting); }
+.cal .d.work.acting { background: var(--acting); border-color: var(--acting); }
+.cal .d.away { border-style: dashed; color: var(--muted); }
+.cal .d.away .w { color: var(--off); }
+.legend i.sw-acting { background: var(--acting); }
+table.roster td.c.acting span { background: var(--acting); color: var(--on-accent); }
+table.roster td.c.away span { box-shadow: inset 0 0 0 1px var(--muted); color: var(--muted); }
+ul.hist .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.add-person-btn { align-self: flex-start; font-size: 0.85rem; color: var(--muted); }
+form.add-person { max-width: 560px; margin: 0; }
+form.add-person input[type="text"] { width: 100%; }
+.danger-zone { border-top: 1px dashed var(--line); padding-top: 10px; margin-top: 10px; }

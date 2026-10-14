@@ -220,6 +220,44 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(a.req("GET", "/api/me")[1]["signedIn"], False)
         self.assertGreater(len(self.app.all("SELECT * FROM audit")), 5)
 
+    def test_covers_and_people(self):
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        m = self.client()
+        m.google_login("member2@example.org")
+        _, users, _ = admin.req("GET", "/api/admin/users")
+        mid = next(u["id"] for u in users if u["googleEmail"] == "member2@example.org")
+        admin.req("POST", f"/api/admin/users/{mid}", {"action": "approve"})
+
+        cover = {"coverKey": "10ENL31M", "targetPos": "10EOC03M", "start": "2026-10-14"}
+        self.assertEqual(m.req("POST", "/api/covers", cover)[0], 403)
+        bad = [dict(cover, targetPos="10ENL31M"), dict(cover, targetPos="NOPE"), dict(cover, coverKey="person:abc"),
+               dict(cover, end="2026-10-01"), dict(cover, start="2026-13-01")]
+        for b in bad:
+            self.assertEqual(admin.req("POST", "/api/covers", b)[0], 400, b)
+        st, rec, _ = admin.req("POST", "/api/covers", cover)
+        self.assertEqual((st, rec["coverName"], rec["end"]), (201, "Lester,D", None))
+        self.assertEqual(admin.req("PATCH", f"/api/covers/{rec['id']}", {"end": "2026-10-01"})[0], 400)
+        st, ended, _ = admin.req("PATCH", f"/api/covers/{rec['id']}", {"end": "2026-11-30"})
+        self.assertEqual((st, ended["end"]), (200, "2026-11-30"))
+
+        self.assertEqual(admin.req("POST", "/api/people", {"name": "X", "rank": "Captain"})[0], 400)
+        self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Chief"})[0], 400)
+        st, person, _ = admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant"})
+        self.assertEqual(st, 201)
+        key = "person:" + person["id"]
+        st, pc, _ = admin.req("POST", "/api/covers", {"coverKey": key, "targetPos": "10ENL31M", "start": "2026-10-14"})
+        self.assertEqual((st, pc["coverName"]), (201, "Relief,A"))
+        self.assertEqual(admin.req("POST", "/api/statuses", {"pos": key, "code": "S", "start": "2026-10-20"})[0], 201)
+        _, recs, _ = m.req("GET", "/api/records")
+        self.assertEqual(len(recs["covers"]), 2)
+        self.assertIn("Relief,A", [x["name"] for x in recs["people"]])
+        self.assertIn(key, [r["pos"] for r in m.req("GET", "/api/roster-names")[1]])
+        self.assertEqual(admin.req("DELETE", f"/api/people/{person['id']}")[0], 200)
+        _, recs, _ = m.req("GET", "/api/records")
+        self.assertEqual([c["coverKey"] for c in recs["covers"]], ["10ENL31M"])
+        self.assertFalse([x for x in recs["statuses"] if x["pos"] == key])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -4,15 +4,18 @@
  *   - "db":     the shared claude.ai page database (single-file build opened on claude.ai)
  *   - "server": the repo's server.py (/api/*), people sign in with Google; roles decide who edits
  *   - "none":   read-only (plain static hosting or a local file)
- * onChange({statuses, tourChanges}) fires whenever the records change.
+ * onChange({statuses, tourChanges, covers, people}) fires whenever the records change.
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
- *           remove(kind, id)}  kind = "statuses" | "tourChanges".
+ *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
+ *   kind = "statuses" | "tourChanges" | "covers" | "people".
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
  */
 (function (root) {
   "use strict";
-  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges" };
+  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people" };
+  var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
+  var NO_EDIT = "Only editors can make changes on this page.";
 
   function nowIso() { return new Date().toISOString(); }
 
@@ -22,7 +25,8 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [] };
+      function emit() { onChange({ statuses: records.statuses, tourChanges: records.tourChanges, covers: records.covers, people: records.people }); }
       var editable = false, uid = null, failed = false;
       Object.keys(COLLECTIONS).forEach(function (kind) {
         db.collection(COLLECTIONS[kind]).onSnapshot(function (snap) {
@@ -31,14 +35,14 @@
             o.id = d.id;
             return o;
           });
-          onChange({ statuses: records.statuses, tourChanges: records.tourChanges });
-        }, function () { onChange({ statuses: records.statuses, tourChanges: records.tourChanges }); });
+          emit();
+        }, emit);
       });
       var ready = user
         ? Promise.all([user.canEdit(), user.id()]).then(function (r) { editable = !!r[0]; uid = r[1]; })
         : Promise.resolve();
       function write(kind, rec) {
-        if (!editable || failed) return Promise.reject(new Error("Only editors can make changes on this page."));
+        if (!editable || failed) return Promise.reject(new Error(NO_EDIT));
         rec.createdAt = nowIso();
         rec.createdBy = uid;
         return db.collection(COLLECTIONS[kind]).add(rec).catch(function (e) {
@@ -56,9 +60,25 @@
           signOut: function () {},
           addStatus: function (rec) { return write("statuses", rec); },
           addTourChange: function (rec) { return write("tourChanges", rec); },
+          addCover: function (rec) { return write("covers", rec); },
+          addPerson: function (rec) { return write("people", rec); },
+          endCover: function (id, end) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection("covers").doc(id).update({ end: end });
+          },
           remove: function (kind, id) {
-            if (!editable) return Promise.reject(new Error("Only editors can make changes on this page."));
-            return db.collection(COLLECTIONS[kind]).doc(id).delete();
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var first = Promise.resolve();
+            if (kind === "people") {
+              // An added person's covers and statuses go with them, one delete at a time.
+              var key = "person:" + id;
+              var linked = records.covers.filter(function (c) { return c.coverKey === key; }).map(function (c) { return ["covers", c.id]; })
+                .concat(records.statuses.filter(function (x) { return x.pos === key; }).map(function (x) { return ["statuses", x.id]; }));
+              first = linked.reduce(function (p, kd) {
+                return p.then(function () { return db.collection(kd[0]).doc(kd[1]).delete(); });
+              }, first);
+            }
+            return first.then(function () { return db.collection(COLLECTIONS[kind]).doc(id).delete(); });
           },
         };
       });
@@ -94,7 +114,8 @@
       if (!active()) return Promise.resolve();
       return Promise.all([getJson("api/records"), getJson("api/contacts")]).then(function (res) {
         contacts = res[1];
-        onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, contacts: contacts });
+        onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
+          people: res[0].people || [], contacts: contacts });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -125,8 +146,11 @@
             adminAction: function (id, body) { return thenRefresh(call("POST", "api/admin/users/" + encodeURIComponent(id), body)); },
             addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
             addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
+            addCover: function (rec) { return thenRefresh(call("POST", "api/covers", rec)); },
+            addPerson: function (rec) { return thenRefresh(call("POST", "api/people", rec)); },
+            endCover: function (id, end) { return thenRefresh(call("PATCH", "api/covers/" + encodeURIComponent(id), { end: end })); },
             remove: function (kind, id) {
-              return thenRefresh(call("DELETE", "api/" + (kind === "statuses" ? "statuses" : "tour-changes") + "/" + encodeURIComponent(id)));
+              return thenRefresh(call("DELETE", "api/" + API_PATH[kind] + "/" + encodeURIComponent(id)));
             },
           };
         });
@@ -142,6 +166,9 @@
     signOut: function () {},
     addStatus: function () { return Promise.reject(new Error("Editing is not available here.")); },
     addTourChange: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    addCover: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    addPerson: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    endCover: function () { return Promise.reject(new Error("Editing is not available here.")); },
     remove: function () { return Promise.reject(new Error("Editing is not available here.")); },
   };
 

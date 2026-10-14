@@ -132,8 +132,9 @@ def main():
         if r.get("starred"):
             r["name"], r["status"] = r.pop("starred"), "Owned"
         r.pop("star")
-        if r["status"] == "Vacant":
-            r["name"] = None
+        # "* Name Vacant": the person still works the position, but the spot is up for bid.
+        if r["status"] == "Vacant" and r["name"]:
+            r["open"] = True
         if r.get("swing"):
             r["swing"].sort(key=lambda s: s["watch"])
     with open(out, "w") as f:

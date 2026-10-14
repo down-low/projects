@@ -62,9 +62,45 @@
     };
   }
 
+  // Active record in `list` whose `field` equals `key` on date d (start..end inclusive, open end allowed).
+  function activeOn(list, field, key, d) {
+    var day = isoDate(d), best = null;
+    if (list) for (var i = 0; i < list.length; i++) {
+      var r = list[i];
+      if (r[field] !== key || r.start > day || (r.end && r.end < day)) continue;
+      if (!best || newer(r, best) < 0) best = r;
+    }
+    return best;
+  }
+  // The cover assignment filling position `targetPos` on d, or null.
+  function coverOn(targetPos, d, covers) { return activeOn(covers, "targetPos", targetPos, d); }
+  // What the person `coverKey` (their position number, or "person:<id>") is covering on d, or null.
+  function coveringOn(coverKey, d, covers) { return activeOn(covers, "coverKey", coverKey, d); }
+
+  // A person's day. key: position number or "person:<id>"; p: their own position (null for added people).
+  // While covering, they follow the covered position's schedule and company; otherwise their own.
+  // opts: {changes, statuses, covers, byPos}. Result: shiftFor fields plus {acting: coverRecord|null}, or null.
+  function dayFor(key, p, d, opts) {
+    opts = opts || {};
+    var c = coveringOn(key, d, opts.covers);
+    if (c) {
+      var target = opts.byPos && opts.byPos[c.targetPos];
+      var s = target ? shiftFor(target, d, { changes: opts.changes }) : null;
+      if (!s) return null;
+      s.status = statusFor(key, d, opts.statuses);
+      s.acting = c;
+      return s;
+    }
+    if (!p) return null;
+    var own = shiftFor(p, d, opts);
+    if (own) own.acting = null;
+    return own;
+  }
+
   var api = {
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
+    coverOn: coverOn, coveringOn: coveringOn, dayFor: dayFor,
   };
   root.TourMath = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

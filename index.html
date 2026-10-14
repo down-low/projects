@@ -52,7 +52,18 @@
       <label for="person-input">Find a person</label>
       <input type="search" id="person-input" autocomplete="off" placeholder="Last name, company (E01) or position number" role="combobox" aria-controls="person-list" aria-expanded="false" />
       <ul class="suggest" id="person-list" role="listbox" hidden></ul>
+      <button class="linkish add-person-btn" id="add-person-btn" type="button" hidden>Not on the list? Add a person</button>
     </div>
+    <form class="card edit add-person" id="add-person" hidden novalidate>
+      <h4>Add a person not on the vacancy list</h4>
+      <p class="hint">For relief, detailed or newly hired staff. Once added, give them a cover assignment so they appear on the schedule.</p>
+      <div class="row">
+        <label>Name<input type="text" id="ap-name" maxlength="80" placeholder="Last,First initial (e.g. Lester,D)"></label>
+        <label>Rank<select id="ap-rank"></select></label>
+      </div>
+      <label>Note<input type="text" id="ap-note" maxlength="500" placeholder="Optional"></label>
+      <div class="row"><button class="btn primary" type="submit">Add person</button><span class="msg" id="ap-msg" role="status"></span></div>
+    </form>
     <div id="person-detail"></div>
   </section>
 
@@ -81,7 +92,7 @@
   </section>
 
   <footer class="foot">
-    <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown. Editors can record tour changes (from an effective date) and leave: VA vacation, S sick, D disabled. A person on leave still appears on their scheduled days, marked off.</p>
+    <p>Each date maps to a watch day (1–31) on a continuous cycle: 1 Jan 2026 is watch 16, 1 Jan 2027 is watch 9. Each tour works 9 watches out of 31. A position's tour is the two digits before the final M in its position number (29EOC31M is Tour 31). Swing positions show the company they cover on each watch. Where the vacancy list gives a starred replacement name, only that name is shown. Editors can record tour changes (from an effective date), leave (VA vacation, S sick, D disabled) and temporary cover assignments: the person covering works the covered position's tour and company, shown as "Acting for" the holder. A person on leave still appears on their scheduled days, marked off. "Spot open for bid" marks positions the vacancy list shows as vacant while the listed person still works them.</p>
   </footer>
 </div>
 <!-- app:end -->

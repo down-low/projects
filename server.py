@@ -45,7 +45,10 @@ DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 PHONE_RE = re.compile(r"^[0-9+()\-. ]{3,25}(\s*(x|ext\.?)\s*\d{1,6})?$", re.I)
 MAX_BODY = 16 * 1024
-KINDS = {"statuses": "statuses", "tour-changes": "tour_changes"}
+KINDS = {"statuses": "statuses", "tour-changes": "tour_changes", "covers": "covers", "people": "people"}
+RANKS = ("Battalion Chief", "Rescue Captain", "Captain", "Lieutenant", "ISS", "FF/Paramedic", "Firefighter",
+         "Pilot", "Marine Engineer")
+PERSON_PREFIX = "person:"
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
 SESSION_DAYS = 30
@@ -74,6 +77,13 @@ CREATE TABLE IF NOT EXISTS users (
 CREATE UNIQUE INDEX IF NOT EXISTS users_pos ON users(pos) WHERE pos IS NOT NULL;
 CREATE TABLE IF NOT EXISTS sessions (
   token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL, expires_at REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS covers (
+  id TEXT PRIMARY KEY, coverKey TEXT NOT NULL, coverName TEXT, targetPos TEXT NOT NULL,
+  start TEXT NOT NULL, "end" TEXT, note TEXT, createdAt TEXT NOT NULL, createdBy TEXT
+);
+CREATE TABLE IF NOT EXISTS people (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, rank TEXT NOT NULL, note TEXT, createdAt TEXT NOT NULL, createdBy TEXT
 );
 CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL, actor_id TEXT, action TEXT NOT NULL, detail TEXT
@@ -249,9 +259,18 @@ class App:
         if token:
             self.write("DELETE FROM sessions WHERE token_hash = ?", (hash_token(token),))
 
+    def lookup(self, key):
+        """A roster position, or an added person ("person:<id>") shaped like one; None if unknown."""
+        if not key:
+            return None
+        if key.startswith(PERSON_PREFIX):
+            row = self.one("SELECT * FROM people WHERE id = ?", (key[len(PERSON_PREFIX):],))
+            return row and {"pos": key, "name": row["name"], "title": row["rank"] + " (added)"}
+        return self.positions.get(key)
+
     def me_json(self, u):
-        pos = self.positions.get(u["pos"]) if u["pos"] else None
-        claim = self.positions.get(u["claim_pos"]) if u["claim_pos"] else None
+        pos = self.lookup(u["pos"])
+        claim = self.lookup(u["claim_pos"])
         return {
             "signedIn": True, "id": u["id"], "name": u["display_name"], "googleEmail": u["google_email"],
             "role": u["role"], "status": u["status"], "pos": u["pos"], "posName": pos and pos.get("name"),
@@ -262,7 +281,8 @@ class App:
 
     def claim(self, u, body):
         pos = body.get("pos")
-        if pos not in self.positions or not self.positions[pos].get("name"):
+        entry = self.lookup(pos) if isinstance(pos, str) else None
+        if not entry or not entry.get("name"):
             raise BadRequest("Pick your name from the roster")
         if self.one("SELECT id FROM users WHERE pos = ? AND id != ?", (pos, u["id"])):
             raise HttpError(409, "That roster entry is already linked to another account. Ask an admin for help.")
@@ -287,8 +307,11 @@ class App:
 
     def roster_names(self):
         taken = {r["pos"] for r in self.all("SELECT pos FROM users WHERE pos IS NOT NULL")}
-        return [{"pos": p["pos"], "name": p["name"], "title": p["title"]}
-                for p in self.positions.values() if p.get("name") and p["pos"] not in taken]
+        out = [{"pos": p["pos"], "name": p["name"], "title": p["title"]}
+               for p in self.positions.values() if p.get("name") and p["pos"] not in taken]
+        out += [{"pos": PERSON_PREFIX + r["id"], "name": r["name"], "title": r["rank"] + " (added)"}
+                for r in self.all("SELECT * FROM people") if PERSON_PREFIX + r["id"] not in taken]
+        return out
 
     # ---------- admin ----------
     def admin_users(self):
@@ -328,8 +351,8 @@ class App:
             self.write("UPDATE users SET role = ? WHERE id = ?", (role, user_id))
         elif action == "link":
             pos = body.get("pos")
-            if pos not in self.positions:
-                raise BadRequest("pos must be a position number from the vacancy list")
+            if not isinstance(pos, str) or not self.lookup(pos):
+                raise BadRequest("pos must be a position number from the vacancy list or an added person")
             if self.one("SELECT id FROM users WHERE pos = ? AND id != ?", (pos, user_id)):
                 raise HttpError(409, "That roster entry is already linked to another account")
             self.write("UPDATE users SET pos = ?, claim_pos = NULL, claim_note = NULL WHERE id = ?", (pos, user_id))
@@ -352,7 +375,9 @@ class App:
     # ---------- schedule records ----------
     def records(self):
         return {"statuses": self.all('SELECT * FROM statuses ORDER BY start, createdAt'),
-                "tourChanges": self.all('SELECT * FROM tour_changes ORDER BY effective, createdAt')}
+                "tourChanges": self.all('SELECT * FROM tour_changes ORDER BY effective, createdAt'),
+                "covers": self.all('SELECT * FROM covers ORDER BY start, createdAt'),
+                "people": self.all('SELECT * FROM people ORDER BY name')}
 
     def _position(self, body):
         pos = body.get("pos")
@@ -360,8 +385,14 @@ class App:
             raise BadRequest("pos must be a position number from the vacancy list")
         return pos, self.positions[pos].get("name") or ""
 
+    def _person_or_position(self, key, field="pos"):
+        entry = self.lookup(key) if isinstance(key, str) else None
+        if not entry:
+            raise BadRequest(f"{field} must be a position number from the vacancy list or an added person")
+        return key, entry.get("name") or ""
+
     def add_status(self, body, who):
-        pos, name = self._position(body)
+        pos, name = self._person_or_position(body.get("pos"))
         code = body.get("code")
         if code not in CODES:
             raise BadRequest("code must be VA, D or S")
@@ -387,8 +418,54 @@ class App:
                    'VALUES (:id,:pos,:name,:tour,:effective,:note,:createdAt,:createdBy)', rec)
         return rec
 
+    def add_cover(self, body, who):
+        key, cover_name = self._person_or_position(body.get("coverKey"), "coverKey")
+        target = body.get("targetPos")
+        if target not in self.positions:
+            raise BadRequest("targetPos must be a position number from the vacancy list")
+        if target == key:
+            raise BadRequest("Someone can't cover their own position")
+        start = valid_date(body.get("start"), "start")
+        end = valid_date(body.get("end"), "end", required=False)
+        if end and end < start:
+            raise BadRequest("end must be on or after start")
+        rec = {"id": uuid.uuid4().hex, "coverKey": key, "coverName": cover_name, "targetPos": target, "start": start,
+               "end": end, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
+        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",note,createdAt,createdBy) '
+                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:note,:createdAt,:createdBy)', rec)
+        return rec
+
+    def end_cover(self, rec_id, body):
+        row = self.one("SELECT * FROM covers WHERE id = ?", (rec_id,))
+        if not row:
+            raise HttpError(404, "No such cover assignment")
+        end = valid_date(body.get("end"), "end")
+        if end < row["start"]:
+            raise BadRequest("end must be on or after the cover's start date")
+        self.write('UPDATE covers SET "end" = ? WHERE id = ?', (end, rec_id))
+        return self.one("SELECT * FROM covers WHERE id = ?", (rec_id,))
+
+    def add_person(self, body, who):
+        name = clean_text(body.get("name"), "name", 80)
+        if len(name) < 2:
+            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
+        rank = body.get("rank")
+        if rank not in RANKS:
+            raise BadRequest("rank must be one of: " + ", ".join(RANKS))
+        rec = {"id": uuid.uuid4().hex, "name": name, "rank": rank, "note": clean_text(body.get("note"), "note"),
+               "createdAt": now(), "createdBy": who}
+        self.write("INSERT INTO people (id,name,rank,note,createdAt,createdBy) VALUES (:id,:name,:rank,:note,:createdAt,:createdBy)", rec)
+        return rec
+
     def delete(self, kind, rec_id):
         table = KINDS[kind]  # fixed allowlist, never user text
+        if kind == "people":
+            key = PERSON_PREFIX + rec_id
+            if self.one("SELECT id FROM users WHERE pos = ? OR claim_pos = ?", (key, key)):
+                raise HttpError(409, "This person is linked to a sign-in account. Unlink them on the Admin page first.")
+            with self.lock, self.conn:
+                self.conn.execute("DELETE FROM covers WHERE coverKey = ?", (key,))
+                self.conn.execute("DELETE FROM statuses WHERE pos = ?", (key,))
         return self.write(f"DELETE FROM {table} WHERE id = ?", (rec_id,)) > 0
 
     # ---------- Google ----------
@@ -621,17 +698,31 @@ def make_handler(app):
                     raise HttpError(409, "Your account is already set up. Ask an admin to change your roster link.")
                 app.claim(u, self.body())
                 return self.send_json(200, app.me_json(self.user()))
-            if path in ("/api/statuses", "/api/tour-changes"):
+            adders = {"/api/statuses": app.add_status, "/api/tour-changes": app.add_tour_change,
+                      "/api/covers": app.add_cover, "/api/people": app.add_person}
+            if path in adders:
                 u = self.require("editor")
-                who = u["display_name"] or u["google_email"]
-                body = self.body()
-                rec = app.add_status(body, who) if path == "/api/statuses" else app.add_tour_change(body, who)
+                rec = adders[path](self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "add " + path.rsplit("/", 1)[1], {"id": rec["id"]})
                 return self.send_json(201, rec)
             m = re.fullmatch(r"/api/admin/users/([0-9a-f]{32})", path)
             if m:
                 u = self.require("admin")
                 return self.send_json(200, app.admin_action(u, m.group(1), self.body()))
             raise HttpError(404, "Not found")
+
+        def do_PATCH(self):
+            self.run(self._patch)
+
+        def _patch(self):
+            self.check_csrf()
+            m = re.fullmatch(r"/api/covers/([0-9a-f]{32})", self.path_only())
+            if not m:
+                raise HttpError(404, "Not found")
+            u = self.require("editor")
+            rec = app.end_cover(m.group(1), self.body())
+            app.audit(u, "end cover", {"id": m.group(1), "end": rec["end"]})
+            return self.send_json(200, rec)
 
         def do_PUT(self):
             self.run(self._put)
@@ -649,12 +740,13 @@ def make_handler(app):
 
         def _delete(self):
             self.check_csrf()
-            m = re.fullmatch(r"/api/(statuses|tour-changes)/([0-9a-f]{32})", self.path_only())
+            m = re.fullmatch(r"/api/(statuses|tour-changes|covers|people)/([0-9a-f]{32})", self.path_only())
             if not m:
                 raise HttpError(404, "Not found")
-            self.require("editor")
+            u = self.require("editor")
             if not app.delete(m.group(1), m.group(2)):
                 raise HttpError(404, "No such record")
+            app.audit(u, "delete " + m.group(1), {"id": m.group(2)})
             return self.send_json(200, {"deleted": m.group(2)})
 
         def log_message(self, fmt, *args):

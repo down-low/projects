@@ -28,6 +28,13 @@ Editors can record, per person (on the **By person** tab):
 - **Status**: VA vacation, S sick or D disabled, for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
 - **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
 
+- **Cover assignment** (temporary acting, e.g. covering an injured captain): on the covering person's page, **Cover another position**, pick the position, a start date and optionally an end date. While it runs, that person works the covered position's tour and company and shows as "Acting for" the holder; the holder shows "Covered by"; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover.
+- **Add a person** not on the vacancy list (relief, detailed or new staff): **Not on the list? Add a person** under the person search, then give them a cover assignment.
+
+Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; anything else matches names and titles.
+
+Vacancy-list rows showing a starred name with "Vacant" (e.g. `* Lt. SSwing E10 10ENL31M Lester,D Vacant`) are treated as the person still working the position while the spot is up for bid ("Spot open for bid"). Rows with a starred replacement name show only the replacement.
+
 Records are keyed by position number. There are two places they can be stored:
 
 1. **The schedule server (`server.py`)**: SQLite in `data/schedule.db`, with Google sign-in and user accounts (below).
@@ -79,7 +86,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/me`, `POST /auth/logout` | anyone |
 | `POST /api/me/claim` `{pos, note}` | pending accounts |
 | `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
-| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `DELETE /api/statuses/<id>`, `DELETE /api/tour-changes/<id>` | editors, admins |
+| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, note?}`, `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
 | `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
