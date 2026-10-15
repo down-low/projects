@@ -46,6 +46,7 @@ These need answers before any build work:
 - **`contacts/{uid}`** `{pos, contactEmail, phoneMobile, phoneOther, share}`.
 - **`profiles/{key}`** `{birthDate, hireDate, updatedAt, updatedBy}`; the key is a position number or `person:<id>`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.
+- **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
 ## Security rules (outline)
 
@@ -70,6 +71,7 @@ These need answers before any build work:
 - **`stats`** (callable, active users): average age and years of service for a date.
 - **Audit triggers:** on writes to the record collections, append to `audit`.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
+- **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
 ## Changes in this repo
 
