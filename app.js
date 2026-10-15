@@ -12,6 +12,8 @@
     dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
+  var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
+  var ID_RE = /^[a-z]{2}\d{4}$/i; // employee ID, e.g. LE1234
   var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick" };
   var recs = { statuses: [], tourChanges: [], covers: [], people: [] }; // records from the editor backend
   var backend = null;
@@ -28,10 +30,12 @@
   function slotLabel(pos) { var x = byPos[pos]; return x ? x.title + " (" + (x.name || "vacant") + ")" : pos; }
 
   /* Search: "E10", "e 10", "RS1" match a company exactly; "tour 10" matches the tour; a full position
-     number matches that position; anything else matches names and titles. f: {name, title, co, tour, pos, extra} */
+     number matches that position; an employee ID (LE1234) matches that person; anything else matches names, titles
+     and IDs. f: {name, title, co, tour, pos, id, extra} */
   function makeMatcher(q) {
     q = (q || "").trim().toLowerCase();
     if (!q) return null;
+    if (ID_RE.test(q)) return function (f) { return (f.id || "").toLowerCase() === q; };
     var m = /^([a-z]{1,3})\s*0*(\d{1,3})$/.exec(q);
     if (m && m[1] !== "tour") {
       return function (f) {
@@ -41,7 +45,7 @@
     }
     if ((m = /^(?:tour|t\.)\s*(\d{1,2})$/.exec(q))) return function (f) { return f.tour === +m[1]; };
     if (/^\d{1,2}[a-z]{2,4}\d{2,3}m$/.test(q)) return function (f) { return (f.pos || "").toLowerCase() === q; };
-    return function (f) { return [f.name, f.title, f.extra].join(" ").toLowerCase().indexOf(q) !== -1; };
+    return function (f) { return [f.name, f.title, f.id, f.extra].join(" ").toLowerCase().indexOf(q) !== -1; };
   }
   function statusPill(code) {
     return code ? '<span class="st st-' + esc(code) + '" title="' + esc(STATUS_LABEL[code] || code) + '">' + esc(code) + "</span>" : "";
@@ -141,7 +145,7 @@
     var rows = dayRows(d).filter(function (r) {
       if (rank && r.slot.rank !== rank) return false;
       if (!r.name && !showVacant) return false;
-      return !match || match({ name: r.name, title: r.slot.title, co: r.co, tour: r.tour, pos: r.slot.pos,
+      return !match || match({ name: r.name, title: r.slot.title, co: r.co, tour: r.tour, pos: r.slot.pos, id: r.who && r.who.emplId,
         extra: r.status ? r.status + " " + STATUS_LABEL[r.status] : "" });
     });
 
@@ -203,7 +207,7 @@
     q = q.trim().toLowerCase();
     var starts = [], rest = [];
     people.forEach(function (p) {
-      if (!match({ name: p.name, title: p.title, co: p.company, tour: tourOn(p, today()), pos: p.pos })) return;
+      if (!match({ name: p.name, title: p.title, co: p.company, tour: tourOn(p, today()), pos: p.pos, id: p.emplId })) return;
       (p.name.toLowerCase().indexOf(q) === 0 ? starts : rest).push(p);
     });
     return starts.concat(rest).slice(0, 40);
@@ -215,7 +219,8 @@
     if (!list.length) { ul.hidden = true; $("person-input").setAttribute("aria-expanded", "false"); return; }
     ul.innerHTML = list.map(function (p, i) {
       return '<li role="option" id="opt-' + i + '" data-pos="' + esc(p.pos) + '"><span>' + esc(p.name) +
-        '</span><span class="meta">' + esc(p.title) + (tourOn(p, today()) ? " · T" + tourOn(p, today()) : "") + "</span></li>";
+        '</span><span class="meta">' + esc(p.title) + (tourOn(p, today()) ? " · T" + tourOn(p, today()) : "") +
+        (p.emplId ? " · " + esc(p.emplId) : "") + "</span></li>";
     }).join("");
     ul.hidden = false;
     $("person-input").setAttribute("aria-expanded", "true");
@@ -288,6 +293,7 @@
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       kv("Rank", p.rank) +
+      kv("Employee ID", p.emplId || "Not on file") +
       (p.added && !p.tour
         ? kv("Roster", "Added, not on the vacancy list")
         : (p.added ? kv("Roster", "Added, not on the vacancy list") + kv("Apparatus", p.company) : kv("Position", p.title) + kv("Position no.", p.pos)) +
@@ -299,7 +305,7 @@
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      contactHtml(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" +
@@ -490,6 +496,21 @@
   function rangeText(r) {
     return shortDate(fromIso(r.start)) + (r.end ? " – " + shortDate(fromIso(r.end)) : " onward");
   }
+  // Others with the same name, or (a data error) the same employee ID, so look-alike names can be told apart.
+  function twinsHtml(p) {
+    var lines = [];
+    (byName[nameKey(p.name)] || []).forEach(function (o) {
+      if (o !== p) lines.push("Same name: " + personLink(o) + (o.emplId ? " · ID " + esc(o.emplId) : " · no ID on file"));
+    });
+    (p.emplId ? byId[p.emplId] || [] : []).forEach(function (o) {
+      if (o !== p) lines.push('<span class="err">Same employee ID on ' + personLink(o) + ". One of them is wrong.</span>");
+    });
+    return lines.length ? '<div class="kv"><span class="k">Check</span><span class="v">' + lines.join("<br>") + "</span></div>" : "";
+  }
+  function personLink(o) {
+    return '<button class="linkish" data-pos="' + esc(o.pos) + '">' + esc(o.name) + "</button> " +
+      '<span class="hint">' + esc(o.title) + "</span>";
+  }
   function kv(k, v) { return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>"; }
   function watchesFor(tour) {
     var out = [];
@@ -550,17 +571,25 @@
   /* ---------- Boot ---------- */
   var byPos = {};
   var addedWithTour = [];
+  var byId = {}, byName = {}; // employee ID -> people, name -> people (more than one means a duplicate)
+  function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
   // People added by editors (not on the vacancy list) join the roster as "person:<id>" entries.
   function rebuildPeople() {
     Object.keys(byPos).forEach(function (k) { if (k.indexOf("person:") === 0) delete byPos[k]; });
     var added = (recs.people || []).map(function (x) {
       var e = { pos: "person:" + x.id, name: x.name, rank: x.rank, title: x.rank + (x.company ? " " + x.company : "") + " (added)",
-        company: x.company || null, tour: x.tour || null, added: true };
+        company: x.company || null, tour: x.tour || null, emplId: x.emplId || null, added: true };
       byPos[e.pos] = e;
       return e;
     });
     addedWithTour = added.filter(function (e) { return e.tour && e.company; });
     people = data.filter(function (p) { return p.name; }).concat(added).sort(function (a, b) { return a.name.localeCompare(b.name); });
+    byId = {}; byName = {};
+    people.forEach(function (p) {
+      if (p.emplId) (byId[p.emplId] = byId[p.emplId] || []).push(p);
+      var k = nameKey(p.name);
+      (byName[k] = byName[k] || []).push(p);
+    });
   }
   function slotFromInput(v) {
     var m = /\(?\b(\d{1,2}[A-Z]{2,4}\d{2,3}M)\)?\s*$/i.exec((v || "").trim());
@@ -569,7 +598,8 @@
   }
   function boot(rows) {
     data = rows;
-    data.forEach(function (p) { byPos[p.pos] = p; });
+    var ids = (emplIds && emplIds.ids) || {};
+    data.forEach(function (p) { byPos[p.pos] = p; if (ids[p.pos] && p.name) p.emplId = ids[p.pos].id; });
     rebuildPeople();
     var dl = document.createElement("datalist");
     dl.id = "slot-dl";
@@ -663,7 +693,11 @@
       var co = $("ap-company").value.trim().toUpperCase(), tourV = $("ap-tour").value;
       if (co && !data.some(function (p) { return p.company === co; })) return say(msg, "Apparatus must be a company on the roster, like E10.", true);
       if (!co !== !tourV) return say(msg, "Pick both an apparatus and a tour, or neither.", true);
-      backend.addPerson({ name: name, rank: $("ap-rank").value, company: co || null, tour: tourV ? +tourV : null, note: $("ap-note").value.trim() }).then(function (res) {
+      var empl = $("ap-id").value.trim().toUpperCase();
+      if (empl && !ID_RE.test(empl)) return say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+      if (empl && byId[empl]) return say(msg, "Employee ID " + empl + " is already on " + byId[empl][0].name + " (" + byId[empl][0].title + ").", true);
+      backend.addPerson({ name: name, rank: $("ap-rank").value, company: co || null, tour: tourV ? +tourV : null, emplId: empl || null,
+        note: $("ap-note").value.trim() }).then(function (res) {
         $("add-person").reset();
         $("add-person").hidden = true;
         say(msg, "");
@@ -792,8 +826,11 @@
         return r.json();
       }).then(function (rows) {
         if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
-        return fetch("data/required-staffing.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
-          .then(function (req) { requiredData = req; recsVersion++; boot(rows); });
+        var json = function (url) {
+          return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+        };
+        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json")])
+          .then(function (got) { requiredData = got[0]; emplIds = got[1]; recsVersion++; boot(rows); });
       });
     }).catch(loadError);
   }

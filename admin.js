@@ -74,6 +74,7 @@
         '<div class="row"><label>Apparatus<input type="text" id="rq-company" maxlength="6" placeholder="e.g. E10"></label>' +
         '<label>Tour<select id="rq-tour"><option value="">Pick your tour</option>' +
         Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '">Tour ' + (i + 1) + "</option>"; }).join("") + "</select></label></div>" +
+        '<label>Employee ID (optional)<input type="text" id="rq-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters"></label>' +
         '<label>Note for the admin (optional)<input type="text" id="rq-note" maxlength="300" placeholder="e.g. new hire, academy class 125"></label>' +
         '<div class="row"><button class="btn primary" type="submit">Send request</button><span class="msg" id="rq-msg" role="status"></span>' +
         '<button class="linkish" type="button" id="back-to-list">Back to the roster search</button></div></form></div>';
@@ -84,6 +85,7 @@
         if (req) {
           $("req-form").hidden = false;
           $("rq-name").value = req.name; $("rq-rank").value = req.rank; $("rq-company").value = req.company; $("rq-tour").value = req.tour; $("rq-note").value = req.note || "";
+          $("rq-id").value = req.emplId || "";
         } else $("claim-form").hidden = false;
       };
       $("not-listed").onclick = function () { $("claim-form").hidden = true; $("req-form").hidden = false; $("rq-name").focus(); };
@@ -94,8 +96,10 @@
         if (name.length < 2) return api.say(msg, "Enter your name, e.g. Smith,J.", true);
         if (!/^[A-Z]{1,3}\d{1,2}$/.test(co)) return api.say(msg, "Enter your apparatus as a company code, like E10 or T01.", true);
         if (!tour) return api.say(msg, "Pick your tour.", true);
+        var empl = $("rq-id").value.trim().toUpperCase();
+        if (empl && !/^[A-Z]{2}\d{4}$/.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
         api.say(msg, "Sending…");
-        api.backend().claimRequest({ name: name, rank: $("rq-rank").value, company: co, tour: +tour, note: $("rq-note").value.trim() })
+        api.backend().claimRequest({ name: name, rank: $("rq-rank").value, company: co, tour: +tour, emplId: empl || null, note: $("rq-note").value.trim() })
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
@@ -252,7 +256,8 @@
         return '<li><div><b>' + esc(u.name) + "</b> " + '<span class="hint">' + esc(u.googleEmail) + "</span><br>" +
           (u.claimPos ? "Claims " + posLabel(u.claimPos) + (u.claimNote ? '<div class="hint">“' + esc(u.claimNote) + "”</div>" : "")
             : u.claimRequest ? 'Not on the list. Asks to be added as <b>' + esc(u.claimRequest.name) + "</b> · " + esc(u.claimRequest.rank) + " · " +
-              esc(u.claimRequest.company) + " · Tour " + esc(u.claimRequest.tour) + (u.claimRequest.note ? '<div class="hint">“' + esc(u.claimRequest.note) + "”</div>" : "")
+              esc(u.claimRequest.company) + " · Tour " + esc(u.claimRequest.tour) +
+              (u.claimRequest.emplId ? " · ID " + esc(u.claimRequest.emplId) : "") + (u.claimRequest.note ? '<div class="hint">“' + esc(u.claimRequest.note) + "”</div>" : "")
             : '<span class="hint">Hasn\'t picked a roster entry yet.</span>') + "</div>" +
           '<div class="acts">' + (u.claimRequest && !u.claimPos
             ? '<button class="btn small primary" data-act="approve" data-id="' + esc(u.id) + '">Approve and add to roster</button>' +

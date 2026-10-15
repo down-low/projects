@@ -50,10 +50,12 @@ RANKS = ("Battalion Chief", "Rescue Captain", "Captain", "Lieutenant", "ISS", "F
          "Pilot", "Marine Engineer")
 PERSON_PREFIX = "person:"
 COMPANY_RE = re.compile(r"^[A-Z]{1,3}\d{1,2}$")
+EMPL_ID_RE = re.compile(r"^[A-Z]{2}\d{4}$")  # SFFD employee ID, e.g. LE1234
 MIGRATIONS = [  # columns added after the first release; applied when missing
     ("users", "claim_request", "TEXT"),
     ("people", "company", "TEXT"),
     ("people", "tour", "INTEGER"),
+    ("people", "emplId", "TEXT"),
 ]
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
@@ -214,6 +216,10 @@ class App:
         self.companies = {p["company"] for p in self.positions.values() if p.get("company")} | {"RC1", "RC2", "RC3", "RC4"}
         with open(os.path.join(ROOT, "data", "required-staffing.json")) as f:  # every apparatus in the Balance report
             self.companies |= set(json.load(f)["apparatus"])
+        with open(os.path.join(ROOT, "data", "employee-ids.json")) as f:  # roster position -> employee ID
+            for pos, e in json.load(f)["ids"].items():
+                if pos in self.positions:
+                    self.positions[pos]["emplId"] = e["id"]
         with open(os.path.join(ROOT, "docs", "index.json")) as f:
             self.docs = {d["file"] for d in json.load(f)}
 
@@ -320,7 +326,21 @@ class App:
             tour = None
         elif not isinstance(tour, int) or isinstance(tour, bool) or not 1 <= tour <= 31:
             raise BadRequest("tour must be a whole number from 1 to 31")
-        return {"name": name, "rank": rank, "company": company, "tour": tour, "note": clean_text(body.get("note"), "note")}
+        empl = clean_text(body.get("emplId"), "emplId", 20).upper() or None
+        if empl and not EMPL_ID_RE.match(empl):
+            raise BadRequest("Employee ID is two letters and four digits, e.g. LE1234")
+        if empl and self.empl_id_owner(empl):
+            raise BadRequest("Employee ID " + empl + " is already on " + self.empl_id_owner(empl))
+        return {"name": name, "rank": rank, "company": company, "tour": tour, "emplId": empl,
+                "note": clean_text(body.get("note"), "note")}
+
+    def empl_id_owner(self, empl):
+        """Name of the roster position or added person that already has this employee ID, or None."""
+        for p in self.positions.values():
+            if p.get("emplId") == empl:
+                return p.get("name") or p["pos"]
+        row = self.one("SELECT name FROM people WHERE emplId = ?", (empl,))
+        return row and row["name"]
 
     def claim(self, u, body):
         if isinstance(body.get("request"), dict):
@@ -504,8 +524,8 @@ class App:
     def add_person(self, body, who):
         rec = self.clean_person_fields(body)
         rec.update({"id": uuid.uuid4().hex, "createdAt": now(), "createdBy": who})
-        self.write("INSERT INTO people (id,name,rank,company,tour,note,createdAt,createdBy) "
-                   "VALUES (:id,:name,:rank,:company,:tour,:note,:createdAt,:createdBy)", rec)
+        self.write("INSERT INTO people (id,name,rank,company,tour,emplId,note,createdAt,createdBy) "
+                   "VALUES (:id,:name,:rank,:company,:tour,:emplId,:note,:createdAt,:createdBy)", rec)
         return rec
 
     # ---------- staffing, profiles, stats ----------
@@ -742,7 +762,7 @@ def make_handler(app):
             if path == "/api/admin/users":
                 self.require("admin")
                 return self.send_json(200, app.admin_users())
-            if path in ("/data/positions.json", "/data/required-staffing.json"):
+            if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json"):
                 self.require("active")
                 self.path = path
                 return super().do_GET()

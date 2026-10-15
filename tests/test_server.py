@@ -243,8 +243,12 @@ class ServerTest(unittest.TestCase):
 
         self.assertEqual(admin.req("POST", "/api/people", {"name": "X", "rank": "Captain"})[0], 400)
         self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Chief"})[0], 400)
-        st, person, _ = admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant"})
-        self.assertEqual(st, 201)
+        taken = json.load(open(os.path.join(server.ROOT, "data", "employee-ids.json")))["ids"]["16EOC12M"]["id"]
+        for empl in ("LE123", "1234LE", taken):  # bad format, or already on a roster position
+            self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant", "emplId": empl})[0], 400, empl)
+        st, person, _ = admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant", "emplId": "zz9999"})
+        self.assertEqual((st, person["emplId"]), (201, "ZZ9999"))
+        self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,B", "rank": "Lieutenant", "emplId": "ZZ9999"})[0], 400)
         key = "person:" + person["id"]
         st, pc, _ = admin.req("POST", "/api/covers", {"coverKey": key, "targetPos": "10ENL31M", "start": "2026-10-14"})
         self.assertEqual((st, pc["coverName"]), (201, "Relief,A"))

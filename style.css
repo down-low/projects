@@ -273,7 +273,7 @@ form.edit select, form.edit input[type="date"] { width: 100%; }
 .btn.primary { background: var(--fg); color: var(--bg); border-color: var(--fg); }
 .btn.danger { border-color: var(--accent); color: var(--accent); }
 .msg { font-size: 0.82rem; color: var(--ok); }
-.msg.err { color: var(--accent); }
+.msg.err, .kv .err { color: var(--accent); }
 
 /* ---------- Accounts: sign-in gate, My page, Admin ---------- */
 .page.gated .tabs, .page.gated .view, .page.gated .foot { display: none; }

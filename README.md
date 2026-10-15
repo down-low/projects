@@ -46,7 +46,14 @@ Editors can record, per person (on the **By person** tab):
 
 After signing in with Google, someone who can't find their name picks **I'm not on the list** and enters their name, rank, apparatus and tour. An admin sees the request on the Admin page; **Approve and add to roster** adds them with that apparatus and tour (tagged "Added") and gives them access.
 
-Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; anything else matches names and titles.
+Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; an employee ID (`AS9242`) matches that person; anything else matches names, titles and IDs.
+
+## Employee IDs
+
+Each person can carry an **employee ID** (two letters and four digits). IDs are unique, so they tell apart people with the same name: a person's page shows their ID, and a **Check** line lists anyone else with the same name (with their ID) or, if it ever happens, the same ID.
+
+- Roster IDs live in `data/employee-ids.json` (position number → ID). They come from the 2027 transfer list and the 2027 Vacancy Awards (26 A-082), matched by name and current assignment; the Vacancy List itself has no IDs. Matches that were uncertain were left out.
+- People added outside the vacancy list store the ID on their record (`emplId`). The add-person form and the "I'm not on the list" request take an optional ID; the server rejects a badly formed ID or one already in use.
 
 Vacancy-list rows showing a starred name with "Vacant" (e.g. `* Lt. SSwing E10 10ENL31M Lester,D Vacant`) are treated as the person still working the position while the spot is up for bid ("Spot open for bid"). Rows with a starred replacement name show only the replacement.
 
@@ -101,7 +108,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/me`, `POST /auth/logout` | anyone |
 | `POST /api/me/claim` `{pos, note}` | pending accounts |
 | `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
-| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, note?}`, `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
+| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, note?}`, `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, company?, tour?, emplId?, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
 | `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |

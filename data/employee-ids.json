@@ -1,0 +1,995 @@
+{
+ "source": "IDs from the 2027 transfer list and 2027 Vacancy Awards (26 A-082), matched by name and current assignment",
+ "ids": {
+  "01EOD05M": {
+   "id": "EV3145",
+   "name": "Evanoff,Alexander I",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01EOD06M": {
+   "id": "VI2594",
+   "name": "Villavicencio,Julian A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01SOD20M": {
+   "id": "CO1959",
+   "name": "Coppin,Raleigh J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01SOE15M": {
+   "id": "ES4341",
+   "name": "Estupinian,Gavin D",
+   "source": "2027 transfer list"
+  },
+  "01SOL21M": {
+   "id": "NA1978",
+   "name": "Nackord,Dwight G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01STL30M": {
+   "id": "GI1079",
+   "name": "Ginotti,Gregory A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOE26M": {
+   "id": "SM4729",
+   "name": "Small,James R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOE27M": {
+   "id": "PE4646",
+   "name": "Perez,Patrick L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOF10M": {
+   "id": "CH2779",
+   "name": "Chronister,Max",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOF11M": {
+   "id": "LO5036",
+   "name": "Lopez,Paolo A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOF12M": {
+   "id": "SU1574",
+   "name": "Sudano,Jared C",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOL06M": {
+   "id": "HA4631",
+   "name": "Harrington,John J",
+   "source": "2027 transfer list"
+  },
+  "01TOT30M": {
+   "id": "DU3091",
+   "name": "Dunne,Kyle R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOT31M": {
+   "id": "VA1176",
+   "name": "Vanderklugt,Nicolaas A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TTX25M": {
+   "id": "CA7490",
+   "name": "Carrillo,Michael E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02BO207M": {
+   "id": "PE8323",
+   "name": "Pereira,Joshua M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02EOD06M": {
+   "id": "TR5497",
+   "name": "Tran,Ronald",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02EOE07M": {
+   "id": "RI1071",
+   "name": "Rivas,Marcelo J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02ROR05M": {
+   "id": "AV6782",
+   "name": "Avila,Clementino L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02TOE27M": {
+   "id": "CA3082",
+   "name": "Castillo,Clarence",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOA05M": {
+   "id": "FE3953",
+   "name": "Feerick,Timothy D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOD24M": {
+   "id": "MA1291",
+   "name": "Marconi,Gavin R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOD26M": {
+   "id": "PR1413",
+   "name": "Pratt,Trevor R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOE27M": {
+   "id": "OB1463",
+   "name": "O'Brien,Matthew J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOE28M": {
+   "id": "WE2191",
+   "name": "Welsh II,Philip J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOD22M": {
+   "id": "WA4890",
+   "name": "Walker,Colin L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOD24M": {
+   "id": "BR1263",
+   "name": "Brown,Patrick A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOE17M": {
+   "id": "OL3222",
+   "name": "Olmedo,Angel A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOE18M": {
+   "id": "WH2141",
+   "name": "White,Riley",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOF01M": {
+   "id": "JO5437",
+   "name": "Johnson,Andrew R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOF02M": {
+   "id": "BR1005",
+   "name": "Brown,Roderick T",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOF31M": {
+   "id": "SA1219",
+   "name": "Sanders,Derrick",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOT21M": {
+   "id": "RO3648",
+   "name": "Ross,Vincin R",
+   "source": "2027 transfer list"
+  },
+  "04EOD29M": {
+   "id": "LE4970",
+   "name": "Lee,Felicia M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "04EOD30M": {
+   "id": "MA1785",
+   "name": "Marchisio,Stephen M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "04EOD31M": {
+   "id": "MA1404",
+   "name": "Martinez,Ivan",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "04ETX25M": {
+   "id": "WA3686",
+   "name": "Wagner,Emily A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05BO225M": {
+   "id": "SC1471",
+   "name": "Scheppler,Robert D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05BO226M": {
+   "id": "CA4340",
+   "name": "Cavellini,Neal J.",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05EOA11M": {
+   "id": "MO4643",
+   "name": "Moyer,Timothy A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05EOA13M": {
+   "id": "BI1512",
+   "name": "Bisig,Michael A",
+   "source": "2027 transfer list"
+  },
+  "05EOC06M": {
+   "id": "RO2705",
+   "name": "Rosser,Ronald R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05EOL07M": {
+   "id": "SI1725",
+   "name": "Silva,Jeremy J",
+   "source": "2027 transfer list"
+  },
+  "05TOF17M": {
+   "id": "KA3008",
+   "name": "Kasper,Jack A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05TOT02M": {
+   "id": "MU1445",
+   "name": "Murphy,Daniel W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05TTX29M": {
+   "id": "FO4577",
+   "name": "Forni,Christopher M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06EOA11M": {
+   "id": "HO6124",
+   "name": "Hoyt,Joshua B",
+   "source": "2027 transfer list"
+  },
+  "06EOL12M": {
+   "id": "CH8051",
+   "name": "Chambre,Christopher P.",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06ETL11M": {
+   "id": "YE1385",
+   "name": "Yee,Andrew B",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06TOF22M": {
+   "id": "WO1430",
+   "name": "Wong,Brian M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06TOL16M": {
+   "id": "SU1757",
+   "name": "Sullivan,Brian K",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06TOT09M": {
+   "id": "WE3101",
+   "name": "Westerman,Erik",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "07EOL23M": {
+   "id": "HE2150",
+   "name": "Hewling,Devin S",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "07ETL28M": {
+   "id": "MA8269",
+   "name": "Marcaletti,Jeffrey P.",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "07TOD24M": {
+   "id": "GU3107",
+   "name": "Guillen,Cesar M",
+   "source": "2027 transfer list"
+  },
+  "07TOE16M": {
+   "id": "BE4474",
+   "name": "Beede,Justin A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08BO217M": {
+   "id": "RA9634",
+   "name": "Ramirez,Robert D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOA23M": {
+   "id": "WH2834",
+   "name": "Wheel,Gavin C",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOD15M": {
+   "id": "AL1630",
+   "name": "Alalamua,Aliki E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOE17M": {
+   "id": "RE2483",
+   "name": "Reynolds,Elliot",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOE19M": {
+   "id": "CO1037",
+   "name": "Cooke,Francis P",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOD12M": {
+   "id": "RA1164",
+   "name": "Rabbitt,David V",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOE05M": {
+   "id": "LA1273",
+   "name": "Lambrechts,Brian J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOE06M": {
+   "id": "PO1145",
+   "name": "Poole,Nicholas M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOF22M": {
+   "id": "SL1789",
+   "name": "Slatter,Spencer D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOT08M": {
+   "id": "BR1427",
+   "name": "Brandenburg,Kenneth W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09ENL31M": {
+   "id": "FO5446",
+   "name": "Forbes,Kirk E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOD08M": {
+   "id": "CH1334",
+   "name": "Chow,Raymond W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOD09M": {
+   "id": "JE2868",
+   "name": "Jew,Andrew P",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOE10M": {
+   "id": "NI1886",
+   "name": "Nikzad,Roya E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOE11M": {
+   "id": "YO1583",
+   "name": "Yoon,Albert",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOE12M": {
+   "id": "AL3379",
+   "name": "Aliehsan,Sirwan M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOL06M": {
+   "id": "BR1100",
+   "name": "Brown,Xavier L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09TOF16M": {
+   "id": "PE1798",
+   "name": "Pena,Ian D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09TOF17M": {
+   "id": "BR1003",
+   "name": "Breen,Timothy M",
+   "source": "2027 transfer list"
+  },
+  "09TOF18M": {
+   "id": "HA2400",
+   "name": "Harris,Matthew P",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09TOL08M": {
+   "id": "HE2351",
+   "name": "Helmer,Nicholas K",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10ENL31M": {
+   "id": "LE2603",
+   "name": "Lester,David J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10EOD05M": {
+   "id": "WO5306",
+   "name": "Wong,Andrew W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10EOE08M": {
+   "id": "EL1533",
+   "name": "Ellingson,Derek T",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10TOE27M": {
+   "id": "RO3657",
+   "name": "Roa,Kenneth John F",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10TOF12M": {
+   "id": "ST3065",
+   "name": "Stephens,Michael",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10TOT30M": {
+   "id": "TA2004",
+   "name": "Tanaka,Eric S",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "11EOL03M": {
+   "id": "MI3945",
+   "name": "Michaelis,Luke Robert",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "11TOD02M": {
+   "id": "HE2733",
+   "name": "Hernandez,Jose A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "11TOE29M": {
+   "id": "BR4204",
+   "name": "Brennan,Connor V",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "11TOT30M": {
+   "id": "TU1130",
+   "name": "Tuiasosopo,Tyler",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12EOA17M": {
+   "id": "SC3830",
+   "name": "Scafani,Stephen T",
+   "source": "2027 transfer list"
+  },
+  "12EOE02M": {
+   "id": "ZE2176",
+   "name": "Zelaya,Edgar J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12EOE31M": {
+   "id": "VE2070",
+   "name": "Vermillion,Tiffany",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12ETA20M": {
+   "id": "GO1520",
+   "name": "Gonzales,Joseph M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12ETX03M": {
+   "id": "WO2653",
+   "name": "Wong,Arthur C",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOD26M": {
+   "id": "ED1676",
+   "name": "Edelman,Joshua F",
+   "source": "2027 transfer list"
+  },
+  "12TOE19M": {
+   "id": "ZA3495",
+   "name": "Zanders,Steven",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOE20M": {
+   "id": "BY2571",
+   "name": "Byrne,Caitlin F",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOE21M": {
+   "id": "VA1333",
+   "name": "Valenzuela Lopez,Jesus E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOF01M": {
+   "id": "CR1002",
+   "name": "Crowder II,Bruce A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOF02M": {
+   "id": "FI2862",
+   "name": "Fitzpatrick,Ciara",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOF31M": {
+   "id": "DE3773",
+   "name": "De Cossio,Dean M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOT23M": {
+   "id": "WO3928",
+   "name": "Wofford-Howard,Camille E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "13EOD31M": {
+   "id": "AR3396",
+   "name": "Arenas,Conrad D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "13EOE02M": {
+   "id": "TA2926",
+   "name": "Tann,Kevin S",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14EOA22M": {
+   "id": "GE3434",
+   "name": "Gebler,Samuel J",
+   "source": "2027 transfer list"
+  },
+  "14EOA23M": {
+   "id": "NI1083",
+   "name": "Nilsson,Blake K",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14EOE18M": {
+   "id": "MU2796",
+   "name": "Mui,Evan",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14EOE20M": {
+   "id": "TA1145",
+   "name": "Tate,Matthew J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14ETA24M": {
+   "id": "DI1513",
+   "name": "Dierks,Ezekeal G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14ETX21M": {
+   "id": "HA1389",
+   "name": "Harris,Katharine",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOE06M": {
+   "id": "OD1098",
+   "name": "O'Donnell,Sean T",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOE08M": {
+   "id": "HA1949",
+   "name": "Halliday,Brennen W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOF23M": {
+   "id": "MU1941",
+   "name": "Murphy,John J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOF25M": {
+   "id": "LA3001",
+   "name": "Lam,Wilson P",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "15EOD20M": {
+   "id": "PA3962",
+   "name": "Pastrana,Noel E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "15ETL14M": {
+   "id": "HO4160",
+   "name": "Horta,Michael G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "16EOA10M": {
+   "id": "BA2628",
+   "name": "Babcock,Michael T",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "16EOC12M": {
+   "id": "AS9242",
+   "name": "Aspelin,Lars A",
+   "source": "2027 transfer list"
+  },
+  "16EOL13M": {
+   "id": "ME1851",
+   "name": "Meikle,James G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17EOD19M": {
+   "id": "CA3787",
+   "name": "Castellanos,Anthony J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17EOL15M": {
+   "id": "LI3191",
+   "name": "Linney,Kenneth B",
+   "source": "2027 transfer list"
+  },
+  "17ETL20M": {
+   "id": "AL1115",
+   "name": "Alexander,Jonathan L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17TOE10M": {
+   "id": "PI4254",
+   "name": "Pitino,Anthony A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17TOF24M": {
+   "id": "BO1052",
+   "name": "Bohanon,Michael E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17TOF25M": {
+   "id": "MU4246",
+   "name": "Murray,John S",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17TOF26M": {
+   "id": "MU1846",
+   "name": "Murphy, Patrick",
+   "source": "2027 transfer list"
+  },
+  "17TTX07M": {
+   "id": "VI1845",
+   "name": "Villarreal,Jayson V",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "18EOA25M": {
+   "id": "PA1377",
+   "name": "Payne,Travis K",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOA22M": {
+   "id": "VO1282",
+   "name": "Von Motz,Christiaan E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOD19M": {
+   "id": "TR3173",
+   "name": "Trofimova,Aleksandra",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOD20M": {
+   "id": "NU2694",
+   "name": "Nufable,Francis F",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOE21M": {
+   "id": "SW3684",
+   "name": "Swanson,Laura Wardell",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOL17M": {
+   "id": "LO1408",
+   "name": "Louie-Chelman,Robert M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19ETA27M": {
+   "id": "BE1145",
+   "name": "Benz,Cole D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TOD09M": {
+   "id": "SW3018",
+   "name": "Swanson,David E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TOE03M": {
+   "id": "LU3464",
+   "name": "Luc,Alan D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TOF27M": {
+   "id": "ME4836",
+   "name": "Mellor,Isiah",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TOT07M": {
+   "id": "FU2018",
+   "name": "Fuller,Jim E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TTX05M": {
+   "id": "DA4281",
+   "name": "Davis,Joshua E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOA29M": {
+   "id": "EA2540",
+   "name": "Eakle,Jason C.",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOD26M": {
+   "id": "BA2315",
+   "name": "Barnes,Dominique",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOE29M": {
+   "id": "FO1136",
+   "name": "Forbes,Vicente A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOL21M": {
+   "id": "PH3104",
+   "name": "Phillips,Keith",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOL22M": {
+   "id": "CA2010",
+   "name": "Cabaud,Nicole D",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "21EOA16M": {
+   "id": "DA3447",
+   "name": "Davidson,Justin C",
+   "source": "2027 transfer list"
+  },
+  "21EOC02M": {
+   "id": "SO6845",
+   "name": "Soule,Anthony J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "21EOD05M": {
+   "id": "ME4070",
+   "name": "Mejia,Camilo",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "21EOL03M": {
+   "id": "DR5440",
+   "name": "Dresser,Brian V",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "22ETX31M": {
+   "id": "MO4159",
+   "name": "Morgan,Isla S",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "24EOL19M": {
+   "id": "JA1161",
+   "name": "Jaime-Lopez,Alberto G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "25EOL13M": {
+   "id": "TU4821",
+   "name": "Turner,Tami",
+   "source": "2027 transfer list"
+  },
+  "28EOC10M": {
+   "id": "FO3293",
+   "name": "Fogle,Thomas A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOE14M": {
+   "id": "RO1790",
+   "name": "Rosas,Edison F",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOE15M": {
+   "id": "PO2468",
+   "name": "Ponce,Isaac M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOE16M": {
+   "id": "CA1025",
+   "name": "Carrasco,Dominic J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOF18M": {
+   "id": "AR3251",
+   "name": "Arzate Navarro,Diego",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOF19M": {
+   "id": "GA1015",
+   "name": "Galli,Cole",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOL09M": {
+   "id": "HA2238",
+   "name": "Hartley,Connor G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28ETX17M": {
+   "id": "BR2837",
+   "name": "Bruno,Skyler A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOA13M": {
+   "id": "BI4350",
+   "name": "Bigos,Brandon A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOD03M": {
+   "id": "WI2776",
+   "name": "Wilson,Jabari A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOE04M": {
+   "id": "TO3249",
+   "name": "Tom,Russell G",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOE05M": {
+   "id": "WI5360",
+   "name": "Winslow,Charles B",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOL29M": {
+   "id": "FL7197",
+   "name": "Flaviani,Mario C",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "31EOE16M": {
+   "id": "BE4771",
+   "name": "Best,Dexter",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "31EOF26M": {
+   "id": "RO1109",
+   "name": "Robinson,Roman J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "31EOF27M": {
+   "id": "VO1429",
+   "name": "Voltaire,Olistide M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "32EOA10M": {
+   "id": "BE3128",
+   "name": "Beere,Barry M",
+   "source": "2027 transfer list"
+  },
+  "32EOD13M": {
+   "id": "KU2090",
+   "name": "Kurowski,John C",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "32EOE15M": {
+   "id": "GO4254",
+   "name": "Gonzales Mejia,Erick R",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "32ETX17M": {
+   "id": "PR2271",
+   "name": "Pratt IV,Edward J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "33ETX20M": {
+   "id": "WI1133",
+   "name": "Wilson,Joshua A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "34EOA19M": {
+   "id": "PR2874",
+   "name": "Prieto,Alison H",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "34EOD23M": {
+   "id": "DE2813",
+   "name": "Devere,Eugene A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "34EOE26M": {
+   "id": "FU2785",
+   "name": "Fuller,Megan A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "34EOL18M": {
+   "id": "ST3870",
+   "name": "Stricklin,Laurel A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "35EOD20M": {
+   "id": "SK3690",
+   "name": "Skifter,Paul M",
+   "source": "2027 transfer list"
+  },
+  "36ETX29M": {
+   "id": "BA2018",
+   "name": "Balla,Marshall C",
+   "source": "2027 transfer list"
+  },
+  "37EOL02M": {
+   "id": "CA2195",
+   "name": "Cabrera,Oscar",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "38ETX27M": {
+   "id": "QU1434",
+   "name": "Quinonez,David L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "39ETX06M": {
+   "id": "KO9478",
+   "name": "Ko,Tsz Lap",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "41EOA30M": {
+   "id": "DE4592",
+   "name": "Demchuk,Dennis M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "41EOE04M": {
+   "id": "IR2452",
+   "name": "Irvin,Christopher I",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "41EOL29M": {
+   "id": "MA1542",
+   "name": "Marin,Guadalupe O",
+   "source": "2027 transfer list"
+  },
+  "42EOC23M": {
+   "id": "WE1747",
+   "name": "Wehrman,Sean A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "42EOE29M": {
+   "id": "CO1596",
+   "name": "Colbert,Alexander L",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "42EOL21M": {
+   "id": "PA5818",
+   "name": "Padilla,Damian",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "42ETX30M": {
+   "id": "ZI3038",
+   "name": "Zimmerman,Daniel P",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "43EOA21M": {
+   "id": "LU2428",
+   "name": "Luong,Dennis A",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "43EOD01M": {
+   "id": "MA4878",
+   "name": "Malek-Zadeh,Andrew E",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "43ETA26M": {
+   "id": "HI3855",
+   "name": "Higgins,Timothy W",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44EOC24M": {
+   "id": "KR5573",
+   "name": "Krishpinovich,Nikolai",
+   "source": "2027 transfer list"
+  },
+  "44EOD28M": {
+   "id": "MO1833",
+   "name": "Mota,Rhett",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44EOE30M": {
+   "id": "BA2548",
+   "name": "Barnes,Brent R.",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44ETA01M": {
+   "id": "MA1575",
+   "name": "Mahoney,Brendan E",
+   "source": "2027 transfer list"
+  },
+  "44ETX02M": {
+   "id": "KO3550",
+   "name": "Koczur,Matthew J",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48EOA19M": {
+   "id": "PR1726",
+   "name": "Prine,Jacqueline",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48EOD08M": {
+   "id": "CH3157",
+   "name": "Chan,Eric",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48TOD07M": {
+   "id": "SU1901",
+   "name": "Sullivan,Kenya M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48TOE30M": {
+   "id": "WI2477",
+   "name": "Wilkins,Evander M",
+   "source": "2027 Vacancy Awards (26 A-082)"
+  }
+ }
+}
