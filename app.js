@@ -366,6 +366,8 @@
   // Phone-only summary tiles at the top of a person's page.
   function identTiles(p, tourNow, next) {
     var n = next.filter(function (x) { return !x.s.status; })[0];
+    var cov = !tourNow && coveringBy(p.pos, today());
+    if (cov && byPos[cov.targetPos]) tourNow = tourOn(byPos[cov.targetPos], today()); // covering: the covered seat's tour
     var when = !n ? "None soon" : n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : shortDate(n.d);
     return '<div class="tiles">' +
       '<div class="tile"><span class="k">Tour</span><span class="v big">' + (tourNow || "—") + "</span></div>" +
@@ -817,9 +819,12 @@
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
-    $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
+    $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
+      : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
   }
+
+  function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
 
   /* ---------- Phone layout: bottom tabs and the More sheet ---------- */
   var phoneMq = window.matchMedia ? window.matchMedia("(max-width: 640px)") : null;
@@ -871,7 +876,8 @@
       $("sign-out").onclick = function () { backend.signOut(); };
       return;
     }
-    el.innerHTML = backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+    el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
+      : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);

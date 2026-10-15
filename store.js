@@ -217,7 +217,18 @@
     remove: function () { return Promise.reject(new Error("Editing is not available here.")); },
   };
 
+  /* A view-only snapshot: records baked into the page at build time (tools/build_artifact.py --snapshot),
+     so the page needs no sign-in and no page database. */
+  function snapshotAdapter(onChange) {
+    var snap = root.SNAPSHOT, r = snap.records || {};
+    setTimeout(function () {
+      onChange({ statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [], staffing: r.staffing || [] });
+    }, 0);
+    return Promise.resolve(Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf }));
+  }
+
   function connect(onChange) {
+    if (root.SNAPSHOT) return snapshotAdapter(onChange);
     return dbAdapter(onChange).then(function (a) {
       return a || serverAdapter(onChange).then(function (b) { return b || readOnly; });
     });

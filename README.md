@@ -126,6 +126,8 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 
+**View-only snapshot.** `python3 tools/build_artifact.py out.html --snapshot records.json` builds the same page with the records (statuses, tour changes, covers, added people, staffing) baked in from `{"asOf": "YYYY-MM-DD", "records": {...}}`. It needs no sign-in and no page database, so it can be shared with people who don't have claude.ai accounts; the records are frozen at build time, so rebuild and republish it to bring it up to date. Personal dates (profiles) are never included.
+
 ## Updating the data
 
 When a new vacancy list is issued:
