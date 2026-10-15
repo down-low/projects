@@ -37,5 +37,5 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - Dashboard grouping by division and battalion, from the Daily Balance Report (`organization.js`).
 - Required staffing from the Balance report (313), Regular / Covering / Open split, "working but not in the tool" check, Open seats worklist for long-term covers.
 - Employee IDs: searchable, shown on person pages, duplicate names flagged.
-- Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, battalion lists, on/off status in search.
+- Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
 - View-only snapshot link with records baked in (no sign-in needed).

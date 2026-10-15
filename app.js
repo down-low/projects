@@ -9,7 +9,7 @@
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, dateOpen: {} };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {} };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -142,7 +142,7 @@
     var showVacant = $("date-vacant").checked;
 
     var match = makeMatcher(q);
-    if (isPhone()) return renderDatePhone(d, w, q, match);
+    var phone = isPhone();
     var rows = dayRows(d).filter(function (r) {
       if (rank && r.slot.rank !== rank) return false;
       if (!r.name && !showVacant) return false;
@@ -163,7 +163,10 @@
     if (awayN) offParts.push(awayN + " acting elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
-    $("date-summary").innerHTML =
+    if (phone) {
+      $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
+        (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
+    } else $("date-summary").innerHTML =
       '<div class="watch-num"><span class="lbl">Watch</span><span class="n">' + w + "</span></div>" +
       '<div><div class="date-long">' + esc(longDate(d)) + (sameDay(d, today()) ? " · today" : "") + '</div>' +
       '<div class="count">' + onDuty + " on duty" + offText + (rank ? " · " + esc(rank) : "") + (q ? " matching “" + esc(q) + "”" : "") + "</div></div>" +
@@ -178,20 +181,25 @@
     rows.forEach(function (r) { (groups[r.slot.rank] = groups[r.slot.rank] || []).push(r); });
     var html = RANK_ORDER.filter(function (r) { return groups[r]; }).map(function (r) {
       var list = groups[r].sort(byCompany);
+      if (phone) {
+        // Phones: the same rank groups as a list, one row per person (company, name, position, tour, status).
+        return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + '</span></summary><ul class="plist">' +
+          list.map(function (x) {
+            var name = x.name
+              ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
+              : '<span class="vacant">Vacant</span>';
+            return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(Organization.apparatus(x.co)) + '</span><span class="pl-main">' + name +
+              '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
+              '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
+          }).join("") + "</ul></details>";
+      }
       return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + "</span></summary>" +
         '<div class="table-wrap"><table class="list"><thead><tr><th>Company</th><th>Name</th><th>Position</th><th>Tour</th><th></th></tr></thead><tbody>' +
         list.map(function (x) {
           var name = x.name
             ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
             : '<span class="vacant">Vacant</span>';
-          var tags = [];
-          if (x.acting) tags.push('<span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>");
-          if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
-          else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
-          if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
-          else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
-          if (x.slot.open && !x.acting) tags.push('<span class="tag tag-open">Spot open for bid</span>');
-          if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
+          var tags = rowTags(x);
           return "<tr" + (x.off ? ' class="is-off"' : "") + "><td class=\"co\">" + esc(x.co) + "</td><td>" + name + "</td><td>" + esc(x.slot.title) +
             (x.role ? " · " + esc(x.role) : "") + (x.slot.added ? "" : ' <span class="hint">' + esc(x.slot.pos) + "</span>") + '</td><td class="mono">' + x.tour + "</td><td>" +
             statusPill(x.status) + tags.join(" ") + "</td></tr>";
@@ -200,13 +208,17 @@
     $("date-results").innerHTML = html;
   }
 
-  // Who's working on a phone: division → battalion → apparatus → people (see Dash.phoneTree).
-  function renderDatePhone(d, w, q, match) {
-    var tree = Dash.phoneTree(d, { open: state.dateOpen, match: match, bars: false, allOpen: true });
-    $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + tree.working + "</b> on duty of " + tree.required +
-      (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
-    $("date-results").innerHTML = '<div class="pt">' + tree.html + "</div>";
-    Dash.wireTree($("date-results"), state.dateOpen, renderDate);
+  // Tags for a Who's working row: acting, covered, swing, open for bid, added.
+  function rowTags(x) {
+    var tags = [];
+    if (x.acting) tags.push('<span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>");
+    if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
+    else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
+    if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
+    else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
+    if (x.slot.open && !x.acting) tags.push('<span class="tag tag-open">Spot open for bid</span>');
+    if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
+    return tags;
   }
 
   /* ---------- By person ---------- */

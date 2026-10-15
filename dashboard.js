@@ -249,8 +249,7 @@
       loadStats(d, st.named);
     }
     /* ---------- Phone list: division → battalion → apparatus → people ----------
-       Shared by Who's working and Staffing on phones. o: {open: {key: bool}, match: fn|null, bars: bool, allOpen: bool}
-       (allOpen: groups start expanded; a group someone collapses stays collapsed).
+       Staffing on phones. o: {open: {key: bool}, match: fn|null, bars: bool}.
        Returns {html, required, working}. Toggle buttons carry data-tog with the key to flip in o.open. */
     function phoneTree(d, o) {
       var all = summarize(d), byCo = {};
@@ -264,7 +263,7 @@
         return '<span class="pt-n">' + on + " / " + req + '</span><span class="pt-gap' + (gap < 0 ? " neg" : gap > 0 ? " pos" : "") + '">' +
           (gap < 0 ? "−" + -gap : gap > 0 ? "+" + gap : "") + "</span>";
       }
-      function isOpen(key) { return filtering || (o.open[key] != null ? !!o.open[key] : !!o.allOpen); }
+      function isOpen(key) { return filtering || !!o.open[key]; }
       var tot = { required: 0, working: 0 };
       var html = Org.DIVISIONS.filter(function (dv) { return !dv.hidden; }).map(function (dv) {
         var dvOn = 0, dvReq = 0;
@@ -303,16 +302,6 @@
       }).join("");
       return { html: html || '<p class="empty">Nobody matches.</p>', required: tot.required, working: tot.working };
     }
-    // Toggle handler for a phoneTree container.
-    function wireTree(el, openMap, rerender) {
-      el.onclick = function (e) {
-        var b = e.target.closest("[data-tog]");
-        if (!b) return;
-        openMap[b.dataset.tog] = b.getAttribute("aria-expanded") !== "true";
-        rerender();
-      };
-    }
-
     /* ---------- Staffing on a phone: three tiles, then the battalion list ---------- */
     function renderDashPhone(d, out) {
       var tree = phoneTree(d, { open: dash.open, match: null, bars: true });
@@ -613,6 +602,6 @@
     function wireAll() { wireDash(); wireSeats(); }
 
     return { renderDash: renderDashOrSeats, renderSix: renderSix, renderDocs: renderDocs, wireDash: wireAll, summarize: summarize,
-      phoneTree: phoneTree, wireTree: wireTree };
+      phoneTree: phoneTree };
   };
 })(window);

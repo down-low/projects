@@ -504,6 +504,18 @@ details.fold[open] > summary { margin-bottom: 10px; }
 .tile3.bad { background: var(--accent-soft); border-color: transparent; }
 .tile3.bad .k, .tile3.bad .v { color: var(--accent); }
 
+/* Who's working on phones: rank groups as a list */
+.plist { list-style: none; margin: 0; padding: 0; }
+.plist li { display: grid; grid-template-columns: 3.2em minmax(0, 1fr); column-gap: 10px; row-gap: 2px; padding: 8px 12px; border-top: 1px solid var(--line); align-items: baseline; }
+.plist li:first-child { border-top: 0; }
+.plist .pl-co { font-family: var(--font-data); font-size: 0.85rem; color: var(--muted); }
+.plist .pl-main { display: flex; flex-direction: column; min-width: 0; }
+.plist .pl-main .linkish { text-align: left; font-weight: 600; }
+.plist .pl-sub { color: var(--muted); font-size: 0.8rem; }
+.plist .pl-tags { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; }
+.plist .pl-tags:empty { display: none; }
+.plist li.is-off .pl-main > :first-child { text-decoration: line-through; color: var(--muted); }
+
 /* ---------- Phone layout (≤ 640px): compact header, bottom tab bar, More sheet ---------- */
 .menu-btn, .tab-ico, .lbl-phone, .tab-more { display: none; }
 .menu-btn { width: 44px; height: 44px; align-items: center; justify-content: center; background: none; border: 0; color: var(--fg); cursor: pointer; border-radius: 8px; }

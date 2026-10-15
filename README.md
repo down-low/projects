@@ -47,7 +47,8 @@ Editors can record, per person (on the **By person** tab):
 Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Find**, **Today**, **Staffing** and **More**. Find opens first.
 
 - **Find**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top; next shifts, history and the editing forms fold away.
-- **Today** and **Staffing**: division → battalion → apparatus → people, each with on duty / needed. Today opens with every group expanded so everyone working shows at once (tap a heading to collapse it); Staffing opens collapsed. Staffing adds Required / On duty / Open tiles and the stats and Balance-report cards below.
+- **Today**: everyone working that day, grouped by rank as on desktop, one row per person (company, name, position, tour, leave and cover tags). The filter narrows it by name, ID, company or tour.
+- **Staffing**: Required / On duty / Open tiles, then division → battalion → apparatus → people with on duty / needed (tap to drill down), and the stats and Balance-report cards below.
 - **More** (or ☰): 6 of 9, the rank month grid, Open seats (editors), the documents, My page, Admin and Sign out. Menu items carry `data-need` (member, editor, admin, signed-in) and are hidden from people who can't use them.
 
 On wider screens the layout is unchanged; the editing forms on a person's page sit behind one **Edit** row everywhere.
