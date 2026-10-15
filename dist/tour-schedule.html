@@ -193,6 +193,19 @@ td.co { font-weight: 500; }
 .cal .d.work.cover { background: var(--swing); border-color: var(--swing); }
 .cal .d.today { box-shadow: inset 0 0 0 2px var(--today); }
 .cal .d.blank { border: 0; }
+/* Holidays: a green dot (hollow for observances like Halloween and Mother's Day) */
+:root { --holiday: #1d7a46; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --holiday: #5fd39a; } }
+:root[data-theme="dark"] { --holiday: #5fd39a; }
+i.hol { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--holiday); box-shadow: 0 0 0 1.5px var(--surface); margin: 0 4px; vertical-align: 2px; }
+i.hol.obs { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--holiday), 0 0 0 1.5px var(--surface); }
+.hol-list { margin: 8px 0 0; font-size: 0.8rem; color: var(--muted); }
+.hol-list b { color: var(--fg); font-weight: 600; }
+.hol-list i.hol { margin-left: 0; }
+.hol-note { display: inline-flex; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--holiday); }
+.hol-note i.hol { margin-left: 0; }
+.legend i.sw-hol { width: 8px; height: 8px; border-radius: 50%; background: var(--holiday); vertical-align: 0; }
+table.roster thead th i.hol { display: block; margin: 2px auto 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
 .card h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -874,8 +887,46 @@ details.fold[open] > summary { margin-bottom: 10px; }
     return out;
   }
 
+  /* Holidays, worked out for any year. Shown on the actual date (the schedule runs every day, so weekday
+     "observed" dates are not used). kind "observance" marks days that aren't city holidays. */
+  function nthWeekday(y, m, dow, n) { // n-th (1-based) weekday dow (0 = Sun) of month m (0-based)
+    var first = new Date(y, m, 1).getDay();
+    return 1 + ((dow - first + 7) % 7) + 7 * (n - 1);
+  }
+  function lastWeekday(y, m, dow) {
+    var last = new Date(y, m + 1, 0), d = last.getDate();
+    return d - ((last.getDay() - dow + 7) % 7);
+  }
+  var holidayCache = {};
+  function holidaysOf(y) {
+    if (holidayCache[y]) return holidayCache[y];
+    var list = [
+      [0, 1, "New Year's Day", "New Year"],
+      [0, nthWeekday(y, 0, 1, 3), "Martin Luther King, Jr.'s Birthday", "MLK Day"],
+      [1, nthWeekday(y, 1, 1, 3), "Presidents' Day", "Presidents"],
+      [4, nthWeekday(y, 4, 0, 2), "Mother's Day", "Mother's Day", "observance"],
+      [4, lastWeekday(y, 4, 1), "Memorial Day", "Memorial"],
+      [5, 19, "Juneteenth", "Juneteenth"],
+      [6, 4, "Independence Day", "July 4"],
+      [8, nthWeekday(y, 8, 1, 1), "Labor Day", "Labor Day"],
+      [9, nthWeekday(y, 9, 1, 2), "Indigenous Peoples Day and Italian American Heritage Day", "Indig./Ital."],
+      [9, 31, "Halloween", "Halloween", "observance"],
+      [10, 11, "Veterans Day", "Veterans"],
+      [10, nthWeekday(y, 10, 4, 4), "Thanksgiving Day", "Thanksgiving"],
+      [10, nthWeekday(y, 10, 4, 4) + 1, "The Day After Thanksgiving", "Day after"],
+      [11, 25, "Christmas Day", "Christmas"],
+    ];
+    var map = {};
+    list.forEach(function (h) {
+      map[(h[0] + 1) + "-" + h[1]] = { name: h[2], short: h[3], kind: h[4] || "holiday" };
+    });
+    return (holidayCache[y] = map);
+  }
+  // {name, short, kind: "holiday" | "observance"} for date d, or null.
+  function holidayFor(d) { return holidaysOf(d.getFullYear())[(d.getMonth() + 1) + "-" + d.getDate()] || null; }
+
   var api = {
-    sharedWatches: sharedWatches,
+    sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
     coverOn: coverOn, coveringOn: coveringOn, dayFor: dayFor,
@@ -1743,7 +1794,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
         '<div class="dash-totals"><span>Required <b class="pill neutral">' + required + "</b></span>" +
         '<span>Total Working Staff <b class="pill ok">' + working + "</b>" + (coveringN ? ' <span class="hint">' + coveringN + " covering</span>" : "") + "</span>" +
         '<span>Positions Needing Staff <b class="pill ' + (needing < 0 ? "bad" : "ok") + '">' + needing + "</b></span>" +
-        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span>" +
+        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span>" + api.holidayNote(d) +
         (api.backend() && api.backend().canEdit() ? '<button class="btn small" id="open-seats-btn">Open seats</button>' : "") + "</div>" +
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
@@ -1824,7 +1875,8 @@ details.fold[open] > summary { margin-bottom: 10px; }
       var tree = phoneTree(d, { open: dash.open, match: null, bars: true });
       var all = summarize(d), open = all.reduce(function (a, r) { return a - r.missing; }, 0);
       var st = stats(d);
-      out.innerHTML =
+      var hol = api.holidayNote(d);
+      out.innerHTML = (hol ? '<p class="pt-sum">' + hol + "</p>" : "") +
         '<div class="tiles3">' +
         '<div class="tile3"><span class="k">Required</span><span class="v">' + tree.required + "</span></div>" +
         '<div class="tile3"><span class="k">On duty</span><span class="v">' + tree.working + "</span></div>" +
@@ -2290,11 +2342,12 @@ details.fold[open] > summary { margin-bottom: 10px; }
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
     if (phone) {
-      $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
+      $("date-summary").innerHTML = '<div class="pt-sum">' + (M.holidayFor(d) ? holidayNote(d) + "<br>" : "") +
+        "Tours " + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
         (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
     } else $("date-summary").innerHTML =
       '<div class="watch-num"><span class="lbl">Watch</span><span class="n">' + w + "</span></div>" +
-      '<div><div class="date-long">' + esc(longDate(d)) + (sameDay(d, today()) ? " · today" : "") + '</div>' +
+      '<div><div class="date-long">' + esc(longDate(d)) + (sameDay(d, today()) ? " · today" : "") + " " + holidayNote(d) + "</div>" +
       '<div class="count">' + onDuty + " on duty" + offText + (rank ? " · " + esc(rank) : "") + (q ? " matching “" + esc(q) + "”" : "") + "</div></div>" +
       '<div class="chips"><span class="lbl">Tours working</span>' +
       M.toursOn(w).map(function (t) { return '<span class="chip">' + t + "</span>"; }).join("") + "</div>";
@@ -2420,7 +2473,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
     var t = today();
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
-    var workCount = 0, offCount = 0, actingCount = 0;
+    var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -2431,9 +2484,11 @@ details.fold[open] > summary { margin-bottom: 10px; }
       var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : "W" + M.watchFor(d);
       var cls = s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "";
       var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
+      var hol = M.holidayFor(d);
+      if (hol) monthHolidays.push({ d: d, h: hol });
       cells += '<div class="d' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
-        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip) + '">' +
-        '<span class="dn">' + i + '</span><span class="w">' + esc(label) + "</span></div>";
+        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
+        '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
     }
 
     var next = [], d2 = t;
@@ -2470,8 +2525,9 @@ details.fold[open] > summary { margin-bottom: 10px; }
       twinsHtml(p) + contactHtml(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
-      '<div class="cal">' + cells + "</div>" +
+      '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
       '<div class="legend"><span><i style="background:var(--accent)"></i>Work day (' + workCount + ")</span>" +
+      (monthHolidays.length ? '<span><i class="sw-hol"></i>Holiday</span>' : "") +
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
       (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
@@ -2500,6 +2556,21 @@ details.fold[open] > summary { margin-bottom: 10px; }
     var open = state.folds[key];
     if (open == null) open = key === "edit" ? false : !isPhone();
     return head + (open ? " open" : "") + tail;
+  }
+  // Holiday marker (a dot) and the month's holidays listed under a calendar.
+  function holidayDot(h) {
+    return '<i class="hol' + (h.kind === "observance" ? " obs" : "") + '" title="' + esc(h.name) + '" aria-label="' + esc(h.name) + '"></i>';
+  }
+  function holidayList(list) {
+    if (!list.length) return "";
+    return '<p class="hol-list">' + list.map(function (x) {
+      return holidayDot(x.h) + "<b>" + MONTHS[x.d.getMonth()].slice(0, 3) + " " + x.d.getDate() + "</b> " + esc(x.h.name);
+    }).join('<span class="sep"> · </span>') + "</p>";
+  }
+  // "Holiday: Thanksgiving Day" for a date line, or "".
+  function holidayNote(d) {
+    var h = M.holidayFor(d);
+    return h ? '<span class="hol-note">' + holidayDot(h) + esc(h.name) + "</span>" : "";
   }
   // Phone-only summary tiles at the top of a person's page.
   function identTiles(p, tourNow, next) {
@@ -2738,8 +2809,9 @@ details.fold[open] > summary { margin-bottom: 10px; }
     if (!rows.length) { $("rank-grid").innerHTML = '<div class="empty">No positions match. Try All companies or All tours.</div>'; return; }
 
     var head = '<tr><th class="who">Name</th>' + dates.map(function (d) {
-      return '<th class="' + (sameDay(d, t) ? "today-col" : "") + '"><span class="wd">' + DOW[d.getDay()].charAt(0) + "</span>" + d.getDate() +
-        '<span class="wn">' + M.watchFor(d) + "</span></th>";
+      var hol = M.holidayFor(d);
+      return '<th class="' + (sameDay(d, t) ? "today-col" : "") + '"' + (hol ? ' title="' + esc(hol.name) + '"' : "") + '><span class="wd">' +
+        DOW[d.getDay()].charAt(0) + "</span>" + d.getDate() + '<span class="wn">' + M.watchFor(d) + "</span>" + (hol ? holidayDot(hol) : "") + "</th>";
     }).join("") + "</tr>";
     var body = rows.map(function (p) {
       var who = p.name ? '<button class="linkish" data-pos="' + esc(p.pos) + '">' + esc(p.name) + "</button>" : '<span class="vacant">Vacant</span>';
@@ -2802,7 +2874,8 @@ details.fold[open] > summary { margin-bottom: 10px; }
     var t = today();
     state.personMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     state.rankMonth = new Date(t.getFullYear(), t.getMonth(), 1);
-    $("today-chip").innerHTML = esc(shortDate(t)) + " <span>Watch</span> <b>" + M.watchFor(t) + "</b>";
+    var holT = M.holidayFor(t);
+    $("today-chip").innerHTML = esc(shortDate(t)) + (holT ? holidayDot(holT) : "") + " <span>Watch</span> <b>" + M.watchFor(t) + "</b>";
 
     rankOptions($("date-rank"), true);
     rankOptions($("rank-select"), false);
@@ -3024,6 +3097,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
 
   var Dash = window.DashboardViews({
     $: $, esc: esc, today: today, addDays: addDays, iso: iso, fromIso: fromIso, longDate: longDate, shortDate: shortDate, MONTHS: MONTHS,
+    holidayNote: holidayNote,
     slots: function () { return slots(); }, shift: shift, home: home, recs: function () { return recs; },
     recsVersion: function () { return recsVersion + ":" + iso(today()); }, dayRows: dayRows, byPos: function () { return byPos; },
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,

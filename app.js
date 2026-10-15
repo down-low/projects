@@ -164,11 +164,12 @@
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
     if (phone) {
-      $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
+      $("date-summary").innerHTML = '<div class="pt-sum">' + (M.holidayFor(d) ? holidayNote(d) + "<br>" : "") +
+        "Tours " + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
         (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
     } else $("date-summary").innerHTML =
       '<div class="watch-num"><span class="lbl">Watch</span><span class="n">' + w + "</span></div>" +
-      '<div><div class="date-long">' + esc(longDate(d)) + (sameDay(d, today()) ? " · today" : "") + '</div>' +
+      '<div><div class="date-long">' + esc(longDate(d)) + (sameDay(d, today()) ? " · today" : "") + " " + holidayNote(d) + "</div>" +
       '<div class="count">' + onDuty + " on duty" + offText + (rank ? " · " + esc(rank) : "") + (q ? " matching “" + esc(q) + "”" : "") + "</div></div>" +
       '<div class="chips"><span class="lbl">Tours working</span>' +
       M.toursOn(w).map(function (t) { return '<span class="chip">' + t + "</span>"; }).join("") + "</div>";
@@ -294,7 +295,7 @@
     var t = today();
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
-    var workCount = 0, offCount = 0, actingCount = 0;
+    var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -305,9 +306,11 @@
       var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : "W" + M.watchFor(d);
       var cls = s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "";
       var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
+      var hol = M.holidayFor(d);
+      if (hol) monthHolidays.push({ d: d, h: hol });
       cells += '<div class="d' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
-        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip) + '">' +
-        '<span class="dn">' + i + '</span><span class="w">' + esc(label) + "</span></div>";
+        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
+        '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
     }
 
     var next = [], d2 = t;
@@ -344,8 +347,9 @@
       twinsHtml(p) + contactHtml(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
-      '<div class="cal">' + cells + "</div>" +
+      '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
       '<div class="legend"><span><i style="background:var(--accent)"></i>Work day (' + workCount + ")</span>" +
+      (monthHolidays.length ? '<span><i class="sw-hol"></i>Holiday</span>' : "") +
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
       (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
@@ -374,6 +378,21 @@
     var open = state.folds[key];
     if (open == null) open = key === "edit" ? false : !isPhone();
     return head + (open ? " open" : "") + tail;
+  }
+  // Holiday marker (a dot) and the month's holidays listed under a calendar.
+  function holidayDot(h) {
+    return '<i class="hol' + (h.kind === "observance" ? " obs" : "") + '" title="' + esc(h.name) + '" aria-label="' + esc(h.name) + '"></i>';
+  }
+  function holidayList(list) {
+    if (!list.length) return "";
+    return '<p class="hol-list">' + list.map(function (x) {
+      return holidayDot(x.h) + "<b>" + MONTHS[x.d.getMonth()].slice(0, 3) + " " + x.d.getDate() + "</b> " + esc(x.h.name);
+    }).join('<span class="sep"> · </span>') + "</p>";
+  }
+  // "Holiday: Thanksgiving Day" for a date line, or "".
+  function holidayNote(d) {
+    var h = M.holidayFor(d);
+    return h ? '<span class="hol-note">' + holidayDot(h) + esc(h.name) + "</span>" : "";
   }
   // Phone-only summary tiles at the top of a person's page.
   function identTiles(p, tourNow, next) {
@@ -612,8 +631,9 @@
     if (!rows.length) { $("rank-grid").innerHTML = '<div class="empty">No positions match. Try All companies or All tours.</div>'; return; }
 
     var head = '<tr><th class="who">Name</th>' + dates.map(function (d) {
-      return '<th class="' + (sameDay(d, t) ? "today-col" : "") + '"><span class="wd">' + DOW[d.getDay()].charAt(0) + "</span>" + d.getDate() +
-        '<span class="wn">' + M.watchFor(d) + "</span></th>";
+      var hol = M.holidayFor(d);
+      return '<th class="' + (sameDay(d, t) ? "today-col" : "") + '"' + (hol ? ' title="' + esc(hol.name) + '"' : "") + '><span class="wd">' +
+        DOW[d.getDay()].charAt(0) + "</span>" + d.getDate() + '<span class="wn">' + M.watchFor(d) + "</span>" + (hol ? holidayDot(hol) : "") + "</th>";
     }).join("") + "</tr>";
     var body = rows.map(function (p) {
       var who = p.name ? '<button class="linkish" data-pos="' + esc(p.pos) + '">' + esc(p.name) + "</button>" : '<span class="vacant">Vacant</span>';
@@ -676,7 +696,8 @@
     var t = today();
     state.personMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     state.rankMonth = new Date(t.getFullYear(), t.getMonth(), 1);
-    $("today-chip").innerHTML = esc(shortDate(t)) + " <span>Watch</span> <b>" + M.watchFor(t) + "</b>";
+    var holT = M.holidayFor(t);
+    $("today-chip").innerHTML = esc(shortDate(t)) + (holT ? holidayDot(holT) : "") + " <span>Watch</span> <b>" + M.watchFor(t) + "</b>";
 
     rankOptions($("date-rank"), true);
     rankOptions($("rank-select"), false);
@@ -898,6 +919,7 @@
 
   var Dash = window.DashboardViews({
     $: $, esc: esc, today: today, addDays: addDays, iso: iso, fromIso: fromIso, longDate: longDate, shortDate: shortDate, MONTHS: MONTHS,
+    holidayNote: holidayNote,
     slots: function () { return slots(); }, shift: shift, home: home, recs: function () { return recs; },
     recsVersion: function () { return recsVersion + ":" + iso(today()); }, dayRows: dayRows, byPos: function () { return byPos; },
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,

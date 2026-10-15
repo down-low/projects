@@ -189,6 +189,19 @@ td.co { font-weight: 500; }
 .cal .d.work.cover { background: var(--swing); border-color: var(--swing); }
 .cal .d.today { box-shadow: inset 0 0 0 2px var(--today); }
 .cal .d.blank { border: 0; }
+/* Holidays: a green dot (hollow for observances like Halloween and Mother's Day) */
+:root { --holiday: #1d7a46; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --holiday: #5fd39a; } }
+:root[data-theme="dark"] { --holiday: #5fd39a; }
+i.hol { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--holiday); box-shadow: 0 0 0 1.5px var(--surface); margin: 0 4px; vertical-align: 2px; }
+i.hol.obs { background: var(--surface); box-shadow: inset 0 0 0 1.5px var(--holiday), 0 0 0 1.5px var(--surface); }
+.hol-list { margin: 8px 0 0; font-size: 0.8rem; color: var(--muted); }
+.hol-list b { color: var(--fg); font-weight: 600; }
+.hol-list i.hol { margin-left: 0; }
+.hol-note { display: inline-flex; align-items: center; font-size: 0.85rem; font-weight: 600; color: var(--holiday); }
+.hol-note i.hol { margin-left: 0; }
+.legend i.sw-hol { width: 8px; height: 8px; border-radius: 50%; background: var(--holiday); vertical-align: 0; }
+table.roster thead th i.hol { display: block; margin: 2px auto 0; }
 .legend { display: flex; flex-wrap: wrap; gap: 14px; margin-top: 10px; font-size: 0.8rem; color: var(--muted); }
 .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -1px; margin-right: 5px; }
 .card h3 { margin: 0 0 10px; font-family: var(--font-display); font-weight: 600; font-size: 1.15rem; text-transform: uppercase; letter-spacing: 0.04em; }

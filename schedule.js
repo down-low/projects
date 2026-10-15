@@ -104,8 +104,46 @@
     return out;
   }
 
+  /* Holidays, worked out for any year. Shown on the actual date (the schedule runs every day, so weekday
+     "observed" dates are not used). kind "observance" marks days that aren't city holidays. */
+  function nthWeekday(y, m, dow, n) { // n-th (1-based) weekday dow (0 = Sun) of month m (0-based)
+    var first = new Date(y, m, 1).getDay();
+    return 1 + ((dow - first + 7) % 7) + 7 * (n - 1);
+  }
+  function lastWeekday(y, m, dow) {
+    var last = new Date(y, m + 1, 0), d = last.getDate();
+    return d - ((last.getDay() - dow + 7) % 7);
+  }
+  var holidayCache = {};
+  function holidaysOf(y) {
+    if (holidayCache[y]) return holidayCache[y];
+    var list = [
+      [0, 1, "New Year's Day", "New Year"],
+      [0, nthWeekday(y, 0, 1, 3), "Martin Luther King, Jr.'s Birthday", "MLK Day"],
+      [1, nthWeekday(y, 1, 1, 3), "Presidents' Day", "Presidents"],
+      [4, nthWeekday(y, 4, 0, 2), "Mother's Day", "Mother's Day", "observance"],
+      [4, lastWeekday(y, 4, 1), "Memorial Day", "Memorial"],
+      [5, 19, "Juneteenth", "Juneteenth"],
+      [6, 4, "Independence Day", "July 4"],
+      [8, nthWeekday(y, 8, 1, 1), "Labor Day", "Labor Day"],
+      [9, nthWeekday(y, 9, 1, 2), "Indigenous Peoples Day and Italian American Heritage Day", "Indig./Ital."],
+      [9, 31, "Halloween", "Halloween", "observance"],
+      [10, 11, "Veterans Day", "Veterans"],
+      [10, nthWeekday(y, 10, 4, 4), "Thanksgiving Day", "Thanksgiving"],
+      [10, nthWeekday(y, 10, 4, 4) + 1, "The Day After Thanksgiving", "Day after"],
+      [11, 25, "Christmas Day", "Christmas"],
+    ];
+    var map = {};
+    list.forEach(function (h) {
+      map[(h[0] + 1) + "-" + h[1]] = { name: h[2], short: h[3], kind: h[4] || "holiday" };
+    });
+    return (holidayCache[y] = map);
+  }
+  // {name, short, kind: "holiday" | "observance"} for date d, or null.
+  function holidayFor(d) { return holidaysOf(d.getFullYear())[(d.getMonth() + 1) + "-" + d.getDate()] || null; }
+
   var api = {
-    sharedWatches: sharedWatches,
+    sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
     coverOn: coverOn, coveringOn: coveringOn, dayFor: dayFor,

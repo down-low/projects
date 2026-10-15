@@ -226,7 +226,7 @@
         '<div class="dash-totals"><span>Required <b class="pill neutral">' + required + "</b></span>" +
         '<span>Total Working Staff <b class="pill ok">' + working + "</b>" + (coveringN ? ' <span class="hint">' + coveringN + " covering</span>" : "") + "</span>" +
         '<span>Positions Needing Staff <b class="pill ' + (needing < 0 ? "bad" : "ok") + '">' + needing + "</b></span>" +
-        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span>" +
+        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span>" + api.holidayNote(d) +
         (api.backend() && api.backend().canEdit() ? '<button class="btn small" id="open-seats-btn">Open seats</button>' : "") + "</div>" +
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
@@ -307,7 +307,8 @@
       var tree = phoneTree(d, { open: dash.open, match: null, bars: true });
       var all = summarize(d), open = all.reduce(function (a, r) { return a - r.missing; }, 0);
       var st = stats(d);
-      out.innerHTML =
+      var hol = api.holidayNote(d);
+      out.innerHTML = (hol ? '<p class="pt-sum">' + hol + "</p>" : "") +
         '<div class="tiles3">' +
         '<div class="tile3"><span class="k">Required</span><span class="v">' + tree.required + "</span></div>" +
         '<div class="tile3"><span class="k">On duty</span><span class="v">' + tree.working + "</span></div>" +

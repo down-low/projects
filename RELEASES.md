@@ -28,7 +28,7 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 
 ### Calendar sync (iCal / Google Calendar)
 - **Subscribe link:** each signed-in person gets a private calendar feed (`…/cal/<secret>.ics`) of their own schedule, built from the same logic as their person page (`TourMath.dayFor`). Add it in Google Calendar (Other calendars → From URL), Apple Calendar / iPhone (Add subscription) or Outlook.
-- **On the feed:** one event per work day titled with the company and tour (e.g. "E21 · Tour 15"), acting or covering noted in the description, leave days (VA / S / D) marked; about 12 months ahead and 1 month back. All-day events by default, or a set shift start (e.g. 08:00 for 24 hours) once confirmed.
+- **On the feed:** one event per work day titled with the company and tour (e.g. "E21 · Tour 15"), acting or covering noted in the description, leave days (VA / S / D) marked, holidays named on the day; about 12 months ahead and 1 month back. All-day events by default, or a set shift start (e.g. 08:00 for 24 hours) once confirmed.
 - **Stays current:** tour changes, covers and leave appear after the calendar app refreshes (Google refreshes subscriptions every several hours; not in our control).
 - **Privacy:** the secret in the URL is the only key, so My page gets **Reset link** to revoke it. The feed holds only that person's own schedule, with no contact info and no other people.
 - **Where it runs:** a small route in `server.py`, or an HTTPS Cloud Function on Firebase (see `FIREBASE_PLAN.md`).
@@ -49,3 +49,4 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - Employee IDs: searchable, shown on person pages, duplicate names flagged.
 - Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
 - View-only snapshot link with records baked in (no sign-in needed).
+- Holidays on the calendars (12 city holidays plus Halloween and Mother's Day as observances), worked out for any year.

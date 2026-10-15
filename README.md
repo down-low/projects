@@ -42,6 +42,10 @@ Editors can record, per person (on the **By person** tab):
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
+## Holidays
+
+A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Who's working and the Dashboard / Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`) and shown on the actual date, not a weekday "observed" date, since the schedule runs every day.
+
 ## On phones
 
 Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Find**, **Today**, **Staffing** and **More**. Find opens first.
