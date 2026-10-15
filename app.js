@@ -284,7 +284,6 @@
     var tourNow = tourOn(p, t);
     var upcoming = recs.tourChanges.filter(function (c) { return c.pos === p.pos && c.effective > iso(t); })
       .sort(function (a, b) { return a.effective.localeCompare(b.effective); })[0];
-    var statusNow = M.statusFor(p.pos, t, recs.statuses);
     var actingNow = coveringBy(p.pos, t) || recs.covers.filter(function (c) { return c.coverKey === p.pos && c.start > iso(t); })
       .sort(function (a, b) { return a.start.localeCompare(b.start); })[0];
     var coveredNow = p.added ? null : coverOf(p.pos, t);
@@ -292,6 +291,7 @@
     out.innerHTML =
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
+      todayHtml(p, t, next) +
       kv("Rank", p.rank) +
       kv("Employee ID", p.emplId || "Not on file") +
       (p.added && !p.tour
@@ -304,7 +304,6 @@
       (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : "Covering", slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
-      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
       twinsHtml(p) + contactHtml(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
@@ -495,6 +494,25 @@
   }
   function rangeText(r) {
     return shortDate(fromIso(r.start)) + (r.end ? " – " + shortDate(fromIso(r.end)) : " onward");
+  }
+  // "Working today?" at a glance: where they work today, or why they're off and their next shift.
+  function todayHtml(p, t, next) {
+    var s = day(p, t), html;
+    var statusNow = M.statusFor(p.pos, t, recs.statuses);
+    if (s && !s.status) {
+      html = '<span class="today-pill yes">Working today</span> at ' + esc(s.co || home(p)) +
+        (s.acting ? ' <span class="hint">covering ' + esc(slotLabel(s.acting.targetPos)) + "</span>" : "") +
+        ' <span class="hint">watch ' + M.watchFor(t) + "</span>";
+    } else {
+      var why = s && s.status ? statusPill(s.status) + " " + esc(STATUS_LABEL[s.status]) + " (scheduled shift)"
+        : statusNow ? statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow])
+        : !(p.added && !p.tour) && coveringBy(p.pos, t) && shift(p, t) ? "own tour's day, but covering another position"
+        : "not their shift";
+      var nx = next.filter(function (n) { return n.k > 0 && !n.s.status; })[0];
+      html = '<span class="today-pill no">Off today</span> ' + why +
+        (nx ? '<br><span class="hint">Next shift: ' + esc(shortDate(nx.d)) + (nx.k === 1 ? " (tomorrow)" : " (in " + nx.k + " days)") + " at " + esc(nx.s.co || home(p)) + "</span>" : "");
+    }
+    return '<div class="kv today-kv"><span class="k">Today</span><span class="v">' + html + "</span></div>";
   }
   // Others with the same name, or (a data error) the same employee ID, so look-alike names can be told apart.
   function twinsHtml(p) {
