@@ -27,6 +27,7 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
 ## Later
+- **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
 
