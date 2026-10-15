@@ -12,6 +12,7 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - **Seats left behind** become vacant from the same date unless another award fills them.
 
 ## Later
+- Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
 
 ## Shipped
@@ -19,3 +20,4 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - Tour changes, VA/S/D leave, cover assignments, added people.
 - Dashboard (staffing summary by apparatus, stat summary), "6 of 9" tour intersections, Documents menu.
 - Dashboard grouping by division and battalion, from the Daily Balance Report (`organization.js`).
+- Required staffing from the Balance report (313), Regular / Covering / Open split, "working but not in the tool" check, Open seats worklist for long-term covers.

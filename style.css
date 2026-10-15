@@ -423,3 +423,26 @@ table.dash tr.grp.lvl-0 { background: color-mix(in srgb, var(--line) 45%, transp
 table.dash tr.lvl-1 > th { padding-left: 30px; }
 table.dash tr.lvl-2 > th { padding-left: 48px; }
 table.dash tr.grp .pill { font-size: 0.75rem; padding: 0 8px; }
+
+/* ---------- Required / covering / report check / open seats ---------- */
+.pill.neutral { background: var(--fg); color: var(--bg); }
+.dash-totals .btn { margin-left: auto; }
+.report-note { margin: 0; }
+.report-card > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 4px; }
+.report-card > summary::-webkit-details-marker { display: none; }
+.report-card > summary h3 { margin: 0; }
+.report-card > summary h3::before { content: "▸ "; color: var(--muted); }
+.report-card[open] > summary h3::before { content: "▾ "; }
+.gap-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 10px 20px; margin-top: 10px; }
+.gap-groups h4 { margin: 0 0 4px; font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
+.gap-groups ul { list-style: none; margin: 0; padding: 0; font-size: 0.88rem; display: flex; flex-direction: column; gap: 3px; }
+.gap { color: var(--accent); font-family: var(--font-data); }
+.seats h4 { margin: 18px 0 6px; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.06em; }
+.seg { display: flex; gap: 4px; }
+ul.seat-list { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+li.seat { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--line); }
+.seat-main { min-width: 0; flex: 1 1 260px; }
+.seat-form { display: flex; gap: 6px; flex-wrap: wrap; flex: 1 1 320px; justify-content: flex-end; }
+.seat-form input[type="text"] { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 0.88rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
+.seat-form input[type="date"] { min-height: 34px; }
+.mono { font-family: var(--font-data); }

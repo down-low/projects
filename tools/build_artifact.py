@@ -23,6 +23,7 @@ def main():
     fonts = re.search(r'<link rel="stylesheet" href="(https://fonts[^"]+)"', index).group(1)
     data = json.dumps(json.load(open(os.path.join(ROOT, "data", "positions.json"))), separators=(",", ":"))
     data = data.replace("</", "<\\/")
+    required = json.dumps(json.load(open(os.path.join(ROOT, "data", "required-staffing.json"))), separators=(",", ":"))
     docs = json.dumps(json.load(open(os.path.join(ROOT, "docs", "index.json"))), separators=(",", ":")).replace("</", "<\\/")
     html = (
         "<title>SFFD Tour Schedule</title>\n"
@@ -30,7 +31,7 @@ def main():
         f'<link rel="stylesheet" href="{fonts}">\n'
         f"<style>\n{read('style.css')}</style>\n"
         f"{body}\n"
-        f"<script>window.POSITIONS={data};window.DOCS={docs};</script>\n"
+        f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"
         f"<script>\n{read('store.js')}</script>\n"

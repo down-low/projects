@@ -212,6 +212,8 @@ class App:
             self.positions = {p["pos"]: p for p in json.load(f)}
         # Roster companies plus the balance report's codes for rescue captains (RC1-RC4).
         self.companies = {p["company"] for p in self.positions.values() if p.get("company")} | {"RC1", "RC2", "RC3", "RC4"}
+        with open(os.path.join(ROOT, "data", "required-staffing.json")) as f:  # every apparatus in the Balance report
+            self.companies |= set(json.load(f)["apparatus"])
         with open(os.path.join(ROOT, "docs", "index.json")) as f:
             self.docs = {d["file"] for d in json.load(f)}
 
@@ -740,9 +742,9 @@ def make_handler(app):
             if path == "/api/admin/users":
                 self.require("admin")
                 return self.send_json(200, app.admin_users())
-            if path == "/data/positions.json":
+            if path in ("/data/positions.json", "/data/required-staffing.json"):
                 self.require("active")
-                self.path = "/data/positions.json"
+                self.path = path
                 return super().do_GET()
             if path == "/auth/login":
                 return self.auth_login()

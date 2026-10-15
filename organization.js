@@ -1,5 +1,5 @@
 /* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026).
- * ALIASES map roster company names to the report's apparatus codes.
+ * ALIASES map roster company names to the report's apparatus codes. Divisions marked hidden are left off the dashboard.
  */
 (function (root) {
   "use strict";
@@ -18,7 +18,7 @@
       { id: "BT09", name: "Batt 9", apparatus: ["B09", "E15", "E19", "E33", "E39", "E43", "RC4", "T15", "T19"] },
       { id: "BT10", name: "Batt 10", apparatus: ["B10", "BE", "E09", "E17", "E25", "E37", "E42", "E44", "T09", "T17"] },
     ] },
-    { id: "HQFD", name: "HQFD", battalions: [
+    { id: "HQFD", name: "HQFD", hidden: true, battalions: [
       { id: "AO", name: "AO", apparatus: ["VR03", "VR10", "VR20", "VR30", "VR33", "VR40", "VR50"] },
     ] },
   ];

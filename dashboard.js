@@ -13,7 +13,10 @@
     var statsReq = 0;
 
     /* ---------- Required staffing ---------- */
-    // Most common number of scheduled seats at each apparatus across one full 31-day cycle.
+    // The Daily Balance Report's requirement per apparatus (313 in all); apparatus not in the report fall back
+    // to the most common number of scheduled seats there across one full 31-day cycle.
+    function reportData() { return api.requiredData() || { apparatus: {} }; }
+    function hiddenCo(co) { var w = Org.locate(co); return !!(w && w.division.hidden); }
     function defaultRequired() {
       var key = api.recsVersion();
       if (defaultsCache.key === key) return defaultsCache.map;
@@ -43,6 +46,9 @@
         });
         map[co] = best;
       });
+      var rep = reportData().apparatus;
+      Object.keys(rep).forEach(function (co) { map[co] = rep[co].required; });
+      Object.keys(map).forEach(function (co) { if (hiddenCo(co)) delete map[co]; });
       defaultsCache = { key: key, map: map };
       return map;
     }
@@ -59,6 +65,7 @@
         return by[co] || (by[co] = { co: co, people: [], short: [], seats: 0 });
       }
       rows.forEach(function (r) {
+        if (hiddenCo(r.co)) return;
         var b = bucket(Org.apparatus(r.co));
         if (!r.acting) b.seats++;
         if (r.name && !r.off) { b.people.push(r); return; }
@@ -75,10 +82,15 @@
         var b = by[co];
         var required = over[co] != null ? over[co] : defs[co] != null ? defs[co] : b.seats;
         var working = b.people.length, total = working - required;
+        var covering = b.people.filter(isCovering).length;
         return { co: co, required: required, overridden: over[co] != null, defaultRequired: defs[co], working: working,
+          regular: working - covering, covering: covering, open: Math.max(0, -total),
           extra: Math.max(0, total), missing: Math.min(0, total), total: total, people: b.people, short: b.short };
       });
     }
+
+    // Someone filling a seat that isn't their own: a cover assignment, or an added person not on the vacancy list.
+    function isCovering(r) { return !!(r.acting || (r.who && r.who.added)); }
 
     function stats(d) {
       var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0 }, named = 0, full = 0;
@@ -99,8 +111,8 @@
       var out = $("dash-detail");
       $("dash-date").value = api.iso(d);
       var all = summarize(d);
-      var working = all.reduce(function (a, r) { return a + r.working; }, 0);
-      var needing = all.reduce(function (a, r) { return a + r.missing; }, 0);
+      function sum(k) { return all.reduce(function (a, r) { return a + r[k]; }, 0); }
+      var working = sum("working"), needing = sum("missing"), required = sum("required"), coveringN = sum("covering");
       var q = dash.q.trim().toUpperCase().replace(/\s+/g, "");
       var list = all.filter(function (r) {
         if (dash.short && r.total >= 0) return false;
@@ -116,7 +128,7 @@
       var canAdmin = api.backend() && api.backend().canAdmin();
       var st = stats(d);
 
-      var cols = [["co", dash.group === "division" ? "Division / battalion / apparatus" : dash.group === "battalion" ? "Battalion / apparatus" : "Apparatus"], ["required", "Required"], ["working", "Working"], ["extra", "Extra"], ["missing", "Missing"], ["total", "Total"]];
+      var cols = [["co", dash.group === "division" ? "Division / battalion / apparatus" : dash.group === "battalion" ? "Battalion / apparatus" : "Apparatus"], ["required", "Required"], ["regular", "Regular"], ["covering", "Covering"], ["working", "Working"], ["extra", "Extra"], ["missing", "Open"]];
       var head = "<tr>" + cols.map(function (c) {
         var on = dash.sort === c[0];
         return '<th scope="col" aria-sort="' + (on ? (dash.dir > 0 ? "ascending" : "descending") : "none") + '"><button class="sort' + (on ? " on" : "") +
@@ -134,13 +146,14 @@
             (r.overridden ? ' <span class="hint" title="Set by an admin; default ' + r.defaultRequired + '">set</span>' : "");
         var row = '<tr class="dash-row lvl-' + level + (r.total < 0 ? " neg" : r.total > 0 ? " pos" : "") + (open ? " open" : "") + '" data-co="' + esc(r.co) + '">' +
           '<th scope="row"><button class="linkish drill" aria-expanded="' + open + '" data-drill="' + esc(r.co) + '">' + (open ? "▾ " : "▸ ") + esc(r.co) + "</button></th>" +
-          '<td class="num">' + req + '</td><td class="num">' + r.working + '</td><td class="num">' + r.extra + '</td><td class="num">' + r.missing +
-          '</td><td class="num total">' + (r.total > 0 ? "+" : "") + r.total + "</td></tr>";
+          '<td class="num">' + req + '</td><td class="num">' + r.regular + '</td><td class="num">' + r.covering + '</td><td class="num">' + r.working +
+          '</td><td class="num">' + r.extra + '</td><td class="num total">' + r.missing + "</td></tr>";
         if (!open) return row;
-        return row + '<tr class="drill-row"><td colspan="6"><div class="drill-grid"><div><h4>Working (' + r.people.length + ")</h4>" +
+        return row + '<tr class="drill-row"><td colspan="7"><div class="drill-grid"><div><h4>Working (' + r.people.length + ")</h4>" +
           (r.people.length ? "<ul>" + r.people.map(function (x) {
             return '<li><button class="linkish" data-pos="' + esc(x.who ? x.who.pos : x.slot.pos) + '">' + esc(x.name) + "</button> " +
               '<span class="hint">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span>" +
+              (isCovering(x) ? ' <span class="tag tag-acting">Covering</span>' : ' <span class="tag">Regular</span>') +
               (x.acting ? ' <span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>" : "") +
               (x.swingCover ? ' <span class="tag">Swing from ' + esc(x.slot.company) + "</span>" : "") +
               (x.slot.added ? ' <span class="tag">Added</span>' : "") + "</li>";
@@ -157,8 +170,8 @@
         shown.forEach(function (r) { shownSet[r.co] = true; });
         var filtering = !!q || dash.short;
         function sub(rows) {
-          var t = { required: 0, working: 0, extra: 0, missing: 0 };
-          rows.forEach(function (r) { t.required += r.required; t.working += r.working; t.extra += r.extra; t.missing += r.missing; });
+          var t = { required: 0, working: 0, extra: 0, missing: 0, regular: 0, covering: 0 };
+          rows.forEach(function (r) { ["required", "working", "extra", "missing", "regular", "covering"].forEach(function (k) { t[k] += r[k]; }); });
           t.total = t.extra + t.missing;
           return t;
         }
@@ -170,7 +183,7 @@
           });
         }
         var mapped = {};
-        var divisions = Org.DIVISIONS.map(function (dv) {
+        var divisions = Org.DIVISIONS.filter(function (dv) { return !dv.hidden; }).map(function (dv) {
           var bts = dv.battalions.map(function (bt) {
             var rows = bt.apparatus.filter(function (co) { return byCo[co]; }).map(function (co) { mapped[co] = true; return byCo[co]; });
             return Object.assign(sub(rows), { key: "g:" + bt.id, name: bt.name, sortName: bt.name, rows: rows });
@@ -187,8 +200,8 @@
         function groupRow(g, level, open, label) {
           return '<tr class="grp lvl-' + level + (g.total < 0 ? " neg" : g.total > 0 ? " pos" : "") + '"><th scope="row"><button class="linkish drill" aria-expanded="' + open +
             '" data-drill="' + esc(g.key) + '">' + (open ? "▾ " : "▸ ") + esc(g.name) + "</button>" + (label || "") + "</th>" +
-            '<td class="num">' + g.required + '</td><td class="num">' + g.working + '</td><td class="num">' + g.extra + '</td><td class="num">' + g.missing +
-            '</td><td class="num total">' + (g.total > 0 ? "+" : "") + g.total + "</td></tr>";
+            '<td class="num">' + g.required + '</td><td class="num">' + g.regular + '</td><td class="num">' + g.covering + '</td><td class="num">' + g.working +
+            '</td><td class="num">' + g.extra + '</td><td class="num total">' + g.missing + "</td></tr>";
         }
         function btRows(bt, level) {
           var rows = sortRows(bt.rows.filter(function (r) { return shownSet[r.co]; }));
@@ -209,9 +222,12 @@
       }
 
       out.innerHTML =
-        '<div class="dash-totals"><span>Total Working Staff <b class="pill ok">' + working + "</b></span>" +
+        '<div class="dash-totals"><span>Required <b class="pill neutral">' + required + "</b></span>" +
+        '<span>Total Working Staff <b class="pill ok">' + working + "</b>" + (coveringN ? ' <span class="hint">' + coveringN + " covering</span>" : "") + "</span>" +
         '<span>Positions Needing Staff <b class="pill ' + (needing < 0 ? "bad" : "ok") + '">' + needing + "</b></span>" +
-        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span></div>" +
+        '<span class="hint">' + esc(api.longDate(d)) + " · watch " + M.watchFor(d) + "</span>" +
+        (api.backend() && api.backend().canEdit() ? '<button class="btn small" id="open-seats-btn">Open seats</button>' : "") + "</div>" +
+        reportCard(d, all, working) +
         '<div class="dash-grid">' +
         '<div class="card stats"><h3>Stats summary</h3><table class="list kv-table"><tbody>' +
         statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
@@ -223,12 +239,140 @@
         (dash.msg ? '<p class="msg" role="status">' + esc(dash.msg) + "</p>" : "") +
         (body ? '<div class="table-wrap"><table class="list dash"><thead>' + head + "</thead><tbody>" + body + "</tbody></table></div>"
           : '<p class="hint">No apparatus matches.</p>') +
-        '<p class="hint">Required = the usual number of positions scheduled at that apparatus' + (canAdmin ? " (click a number to change it)" : "") +
-        ". Missing counts vacant seats and people off who aren't covered.</p></div></div>";
+        '<p class="hint">Required comes from the Daily Balance Report (' + esc(reportData().asOf || "") + ")" + (canAdmin ? "; click a number to change it" : "") +
+        ". Regular = people in their own seat or on a swing. Covering = people on a cover assignment or added to the roster. Open = spots still needing someone, such as overtime.</p></div></div>";
       dash.msg = "";
       $("dash-short").onchange = function () { dash.short = this.checked; renderDash(); };
+      if ($("report-card")) $("report-card").ontoggle = function () { dash.reportOpen = this.open; };
+      if ($("open-seats-btn")) $("open-seats-btn").onclick = function () { api.state().seatsOpen = true; renderSeats(); };
       loadStats(d, st.named);
     }
+    /* ---------- Check against the Daily Balance Report ---------- */
+    function reportCard(d, all, toolWorking) {
+      var rd = reportData();
+      if (!rd.asOf) return "";
+      if (api.iso(d) !== rd.asOf) {
+        return '<p class="hint report-note">The Balance report check is available for ' + esc(api.longDate(api.fromIso(rd.asOf))) +
+          ' (the report date). <button class="linkish" id="go-report-date">Show that day</button></p>';
+      }
+      var byCo = {};
+      all.forEach(function (r) { byCo[r.co] = r; });
+      var reportTotal = 0, gaps = [];
+      Object.keys(rd.apparatus).forEach(function (co) {
+        if (hiddenCo(co)) return;
+        var rw = rd.apparatus[co].reportWorking, tw = byCo[co] ? byCo[co].working : 0;
+        reportTotal += rw;
+        if (rw > tw) gaps.push({ co: co, report: rw, tool: tw, gap: rw - tw, where: Org.locate(co) });
+      });
+      var ot = rd.overtimeHires || 0, regular = reportTotal - ot, est = Math.max(0, regular - toolWorking);
+      var sumGaps = gaps.reduce(function (a, g) { return a + g.gap; }, 0);
+      var groups = {};
+      gaps.sort(function (a, b) { return b.gap - a.gap || api.coKey(a.co).localeCompare(api.coKey(b.co)); }).forEach(function (g) {
+        var k = g.where ? g.where.battalion.name : "Other";
+        (groups[k] = groups[k] || []).push(g);
+      });
+      return '<details class="card report-card"' + (dash.reportOpen ? " open" : "") + ' id="report-card"><summary><h3>Working but not in the tool</h3>' +
+        '<span class="hint">Report: ' + reportTotal + " working, including " + ot + " overtime hires (about " + regular + " regular). Tool: " + toolWorking +
+        ". <b>About " + est + " people working who aren't in the tool.</b></span></summary>" +
+        '<p class="hint">Apparatus where the Balance report shows more people than the tool (' + sumGaps + " in all; some of these are overtime hires, which the report doesn't split by apparatus). " +
+        "To fix a gap, add the person on the By person tab, or give them a cover assignment from Open seats.</p>" +
+        '<div class="gap-groups">' + Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).map(function (k) {
+          return '<div><h4>' + esc(k) + "</h4><ul>" + groups[k].map(function (g) {
+            return '<li><button class="linkish" data-goto="' + esc(g.co) + '">' + esc(g.co) + "</button> report " + g.report + ", tool " + g.tool + ' <b class="gap">+' + g.gap + "</b></li>";
+          }).join("") + "</ul></div>";
+        }).join("") + "</div></details>";
+    }
+
+    /* ---------- Open seats: vacant positions and long-term absences, with cover assignment ---------- */
+    var seats = { filter: "none", msg: "", q: "" };
+    function seatList(d) {
+      var isoD = api.iso(d), recs = api.recs(), out = [];
+      api.data().forEach(function (p) {
+        var co = Org.apparatus(p.company || p.title);
+        if (hiddenCo(co)) return;
+        var reason = null;
+        if (!p.name) reason = "Vacant";
+        else {
+          var st = recs.statuses.filter(function (x) { return x.pos === p.pos && x.code === "D" && x.start <= isoD && !x.end; })[0];
+          var away = M.coveringOn(p.pos, d, recs.covers);
+          if (st) reason = p.name + " · Disabled since " + api.shortDate(api.fromIso(st.start));
+          else if (away) reason = p.name + " · acting at " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
+        }
+        if (!reason) return;
+        var cover = recs.covers.filter(function (c) { return c.targetPos === p.pos && (!c.end || c.end >= isoD); })
+          .sort(function (a, b) { return a.start.localeCompare(b.start); })[0] || null;
+        out.push({ p: p, co: co, where: Org.locate(co), reason: reason, cover: cover });
+      });
+      return out;
+    }
+    function renderSeats() {
+      var d = api.state().dashDate, out = $("dash-detail"), list = seatList(d);
+      var covered = list.filter(function (x) { return x.cover; }).length, vacant = list.filter(function (x) { return !x.p.name; }).length;
+      var uncovered = list.length - covered;
+      var q = seats.q.trim().toLowerCase();
+      var shown = list.filter(function (x) {
+        if (seats.filter === "none" && x.cover) return false;
+        if (seats.filter === "covered" && !x.cover) return false;
+        return !q || [x.co, x.p.title, x.p.pos, x.reason, x.where && x.where.battalion.name].join(" ").toLowerCase().indexOf(q) !== -1;
+      });
+      var groups = {};
+      shown.forEach(function (x) {
+        var k = x.where ? x.where.division.name + " · " + x.where.battalion.name : "Other";
+        (groups[k] = groups[k] || []).push(x);
+      });
+      var t = api.iso(api.today());
+      out.innerHTML = '<div class="card seats"><div class="cal-head"><h3>Open seats</h3><button class="btn small" id="seats-back">Back to dashboard</button></div>' +
+        '<p class="lede"><b>' + list.length + "</b> positions without their own person on " + esc(api.shortDate(d)) + " (" + vacant + " vacant, " + (list.length - vacant) +
+        " away long-term): <b>" + covered + "</b> covered · <b>" + uncovered + "</b> uncovered. Uncovered positions leave about <b>" + Math.round(uncovered * 9 / 31) +
+        "</b> open spots a day.</p>" +
+        '<div class="controls"><div class="chips seg">' + [["none", "No cover"], ["covered", "Covered"], ["all", "All"]].map(function (f) {
+          return '<button class="btn small' + (seats.filter === f[0] ? " primary" : "") + '" data-sfilter="' + f[0] + '">' + f[1] + "</button>";
+        }).join("") + '</div><input type="search" id="seats-q" class="grow" placeholder="Filter by apparatus, battalion or rank" value="' + esc(seats.q) + '" aria-label="Filter open seats"></div>' +
+        (seats.msg ? '<p class="msg" role="status">' + esc(seats.msg) + "</p>" : "") +
+        (shown.length ? Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).map(function (k) {
+          return "<h4>" + esc(k) + ' <span class="hint">' + groups[k].length + '</span></h4><ul class="seat-list">' + groups[k].sort(function (a, b) {
+            return api.coKey(a.co).localeCompare(api.coKey(b.co)) || a.p.tour - b.p.tour;
+          }).map(function (x) {
+            var c = x.cover;
+            return '<li class="seat"><div class="seat-main"><b class="mono">' + esc(x.co) + "</b> " + esc(x.p.title) + ' <span class="hint">· Tour ' + x.p.tour + " · " + esc(x.p.pos) + "</span>" +
+              '<div class="hint">' + esc(x.reason) + "</div></div>" +
+              (c ? '<div class="seat-cover"><span class="tag tag-acting">Covered</span> <button class="linkish" data-pos="' + esc(c.coverKey) + '">' + esc(c.coverName || c.coverKey) + "</button> " +
+                '<span class="hint">' + esc(api.shortDate(api.fromIso(c.start))) + (c.end ? " – " + esc(api.shortDate(api.fromIso(c.end))) : " onward") + "</span></div>"
+                : '<form class="seat-form" data-pos="' + esc(x.p.pos) + '" novalidate><input type="text" list="cover-dl" placeholder="Who is covering? Name or position no." aria-label="Person covering ' + esc(x.p.pos) + '">' +
+                  '<input type="date" value="' + t + '" aria-label="Cover start date"><button class="btn small primary" type="submit">Assign</button></form>') + "</li>";
+          }).join("") + "</ul>";
+        }).join("") : '<p class="hint">Nothing to show for this filter.</p>') +
+        '<datalist id="cover-dl">' + api.people().map(function (p) {
+          return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
+        }).join("") + "</datalist>" +
+        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the By person tab, then assign them here. ' +
+        "To end a cover, open the person and use End today.</p></div>";
+      seats.msg = "";
+      $("seats-back").onclick = function () { api.state().seatsOpen = false; renderDash(); };
+      $("seats-q").oninput = function () { seats.q = this.value; var pos = this.selectionStart; renderSeats(); $("seats-q").focus(); $("seats-q").setSelectionRange(pos, pos); };
+    }
+    function wireSeats() {
+      var out = $("dash-detail");
+      out.addEventListener("click", function (e) {
+        var f = e.target.closest("[data-sfilter]");
+        if (f && api.state().seatsOpen) { seats.filter = f.dataset.sfilter; renderSeats(); }
+      });
+      out.addEventListener("submit", function (e) {
+        var f = e.target.closest(".seat-form");
+        if (!f) return;
+        e.preventDefault();
+        var inputs = f.querySelectorAll("input"), v = inputs[0].value.trim(), start = inputs[1].value;
+        var m = /\(([^()]+)\)\s*$/.exec(v), key = m ? m[1] : null;
+        var person = key && api.byPos()[key];
+        if (!person || !person.name) { seats.msg = "Pick the person from the list (type a name, then choose)."; return renderSeats(); }
+        if (key === f.dataset.pos) { seats.msg = "Someone can't cover their own position."; return renderSeats(); }
+        if (!start) { seats.msg = "Pick a start date."; return renderSeats(); }
+        api.backend().addCover({ coverKey: key, coverName: person.name, targetPos: f.dataset.pos, start: start, end: null, note: "Long-term cover (Open seats)" })
+          .then(function () { seats.msg = person.name + " now covers " + f.dataset.pos + " from " + api.shortDate(api.fromIso(start)) + "."; renderSeats(); },
+            function (er) { seats.msg = er.message; renderSeats(); });
+      });
+    }
+
     function statRow(k, v) { return '<tr><th scope="row">' + esc(k) + '</th><td class="num">' + v + "</td></tr>"; }
     function loadStats(d, n) {
       var my = ++statsReq;
@@ -244,6 +388,9 @@
     function wireDash() {
       var out = $("dash-detail");
       out.addEventListener("click", function (e) {
+        if (e.target.closest("#go-report-date")) { api.state().dashDate = api.fromIso(reportData().asOf); return renderDash(); }
+        var g = e.target.closest("[data-goto]");
+        if (g) { dash.q = g.dataset.goto; $("dash-q").value = g.dataset.goto; dash.open[g.dataset.goto] = true; dash.reportOpen = true; return renderDash(); }
         var t = e.target.closest("[data-sort],[data-drill],[data-edit],[data-reset],[data-cancel]");
         if (!t) return;
         if (t.dataset.sort) {
@@ -264,13 +411,13 @@
         if (!(n >= 0 && n <= 30)) { dash.msg = "Required staffing must be a whole number from 0 to 30."; return renderDash(); }
         saveReq(f.dataset.co, n);
       });
-      $("dash-q").oninput = function () { dash.q = this.value; renderDash(); };
+      $("dash-q").oninput = function () { dash.q = this.value; api.state().seatsOpen = false; renderDash(); };
       $("dash-group").value = dash.group;
-      $("dash-group").onchange = function () { dash.group = this.value; renderDash(); };
-      $("dash-date").onchange = function () { if (this.value) { api.state().dashDate = api.fromIso(this.value); renderDash(); } };
-      $("dash-prev").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, -1); renderDash(); };
-      $("dash-next").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, 1); renderDash(); };
-      $("dash-today").onclick = function () { api.state().dashDate = api.today(); renderDash(); };
+      $("dash-group").onchange = function () { dash.group = this.value; api.state().seatsOpen = false; renderDash(); };
+      $("dash-date").onchange = function () { if (this.value) { api.state().dashDate = api.fromIso(this.value); renderDashOrSeats(); } };
+      $("dash-prev").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, -1); renderDashOrSeats(); };
+      $("dash-next").onclick = function () { api.state().dashDate = api.addDays(api.state().dashDate, 1); renderDashOrSeats(); };
+      $("dash-today").onclick = function () { api.state().dashDate = api.today(); renderDashOrSeats(); };
     }
     function saveReq(co, n) {
       api.backend().setStaffing(co, n).then(function () {
@@ -367,6 +514,9 @@
       }).join("");
     }
 
-    return { renderDash: renderDash, renderSix: renderSix, renderDocs: renderDocs, wireDash: wireDash, summarize: summarize };
+    function renderDashOrSeats() { if (api.state().seatsOpen) renderSeats(); else renderDash(); }
+    function wireAll() { wireDash(); wireSeats(); }
+
+    return { renderDash: renderDashOrSeats, renderSix: renderSix, renderDocs: renderDocs, wireDash: wireAll, summarize: summarize };
   };
 })(window);

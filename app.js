@@ -11,6 +11,7 @@
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
     dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null };
   var recsVersion = 0; // bumps whenever records change, for caches
+  var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick" };
   var recs = { statuses: [], tourChanges: [], covers: [], people: [] }; // records from the editor backend
   var backend = null;
@@ -749,11 +750,12 @@
   }
 
   var Dash = window.DashboardViews({
-    $: $, esc: esc, today: today, addDays: addDays, iso: iso, fromIso: fromIso, longDate: longDate, MONTHS: MONTHS,
+    $: $, esc: esc, today: today, addDays: addDays, iso: iso, fromIso: fromIso, longDate: longDate, shortDate: shortDate, MONTHS: MONTHS,
     slots: function () { return slots(); }, shift: shift, home: home, recs: function () { return recs; },
     recsVersion: function () { return recsVersion + ":" + iso(today()); }, dayRows: dayRows, byPos: function () { return byPos; },
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
+    requiredData: function () { return requiredData; },
   });
 
   var Accounts = window.AccountViews({
@@ -790,7 +792,8 @@
         return r.json();
       }).then(function (rows) {
         if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
-        boot(rows);
+        return fetch("data/required-staffing.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; })
+          .then(function (req) { requiredData = req; recsVersion++; boot(rows); });
       });
     }).catch(loadError);
   }
