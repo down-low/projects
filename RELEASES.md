@@ -12,6 +12,17 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - **Review before applying:** an admin screen lists each move (from position, to position, computed effective date) with unmatched or ambiguous names flagged, then applies them as dated moves.
 - **Seats left behind** become vacant from the same date unless another award fills them.
 
+## With the server launch
+
+### Installable app (PWA)
+Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.
+
+- **Manifest** (`manifest.webmanifest`): name "SFFD Tour Schedule", short name "Tours", start page `/`, standalone display, theme color from the app's red.
+- **Icons:** 192 px and 512 px (plus a maskable version) and an Apple touch icon. Use a department-approved icon if one is provided, else a simple placeholder mark.
+- **Service worker:** caches the app's own files and the roster so it opens fast and still shows the schedule on a weak signal. Sign-in, records (leave, covers, tour changes) and contact info always come live from the server, never from the cache. A new version takes over on the next open.
+- **Server:** serve the manifest, icons and service worker to everyone (signed in or not) so phones can install it; HTTPS is already required.
+- **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
+
 ## Later
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
@@ -22,3 +33,6 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - Dashboard (staffing summary by apparatus, stat summary), "6 of 9" tour intersections, Documents menu.
 - Dashboard grouping by division and battalion, from the Daily Balance Report (`organization.js`).
 - Required staffing from the Balance report (313), Regular / Covering / Open split, "working but not in the tool" check, Open seats worklist for long-term covers.
+- Employee IDs: searchable, shown on person pages, duplicate names flagged.
+- Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, battalion lists, on/off status in search.
+- View-only snapshot link with records baked in (no sign-in needed).
