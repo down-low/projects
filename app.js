@@ -9,7 +9,7 @@
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, dateOpen: {} };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -142,6 +142,7 @@
     var showVacant = $("date-vacant").checked;
 
     var match = makeMatcher(q);
+    if (isPhone()) return renderDatePhone(d, w, q, match);
     var rows = dayRows(d).filter(function (r) {
       if (rank && r.slot.rank !== rank) return false;
       if (!r.name && !showVacant) return false;
@@ -199,6 +200,15 @@
     $("date-results").innerHTML = html;
   }
 
+  // Who's working on a phone: division → battalion → apparatus → people (see Dash.phoneTree).
+  function renderDatePhone(d, w, q, match) {
+    var tree = Dash.phoneTree(d, { open: state.dateOpen, match: match, bars: false });
+    $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + tree.working + "</b> on duty of " + tree.required +
+      (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
+    $("date-results").innerHTML = '<div class="pt">' + tree.html + "</div>";
+    Dash.wireTree($("date-results"), state.dateOpen, renderDate);
+  }
+
   /* ---------- By person ---------- */
   var suggestIdx = -1;
   function matches(q) {
@@ -218,12 +228,25 @@
     suggestIdx = -1;
     if (!list.length) { ul.hidden = true; $("person-input").setAttribute("aria-expanded", "false"); return; }
     ul.innerHTML = list.map(function (p, i) {
-      return '<li role="option" id="opt-' + i + '" data-pos="' + esc(p.pos) + '"><span>' + esc(p.name) +
+      return '<li role="option" id="opt-' + i + '" data-pos="' + esc(p.pos) + '"><span class="who"><span>' + esc(p.name) +
         '</span><span class="meta">' + esc(p.title) + (tourOn(p, today()) ? " · T" + tourOn(p, today()) : "") +
-        (p.emplId ? " · " + esc(p.emplId) : "") + "</span></li>";
+        (p.emplId ? " · " + esc(p.emplId) : "") + "</span></span>" + briefHtml(p) + "</li>";
     }).join("");
     ul.hidden = false;
     $("person-input").setAttribute("aria-expanded", "true");
+  }
+  // Today at a glance for a search result: "On · E09", a leave code, or "Off" with the next shift.
+  function briefHtml(p) {
+    var t = today(), s = day(p, t);
+    if (s && !s.status) return '<span class="brief on">On · ' + esc(s.co || home(p)) + "</span>";
+    if (s && s.status) return '<span class="brief">' + statusPill(s.status) + "</span>";
+    for (var k = 1; k <= 40; k++) {
+      var d = addDays(t, k), s2 = day(p, d);
+      if (s2 && !s2.status) {
+        return '<span class="brief">Off<small>' + (k === 1 ? "tomorrow" : k < 7 ? "next " + DOW[d.getDay()] : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
+      }
+    }
+    return '<span class="brief">Off</span>';
   }
   function moveSuggest(dir) {
     var items = $("person-list").querySelectorAll("li");
@@ -292,12 +315,13 @@
     out.innerHTML =
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
+      identTiles(p, tourNow, next) +
       kv("Rank", p.rank) +
-      kv("Employee ID", p.emplId || "Not on file") +
+      kv("Employee ID", p.emplId || "Not on file", "kv-id") +
       (p.added && !p.tour
         ? kv("Roster", "Added, not on the vacancy list")
         : (p.added ? kv("Roster", "Added, not on the vacancy list") + kv("Apparatus", p.company) : kv("Position", p.title) + kv("Position no.", p.pos)) +
-          '<div class="kv"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
+          '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
           (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
           kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
@@ -315,17 +339,38 @@
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
       '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
       '<div class="side">' +
-      '<div class="card"><h3>Next shifts</h3>' + (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
+      foldOpen("next", '<details class="card fold" data-fold="next"', ">") + '<summary><h3>Next shifts</h3><span class="fold-sum">' +
+      esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
+      (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
         return '<li><span class="when">' + esc(shortDate(n.d)) + '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
-      }).join("") + "</ol></div>" +
-      historyCard(p) + datesCard(p) + "</div></div>";
+      }).join("") + "</ol></details>" +
+      historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     wireDates(p);
+    out.querySelectorAll("details[data-fold]").forEach(function (el) {
+      el.addEventListener("toggle", function () { state.folds[el.dataset.fold] = el.open; });
+    });
+  }
+  /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones;
+     the editing forms start closed everywhere. A section someone opens or closes stays that way. */
+  function foldOpen(key, head, tail) {
+    var open = state.folds[key];
+    if (open == null) open = key === "edit" ? false : !isPhone();
+    return head + (open ? " open" : "") + tail;
+  }
+  // Phone-only summary tiles at the top of a person's page.
+  function identTiles(p, tourNow, next) {
+    var n = next.filter(function (x) { return !x.s.status; })[0];
+    var when = !n ? "None soon" : n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : shortDate(n.d);
+    return '<div class="tiles">' +
+      '<div class="tile"><span class="k">Tour</span><span class="v big">' + (tourNow || "—") + "</span></div>" +
+      '<div class="tile"><span class="k">Next shift</span><span class="v">' + esc(when) + "</span></div>" +
+      '<div class="tile"><span class="k">Empl ID</span><span class="v mono">' + esc(p.emplId || "—") + "</span></div></div>";
   }
 
   /* ---------- Birth and hire dates (admins) ---------- */
@@ -367,7 +412,7 @@
   }
 
   /* ---------- Status & tour history, editor forms ---------- */
-  function historyCard(p) {
+  function historyCard(p, extra) {
     var canEdit = backend && backend.canEdit();
     var items = recs.statuses.filter(function (s) { return s.pos === p.pos; }).map(function (s) {
       return { kind: "statuses", id: s.id, sort: s.start, html: statusPill(s.code) + " <b>" + esc(STATUS_LABEL[s.code]) + "</b> " +
@@ -414,7 +459,12 @@
       '<div class="row"><button class="btn primary" type="submit">Save tour change</button><span class="msg" id="ft-msg" role="status"></span></div></form>') +
       (p.added ? '<div class="row danger-zone"><button class="btn small" data-remove="people" data-id="' + esc(p.pos.slice(7)) + '">Remove this person</button></div>' : "");
 
-    return '<div class="card"><h3>Status, tour &amp; cover history</h3>' + list + forms + "</div>";
+    return foldOpen("hist", '<details class="card fold" data-fold="hist"', ">") + "<summary><h3>Covers, leave &amp; history</h3>" +
+      '<span class="fold-sum">' + (items.length ? items.length + (items.length === 1 ? " record" : " records") : "None") + "</span></summary>" + list + "</details>" +
+      (canEdit
+        ? foldOpen("edit", '<details class="card fold edit-fold" data-fold="edit"', ">") + "<summary><h3>Edit</h3>" +
+          '<span class="fold-sum">leave · cover' + (p.added ? "" : " · tour") + "</span></summary>" + forms + (extra || "") + "</details>"
+        : '<div class="card edit-hint-card">' + forms + "</div>");
   }
   function tourOptions(sel) {
     var o = "";
@@ -511,7 +561,7 @@
     return '<button class="linkish" data-pos="' + esc(o.pos) + '">' + esc(o.name) + "</button> " +
       '<span class="hint">' + esc(o.title) + "</span>";
   }
-  function kv(k, v) { return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>"; }
+  function kv(k, v, cls) { return '<div class="kv' + (cls ? " " + cls : "") + '"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>"; }
   function watchesFor(tour) {
     var out = [];
     for (var w = 1; w <= 31; w++) if (M.tourWorks(tour, w)) out.push(w);
@@ -621,7 +671,8 @@
       Array.apply(null, Array(31)).map(function (_, i) { return '<option value="' + (i + 1) + '">Tour ' + (i + 1) + "</option>"; }).join("");
     fillCompanies();
 
-    document.querySelectorAll(".tab").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
+    document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
+    wireSheet();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -645,7 +696,8 @@
       var li = e.target.closest("li");
       if (li) { e.preventDefault(); choosePerson(li.dataset.pos); }
     };
-    $("person-input").onblur = function () { setTimeout(function () { $("person-list").hidden = true; }, 100); };
+    // On phones the results stay put when the keyboard closes, so they can be read and tapped.
+    $("person-input").onblur = function () { setTimeout(function () { if (!isPhone()) $("person-list").hidden = true; }, 100); };
 
     $("rank-select").onchange = function () { fillCompanies(); renderRank(); };
     $("rank-company").onchange = renderRank;
@@ -718,7 +770,7 @@
     booted = true;
     applyAccountUi();
     var v = recall("view");
-    setView(tabAllowed(v) ? v : "dash");
+    setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
   }
   function selectText(el) {
     if (!el) return;
@@ -761,7 +813,50 @@
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
     if (!tabAllowed(state.view) && booted) setView("dash");
+    // Menu sheet items marked data-need show only to people who can use them.
+    var me = serverMode() && backend.me ? backend.me() : null;
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
+    $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+  }
+
+  /* ---------- Phone layout: bottom tabs and the More sheet ---------- */
+  var phoneMq = window.matchMedia ? window.matchMedia("(max-width: 640px)") : null;
+  function isPhone() { return !!(phoneMq && phoneMq.matches); }
+  if (phoneMq) {
+    var onWidth = function () { if (booted) render(); };
+    if (phoneMq.addEventListener) phoneMq.addEventListener("change", onWidth); else if (phoneMq.addListener) phoneMq.addListener(onWidth);
+  }
+  var sheetOpener = null;
+  function openSheet(opener) {
+    sheetOpener = opener || document.activeElement;
+    $("more-sheet").hidden = false;
+    $("more-sheet").querySelector(".sheet-x").focus();
+  }
+  function closeSheet() {
+    if ($("more-sheet").hidden) return;
+    $("more-sheet").hidden = true;
+    if (sheetOpener && sheetOpener.focus && document.contains(sheetOpener)) sheetOpener.focus();
+  }
+  function wireSheet() {
+    $("menu-btn").onclick = function () { openSheet(this); };
+    $("tab-more").onclick = function () { openSheet(this); };
+    $("more-sheet").addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) return closeSheet();
+      var go = e.target.closest("[data-go]");
+      if (go) {
+        var to = go.dataset.go;
+        closeSheet();
+        if (to === "signout") return backend.signOut();
+        if (to === "seats") { state.seatsOpen = true; return setView("dash"); }
+        if (to === "dash") state.seatsOpen = false;
+        if (tabAllowed(to)) setView(to);
+        return;
+      }
+      if (e.target.closest("a")) closeSheet();
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("more-sheet").hidden) closeSheet(); });
   }
   function renderEditChip() {
     var el = $("edit-chip");
@@ -789,7 +884,7 @@
     recsVersion: function () { return recsVersion + ":" + iso(today()); }, dayRows: dayRows, byPos: function () { return byPos; },
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
-    requiredData: function () { return requiredData; },
+    requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
   });
 
   var Accounts = window.AccountViews({

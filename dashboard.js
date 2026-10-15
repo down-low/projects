@@ -110,6 +110,7 @@
       var d = api.state().dashDate;
       var out = $("dash-detail");
       $("dash-date").value = api.iso(d);
+      if (api.isPhone()) return renderDashPhone(d, out);
       var all = summarize(d);
       function sum(k) { return all.reduce(function (a, r) { return a + r[k]; }, 0); }
       var working = sum("working"), needing = sum("missing"), required = sum("required"), coveringN = sum("covering");
@@ -247,6 +248,94 @@
       if ($("open-seats-btn")) $("open-seats-btn").onclick = function () { api.state().seatsOpen = true; renderSeats(); };
       loadStats(d, st.named);
     }
+    /* ---------- Phone list: division → battalion → apparatus → people ----------
+       Shared by Who's working and Staffing on phones. o: {open: {key: bool}, match: fn|null, bars: bool}.
+       Returns {html, required, working}. Toggle buttons carry data-tog with the key to flip in o.open. */
+    function phoneTree(d, o) {
+      var all = summarize(d), byCo = {};
+      all.forEach(function (r) { byCo[r.co] = r; });
+      var match = o.match, filtering = !!match;
+      function personMatches(x) {
+        return match({ name: x.name, title: x.slot.title, co: x.co, tour: x.tour, pos: x.slot.pos, id: x.who && x.who.emplId, extra: "" });
+      }
+      function nums(on, req) {
+        var gap = on - req;
+        return '<span class="pt-n">' + on + " / " + req + '</span><span class="pt-gap' + (gap < 0 ? " neg" : gap > 0 ? " pos" : "") + '">' +
+          (gap < 0 ? "−" + -gap : gap > 0 ? "+" + gap : "") + "</span>";
+      }
+      function isOpen(key) { return filtering || !!o.open[key]; }
+      var tot = { required: 0, working: 0 };
+      var html = Org.DIVISIONS.filter(function (dv) { return !dv.hidden; }).map(function (dv) {
+        var dvOn = 0, dvReq = 0;
+        var bts = dv.battalions.map(function (bt) {
+          var rows = bt.apparatus.map(function (co) { return byCo[co]; }).filter(Boolean);
+          var on = 0, req = 0;
+          rows.forEach(function (r) { on += r.working; req += r.required; });
+          dvOn += on; dvReq += req;
+          var shown = rows.map(function (r) {
+            var people = filtering ? r.people.filter(personMatches) : r.people;
+            return { r: r, people: people };
+          }).filter(function (x) { return !filtering || x.people.length; });
+          if (filtering && !shown.length) return "";
+          var open = isOpen("g:" + bt.id);
+          return '<li><button class="pt-row pt-bt" type="button" data-tog="g:' + esc(bt.id) + '" aria-expanded="' + open + '"><span class="pt-name">' + esc(bt.name) + "</span>" + nums(on, req) +
+            (o.bars ? '<span class="pt-bar" aria-hidden="true"><i style="width:' + Math.min(100, Math.round(100 * on / Math.max(1, req))) + '%"></i></span>' : "") + "</button>" +
+            (open ? '<ul class="pt-cos">' + shown.map(function (x) {
+              var r = x.r, coOpen = isOpen(r.co);
+              return '<li><button class="pt-row pt-co" type="button" data-tog="' + esc(r.co) + '" aria-expanded="' + coOpen + '"><span class="pt-name">' + esc(r.co) + "</span>" +
+                nums(r.working, r.required) + "</button>" +
+                (coOpen ? '<ul class="pt-people">' + x.people.map(function (p) {
+                  var tags = [];
+                  if (p.acting) tags.push("covering " + (p.slot.name || "vacant seat"));
+                  else if (p.swingCover) tags.push("swing from " + p.slot.company);
+                  if (p.slot.open && !p.acting) tags.push("open for bid");
+                  return '<li><button class="linkish" data-pos="' + esc(p.who ? p.who.pos : p.slot.pos) + '">' + esc(p.name) + "</button>" +
+                    '<span class="pt-role">' + esc(p.slot.rank === "FF/Paramedic" ? "FF/PM" : p.slot.rank === "Lieutenant" ? "Lt." : p.slot.rank === "Captain" ? "Capt." : p.slot.rank || "") +
+                    (tags.length ? ' · <span class="pt-tag">' + esc(tags.join(" · ")) + "</span>" : "") + "</span></li>";
+                }).join("") + (filtering ? "" : r.short.map(function (t) { return '<li class="pt-short">' + esc(t) + "</li>"; }).join("")) +
+                (!x.people.length && !r.short.length ? '<li class="pt-short">Nobody scheduled.</li>' : "") + "</ul>" : "") + "</li>";
+            }).join("") + "</ul>" : "") + "</li>";
+        }).join("");
+        tot.required += dvReq; tot.working += dvOn;
+        if (filtering && !bts) return "";
+        return '<section class="pt-div"><h3 class="pt-dh"><span>' + esc(dv.name) + "</span><span>" + dvOn + " / " + dvReq + '</span></h3><ul class="pt-bts">' + bts + "</ul></section>";
+      }).join("");
+      return { html: html || '<p class="empty">Nobody matches.</p>', required: tot.required, working: tot.working };
+    }
+    // Toggle handler for a phoneTree container.
+    function wireTree(el, openMap, rerender) {
+      el.onclick = function (e) {
+        var b = e.target.closest("[data-tog]");
+        if (!b) return;
+        openMap[b.dataset.tog] = b.getAttribute("aria-expanded") !== "true";
+        rerender();
+      };
+    }
+
+    /* ---------- Staffing on a phone: three tiles, then the battalion list ---------- */
+    function renderDashPhone(d, out) {
+      var tree = phoneTree(d, { open: dash.open, match: null, bars: true });
+      var all = summarize(d), open = all.reduce(function (a, r) { return a - r.missing; }, 0);
+      var st = stats(d);
+      out.innerHTML =
+        '<div class="tiles3">' +
+        '<div class="tile3"><span class="k">Required</span><span class="v">' + tree.required + "</span></div>" +
+        '<div class="tile3"><span class="k">On duty</span><span class="v">' + tree.working + "</span></div>" +
+        '<div class="tile3 bad"><span class="k">Open</span><span class="v">' + open + "</span></div></div>" +
+        '<p class="hint pt-lede">Open = seats still needing someone, such as overtime. Tap a battalion for its apparatus.' +
+        (api.backend() && api.backend().canEdit() ? ' <button class="linkish" id="open-seats-btn">Open seats</button>' : "") + "</p>" +
+        '<div class="pt">' + tree.html + "</div>" +
+        reportCard(d, all, tree.working) +
+        '<details class="card fold"><summary><h3>Stats summary</h3></summary><table class="list kv-table"><tbody>' +
+        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
+        statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
+        '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
+        '</tbody></table><p class="hint" id="st-note"></p></details>';
+      if ($("report-card")) $("report-card").ontoggle = function () { dash.reportOpen = this.open; };
+      if ($("open-seats-btn")) $("open-seats-btn").onclick = function () { api.state().seatsOpen = true; renderSeats(); };
+      loadStats(d, st.named);
+    }
+
     /* ---------- Check against the Daily Balance Report ---------- */
     function reportCard(d, all, toolWorking) {
       var rd = reportData();
@@ -391,6 +480,8 @@
         if (e.target.closest("#go-report-date")) { api.state().dashDate = api.fromIso(reportData().asOf); return renderDash(); }
         var g = e.target.closest("[data-goto]");
         if (g) { dash.q = g.dataset.goto; $("dash-q").value = g.dataset.goto; dash.open[g.dataset.goto] = true; dash.reportOpen = true; return renderDash(); }
+        var tg = e.target.closest("[data-tog]");
+        if (tg) { dash.open[tg.dataset.tog] = tg.getAttribute("aria-expanded") !== "true"; return renderDash(); }
         var t = e.target.closest("[data-sort],[data-drill],[data-edit],[data-reset],[data-cancel]");
         if (!t) return;
         if (t.dataset.sort) {
@@ -506,17 +597,21 @@
     /* ---------- Documents menu ---------- */
     function renderDocs(list) {
       var ul = $("docs-list");
-      if (!list || !list.length) { $("docs-menu").hidden = true; return; }
-      $("docs-menu").hidden = false;
+      var has = !!(list && list.length);
+      $("docs-menu").hidden = !has;
+      if ($("sheet-docs-h")) $("sheet-docs-h").hidden = !has;
+      if (!has) { ul.innerHTML = ""; if ($("sheet-docs")) $("sheet-docs").innerHTML = ""; return; }
       ul.innerHTML = list.map(function (d) {
         return '<li><a href="docs/' + encodeURIComponent(d.file) + '" target="_blank" rel="noopener">' + esc(d.title) +
           '<span class="hint">' + esc(d.ref) + " · PDF</span></a></li>";
       }).join("");
+      if ($("sheet-docs")) $("sheet-docs").innerHTML = ul.innerHTML; // the phone menu sheet lists the same documents
     }
 
     function renderDashOrSeats() { if (api.state().seatsOpen) renderSeats(); else renderDash(); }
     function wireAll() { wireDash(); wireSeats(); }
 
-    return { renderDash: renderDashOrSeats, renderSix: renderSix, renderDocs: renderDocs, wireDash: wireAll, summarize: summarize };
+    return { renderDash: renderDashOrSeats, renderSix: renderSix, renderDocs: renderDocs, wireDash: wireAll, summarize: summarize,
+      phoneTree: phoneTree, wireTree: wireTree };
   };
 })(window);
