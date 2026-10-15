@@ -39,7 +39,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
           "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/style.css": "style.css"}
-CODES = {"VA", "D", "S"}
+CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 ROLES = ("member", "editor", "admin")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -471,7 +471,7 @@ class App:
         pos, name = self._person_or_position(body.get("pos"))
         code = body.get("code")
         if code not in CODES:
-            raise BadRequest("code must be VA, D or S")
+            raise BadRequest("code must be VA, D, S or WE")
         start = valid_date(body.get("start"), "start")
         end = valid_date(body.get("end"), "end", required=False)
         if end and end < start:

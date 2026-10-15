@@ -93,7 +93,7 @@
     function isCovering(r) { return !!(r.acting || (r.who && r.who.added)); }
 
     function stats(d) {
-      var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0 }, named = 0, full = 0;
+      var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0, WE: 0 }, named = 0, full = 0;
       api.people().forEach(function (p) {
         named++;
         var st = M.statusFor(p.pos, d, recs.statuses);
@@ -102,7 +102,7 @@
       var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD); }).length;
       var open = api.data().filter(function (p) { return p.open; }).length;
       var vacant = api.data().filter(function (p) { return !p.name; }).length;
-      return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, acting: acting, open: open, vacant: vacant };
+      return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, WE: counts.WE, acting: acting, open: open, vacant: vacant };
     }
 
     /* ---------- Dashboard ---------- */
@@ -231,7 +231,7 @@
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
         '<div class="card stats"><h3>Stats summary</h3><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
+        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) +
         statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         "</tbody></table>" + '<p class="hint" id="st-note"></p></div>' +
@@ -318,7 +318,7 @@
         '<div class="pt">' + tree.html + "</div>" +
         reportCard(d, all, tree.working) +
         '<details class="card fold"><summary><h3>Stats summary</h3></summary><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
+        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) +
         statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         '</tbody></table><p class="hint" id="st-note"></p></details>';

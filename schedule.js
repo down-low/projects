@@ -104,8 +104,10 @@
     return out;
   }
 
-  /* Holidays, worked out for any year. Shown on the actual date (the schedule runs every day, so weekday
-     "observed" dates are not used). kind "observance" marks days that aren't city holidays. */
+  /* Holidays, worked out for any year. A fixed-date holiday that falls on a weekend is shown on the weekday
+     it's observed (Saturday -> the Friday before, Sunday -> the Monday after), named "(observed)"; New Year's Day
+     on a Saturday is observed Dec 31 of the year before. kind "observance" marks days that aren't city holidays
+     (Halloween, Mother's Day); those never move. */
   function nthWeekday(y, m, dow, n) { // n-th (1-based) weekday dow (0 = Sun) of month m (0-based)
     var first = new Date(y, m, 1).getDay();
     return 1 + ((dow - first + 7) % 7) + 7 * (n - 1);
@@ -114,33 +116,40 @@
     var last = new Date(y, m + 1, 0), d = last.getDate();
     return d - ((last.getDay() - dow + 7) % 7);
   }
+  function dayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
   var holidayCache = {};
-  function holidaysOf(y) {
+  function holidaysOf(y) { // holidays belonging to year y, keyed by the date they're shown on
     if (holidayCache[y]) return holidayCache[y];
-    var list = [
-      [0, 1, "New Year's Day", "New Year"],
+    var thanks = nthWeekday(y, 10, 4, 4);
+    var list = [ // [month, day, name, short, kind, fixed date?]
+      [0, 1, "New Year's Day", "New Year", "holiday", true],
       [0, nthWeekday(y, 0, 1, 3), "Martin Luther King, Jr.'s Birthday", "MLK Day"],
       [1, nthWeekday(y, 1, 1, 3), "Presidents' Day", "Presidents"],
       [4, nthWeekday(y, 4, 0, 2), "Mother's Day", "Mother's Day", "observance"],
       [4, lastWeekday(y, 4, 1), "Memorial Day", "Memorial"],
-      [5, 19, "Juneteenth", "Juneteenth"],
-      [6, 4, "Independence Day", "July 4"],
+      [5, 19, "Juneteenth", "Juneteenth", "holiday", true],
+      [6, 4, "Independence Day", "July 4", "holiday", true],
       [8, nthWeekday(y, 8, 1, 1), "Labor Day", "Labor Day"],
       [9, nthWeekday(y, 9, 1, 2), "Indigenous Peoples Day and Italian American Heritage Day", "Indig./Ital."],
       [9, 31, "Halloween", "Halloween", "observance"],
-      [10, 11, "Veterans Day", "Veterans"],
-      [10, nthWeekday(y, 10, 4, 4), "Thanksgiving Day", "Thanksgiving"],
-      [10, nthWeekday(y, 10, 4, 4) + 1, "The Day After Thanksgiving", "Day after"],
-      [11, 25, "Christmas Day", "Christmas"],
+      [10, 11, "Veterans Day", "Veterans", "holiday", true],
+      [10, thanks, "Thanksgiving Day", "Thanksgiving"],
+      [10, thanks + 1, "The Day After Thanksgiving", "Day after"],
+      [11, 25, "Christmas Day", "Christmas", "holiday", true],
     ];
     var map = {};
     list.forEach(function (h) {
-      map[(h[0] + 1) + "-" + h[1]] = { name: h[2], short: h[3], kind: h[4] || "holiday" };
+      var d = new Date(y, h[0], h[1]), name = h[2], dow = d.getDay();
+      if (h[5] && (dow === 6 || dow === 0)) { d = new Date(y, h[0], h[1] + (dow === 6 ? -1 : 1)); name += " (observed)"; }
+      map[dayKey(d)] = { name: name, short: h[3], kind: h[4] || "holiday" };
     });
     return (holidayCache[y] = map);
   }
   // {name, short, kind: "holiday" | "observance"} for date d, or null.
-  function holidayFor(d) { return holidaysOf(d.getFullYear())[(d.getMonth() + 1) + "-" + d.getDate()] || null; }
+  function holidayFor(d) {
+    var k = dayKey(d);
+    return holidaysOf(d.getFullYear())[k] || holidaysOf(d.getFullYear() + 1)[k] || null;
+  }
 
   var api = {
     sharedWatches: sharedWatches, holidayFor: holidayFor,

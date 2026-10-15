@@ -14,7 +14,7 @@
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
   var ID_RE = /^[a-z]{2}\d{4}$/i; // employee ID, e.g. LE1234
-  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick" };
+  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick", WE: "Working elsewhere" };
   var recs = { statuses: [], tourChanges: [], covers: [], people: [] }; // records from the editor backend
   var backend = null;
   var contacts = {}; // pos -> {email, phoneMobile, phoneOther, shared}, from the server when signed in
@@ -150,7 +150,7 @@
         extra: r.status ? r.status + " " + STATUS_LABEL[r.status] : "" });
     });
 
-    var off = { VA: 0, D: 0, S: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
+    var off = { VA: 0, D: 0, S: 0, WE: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
     rows.forEach(function (r) {
       if (!r.name) return;
       if (!r.off) { onDuty++; return; }
@@ -159,7 +159,7 @@
       else if (r.away) awayN++;
       else coveredN++;
     });
-    var offParts = ["VA", "S", "D"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
+    var offParts = ["VA", "S", "D", "WE"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " acting elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
@@ -351,7 +351,7 @@
       '<div class="legend"><span><i style="background:var(--accent)"></i>Work day (' + workCount + ")</span>" +
       (monthHolidays.length ? '<span><i class="sw-hol"></i>Holiday</span>' : "") +
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
-      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D (' + offCount + ")</span>" : "") +
+      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
       '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
       '<div class="side">' +
@@ -470,7 +470,7 @@
     var t = iso(today());
     var forms = !canEdit ? editHint() :
       '<form class="edit" id="f-status" novalidate><h4>Add status</h4>' +
-      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option></select></label>' +
+      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option><option value="WE">WE · Working elsewhere</option></select></label>' +
       '<label>From<input type="date" id="fs-start" value="' + t + '" required></label>' +
       '<label>To<input type="date" id="fs-end" value="' + t + '"></label></div>' +
       '<label class="chk"><input type="checkbox" id="fs-open"> No end date yet</label>' +
@@ -627,7 +627,7 @@
     for (var i = 1; i <= days; i++) dates.push(new Date(m.getFullYear(), m.getMonth(), i));
 
     $("rank-count").textContent = rows.length + " " + (rows.length === 1 ? "position" : "positions") +
-      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D = scheduled but off. Click a name for that person's detail.";
+      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D / WE = scheduled but off (WE = working elsewhere, e.g. an admin assignment). Click a name for that person's detail.";
     if (!rows.length) { $("rank-grid").innerHTML = '<div class="empty">No positions match. Try All companies or All tours.</div>'; return; }
 
     var head = '<tr><th class="who">Name</th>' + dates.map(function (d) {

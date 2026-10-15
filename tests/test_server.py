@@ -203,6 +203,8 @@ class ServerTest(unittest.TestCase):
         admin.req("POST", f"/api/admin/users/{u['id']}", {"action": "role", "role": "editor"})
         st, created, _ = a.req("POST", "/api/statuses", rec)
         self.assertEqual((st, created["createdBy"]), (201, "Pereira"))
+        self.assertEqual(a.req("POST", "/api/statuses", dict(rec, code="WE", note="Admin assignment"))[0], 201)
+        self.assertEqual(a.req("POST", "/api/statuses", dict(rec, code="XX"))[0], 400)
         self.assertEqual(a.req("DELETE", f"/api/statuses/{created['id']}", csrf=False)[0], 403)
         self.assertEqual(a.req("DELETE", f"/api/statuses/{created['id']}")[0], 200)
         self.assertEqual(a.req("POST", "/api/statuses", rec, headers={"Origin": "https://evil.example"})[0], 403)

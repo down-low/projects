@@ -21,11 +21,11 @@ From the Vacancy List (26 A-071 Att. A):
 
 The math lives in `schedule.js`; positions are in `data/positions.json`; storage adapters are in `store.js`.
 
-## Tour changes and leave (VA / S / D)
+## Tour changes and leave (VA / S / D / WE)
 
 Editors can record, per person (on the **By person** tab):
 
-- **Status**: VA vacation, S sick or D disabled, for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
+- **Status**: VA vacation, S sick, D disabled or WE working elsewhere (e.g. an admin assignment not on the vacancy list), for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
 - **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
 
 - **Cover assignment** (temporary acting, e.g. covering an injured captain): on the covering person's page, **Cover another position**, pick the position, a start date and optionally an end date. While it runs, that person works the covered position's tour and company and shows as "Acting for" the holder; the holder shows "Covered by"; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover.
@@ -38,13 +38,13 @@ Editors can record, per person (on the **By person** tab):
 - **Regular, Covering, Open**: Working is split into Regular (people in their own seat or on a swing) and Covering (cover assignments and added people). Open is what's still short, which would need overtime.
 - **Working but not in the tool**: on the Balance report's date, a card compares each apparatus's report headcount with the tool's and lists where the report has more people, with an overall estimate (report working minus overtime hires, minus the tool's working).
 - **Open seats** (editors): every vacant position and every position whose holder is away long-term (open-ended D or acting elsewhere), grouped by division and battalion, with an **Assign** box to record who is covering it long-term. Filter by No cover / Covered / All.
-- **Stats summary**: full duty, VA, S, D, acting/covering, spots open for bid, vacant seats, and **average age** and **average years of service** from birth and hire dates. Dates are entered by the person on My page or by an admin on the By person page; they are private, and the dashboard only shows averages.
+- **Stats summary**: full duty, VA, S, D, WE, acting/covering, spots open for bid, vacant seats, and **average age** and **average years of service** from birth and hire dates. Dates are entered by the person on My page or by an admin on the By person page; they are private, and the dashboard only shows averages.
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
 ## Holidays
 
-A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Who's working and the Dashboard / Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`) and shown on the actual date, not a weekday "observed" date, since the schedule runs every day.
+A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Who's working and the Dashboard / Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`). A fixed-date holiday on a weekend shows on the day it's observed, marked "(observed)": Saturday moves to the Friday before, Sunday to the Monday after (July 4, 2027 → Mon July 5; Christmas 2027 → Fri Dec 24; New Year's Day 2028 → Fri Dec 31, 2027). Halloween and Mother's Day don't move.
 
 ## On phones
 

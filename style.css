@@ -265,6 +265,13 @@ table.roster td.c.weekend { background: color-mix(in srgb, var(--line) 35%, tran
   border-radius: 4px; padding: 1px 5px; background: var(--off-soft); color: var(--off); margin-right: 4px;
 }
 .st-T { background: var(--accent-soft); color: var(--accent); }
+/* WE (working elsewhere): slate blue, apart from VA/S/D purple, acting teal and swing amber */
+:root { --we: #3d5a78; --we-soft: #dde6ef; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --we: #9dbbd8; --we-soft: #24313f; } }
+:root[data-theme="dark"] { --we: #9dbbd8; --we-soft: #24313f; }
+.st-WE { background: var(--we-soft); color: var(--we); }
+.cal .d.off.st-WE { border-color: var(--we); background: repeating-linear-gradient(135deg, var(--we-soft) 0 6px, var(--surface) 6px 12px); }
+.cal .d.off.st-WE .w { color: var(--we); }
 tr.is-off td { color: var(--muted); }
 tr.is-off td .linkish { text-decoration-line: line-through; text-decoration-color: var(--muted); }
 

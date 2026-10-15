@@ -269,6 +269,13 @@ table.roster td.c.weekend { background: color-mix(in srgb, var(--line) 35%, tran
   border-radius: 4px; padding: 1px 5px; background: var(--off-soft); color: var(--off); margin-right: 4px;
 }
 .st-T { background: var(--accent-soft); color: var(--accent); }
+/* WE (working elsewhere): slate blue, apart from VA/S/D purple, acting teal and swing amber */
+:root { --we: #3d5a78; --we-soft: #dde6ef; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --we: #9dbbd8; --we-soft: #24313f; } }
+:root[data-theme="dark"] { --we: #9dbbd8; --we-soft: #24313f; }
+.st-WE { background: var(--we-soft); color: var(--we); }
+.cal .d.off.st-WE { border-color: var(--we); background: repeating-linear-gradient(135deg, var(--we-soft) 0 6px, var(--surface) 6px 12px); }
+.cal .d.off.st-WE .w { color: var(--we); }
 tr.is-off td { color: var(--muted); }
 tr.is-off td .linkish { text-decoration-line: line-through; text-decoration-color: var(--muted); }
 
@@ -887,8 +894,10 @@ details.fold[open] > summary { margin-bottom: 10px; }
     return out;
   }
 
-  /* Holidays, worked out for any year. Shown on the actual date (the schedule runs every day, so weekday
-     "observed" dates are not used). kind "observance" marks days that aren't city holidays. */
+  /* Holidays, worked out for any year. A fixed-date holiday that falls on a weekend is shown on the weekday
+     it's observed (Saturday -> the Friday before, Sunday -> the Monday after), named "(observed)"; New Year's Day
+     on a Saturday is observed Dec 31 of the year before. kind "observance" marks days that aren't city holidays
+     (Halloween, Mother's Day); those never move. */
   function nthWeekday(y, m, dow, n) { // n-th (1-based) weekday dow (0 = Sun) of month m (0-based)
     var first = new Date(y, m, 1).getDay();
     return 1 + ((dow - first + 7) % 7) + 7 * (n - 1);
@@ -897,33 +906,40 @@ details.fold[open] > summary { margin-bottom: 10px; }
     var last = new Date(y, m + 1, 0), d = last.getDate();
     return d - ((last.getDay() - dow + 7) % 7);
   }
+  function dayKey(d) { return d.getFullYear() + "-" + (d.getMonth() + 1) + "-" + d.getDate(); }
   var holidayCache = {};
-  function holidaysOf(y) {
+  function holidaysOf(y) { // holidays belonging to year y, keyed by the date they're shown on
     if (holidayCache[y]) return holidayCache[y];
-    var list = [
-      [0, 1, "New Year's Day", "New Year"],
+    var thanks = nthWeekday(y, 10, 4, 4);
+    var list = [ // [month, day, name, short, kind, fixed date?]
+      [0, 1, "New Year's Day", "New Year", "holiday", true],
       [0, nthWeekday(y, 0, 1, 3), "Martin Luther King, Jr.'s Birthday", "MLK Day"],
       [1, nthWeekday(y, 1, 1, 3), "Presidents' Day", "Presidents"],
       [4, nthWeekday(y, 4, 0, 2), "Mother's Day", "Mother's Day", "observance"],
       [4, lastWeekday(y, 4, 1), "Memorial Day", "Memorial"],
-      [5, 19, "Juneteenth", "Juneteenth"],
-      [6, 4, "Independence Day", "July 4"],
+      [5, 19, "Juneteenth", "Juneteenth", "holiday", true],
+      [6, 4, "Independence Day", "July 4", "holiday", true],
       [8, nthWeekday(y, 8, 1, 1), "Labor Day", "Labor Day"],
       [9, nthWeekday(y, 9, 1, 2), "Indigenous Peoples Day and Italian American Heritage Day", "Indig./Ital."],
       [9, 31, "Halloween", "Halloween", "observance"],
-      [10, 11, "Veterans Day", "Veterans"],
-      [10, nthWeekday(y, 10, 4, 4), "Thanksgiving Day", "Thanksgiving"],
-      [10, nthWeekday(y, 10, 4, 4) + 1, "The Day After Thanksgiving", "Day after"],
-      [11, 25, "Christmas Day", "Christmas"],
+      [10, 11, "Veterans Day", "Veterans", "holiday", true],
+      [10, thanks, "Thanksgiving Day", "Thanksgiving"],
+      [10, thanks + 1, "The Day After Thanksgiving", "Day after"],
+      [11, 25, "Christmas Day", "Christmas", "holiday", true],
     ];
     var map = {};
     list.forEach(function (h) {
-      map[(h[0] + 1) + "-" + h[1]] = { name: h[2], short: h[3], kind: h[4] || "holiday" };
+      var d = new Date(y, h[0], h[1]), name = h[2], dow = d.getDay();
+      if (h[5] && (dow === 6 || dow === 0)) { d = new Date(y, h[0], h[1] + (dow === 6 ? -1 : 1)); name += " (observed)"; }
+      map[dayKey(d)] = { name: name, short: h[3], kind: h[4] || "holiday" };
     });
     return (holidayCache[y] = map);
   }
   // {name, short, kind: "holiday" | "observance"} for date d, or null.
-  function holidayFor(d) { return holidaysOf(d.getFullYear())[(d.getMonth() + 1) + "-" + d.getDate()] || null; }
+  function holidayFor(d) {
+    var k = dayKey(d);
+    return holidaysOf(d.getFullYear())[k] || holidaysOf(d.getFullYear() + 1)[k] || null;
+  }
 
   var api = {
     sharedWatches: sharedWatches, holidayFor: holidayFor,
@@ -1661,7 +1677,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
     function isCovering(r) { return !!(r.acting || (r.who && r.who.added)); }
 
     function stats(d) {
-      var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0 }, named = 0, full = 0;
+      var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0, WE: 0 }, named = 0, full = 0;
       api.people().forEach(function (p) {
         named++;
         var st = M.statusFor(p.pos, d, recs.statuses);
@@ -1670,7 +1686,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
       var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD); }).length;
       var open = api.data().filter(function (p) { return p.open; }).length;
       var vacant = api.data().filter(function (p) { return !p.name; }).length;
-      return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, acting: acting, open: open, vacant: vacant };
+      return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, WE: counts.WE, acting: acting, open: open, vacant: vacant };
     }
 
     /* ---------- Dashboard ---------- */
@@ -1799,7 +1815,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
         '<div class="card stats"><h3>Stats summary</h3><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
+        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) +
         statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         "</tbody></table>" + '<p class="hint" id="st-note"></p></div>' +
@@ -1886,7 +1902,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
         '<div class="pt">' + tree.html + "</div>" +
         reportCard(d, all, tree.working) +
         '<details class="card fold"><summary><h3>Stats summary</h3></summary><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) +
+        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) +
         statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         '</tbody></table><p class="hint" id="st-note"></p></details>';
@@ -2192,7 +2208,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
   var ID_RE = /^[a-z]{2}\d{4}$/i; // employee ID, e.g. LE1234
-  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick" };
+  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick", WE: "Working elsewhere" };
   var recs = { statuses: [], tourChanges: [], covers: [], people: [] }; // records from the editor backend
   var backend = null;
   var contacts = {}; // pos -> {email, phoneMobile, phoneOther, shared}, from the server when signed in
@@ -2328,7 +2344,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
         extra: r.status ? r.status + " " + STATUS_LABEL[r.status] : "" });
     });
 
-    var off = { VA: 0, D: 0, S: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
+    var off = { VA: 0, D: 0, S: 0, WE: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
     rows.forEach(function (r) {
       if (!r.name) return;
       if (!r.off) { onDuty++; return; }
@@ -2337,7 +2353,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
       else if (r.away) awayN++;
       else coveredN++;
     });
-    var offParts = ["VA", "S", "D"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
+    var offParts = ["VA", "S", "D", "WE"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " acting elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
@@ -2529,7 +2545,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
       '<div class="legend"><span><i style="background:var(--accent)"></i>Work day (' + workCount + ")</span>" +
       (monthHolidays.length ? '<span><i class="sw-hol"></i>Holiday</span>' : "") +
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
-      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D (' + offCount + ")</span>" : "") +
+      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
       '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
       '<div class="side">' +
@@ -2648,7 +2664,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
     var t = iso(today());
     var forms = !canEdit ? editHint() :
       '<form class="edit" id="f-status" novalidate><h4>Add status</h4>' +
-      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option></select></label>' +
+      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option><option value="WE">WE · Working elsewhere</option></select></label>' +
       '<label>From<input type="date" id="fs-start" value="' + t + '" required></label>' +
       '<label>To<input type="date" id="fs-end" value="' + t + '"></label></div>' +
       '<label class="chk"><input type="checkbox" id="fs-open"> No end date yet</label>' +
@@ -2805,7 +2821,7 @@ details.fold[open] > summary { margin-bottom: 10px; }
     for (var i = 1; i <= days; i++) dates.push(new Date(m.getFullYear(), m.getMonth(), i));
 
     $("rank-count").textContent = rows.length + " " + (rows.length === 1 ? "position" : "positions") +
-      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D = scheduled but off. Click a name for that person's detail.";
+      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D / WE = scheduled but off (WE = working elsewhere, e.g. an admin assignment). Click a name for that person's detail.";
     if (!rows.length) { $("rank-grid").innerHTML = '<div class="empty">No positions match. Try All companies or All tours.</div>'; return; }
 
     var head = '<tr><th class="who">Name</th>' + dates.map(function (d) {
