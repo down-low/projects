@@ -202,7 +202,7 @@
 
   // Who's working on a phone: division → battalion → apparatus → people (see Dash.phoneTree).
   function renderDatePhone(d, w, q, match) {
-    var tree = Dash.phoneTree(d, { open: state.dateOpen, match: match, bars: false });
+    var tree = Dash.phoneTree(d, { open: state.dateOpen, match: match, bars: false, allOpen: true });
     $("date-summary").innerHTML = '<div class="pt-sum">Tours ' + M.toursOn(w).join(" · ") + " · <b>" + tree.working + "</b> on duty of " + tree.required +
       (q ? " · matching “" + esc(q) + "”" : "") + "</div>";
     $("date-results").innerHTML = '<div class="pt">' + tree.html + "</div>";
