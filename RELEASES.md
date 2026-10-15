@@ -14,6 +14,9 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 
 ## With the server launch
 
+### Hosting on Firebase
+Hosting, Google sign-in, Firestore and Storage in place of `server.py`; see **`FIREBASE_PLAN.md`** for the data model, security rules, functions, migration, tests and launch steps. First confirm with the department or city IT where employee data may be hosted.
+
 ### Installable app (PWA)
 Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.
 
