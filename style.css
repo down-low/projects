@@ -446,7 +446,3 @@ li.seat { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-
 .seat-form input[type="text"] { flex: 1 1 200px; min-width: 0; font: inherit; font-size: 0.88rem; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); }
 .seat-form input[type="date"] { min-height: 34px; }
 .mono { font-family: var(--font-data); }
-
-.today-pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-weight: 600; font-size: 0.85em; }
-.today-pill.yes { background: var(--accent); color: #fff; }
-.today-pill.no { background: var(--line); color: inherit; }
