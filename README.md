@@ -25,7 +25,7 @@ The math lives in `schedule.js`; positions are in `data/positions.json`; storage
 
 Editors can record, per person (on the **By person** tab):
 
-- **Status**: VA vacation, S sick, D disabled or WE working elsewhere (e.g. an admin assignment not on the vacancy list), for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
+- **Status**: VA vacation, S sick, D disabled or WE working elsewhere (TR, traded off, comes only from a set shift trade) (e.g. an admin assignment not on the vacancy list), for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
 - **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
 
 - **Cover assignment** (temporary acting, e.g. covering an injured captain): on the covering person's page, **Cover another position**, pick the position, a start date and optionally an end date. While it runs, that person works the covered position's tour and company and shows as "Acting for" the holder; the holder shows "Covered by"; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover.
@@ -42,13 +42,40 @@ Editors can record, per person (on the **By person** tab):
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
+## Shift trades
+
+Members trade full 24-hour shifts. Approval, if any, happens outside the tool; once both people agree, the trade is set and the schedule shows it.
+
+- **This is me.** Trading needs to know who you are. On the shared page, the **Trades** tab asks you to find yourself by name or Employee ID and confirm your station and tour (or tap **This is me** on your own person page). Admins see every claim on the Trades tab, with mismatches flagged and **Undo**. On the server, your account's approved roster link is used.
+- **Who can take a shift:** someone off that day (`TourMath.dayFor`), with no VA / S / D / WE / TR status, in the same rank group. The groups live in one table, `RANK_GROUPS` in `schedule.js` (mirrored in `server.py`):
+
+  | Group | Ranks |
+  |---|---|
+  | Firefighter | Firefighter (H2) |
+  | FF/Paramedic | FF/Paramedic (H3) |
+  | Officer | Lieutenant (H20) and Captain (H30) trade freely |
+  | Battalion Chief | Battalion Chief (H40) |
+  | Its own rank | Rescue Captain, ISS, Pilot, Marine Engineer |
+
+- **Posting.** On your page, open **Next shifts** and tap **Trade** next to a day. Three steps:
+  1. **Payback:** leave it open, or offer a specific day you'd work for them.
+  2. **Who:** everyone eligible, grouped by division and battalion, tagged when they work the day before or after. Check everyone, a division, a battalion or individuals.
+  3. **Post:** to the selected people, the board (everyone eligible), or both. **Send to more people** widens it later.
+- **Responding.** **I'm interested**, then propose a swap day (one of your shifts they'd work) or pay back later.
+- **Picking.** The poster sees each response's terms and picks one. The trade is set: a one-day cover puts the taker on the poster's seat ("Trade for …") and the poster is marked **TR** (traded off). A swap also does the reverse on the swap day. **Cancel trade** reverts it.
+- **Owed shifts.** A "pay back later" trade shows "owes a shift" on both people's pages until a later trade between them, the other way round, is set.
+- **Trades tab:** **Sent to me**, the **Board** (open posts you could take, filtered by date range and battalion) and **My trades**. Open trades expire when their day passes.
+- **Alerts:** "Notify me by text / app" switches are saved now; texts (e.g. Twilio) and app pushes (Firebase Cloud Messaging) start with the server launch.
+- **On the shared claude.ai page,** members need **Contributor** access to trade (Viewers can look). The page database can't hide one record from some viewers, so "only the people you send it to see it" is a filter in the page; anyone with page access could read the data. The server enforces it. A set trade's cover and TR records are kept on the trade there, so schedule records stay editor-only (`python3 tools/build_artifact.py --capabilities` prints the access rules to publish with).
+- The view-only snapshot shows set trades on the schedule but has no Trades tab.
+
 ## Holidays
 
 A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Who's working and the Dashboard / Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`). A fixed-date holiday on a weekend shows on the day it's observed, marked "(observed)": Saturday moves to the Friday before, Sunday to the Monday after (July 4, 2027 → Mon July 5; Christmas 2027 → Fri Dec 24; New Year's Day 2028 → Fri Dec 31, 2027). Halloween and Mother's Day don't move.
 
 ## On phones
 
-Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Find**, **Today**, **Staffing** and **More**. Find opens first.
+Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Find**, **Today**, **Trades** (when you can trade), **Staffing** and **More**. Find opens first.
 
 - **Find**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top; next shifts, history and the editing forms fold away.
 - **Today**: everyone working that day, grouped by rank as on desktop, one row per person (company, name, position, tour, leave and cover tags). The filter narrows it by name, ID, company or tour.
@@ -128,6 +155,8 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
 | `PUT /api/staffing/<company>` `{required: n or null}`, `PUT /api/profiles/<key>`, `GET /api/admin/profiles` | admins |
+| `GET /api/trades` (only trades you may see), `PUT /api/me/alerts` `{text, app}` | approved accounts |
+| `POST /api/trades` `{date, paybackDate?, note?, audience: {board, to: [keys]}}`, `PATCH /api/trades/<id>` `{audience}` (widen only), `POST /api/trades/<id>/replies` `{proposal: {swapDate} or {later: true}, note?}`, `POST /api/trades/<id>/pick` `{replyId}`, `POST /api/trades/<id>/cancel` | approved accounts linked to a roster position (pick and cancel: the poster; admins may cancel) |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 

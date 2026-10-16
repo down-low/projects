@@ -38,8 +38,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
+TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
+STATUS_CODES = CODES | {TRADED}
 ROLES = ("member", "editor", "admin")
 DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
@@ -56,7 +58,17 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("people", "company", "TEXT"),
     ("people", "tour", "INTEGER"),
     ("people", "emplId", "TEXT"),
+    ("users", "alert_text", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "alert_app", "INTEGER NOT NULL DEFAULT 0"),
+    ("covers", "tradeId", "TEXT"),
+    ("statuses", "tradeId", "TEXT"),
 ]
+# Shift trades: who can take whose shift. Ranks not listed trade with their own rank only. Mirrors RANK_GROUPS in schedule.js.
+RANK_GROUPS = {"Firefighter": "Firefighter", "FF/Paramedic": "FF/Paramedic", "Lieutenant": "Officer", "Captain": "Officer",
+               "Battalion Chief": "Battalion Chief"}
+# The 31-day watch cycle, as in schedule.js: 2026-01-01 is watch 16; tour k works watch w when (w - k) mod 31 is one of these.
+TOUR_OFFSETS = {0, 3, 6, 10, 13, 16, 20, 23, 26}
+WATCH_BASE = dt.date(2026, 1, 1)
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
 SESSION_DAYS = 30
@@ -99,6 +111,16 @@ CREATE TABLE IF NOT EXISTS staffing (
 CREATE TABLE IF NOT EXISTS profiles (
   key TEXT PRIMARY KEY, birthDate TEXT, hireDate TEXT, updatedAt TEXT, updatedBy TEXT
 );
+CREATE TABLE IF NOT EXISTS trades (
+  id TEXT PRIMARY KEY, posterKey TEXT NOT NULL, posterName TEXT, seatPos TEXT NOT NULL, date TEXT NOT NULL,
+  paybackDate TEXT, note TEXT, audience TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open',
+  replyId TEXT, takerKey TEXT, proposal TEXT, setAt TEXT, createdAt TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS trade_replies (
+  id TEXT PRIMARY KEY, tradeId TEXT NOT NULL, takerKey TEXT NOT NULL, takerName TEXT, proposal TEXT NOT NULL,
+  swapSeatPos TEXT, note TEXT, createdAt TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS trade_replies_trade ON trade_replies(tradeId);
 CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL, actor_id TEXT, action TEXT NOT NULL, detail TEXT
 );
@@ -309,6 +331,7 @@ class App:
             "shareContact": bool(u["share_contact"]),
             "claimRequest": json.loads(u["claim_request"]) if u.get("claim_request") else None,
             "profile": self.profile(u["pos"]) if u["pos"] else None,
+            "alerts": {"text": bool(u.get("alert_text")), "app": bool(u.get("alert_app"))},
         }
 
     def clean_person_fields(self, body):
@@ -470,7 +493,7 @@ class App:
     def add_status(self, body, who):
         pos, name = self._person_or_position(body.get("pos"))
         code = body.get("code")
-        if code not in CODES:
+        if code not in CODES:  # TR comes only from a set trade
             raise BadRequest("code must be VA, D, S or WE")
         start = valid_date(body.get("start"), "start")
         end = valid_date(body.get("end"), "end", required=False)
@@ -590,6 +613,218 @@ class App:
                 self.conn.execute("DELETE FROM covers WHERE coverKey = ?", (key,))
                 self.conn.execute("DELETE FROM statuses WHERE pos = ?", (key,))
         return self.write(f"DELETE FROM {table} WHERE id = ?", (rec_id,)) > 0
+
+    # ---------- shift trades ----------
+    # The schedule math needed to check a trade: a slice of schedule.js (watch, tour, status, covers).
+    @staticmethod
+    def tour_works(tour, day):
+        watch = ((dt.date.fromisoformat(day) - WATCH_BASE).days + 15) % 31 + 1
+        return tour is not None and (watch - tour) % 31 in TOUR_OFFSETS
+
+    def effective_tour(self, key, entry, day):
+        if key.startswith(PERSON_PREFIX):
+            return entry.get("tour")
+        row = self.one("SELECT tour FROM tour_changes WHERE pos = ? AND effective <= ? ORDER BY effective DESC, createdAt DESC LIMIT 1",
+                       (key, day))
+        return row["tour"] if row else entry.get("tour")
+
+    def status_on(self, key, day):
+        row = self.one('SELECT code FROM statuses WHERE pos = ? AND start <= ? AND ("end" IS NULL OR "end" >= ?) '
+                       "ORDER BY createdAt DESC LIMIT 1", (key, day, day))
+        return row and row["code"]
+
+    def seat_on(self, key, day):
+        """The seat person `key` works on `day` (their own, or the one they cover), or None when they are off."""
+        cover = self.one('SELECT targetPos FROM covers WHERE coverKey = ? AND start <= ? AND ("end" IS NULL OR "end" >= ?) '
+                         "ORDER BY createdAt DESC LIMIT 1", (key, day, day))
+        if cover:
+            target = self.lookup(cover["targetPos"])
+            ok = target and self.tour_works(self.effective_tour(cover["targetPos"], target, day), day)
+            return cover["targetPos"] if ok else None
+        entry = self.lookup(key)
+        if not entry or not entry.get("tour"):
+            return None
+        return key if self.tour_works(self.effective_tour(key, entry, day), day) else None
+
+    def rank_of(self, key):
+        if key.startswith(PERSON_PREFIX):
+            row = self.one("SELECT rank FROM people WHERE id = ?", (key[len(PERSON_PREFIX):],))
+            return row and row["rank"]
+        return (self.positions.get(key) or {}).get("rank")
+
+    def rank_group(self, key):
+        rank = self.rank_of(key)
+        return rank and RANK_GROUPS.get(rank, rank)
+
+    def can_take(self, taker, poster, day):
+        """Why `taker` can't take `poster`'s shift on `day`, or None when they can."""
+        if taker == poster:
+            return "You can't take your own shift"
+        if self.rank_group(taker) != self.rank_group(poster):
+            return "Trades are only between the same rank group (Firefighter, FF/Paramedic, Lieutenant/Captain, Battalion Chief)"
+        if self.seat_on(taker, day):
+            return "The taker works that day"
+        if self.status_on(taker, day):
+            return "The taker is on leave or marked off that day"
+        return None
+
+    def trade_json(self, row):
+        t = dict(row)
+        t["audience"] = json.loads(t["audience"])
+        t["proposal"] = json.loads(t["proposal"]) if t["proposal"] else None
+        return t
+
+    def get_trade(self, trade_id):
+        row = self.one("SELECT * FROM trades WHERE id = ?", (trade_id,))
+        if not row:
+            raise HttpError(404, "No such trade")
+        return self.trade_json(row)
+
+    def trade_visible(self, t, me):
+        if t["posterKey"] == me or t["takerKey"] == me or me in t["audience"]["to"]:
+            return True
+        return t["status"] == "open" and t["audience"]["board"] and not self.can_take(me, t["posterKey"], t["date"])
+
+    def trades(self, u):
+        """Trades the viewer may see: their own, ones sent to them, board posts they could take (admins see all)."""
+        today = dt.date.today().isoformat()
+        self.write("UPDATE trades SET status = 'expired' WHERE status = 'open' AND date < ?", (today,))
+        me, admin = u["pos"], u["role"] == "admin"
+        trades = [t for t in map(self.trade_json, self.all("SELECT * FROM trades ORDER BY date, createdAt"))
+                  if admin or me and self.trade_visible(t, me)]
+        mine = {t["id"] for t in trades if admin or t["posterKey"] == me}
+        replies = []
+        for r in self.all("SELECT * FROM trade_replies ORDER BY createdAt"):
+            if r["tradeId"] in mine or r["takerKey"] == me:
+                r["proposal"] = json.loads(r["proposal"])
+                replies.append(r)
+        return {"trades": trades, "replies": replies}
+
+    def clean_audience(self, body, poster):
+        aud = body.get("audience")
+        if not isinstance(aud, dict):
+            raise BadRequest("audience is required: {board: true|false, to: [keys]}")
+        to = aud.get("to") or []
+        if not isinstance(to, list) or len(to) > 2000 or not all(isinstance(k, str) and self.lookup(k) for k in to):
+            raise BadRequest("audience.to must list roster positions or added people")
+        to = sorted(set(to) - {poster})
+        if not aud.get("board") and not to:
+            raise BadRequest("Pick at least one person or post it to the board")
+        return {"board": bool(aud.get("board")), "to": to}
+
+    def post_trade(self, u, body):
+        me = u["pos"]
+        day = valid_date(body.get("date"), "date")
+        if day < dt.date.today().isoformat():
+            raise BadRequest("That day has passed")
+        seat = self.seat_on(me, day)
+        if not seat or self.status_on(me, day):
+            raise BadRequest("You don't work that day")
+        if self.one("SELECT id FROM trades WHERE posterKey = ? AND date = ? AND status IN ('open', 'set')", (me, day)):
+            raise HttpError(409, "You already have a trade for that day")
+        payback = valid_date(body.get("paybackDate"), "paybackDate", required=False)
+        if payback and (payback == day or payback < dt.date.today().isoformat()):
+            raise BadRequest("Pick a payback day after today, other than the traded day")
+        rec = {"id": uuid.uuid4().hex, "posterKey": me, "posterName": (self.lookup(me) or {}).get("name"), "seatPos": seat,
+               "date": day, "paybackDate": payback, "note": clean_text(body.get("note"), "note"),
+               "audience": json.dumps(self.clean_audience(body, me)), "status": "open", "createdAt": now()}
+        self.write("INSERT INTO trades (id,posterKey,posterName,seatPos,date,paybackDate,note,audience,status,createdAt) "
+                   "VALUES (:id,:posterKey,:posterName,:seatPos,:date,:paybackDate,:note,:audience,:status,:createdAt)", rec)
+        return self.get_trade(rec["id"])
+
+    def widen_trade(self, u, trade_id, body):
+        t = self.get_trade(trade_id)
+        if t["posterKey"] != u["pos"]:
+            raise HttpError(403, "Only the person who posted the trade can change it")
+        if t["status"] != "open":
+            raise HttpError(409, "This trade is no longer open")
+        new = self.clean_audience(body, t["posterKey"])
+        aud = {"board": t["audience"]["board"] or new["board"], "to": sorted(set(t["audience"]["to"]) | set(new["to"]))}
+        self.write("UPDATE trades SET audience = ? WHERE id = ?", (json.dumps(aud), trade_id))
+        return self.get_trade(trade_id)
+
+    def clean_proposal(self, t, taker, body):
+        prop = body.get("proposal")
+        if isinstance(prop, dict) and prop.get("later") is True:
+            return {"later": True}, None
+        swap = valid_date(prop.get("swapDate") if isinstance(prop, dict) else None, "proposal.swapDate")
+        if swap == t["date"] or swap < dt.date.today().isoformat():
+            raise BadRequest("The swap day must be after today and not the traded day")
+        seat = self.seat_on(taker, swap)
+        if not seat or self.status_on(taker, swap):
+            raise BadRequest("The swap day must be a day the taker works")
+        if self.seat_on(t["posterKey"], swap) or self.status_on(t["posterKey"], swap):
+            raise BadRequest("The poster isn't free on the swap day")
+        return {"swapDate": swap}, seat
+
+    def reply_trade(self, u, trade_id, body):
+        me, t = u["pos"], self.get_trade(trade_id)
+        if t["status"] != "open" or t["date"] < dt.date.today().isoformat():
+            raise HttpError(409, "This trade is no longer open")
+        if not self.trade_visible(t, me):
+            raise HttpError(404, "No such trade")
+        why = self.can_take(me, t["posterKey"], t["date"])
+        if why:
+            raise BadRequest(why)
+        proposal, swap_seat = self.clean_proposal(t, me, body)
+        rec = {"id": uuid.uuid4().hex, "tradeId": trade_id, "takerKey": me, "takerName": (self.lookup(me) or {}).get("name"),
+               "proposal": json.dumps(proposal), "swapSeatPos": swap_seat, "note": clean_text(body.get("note"), "note"), "createdAt": now()}
+        with self.lock, self.conn:  # one response per person; a new one replaces the old
+            self.conn.execute("DELETE FROM trade_replies WHERE tradeId = ? AND takerKey = ?", (trade_id, me))
+            self.conn.execute("INSERT INTO trade_replies (id,tradeId,takerKey,takerName,proposal,swapSeatPos,note,createdAt) "
+                              "VALUES (:id,:tradeId,:takerKey,:takerName,:proposal,:swapSeatPos,:note,:createdAt)", rec)
+        rec["proposal"] = proposal
+        return rec
+
+    def pick_reply(self, u, trade_id, body):
+        t = self.get_trade(trade_id)
+        if t["posterKey"] != u["pos"]:
+            raise HttpError(403, "Only the person who posted the trade can pick a response")
+        if t["status"] != "open" or t["date"] < dt.date.today().isoformat():
+            raise HttpError(409, "This trade is no longer open")
+        r = self.one("SELECT * FROM trade_replies WHERE id = ? AND tradeId = ?", (body.get("replyId"), trade_id))
+        if not r:
+            raise BadRequest("replyId must be a response to this trade")
+        poster, taker, by = t["posterKey"], r["takerKey"], u["display_name"] or u["google_email"]
+        if self.seat_on(poster, t["date"]) != t["seatPos"] or self.status_on(poster, t["date"]):
+            raise HttpError(409, "Your schedule for that day has changed. Cancel this trade and post it again.")
+        why = self.can_take(taker, poster, t["date"])
+        if why:
+            raise HttpError(409, why)
+        proposal = json.loads(r["proposal"])
+        legs = [(taker, poster, t["seatPos"], t["date"])]  # (who covers, who is traded off, seat, day)
+        if proposal.get("swapDate"):
+            self.clean_proposal(t, taker, {"proposal": proposal})  # still valid on both sides
+            legs.append((poster, taker, self.seat_on(taker, proposal["swapDate"]), proposal["swapDate"]))
+        name = lambda k: (self.lookup(k) or {}).get("name") or ""
+        stamp = now()
+        with self.lock, self.conn:
+            for coverer, off, seat, day in legs:
+                self.conn.execute('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",note,createdAt,createdBy,tradeId) '
+                                  "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                                  (uuid.uuid4().hex, coverer, name(coverer), seat, day, day, "Shift trade", stamp, by, trade_id))
+                self.conn.execute('INSERT INTO statuses (id,pos,name,code,start,"end",note,createdAt,createdBy,tradeId) '
+                                  "VALUES (?,?,?,?,?,?,?,?,?,?)",
+                                  (uuid.uuid4().hex, off, name(off), TRADED, day, day, "Shift trade", stamp, by, trade_id))
+            self.conn.execute("UPDATE trades SET status = 'set', replyId = ?, takerKey = ?, proposal = ?, setAt = ? WHERE id = ?",
+                              (r["id"], taker, r["proposal"], stamp, trade_id))
+        return self.get_trade(trade_id)
+
+    def cancel_trade(self, u, trade_id):
+        t = self.get_trade(trade_id)
+        if t["posterKey"] != u["pos"] and u["role"] != "admin":
+            raise HttpError(403, "Only the person who posted the trade can cancel it")
+        if t["status"] not in ("open", "set"):
+            raise HttpError(409, "This trade is already " + t["status"])
+        with self.lock, self.conn:  # a set trade's cover and TR records go with it
+            self.conn.execute("DELETE FROM covers WHERE tradeId = ?", (trade_id,))
+            self.conn.execute("DELETE FROM statuses WHERE tradeId = ?", (trade_id,))
+            self.conn.execute("UPDATE trades SET status = 'cancelled' WHERE id = ?", (trade_id,))
+        return self.get_trade(trade_id)
+
+    def save_alerts(self, u, body):
+        self.write("UPDATE users SET alert_text = ?, alert_app = ? WHERE id = ?",
+                   (1 if body.get("text") else 0, 1 if body.get("app") else 0, u["id"]))
 
     # ---------- Google ----------
     def exchange_code(self, code):
@@ -738,6 +973,8 @@ def make_handler(app):
                 return self.send_json(200, app.records())
             if path == "/api/contacts":
                 return self.send_json(200, app.contacts(self.require("active")))
+            if path == "/api/trades":
+                return self.send_json(200, app.trades(self.require("active")))
             if path == "/api/stats":
                 self.require("active")
                 on = (self.query().get("date") or [None])[0]
@@ -850,13 +1087,36 @@ def make_handler(app):
             if m:
                 u = self.require("admin")
                 return self.send_json(200, app.admin_action(u, m.group(1), self.body()))
+            if path == "/api/trades":
+                u = self.trader()
+                rec = app.post_trade(u, self.body())
+                app.audit(u, "post trade", {"id": rec["id"], "date": rec["date"]})
+                return self.send_json(201, rec)
+            m = re.fullmatch(r"/api/trades/([0-9a-f]{32})/(replies|pick|cancel)", path)
+            if m:
+                u = self.trader() if m.group(2) != "cancel" else self.require("active")
+                if m.group(2) == "replies":
+                    return self.send_json(201, app.reply_trade(u, m.group(1), self.body()))
+                rec = app.pick_reply(u, m.group(1), self.body()) if m.group(2) == "pick" else app.cancel_trade(u, m.group(1))
+                app.audit(u, m.group(2) + " trade", {"id": rec["id"], "status": rec["status"]})
+                return self.send_json(200, rec)
             raise HttpError(404, "Not found")
+
+        def trader(self):
+            """Trades need an approved account linked to a roster position or added person."""
+            u = self.require("active")
+            if not u["pos"]:
+                raise HttpError(403, "Your account isn't linked to a roster position. Ask an admin to link it.")
+            return u
 
         def do_PATCH(self):
             self.run(self._patch)
 
         def _patch(self):
             self.check_csrf()
+            m = re.fullmatch(r"/api/trades/([0-9a-f]{32})", self.path_only())
+            if m:
+                return self.send_json(200, app.widen_trade(self.trader(), m.group(1), self.body()))
             m = re.fullmatch(r"/api/covers/([0-9a-f]{32})", self.path_only())
             if not m:
                 raise HttpError(404, "Not found")
@@ -874,6 +1134,10 @@ def make_handler(app):
             if path == "/api/me/contact":
                 u = self.require("active")
                 app.save_contact(u, self.body())
+                return self.send_json(200, app.me_json(self.user()))
+            if path == "/api/me/alerts":
+                u = self.require("active")
+                app.save_alerts(u, self.body())
                 return self.send_json(200, app.me_json(self.user()))
             m = re.fullmatch(r"/api/staffing/([A-Z]{1,3}\d{1,2})", path)
             if m:

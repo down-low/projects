@@ -14,8 +14,9 @@
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
   var ID_RE = /^[a-z]{2}\d{4}$/i; // employee ID, e.g. LE1234
-  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick", WE: "Working elsewhere" };
-  var recs = { statuses: [], tourChanges: [], covers: [], people: [] }; // records from the editor backend
+  var STATUS_LABEL = { VA: "Vacation", D: "Disabled", S: "Sick", WE: "Working elsewhere", TR: "Traded off" };
+  var OFF_CODES = ["VA", "S", "D", "WE", "TR"]; // TR is written only by a set shift trade
+  var recs = { statuses: [], tourChanges: [], covers: [], people: [], members: [], trades: [], tradeReplies: [] }; // records from the backend
   var backend = null;
   var contacts = {}; // pos -> {email, phoneMobile, phoneOther, shared}, from the server when signed in
   function opts() { return { statuses: recs.statuses, changes: recs.tourChanges, covers: recs.covers, byPos: byPos }; }
@@ -78,7 +79,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -94,6 +95,7 @@
     else if (state.view === "person") renderPerson();
     else if (state.view === "me") Accounts.renderMe();
     else if (state.view === "admin") Accounts.renderAdmin();
+    else if (state.view === "trades") Trades.renderTrades();
     else renderRank();
   }
 
@@ -150,7 +152,7 @@
         extra: r.status ? r.status + " " + STATUS_LABEL[r.status] : "" });
     });
 
-    var off = { VA: 0, D: 0, S: 0, WE: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
+    var off = { VA: 0, D: 0, S: 0, WE: 0, TR: 0 }, offTotal = 0, onDuty = 0, awayN = 0, coveredN = 0;
     rows.forEach(function (r) {
       if (!r.name) return;
       if (!r.off) { onDuty++; return; }
@@ -159,7 +161,7 @@
       else if (r.away) awayN++;
       else coveredN++;
     });
-    var offParts = ["VA", "S", "D", "WE"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
+    var offParts = OFF_CODES.filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " acting elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
@@ -212,7 +214,7 @@
   // Tags for a Who's working row: acting, covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) tags.push('<span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>");
+    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " : "Acting for ") + esc(x.slot.name || "vacant spot") + "</span>");
     if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
     if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
@@ -344,14 +346,14 @@
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
       '<div class="legend"><span><i style="background:var(--accent)"></i>Work day (' + workCount + ")</span>" +
       (monthHolidays.length ? '<span><i class="sw-hol"></i>Holiday</span>' : "") +
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
-      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE (' + offCount + ")</span>" : "") +
+      (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE / TR (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
       '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
       '<div class="side">' +
@@ -360,7 +362,8 @@
       (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
         return '<li><span class="when">' + esc(shortDate(n.d)) + '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
-          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
+          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "") +
+            Trades.tradeLink(p, n.d)) + "</span></li>";
       }).join("") + "</ol></details>" +
       historyCard(p, datesCard(p)) + "</div></div>";
 
@@ -448,7 +451,7 @@
   function historyCard(p, extra) {
     var canEdit = backend && backend.canEdit();
     var items = recs.statuses.filter(function (s) { return s.pos === p.pos; }).map(function (s) {
-      return { kind: "statuses", id: s.id, sort: s.start, html: statusPill(s.code) + " <b>" + esc(STATUS_LABEL[s.code]) + "</b> " +
+      return { kind: "statuses", id: s.id, trade: !!s.tradeId, sort: s.start, html: statusPill(s.code) + " <b>" + esc(STATUS_LABEL[s.code]) + "</b> " +
         esc(shortDate(fromIso(s.start))) + (s.end ? (s.end !== s.start ? " – " + esc(shortDate(fromIso(s.end))) : "") : " onward") +
         (s.end && s.end.slice(0, 4) !== s.start.slice(0, 4) ? " " + s.end.slice(0, 4) : ""), note: s.note };
     }).concat(recs.tourChanges.filter(function (c) { return c.pos === p.pos; }).map(function (c) {
@@ -456,14 +459,14 @@
         esc(shortDate(fromIso(c.effective))) + " " + esc(c.effective.slice(0, 4)), note: c.note };
     })).concat(recs.covers.filter(function (c) { return c.coverKey === p.pos || c.targetPos === p.pos; }).map(function (c) {
       var mine = c.coverKey === p.pos;
-      return { kind: "covers", id: c.id, sort: c.start, openEnded: !c.end && c.start <= iso(today()),
+      return { kind: "covers", id: c.id, trade: !!c.tradeId, sort: c.start, openEnded: !c.end && c.start <= iso(today()),
         html: '<span class="st st-A">' + (mine ? "AC" : "CV") + "</span> <b>" + (mine ? "Covering " + esc(slotLabel(c.targetPos))
           : "Covered by " + esc(c.coverName || nameOf(c.coverKey))) + "</b> " + esc(rangeText(c)), note: c.note };
     })).sort(function (a, b) { return b.sort.localeCompare(a.sort); });
 
     var list = items.length ? '<ul class="hist">' + items.map(function (it) {
       return '<li><div>' + it.html + (it.note ? '<div class="hint">' + esc(it.note) + "</div>" : "") + "</div>" +
-        (canEdit ? '<div class="acts">' + (it.openEnded ? '<button class="btn small" data-end="' + esc(it.id) + '">End today</button>' : "") +
+        (canEdit && !it.trade ? '<div class="acts">' + (it.openEnded ? '<button class="btn small" data-end="' + esc(it.id) + '">End today</button>' : "") +
           '<button class="btn small" data-remove="' + esc(it.kind) + '" data-id="' + esc(it.id) + '">Remove</button></div>' : "") + "</li>";
     }).join("") + "</ul>" : '<p class="hint">No tour changes, leave or cover assignments recorded.</p>';
 
@@ -627,7 +630,7 @@
     for (var i = 1; i <= days; i++) dates.push(new Date(m.getFullYear(), m.getMonth(), i));
 
     $("rank-count").textContent = rows.length + " " + (rows.length === 1 ? "position" : "positions") +
-      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D / WE = scheduled but off (WE = working elsewhere, e.g. an admin assignment). Click a name for that person's detail.";
+      ". Red = working. Amber = swing covering the company shown. Teal = acting in another position (company shown); AW = away from own spot. VA / S / D / WE / TR = scheduled but off (WE = working elsewhere, e.g. an admin assignment; TR = traded off). Click a name for that person's detail.";
     if (!rows.length) { $("rank-grid").innerHTML = '<div class="empty">No positions match. Try All companies or All tours.</div>'; return; }
 
     var head = '<tr><th class="who">Name</th>' + dates.map(function (d) {
@@ -821,9 +824,10 @@
   function renderAll(force) {
     if (!booted) return;
     var a = document.activeElement;
-    if (!force && (state.view === "person" || state.view === "me") && a && a.closest && a.closest("form.edit")) {
-      if (!deferred) { deferred = true; a.closest("form.edit").addEventListener("focusout", function once(e) {
-        if (e.relatedTarget && e.relatedTarget.closest && e.relatedTarget.closest("form.edit")) return;
+    if (!force && (state.view === "person" || state.view === "me" || state.view === "trades") && a && a.closest && a.closest("form.edit, #cl-q, .trade-filters")) {
+      var box = a.closest("form.edit, .trade-filters") || a;
+      if (!deferred) { deferred = true; box.addEventListener("focusout", function once(e) {
+        if (e.relatedTarget && box.contains(e.relatedTarget)) return;
         this.removeEventListener("focusout", once);
         // Focus also leaves when the form itself is replaced, so render after the current one finishes.
         setTimeout(function () { if (deferred) { deferred = false; renderAll(); } }, 0);
@@ -841,12 +845,14 @@
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
     if (v === "me") return serverMode() && backend.isActive();
     if (v === "admin") return serverMode() && backend.isAdmin();
+    if (v === "trades") return !!(backend && Trades.visible());
     return false;
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
+    $("tab-trades").hidden = !tabAllowed("trades");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
@@ -927,6 +933,13 @@
     requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
   });
 
+  var Trades = window.TradeViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, byPos: function () { return byPos; },
+    people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
+    showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
+  });
+
   var Accounts = window.AccountViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; },
     people: function () { return people; }, recs: function () { return recs; }, shift: shift, tourOn: tourOn,
@@ -938,7 +951,7 @@
   /* ---------- Start ---------- */
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
-      staffing: r.staffing || [] };
+      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [] };
     recsVersion++;
     if (r.contacts) contacts = r.contacts;
     if (booted) rebuildPeople();

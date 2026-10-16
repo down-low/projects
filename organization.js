@@ -26,10 +26,10 @@
     "Rescue Captain 1": "RC1", "Rescue Captain 2": "RC2", "Rescue Captain 3": "RC3", "Rescue Captain 4": "RC4",
     "Pilot of Fire Boats": "FB3", "Marine Engineer of Fire Boats": "FB3",
   };
-  var where = {};
+  var where = {}, orderOf = {}, n = 0;
   DIVISIONS.forEach(function (dv) {
     dv.battalions.forEach(function (bt) {
-      bt.apparatus.forEach(function (co) { where[co] = { division: dv, battalion: bt }; });
+      bt.apparatus.forEach(function (co) { where[co] = { division: dv, battalion: bt }; orderOf[co] = n++; });
     });
   });
 
@@ -39,6 +39,8 @@
     apparatus: function (co) { return ALIASES[co] || co; },
     // {division, battalion} for an apparatus code, or null when it isn't in the report.
     locate: function (co) { return where[ALIASES[co] || co] || null; },
+    // Sort key for an apparatus code in report order (division, battalion, apparatus); unknown codes last.
+    order: function (co) { return orderOf[ALIASES[co] || co] != null ? orderOf[ALIASES[co] || co] : 1e6; },
   };
   if (typeof module !== "undefined" && module.exports) module.exports = root.Organization;
 })(typeof window !== "undefined" ? window : globalThis);

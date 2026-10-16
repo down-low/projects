@@ -12,10 +12,15 @@
  * profiles() (admins), stats(isoDate) -> {avgAge, nAge, avgYos, nYos} or null, canAdmin().
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
+ * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
+ * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
+ * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * onChange also carries {members, trades, tradeReplies}.
  */
 (function (root) {
   "use strict";
-  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles" };
+  var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
+    members: "members", trades: "trades", tradeReplies: "tradeReplies" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
 
@@ -37,12 +42,27 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [] };
-      function emit() {
-        onChange({ statuses: records.statuses, tourChanges: records.tourChanges, covers: records.covers, people: records.people,
-          staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }) });
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [] };
+      /* A set trade carries its records (`legs`: the taker's one-day cover and the poster's TR, and the reverse for a swap) on
+         the trade itself, so members can set trades while covers and statuses stay editor-only. They join the schedule here,
+         and go away when the trade is cancelled. */
+      function tradeLegs(kind) {
+        var out = [];
+        records.trades.forEach(function (t) {
+          if (t.status !== "set" || !t.legs) return;
+          t.legs.forEach(function (l, i) {
+            if (l.kind === kind) out.push(Object.assign({}, l, { id: "trade:" + t.id + ":" + i, tradeId: t.id, createdAt: t.setAt || t.createdAt }));
+          });
+        });
+        return out;
       }
-      var editable = false, uid = null, failed = false;
+      function emit() {
+        onChange({ statuses: records.statuses.concat(tradeLegs("statuses")), tourChanges: records.tourChanges,
+          covers: records.covers.concat(tradeLegs("covers")), people: records.people,
+          staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
+          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies });
+      }
+      var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
         db.collection(COLLECTIONS[kind]).onSnapshot(function (snap) {
           records[kind] = snap.docs.map(function (d) {
@@ -54,8 +74,29 @@
         }, emit);
       });
       var ready = user
-        ? Promise.all([user.canEdit(), user.id()]).then(function (r) { editable = !!r[0]; uid = r[1]; })
+        ? Promise.all([user.canEdit(), user.id(), user.can ? user.can("data.write") : null])
+          .then(function (r) { editable = !!r[0]; uid = r[1]; canWrite = r[2]; })
         : Promise.resolve();
+      /* Trades are written by every member (Contributor access and up), not only editors. can("data.write") null means the
+         platform didn't say: keep the controls and let a refused write decide. */
+      var tradeBlocked = false;
+      function tradeOk() { return !!uid && !tradeBlocked && (editable || canWrite !== false); }
+      function tradeErr(e) {
+        if (e && (e.code === "invalid_argument" || e.code === "permission_denied")) tradeBlocked = true;
+        return new Error(e && e.code === "quota_exceeded" ? "The page's storage is full. Ask an admin to remove old records." :
+          tradeBlocked ? "You can't make trades on this page. Ask the page owner for Contributor access." :
+          "The change was not saved (" + ((e && e.code) || "error") + ").");
+      }
+      function tw(p) { return p.catch(function (e) { throw tradeErr(e); }); }
+      function myMember() {
+        for (var i = 0; i < records.members.length; i++) if (records.members[i].id === uid) return records.members[i];
+        return null;
+      }
+      function addRec(kind, rec) {
+        rec.createdAt = nowIso();
+        rec.createdBy = uid;
+        return db.collection(kind).add(rec);
+      }
       function write(kind, rec) {
         if (!editable || failed) return Promise.reject(new Error(NO_EDIT));
         rec.createdAt = nowIso();
@@ -94,6 +135,42 @@
           endCover: function (id, end) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             return db.collection("covers").doc(id).update({ end: end });
+          },
+          canTrade: function () { return tradeOk(); },
+          myMember: myMember,
+          myKey: function () { var m = myMember(); return m ? m.key : null; },
+          claimMember: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            rec.userId = uid;
+            rec.claimedAt = nowIso();
+            return tw(db.collection("members").doc(uid).set(rec));
+          },
+          unclaim: function (memberId) {
+            if (!editable && memberId !== uid) return Promise.reject(new Error(NO_EDIT));
+            return db.collection("members").doc(memberId).delete();
+          },
+          setAlerts: function (a) {
+            if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
+            return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app } }));
+          },
+          postTrade: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            rec.status = "open";
+            return tw(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
+          },
+          widenTrade: function (id, audience) { return tw(db.collection("trades").doc(id).update({ audience: audience })); },
+          replyTrade: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            return tw(addRec("tradeReplies", rec));
+          },
+          // writes: [{kind: "covers"|"statuses", rec}] built by the page (cover for the taker, TR for the poster, and the reverse for a swap).
+          pickReply: function (trade, reply, writes) {
+            return tw(db.collection("trades").doc(trade.id).update({ status: "set", replyId: reply.id, takerKey: reply.takerKey,
+              proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (w) { return Object.assign({ kind: w.kind }, w.rec); }) }));
+          },
+          // Cancelling a set trade drops its cover and TR records with it.
+          cancelTrade: function (trade) {
+            return tw(db.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() }));
           },
           remove: function (kind, id) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
@@ -141,10 +218,11 @@
     function active() { return !!(me && me.signedIn && me.status === "active"); }
     function refresh() {
       if (!active()) return Promise.resolve();
-      return Promise.all([getJson("api/records"), getJson("api/contacts")]).then(function (res) {
+      return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; })]).then(function (res) {
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
-          people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts });
+          people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
+          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [] });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -188,6 +266,21 @@
             profiles: function () { return getJson("api/admin/profiles"); },
             stats: function (isoDate) { return getJson("api/stats?date=" + encodeURIComponent(isoDate)); },
             addPerson: function (rec) { return thenRefresh(call("POST", "api/people", rec)); },
+            // Shift trades: the signed-in account's linked position is the member (claimed and approved on the Admin page).
+            canTrade: function () { return active() && !!me.pos; },
+            myKey: function () { return active() ? me.pos || null : null; },
+            myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
+            setAlerts: function (a) { return call("PUT", "api/me/alerts", a).then(function (j) { me = j; return j; }); },
+            postTrade: function (rec) { return thenRefresh(call("POST", "api/trades", rec)); },
+            widenTrade: function (id, audience) { return thenRefresh(call("PATCH", "api/trades/" + encodeURIComponent(id), { audience: audience })); },
+            replyTrade: function (rec) {
+              return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(rec.tradeId) + "/replies", { proposal: rec.proposal, note: rec.note }));
+            },
+            // The server writes the cover and TR records itself.
+            pickReply: function (trade, reply) {
+              return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(trade.id) + "/pick", { replyId: reply.id }));
+            },
+            cancelTrade: function (trade) { return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(trade.id) + "/cancel")); },
             endCover: function (id, end) { return thenRefresh(call("PATCH", "api/covers/" + encodeURIComponent(id), { end: end })); },
             remove: function (kind, id) {
               return thenRefresh(call("DELETE", "api/" + API_PATH[kind] + "/" + encodeURIComponent(id)));
@@ -215,6 +308,9 @@
     profiles: function () { return Promise.resolve([]); },
     stats: function () { return Promise.resolve(null); },
     remove: function () { return Promise.reject(new Error("Editing is not available here.")); },
+    canTrade: function () { return false; },
+    myKey: function () { return null; },
+    myMember: function () { return null; },
   };
 
   /* A view-only snapshot: records baked into the page at build time (tools/build_artifact.py --snapshot),

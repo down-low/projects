@@ -2,6 +2,7 @@
 """Bundle the app into one self-contained HTML file (data inlined) for sharing.
 
 Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule.html)
+       python3 tools/build_artifact.py --capabilities   (the page-database rules to publish with)
 """
 import json
 import os
@@ -16,15 +17,52 @@ def read(name):
         return f.read()
 
 
+# Page-database rules for the published page (pass as the Artifact's `db` capability; `--capabilities` prints the set).
+# Schedule records stay editor-only. Members (Contributor access) write trades and responses, and only their own
+# "this is me" record; editors can undo anyone's.
+CAPABILITIES = {
+    "db": {"rules": [
+        {"path": "statuses", "read": "view", "write": "admin"},
+        {"path": "tourChanges", "read": "view", "write": "admin"},
+        {"path": "covers", "read": "view", "write": "admin"},
+        {"path": "people", "read": "view", "write": "admin"},
+        {"path": "staffing", "read": "view", "write": "admin"},
+        {"path": "profiles", "read": "admin", "write": "admin"},
+        {"path": "members", "read": "view", "write": "admin"},
+        {"path": "members/{self}", "write": "interact"},
+        {"path": "trades", "read": "view", "write": "interact"},
+        {"path": "tradeReplies", "read": "view", "write": "interact"},
+    ]},
+    "user": {},
+}
+
+
+def fold_trades(records):
+    """Snapshots don't show trades; a set trade's cover and TR records (kept on the trade) join the schedule instead."""
+    for t in records.pop("trades", None) or []:
+        if t.get("status") != "set":
+            continue
+        for i, leg in enumerate(t.get("legs") or []):
+            rec = {k: v for k, v in leg.items() if k != "kind"}
+            rec.update({"id": f"trade:{t.get('id')}:{i}", "tradeId": t.get("id"), "createdAt": t.get("setAt") or t.get("createdAt")})
+            records.setdefault(leg.get("kind"), []).append(rec)
+    for k in ("tradeReplies", "members"):
+        records.pop(k, None)
+
+
 def main():
     # build_artifact.py [out.html] [--snapshot records.json]
     # --snapshot bakes page records ({"asOf": "YYYY-MM-DD", "records": {statuses, tourChanges, covers, people, staffing}})
     # into a view-only page that needs no sign-in and no page database.
     args = sys.argv[1:]
+    if "--capabilities" in args:
+        print(json.dumps(CAPABILITIES))
+        return
     snapshot = None
     if "--snapshot" in args:
         i = args.index("--snapshot")
         snapshot = json.load(open(args[i + 1]))
+        fold_trades(snapshot.setdefault("records", {}))
         del args[i:i + 2]
     out = args[0] if args else os.path.join(ROOT, "dist", "tour-schedule.html")
     index = read("index.html")
@@ -51,6 +89,7 @@ def main():
         f"<script>\n{read('store.js')}</script>\n"
         f"<script>\n{read('admin.js')}</script>\n"
         f"<script>\n{read('dashboard.js')}</script>\n"
+        f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)

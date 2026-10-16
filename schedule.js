@@ -159,7 +159,44 @@
     return holidaysOf(d.getFullYear())[k] || holidaysOf(d.getFullYear() + 1)[k] || null;
   }
 
+  /* Shift trades. Who can take whose 24-hour shift is decided by rank group: one table, easy to change.
+     A rank not listed here trades with its own rank only (Rescue Captain, ISS, Pilot, Marine Engineer). */
+  var RANK_GROUPS = {
+    "Firefighter": "Firefighter",
+    "FF/Paramedic": "FF/Paramedic",
+    "Lieutenant": "Officer", "Captain": "Officer", // H20 and H30 trade freely
+    "Battalion Chief": "Battalion Chief",
+  };
+  function rankGroup(rank) { return RANK_GROUPS[rank] || rank; }
+  function addDay(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
+  // A person's own schedule: added people without an apparatus and tour have none (they only work covers).
+  function ownSeat(p) { return p && !(p.added && !p.tour) ? p : null; }
+  // Works on date d: scheduled (own seat or a cover) and not marked off with a status.
+  function worksOn(p, d, opts) {
+    var s = dayFor(p.pos, ownSeat(p), d, opts);
+    return !!(s && !s.status);
+  }
+  // Whether person p works the day before / the day after d (to flag back-to-back shifts).
+  function adjacentWork(p, d, opts) {
+    return { before: worksOn(p, addDay(d, -1), opts), after: worksOn(p, addDay(d, 1), opts) };
+  }
+  /* People who could take `poster`'s shift on date d: same rank group, not the poster, scheduled off that day
+     (no own shift and no cover) and with no status (VA, S, D, WE, TR) on it.
+     ctx: {people: [person], opts: dayFor opts}. Result: [{p, before, after}] in ctx.people order. */
+  function eligibleTakers(d, poster, ctx) {
+    var group = rankGroup(poster.rank), out = [];
+    (ctx.people || []).forEach(function (p) {
+      if (!p.name || p.pos === poster.pos || rankGroup(p.rank) !== group) return;
+      if (dayFor(p.pos, ownSeat(p), d, ctx.opts)) return;
+      if (statusFor(p.pos, d, ctx.opts && ctx.opts.statuses)) return;
+      var adj = adjacentWork(p, d, ctx.opts);
+      out.push({ p: p, before: adj.before, after: adj.after });
+    });
+    return out;
+  }
+
   var api = {
+    RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,

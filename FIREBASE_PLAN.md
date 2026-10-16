@@ -32,6 +32,8 @@ These need answers before any build work:
 | Contact info with share toggle | `contacts/{uid}`; readable by its owner, admins, and everyone active when `share` is on |
 | `profiles` (birth / hire dates) | `profiles/{key}`; owner and admins only |
 | `/api/stats` (average age and years of service) | Callable function that returns only the averages |
+| `trades`, `trade_replies` tables (claude.ai page: `trades`, `tradeReplies`, `members`) | `trades/{id}`, `tradeReplies/{id}`; the claim is `users/{uid}.pos` |
+| Trade alerts opt-in (`alert_text`, `alert_app`) | `users/{uid}.alerts` plus `fcmTokens/{uid}/{token}` |
 | `audit` table | `audit/…`, written by functions and Firestore triggers only |
 
 ## Firestore data model
@@ -45,6 +47,9 @@ These need answers before any build work:
   - `createdBy` becomes the editor's uid.
 - **`contacts/{uid}`** `{pos, contactEmail, phoneMobile, phoneOther, share}`.
 - **`profiles/{key}`** `{birthDate, hireDate, updatedAt, updatedBy}`; the key is a position number or `person:<id>`.
+- **`trades/{id}`** `{posterKey, seatPos, date, paybackDate|null, note, audience: {board, to: [keys]}, status: open|set|cancelled|expired, takerKey, replyId, proposal, createdAt, setAt}`.
+- **`tradeReplies/{id}`** `{tradeId, takerKey, proposal: {swapDate}|{later: true}, swapSeatPos, note, createdAt}`.
+  - Picking a response runs in the `pickTrade` function (below), which writes the one-day cover and TR status records with `tradeId`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
@@ -56,6 +61,8 @@ These need answers before any build work:
 - **`users`:** each person reads their own doc. Only admins list users, and that goes through a function.
 - **`contacts`:** the owner reads and writes their own. Admins read all. Active users read a doc where `share == true`.
 - **`profiles`:** admins read and write. A person reads and writes the doc whose key matches their linked position, using `pos` on the token.
+- **`trades`:** create when active, linked (`pos` on the token) and `posterKey == pos`; read when you posted it, are in `audience.to`, took it, or it's on the board. Board eligibility (rank group, off that day) is checked in the function that lists the board, since rules can't run the tour math.
+- **`tradeReplies`:** create your own (`takerKey == pos`); read your own, or replies to your trades. Picking and cancelling go through functions only.
 - **`audit`:** admins read; no client writes.
 - **Storage:**
   - `data/**` and `docs/**`: read if active, no client writes. Admins upload new vacancy lists through the console or a deploy script.
@@ -70,6 +77,9 @@ These need answers before any build work:
 - **`rosterNames`** (callable, pending users): positions not yet linked to an account, for the claim screen.
 - **`stats`** (callable, active users): average age and years of service for a date.
 - **Audit triggers:** on writes to the record collections, append to `audit`.
+- **`pickTrade`, `cancelTrade`** (callable, the poster): re-check eligibility with the same rules as `server.py` (rank group from `RANK_GROUPS`, off that day, no status; for a swap, the taker works the swap day and the poster is free), then write or remove the cover and TR records in one transaction.
+- **`expireTrades`** (scheduled, nightly): marks open trades whose date has passed as expired.
+- **Trade alerts:** a Firestore trigger on `trades` and `tradeReplies` sends **Firebase Cloud Messaging** pushes and **SMS** (e.g. Twilio) to people who opted in. Twilio keys live in function secrets.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 

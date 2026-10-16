@@ -321,3 +321,114 @@ class ServerTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TradeTest(unittest.TestCase):
+    """Shift trades: post, reply, pick (cover + TR), swap, cancel, rank groups and who sees what."""
+    setUpClass = classmethod(ServerTest.setUpClass.__func__)
+    tearDownClass = classmethod(ServerTest.tearDownClass.__func__)
+    client = ServerTest.client
+
+    def member(self, email, pos):
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        c = self.client()
+        c.google_login(email)
+        _, users, _ = admin.req("GET", "/api/admin/users")
+        uid = next(u["id"] for u in users if u["googleEmail"] == email)
+        admin.req("POST", f"/api/admin/users/{uid}", {"action": "approve"})
+        self.assertEqual(admin.req("POST", f"/api/admin/users/{uid}", {"action": "link", "pos": pos})[0], 200)
+        return c
+
+    def pick(self, rank, works, off=(), skip=()):
+        """A filled position of `rank` that works every day in `works` and is off on every day in `off`."""
+        for pos, p in sorted(self.app.positions.items()):
+            if p["rank"] == rank and p.get("name") and pos not in skip and all(self.app.seat_on(pos, d) for d in works) \
+                    and not any(self.app.seat_on(pos, d) for d in off):
+                return pos
+        self.fail(f"no {rank} for {works} / {off}")
+
+    def test_trades(self):
+        import datetime as dt
+        days = [(dt.date.today() + dt.timedelta(days=n)).isoformat() for n in range(5, 40)]
+        day = days[0]
+        lt = self.pick("Lieutenant", [day])
+        swap = next(d for d in days[1:] if not self.app.seat_on(lt, d))
+        capt = self.pick("Captain", [swap], off=[day])
+        other = self.pick("Lieutenant", [], off=[day], skip={lt})
+        ff = self.pick("Firefighter", [], off=[day])
+        poster, taker = self.member("lt@example.org", lt), self.member("capt@example.org", capt)
+        bystander, firefighter = self.member("lt2@example.org", other), self.member("ff@example.org", ff)
+
+        # a day the poster doesn't work, and an empty audience, are refused
+        self.assertEqual(poster.req("POST", "/api/trades", {"date": swap, "audience": {"board": True}})[0], 400)
+        self.assertEqual(poster.req("POST", "/api/trades", {"date": day, "audience": {"board": False, "to": []}})[0], 400)
+        # sent only to the captain: the other lieutenant doesn't see it
+        st, t, _ = poster.req("POST", "/api/trades", {"date": day, "note": "Wedding", "audience": {"board": False, "to": [capt]}})
+        self.assertEqual((st, t["status"], t["seatPos"]), (201, "open", lt))
+        self.assertEqual([x["id"] for x in taker.req("GET", "/api/trades")[1]["trades"]], [t["id"]])
+        self.assertEqual(bystander.req("GET", "/api/trades")[1]["trades"], [])
+        self.assertEqual(bystander.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})[0], 404)
+        # widening to the board shows it to eligible officers, never to a firefighter (cross-group)
+        poster.req("PATCH", f"/api/trades/{t['id']}", {"audience": {"board": True, "to": []}})
+        self.assertEqual(len(bystander.req("GET", "/api/trades")[1]["trades"]), 1)
+        self.assertEqual(firefighter.req("GET", "/api/trades")[1]["trades"], [])
+        self.assertEqual(firefighter.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})[0], 404)
+        # even when sent to them directly, a firefighter can't take a lieutenant's shift
+        poster.req("PATCH", f"/api/trades/{t['id']}", {"audience": {"board": False, "to": [ff]}})
+        st, err, _ = firefighter.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})
+        self.assertEqual(st, 400)
+        self.assertIn("same rank group", err["error"])
+
+        # the captain proposes a swap; the bystander offers to be paid back later
+        st, r1, _ = taker.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"swapDate": swap}, "note": "Swap?"})
+        self.assertEqual((st, r1["proposal"]), (201, {"swapDate": swap}))
+        st, r2, _ = bystander.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})
+        self.assertEqual(st, 201)
+        self.assertEqual(len(poster.req("GET", "/api/trades")[1]["replies"]), 2)
+        self.assertEqual(len(bystander.req("GET", "/api/trades")[1]["replies"]), 1)  # only their own
+        self.assertEqual(taker.req("POST", f"/api/trades/{t['id']}/pick", {"replyId": r1["id"]})[0], 403)
+
+        # picking the swap writes both directions: covers and TR
+        st, t2, _ = poster.req("POST", f"/api/trades/{t['id']}/pick", {"replyId": r1["id"]})
+        self.assertEqual((st, t2["status"], t2["takerKey"]), (200, "set", capt))
+        recs = poster.req("GET", "/api/records")[1]
+        covers = {(c["coverKey"], c["targetPos"], c["start"], c["end"]) for c in recs["covers"] if c["tradeId"] == t["id"]}
+        self.assertEqual(covers, {(capt, lt, day, day), (lt, capt, swap, swap)})
+        trs = {(s["pos"], s["code"], s["start"]) for s in recs["statuses"] if s["tradeId"] == t["id"]}
+        self.assertEqual(trs, {(lt, "TR", day), (capt, "TR", swap)})
+        self.assertEqual(self.app.seat_on(capt, day), lt)
+        self.assertEqual(self.app.status_on(lt, day), "TR")
+        # set trades leave the board, and nobody can respond any more
+        self.assertEqual(bystander.req("GET", "/api/trades")[1]["trades"], [])
+        self.assertEqual(bystander.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})[0], 409)
+        # TR can't be entered by hand
+        with self.assertRaises(server.BadRequest):
+            self.app.add_status({"pos": lt, "code": "TR", "start": day}, "x")
+
+        # cancelling the set trade removes what it wrote
+        self.assertEqual(taker.req("POST", f"/api/trades/{t['id']}/cancel")[0], 403)
+        st, t3, _ = poster.req("POST", f"/api/trades/{t['id']}/cancel")
+        self.assertEqual((st, t3["status"]), (200, "cancelled"))
+        recs = poster.req("GET", "/api/records")[1]
+        self.assertFalse([c for c in recs["covers"] if c["tradeId"] == t["id"]])
+        self.assertFalse([s for s in recs["statuses"] if s["tradeId"] == t["id"]])
+        self.assertIsNone(self.app.seat_on(capt, day))
+
+        # pay back later: one cover and one TR
+        st, t4, _ = poster.req("POST", "/api/trades", {"date": day, "audience": {"board": True, "to": []}})
+        self.assertEqual(st, 201)
+        _, r3, _ = bystander.req("POST", f"/api/trades/{t4['id']}/replies", {"proposal": {"later": True}})
+        st, t5, _ = poster.req("POST", f"/api/trades/{t4['id']}/pick", {"replyId": r3["id"]})
+        self.assertEqual((st, t5["proposal"]), (200, {"later": True}))
+        self.assertEqual(len([c for c in poster.req("GET", "/api/records")[1]["covers"] if c["tradeId"] == t4["id"]]), 1)
+
+        # alerts opt-in is stored on the account
+        st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "app": False})
+        self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False}))
+
+        # an expired trade is closed to responses
+        self.app.write("UPDATE trades SET date = '2020-01-01', status = 'open' WHERE id = ?", (t["id"],))
+        poster.req("GET", "/api/trades")
+        self.assertEqual(self.app.get_trade(t["id"])["status"], "expired")
+        self.assertEqual(taker.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})[0], 409)

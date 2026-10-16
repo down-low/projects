@@ -26,6 +26,14 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Server:** serve the manifest, icons and service worker to everyone (signed in or not) so phones can install it; HTTPS is already required.
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
+### Shift-trade alerts (text and app)
+The Trades tab already stores each member's opt-in ("Notify me by text / app", shown as "available at launch"). With the server:
+
+- **App (push):** Firebase Cloud Messaging. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push.
+- **Text (SMS):** a provider such as Twilio, sent from a Cloud Function (or `server.py`). Phone numbers come from My page; the provider's keys stay in function config, never in the repo.
+- **When:** a trade is sent to you, a board post you could take goes up (optional, can be noisy), someone responds to your trade, your response is picked, a set trade is cancelled. One message per event, with a link to the Trades tab; no names or details beyond the date and rank group.
+- **Opt-out:** both switches stay on the member's own page; texts also honor STOP replies.
+
 ### Calendar sync (iCal / Google Calendar)
 - **Subscribe link:** each signed-in person gets a private calendar feed (`…/cal/<secret>.ics`) of their own schedule, built from the same logic as their person page (`TourMath.dayFor`). Add it in Google Calendar (Other calendars → From URL), Apple Calendar / iPhone (Add subscription) or Outlook.
 - **On the feed:** one event per work day titled with the company and tour (e.g. "E21 · Tour 15"), acting or covering noted in the description, leave days (VA / S / D) marked, holidays named on the day; about 12 months ahead and 1 month back. All-day events by default, or a set shift start (e.g. 08:00 for 24 hours) once confirmed.
@@ -50,3 +58,4 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
 - View-only snapshot link with records baked in (no sign-in needed).
 - Holidays on the calendars (12 city holidays plus Halloween and Mother's Day as observances), worked out for any year.
+- Shift trades: "this is me" claim, Trade wizard (payback, recipients by division and battalion, board), Trades tab (board, sent to me, my trades, owed shifts), TR (traded off) on the schedule. Text and app alerts come with the server launch.
