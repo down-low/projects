@@ -1,6 +1,11 @@
 {
  "source": "IDs from the 2027 transfer list and 2027 Vacancy Awards (26 A-082), matched by name and current assignment",
  "ids": {
+  "01BT204M": {
+   "id": "CH1691",
+   "name": "Choy,A",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "01EOD05M": {
    "id": "EV3145",
    "name": "Evanoff,Alexander I",
@@ -101,6 +106,21 @@
    "name": "Castillo,Clarence",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "03BO208M": {
+   "id": "MC6913",
+   "name": "McKinney,S",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "03BO209M": {
+   "id": "HO4233",
+   "name": "Hoo,E",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "03BO210M": {
+   "id": "KU1180",
+   "name": "Kuhn,K",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "03EOA05M": {
    "id": "FE3953",
    "name": "Feerick,Timothy D",
@@ -166,6 +186,11 @@
    "name": "Ross,Vincin R",
    "source": "2027 transfer list"
   },
+  "04EOC01M": {
+   "id": "AP0725",
+   "name": "App,J",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "04EOD29M": {
    "id": "LE4970",
    "name": "Lee,Felicia M",
@@ -190,6 +215,11 @@
    "id": "WA3686",
    "name": "Wagner,Emily A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "04TOL06M": {
+   "id": "DE0551",
+   "name": "Devaty,J",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "05BO225M": {
    "id": "SC1471",
@@ -220,6 +250,11 @@
    "id": "SI1725",
    "name": "Silva,Jeremy J",
    "source": "2027 transfer list"
+  },
+  "05ETL01M": {
+   "id": "CA5058",
+   "name": "Capurro,V",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "05TOF17M": {
    "id": "KA3008",
@@ -301,6 +336,11 @@
    "name": "Wheel,Gavin C",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "08EOC11M": {
+   "id": "RA6138",
+   "name": "Ramirez,C",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "08EOD15M": {
    "id": "AL1630",
    "name": "Alalamua,Aliki E",
@@ -315,6 +355,16 @@
    "id": "CO1037",
    "name": "Cooke,Francis P",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOL12M": {
+   "id": "VE7102",
+   "name": "Vernon,A",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "08EOL13M": {
+   "id": "PA3546",
+   "name": "Paganini,N",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "08TOD12M": {
    "id": "RA1164",
@@ -335,6 +385,11 @@
    "id": "SL1789",
    "name": "Slatter,Spencer D",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOL15M": {
+   "id": "KO2111",
+   "name": "Korn,P",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "08TOT08M": {
    "id": "BR1427",
@@ -521,6 +576,16 @@
    "name": "Tann,Kevin S",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "13TOL29M": {
+   "id": "MC1398",
+   "name": "McDonald Jr,R",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "13TOT25M": {
+   "id": "SO3924",
+   "name": "Sowers,D",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "14EOA22M": {
    "id": "GE3434",
    "name": "Gebler,Samuel J",
@@ -540,6 +605,11 @@
    "id": "TA1145",
    "name": "Tate,Matthew J",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14EOL13M": {
+   "id": "HI9865",
+   "name": "Higgins,H",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "14ETA24M": {
    "id": "DI1513",
@@ -570,6 +640,11 @@
    "id": "LA3001",
    "name": "Lam,Wilson P",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOL17M": {
+   "id": "WO5868",
+   "name": "Wong,L",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "15EOD20M": {
    "id": "PA3962",
@@ -826,6 +901,11 @@
    "name": "Flaviani,Mario C",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "31EOD12M": {
+   "id": "BO2638",
+   "name": "Boston Lozano,K",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "31EOE16M": {
    "id": "BE4771",
    "name": "Best,Dexter",
@@ -845,6 +925,11 @@
    "id": "BE3128",
    "name": "Beere,Barry M",
    "source": "2027 transfer list"
+  },
+  "32EOD12M": {
+   "id": "ST2691",
+   "name": "Stroud,S",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "32EOD13M": {
    "id": "KU2090",
@@ -921,6 +1006,16 @@
    "name": "Herrera,Amador",
    "source": "2027 transfer list"
   },
+  "41EOD02M": {
+   "id": "SI2972",
+   "name": "Simon-Duenas,M",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "41EOE03M": {
+   "id": "WI6119",
+   "name": "Wilkinson,S",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
   "41EOE04M": {
    "id": "IR2452",
    "name": "Irvin,Christopher I",
@@ -930,6 +1025,11 @@
    "id": "MA1542",
    "name": "Marin,Guadalupe O",
    "source": "2027 transfer list"
+  },
+  "41ETX06M": {
+   "id": "PA3287",
+   "name": "Paik,A",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "42EOC23M": {
    "id": "WE1747",
@@ -980,6 +1080,11 @@
    "id": "BA2548",
    "name": "Barnes,Brent R.",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44EOL26M": {
+   "id": "WA1444",
+   "name": "Watanabe,C",
+   "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
   "44ETA01M": {
    "id": "MA1575",
