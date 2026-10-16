@@ -25,6 +25,19 @@
   var NO_EDIT = "Only editors can make changes on this page.";
 
   function nowIso() { return new Date().toISOString(); }
+  /* A set trade carries its records (`legs`: the taker's one-day cover and the poster's TR, and the reverse for a swap) on
+     the trade itself, so members can set trades while covers and statuses stay editor-only. They join the schedule here,
+     and go away when the trade is cancelled. kind: "covers" | "statuses". */
+  function tradeLegs(trades, kind) {
+    var out = [];
+    (trades || []).forEach(function (t) {
+      if (t.status !== "set" || !t.legs) return;
+      t.legs.forEach(function (l, i) {
+        if (l.kind === kind) out.push(Object.assign({}, l, { id: "trade:" + t.id + ":" + i, tradeId: t.id, createdAt: t.setAt || t.createdAt }));
+      });
+    });
+    return out;
+  }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -43,22 +56,9 @@
       var db = caps[0], user = caps[1];
       if (!db) return null;
       var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [] };
-      /* A set trade carries its records (`legs`: the taker's one-day cover and the poster's TR, and the reverse for a swap) on
-         the trade itself, so members can set trades while covers and statuses stay editor-only. They join the schedule here,
-         and go away when the trade is cancelled. */
-      function tradeLegs(kind) {
-        var out = [];
-        records.trades.forEach(function (t) {
-          if (t.status !== "set" || !t.legs) return;
-          t.legs.forEach(function (l, i) {
-            if (l.kind === kind) out.push(Object.assign({}, l, { id: "trade:" + t.id + ":" + i, tradeId: t.id, createdAt: t.setAt || t.createdAt }));
-          });
-        });
-        return out;
-      }
       function emit() {
-        onChange({ statuses: records.statuses.concat(tradeLegs("statuses")), tourChanges: records.tourChanges,
-          covers: records.covers.concat(tradeLegs("covers")), people: records.people,
+        onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
+          covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies });
       }
@@ -316,11 +316,48 @@
   /* A view-only snapshot: records baked into the page at build time (tools/build_artifact.py --snapshot),
      so the page needs no sign-in and no page database. */
   function snapshotAdapter(onChange) {
-    var snap = root.SNAPSHOT, r = snap.records || {};
-    setTimeout(function () {
-      onChange({ statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [], staffing: r.staffing || [] });
-    }, 0);
-    return Promise.resolve(Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf }));
+    var snap = root.SNAPSHOT, r = snap.records || {}, demo = root.TRADE_DEMO;
+    var st = demo ? { as: demo.people[0], trades: demo.trades.slice(), replies: demo.tradeReplies.slice(), alerts: {}, n: 0 } : null;
+    function emit() {
+      onChange({ statuses: (r.statuses || []).concat(st ? tradeLegs(st.trades, "statuses") : []), tourChanges: r.tourChanges || [],
+        covers: (r.covers || []).concat(st ? tradeLegs(st.trades, "covers") : []), people: r.people || [], staffing: r.staffing || [],
+        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [] });
+    }
+    setTimeout(emit, 0);
+    var adapter = Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf });
+    if (!st) return Promise.resolve(adapter);
+    /* Trade demo (tools/build_artifact.py --demo): sample trades and a "viewing as" picker. Every trade action works in the
+       page but nothing is saved; a reload starts over. */
+    function upd(id, patch) {
+      st.trades = st.trades.map(function (t) { return t.id === id ? Object.assign({}, t, patch) : t; });
+      emit();
+      return Promise.resolve();
+    }
+    return Promise.resolve(Object.assign(adapter, {
+      demo: { people: demo.people, as: function () { return st.as; }, setAs: function (k) { st.as = k; emit(); } },
+      canTrade: function () { return true; },
+      myKey: function () { return st.as; },
+      myMember: function () { return { key: st.as, alerts: st.alerts[st.as] || {} }; },
+      setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app }; return Promise.resolve(); },
+      postTrade: function (rec) {
+        rec = Object.assign({}, rec, { id: "demo" + ++st.n, status: "open", createdAt: nowIso() });
+        st.trades = st.trades.concat([rec]);
+        emit();
+        return Promise.resolve({ id: rec.id });
+      },
+      widenTrade: function (id, audience) { return upd(id, { audience: audience }); },
+      replyTrade: function (rec) {
+        st.replies = st.replies.filter(function (x) { return !(x.tradeId === rec.tradeId && x.takerKey === rec.takerKey); })
+          .concat([Object.assign({}, rec, { id: "demo-r" + ++st.n, createdAt: nowIso() })]);
+        emit();
+        return Promise.resolve();
+      },
+      pickReply: function (trade, reply, writes) {
+        return upd(trade.id, { status: "set", replyId: reply.id, takerKey: reply.takerKey, proposal: reply.proposal, setAt: nowIso(),
+          legs: writes.map(function (w) { return Object.assign({ kind: w.kind }, w.rec); }) });
+      },
+      cancelTrade: function (trade) { return upd(trade.id, { status: "cancelled" }); },
+    }));
   }
 
   function connect(onChange) {

@@ -3,6 +3,8 @@
 
 Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule.html)
        python3 tools/build_artifact.py --capabilities   (the page-database rules to publish with)
+       python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json]
+         (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js)
 """
 import json
 import os
@@ -64,6 +66,13 @@ def main():
         snapshot = json.load(open(args[i + 1]))
         fold_trades(snapshot.setdefault("records", {}))
         del args[i:i + 2]
+    demo = None
+    if "--demo" in args:  # trade demo for a snapshot: {"people": [keys], "trades": [...], "tradeReplies": [...]}
+        i = args.index("--demo")
+        demo = json.load(open(args[i + 1]))
+        del args[i:i + 2]
+        if snapshot is None:
+            sys.exit("--demo needs --snapshot")
     out = args[0] if args else os.path.join(ROOT, "dist", "tour-schedule.html")
     index = read("index.html")
     body = re.search(r"<!-- app:start -->(.*)<!-- app:end -->", index, re.S).group(1)
@@ -77,6 +86,8 @@ def main():
     title = "SFFD Tour Schedule (view only)" if snapshot is not None else "SFFD Tour Schedule"
     if snapshot is not None:
         snap = "window.SNAPSHOT=" + json.dumps(snapshot, separators=(",", ":")).replace("</", "<\\/") + ";"
+    if demo is not None:
+        snap += "window.TRADE_DEMO=" + json.dumps(demo, separators=(",", ":")).replace("</", "<\\/") + ";"
     html = (
         f"<title>{title}</title>\n"
         '<meta name="claude:viewport-fit-sides" content="cover">\n'

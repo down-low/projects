@@ -26,6 +26,7 @@
       var b = backend();
       if (!b || !b.canTrade) return false;
       if (b.mode === "server") return b.isActive();
+      if (b.mode === "snapshot") return !!b.demo;
       return b.mode === "db" && (b.canTrade() || !!b.myKey());
     }
     function statusOf(t) { return t.status === "open" && t.date < todayIso() ? "expired" : t.status; }
@@ -138,7 +139,7 @@
       var bts = [];
       Organization.DIVISIONS.forEach(function (dv) { if (!dv.hidden) dv.battalions.forEach(function (bt) { bts.push(bt.name); }); });
       out.innerHTML =
-        '<div class="trades">' +
+        '<div class="trades">' + demoBar() +
         '<div class="card trade-me"><div><b>' + esc(mine.name) + '</b> <span class="hint">' + esc(mine.rank + " · " + api.home(mine)) +
         (api.tourOn(mine, api.today()) ? " · Tour " + api.tourOn(mine, api.today()) : "") + "</span></div>" +
         '<p class="hint">To trade a shift, open <button class="linkish" data-pos="' + esc(key) + '">your page</button> and tap the day, or Trade under it in Next shifts.</p>' +
@@ -156,6 +157,16 @@
           '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
         adminClaimsHtml() + "</div>";
       wireTab();
+    }
+    // Demo page: say nothing is saved, and let the viewer switch who they are.
+    function demoBar() {
+      var d = backend().demo;
+      if (!d) return "";
+      return '<div class="card demo-bar"><p><b>Demo.</b> Sample trades; try anything, nothing is saved. Reload to start over.</p>' +
+        '<label>Viewing as<select id="demo-as">' + d.people.map(function (k) {
+          var p = byPos()[k] || {};
+          return '<option value="' + esc(k) + '"' + (k === d.as() ? " selected" : "") + ">" + esc((p.name || k) + " · " + (p.rank || "") + " · " + (p.company || p.title || "")) + "</option>";
+        }).join("") + "</select></label></div>";
     }
     function byDate(a, b) { return a.date.localeCompare(b.date) || String(a.createdAt).localeCompare(String(b.createdAt)); }
     function section(title, body) { return '<section class="card trade-sec"><h3>' + esc(title) + "</h3>" + body + "</section>"; }
@@ -230,6 +241,7 @@
 
     function wireTab() {
       var out = $("trades-detail");
+      if ($("demo-as")) $("demo-as").onchange = function () { ui.replyOpen = null; backend().demo.setAs(this.value); };
       if ($("tf-from")) {
         $("tf-from").onchange = function () { ui.from = this.value; renderTrades(); };
         $("tf-to").onchange = function () { ui.to = this.value; renderTrades(); };

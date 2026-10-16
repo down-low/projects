@@ -711,3 +711,9 @@ ol.shifts .when .trade-link { margin-left: 0; font-size: 0.82rem; }
 .day-leave { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px 4px; border-top: 1px solid var(--line); }
 .day-leave .k { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
 .day-leave .btn { min-width: 44px; min-height: 40px; }
+
+/* Trade demo (view-only snapshot built with --demo) */
+.demo-bar { display: flex; flex-direction: column; gap: 8px; border-color: var(--today); background: color-mix(in srgb, var(--today) 8%, var(--surface)); }
+.demo-bar p { margin: 0; font-size: 0.9rem; }
+.demo-bar label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.demo-bar select { width: 100%; }
