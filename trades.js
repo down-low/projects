@@ -81,8 +81,9 @@
 
     /* ---------- Person page hooks ---------- */
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
+    function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
-      if (!visible() || p.pos !== myKey() || !backend().canTrade()) return "";
+      if (!canTradeFor(p.pos)) return "";
       var dIso = api.iso(d);
       var t = trades().filter(function (x) { return x.posterKey === p.pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0];
       if (t) return ' <span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
@@ -569,6 +570,6 @@
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);

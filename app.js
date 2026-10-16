@@ -375,11 +375,13 @@
       el.addEventListener("toggle", function () { state.folds[el.dataset.fold] = el.open; });
     });
   }
-  /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones;
+  /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
+     (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
   function foldOpen(key, head, tail) {
     var open = state.folds[key];
-    if (open == null) open = key === "edit" ? false : !isPhone();
+    // On phones, your own Next shifts start open when you can trade, so the Trade links show.
+    if (open == null) open = key === "edit" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
     return head + (open ? " open" : "") + tail;
   }
   // Holiday marker (a dot) and the month's holidays listed under a calendar.

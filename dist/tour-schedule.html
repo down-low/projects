@@ -2503,8 +2503,9 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
 
     /* ---------- Person page hooks ---------- */
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
+    function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
-      if (!visible() || p.pos !== myKey() || !backend().canTrade()) return "";
+      if (!canTradeFor(p.pos)) return "";
       var dIso = api.iso(d);
       var t = trades().filter(function (x) { return x.posterKey === p.pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0];
       if (t) return ' <span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
@@ -2991,7 +2992,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);
 </script>
@@ -3373,11 +3374,13 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       el.addEventListener("toggle", function () { state.folds[el.dataset.fold] = el.open; });
     });
   }
-  /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones;
+  /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
+     (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
   function foldOpen(key, head, tail) {
     var open = state.folds[key];
-    if (open == null) open = key === "edit" ? false : !isPhone();
+    // On phones, your own Next shifts start open when you can trade, so the Trade links show.
+    if (open == null) open = key === "edit" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
     return head + (open ? " open" : "") + tail;
   }
   // Holiday marker (a dot) and the month's holidays listed under a calendar.
