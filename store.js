@@ -23,6 +23,7 @@
     members: "members", trades: "trades", tradeReplies: "tradeReplies" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
+  var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
 
   function nowIso() { return new Date().toISOString(); }
   /* A set trade carries its records (`legs`: the taker's one-day cover and the poster's TR, and the reverse for a swap) on
@@ -151,7 +152,7 @@
           },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
-            return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app, email: !!a.email } }));
+            return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" } }));
           },
           postTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -338,7 +339,7 @@
       canTrade: function () { return true; },
       myKey: function () { return st.as; },
       myMember: function () { return { key: st.as, alerts: st.alerts[st.as] || {} }; },
-      setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app, email: !!a.email }; return Promise.resolve(); },
+      setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" }; return Promise.resolve(); },
       postTrade: function (rec) {
         rec = Object.assign({}, rec, { id: "demo" + ++st.n, status: "open", createdAt: nowIso() });
         st.trades = st.trades.concat([rec]);

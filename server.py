@@ -61,6 +61,7 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("users", "alert_text", "INTEGER NOT NULL DEFAULT 0"),
     ("users", "alert_app", "INTEGER NOT NULL DEFAULT 0"),
     ("users", "alert_email", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "alert_board", "TEXT NOT NULL DEFAULT 'off'"),
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
 ]
@@ -69,6 +70,8 @@ RANK_GROUPS = {"Firefighter": "Firefighter", "FF/Paramedic": "FF/Paramedic", "Li
                "Battalion Chief": "Battalion Chief"}
 # The 31-day watch cycle, as in schedule.js: 2026-01-01 is watch 16; tour k works watch w when (w - k) mod 31 is one of these.
 TOUR_OFFSETS = {0, 3, 6, 10, 13, 16, 20, 23, 26}
+# Trade alerts for board posts: none (people browse the board), a daily summary, or each new post.
+BOARD_ALERTS = ("off", "daily", "each")
 WATCH_BASE = dt.date(2026, 1, 1)
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
@@ -332,7 +335,8 @@ class App:
             "shareContact": bool(u["share_contact"]),
             "claimRequest": json.loads(u["claim_request"]) if u.get("claim_request") else None,
             "profile": self.profile(u["pos"]) if u["pos"] else None,
-            "alerts": {"text": bool(u.get("alert_text")), "app": bool(u.get("alert_app")), "email": bool(u.get("alert_email"))},
+            "alerts": {"text": bool(u.get("alert_text")), "app": bool(u.get("alert_app")), "email": bool(u.get("alert_email")),
+                       "board": u.get("alert_board") or "off"},
         }
 
     def clean_person_fields(self, body):
@@ -821,8 +825,11 @@ class App:
         return self.get_trade(trade_id)
 
     def save_alerts(self, u, body):
-        self.write("UPDATE users SET alert_text = ?, alert_app = ?, alert_email = ? WHERE id = ?",
-                   tuple(1 if body.get(k) else 0 for k in ("text", "app", "email")) + (u["id"],))
+        board = body.get("board", "off")
+        if board not in BOARD_ALERTS:
+            raise BadRequest("board must be off, daily or each")
+        self.write("UPDATE users SET alert_text = ?, alert_app = ?, alert_email = ?, alert_board = ? WHERE id = ?",
+                   tuple(1 if body.get(k) else 0 for k in ("text", "app", "email")) + (board, u["id"]))
 
     # ---------- Google ----------
     def exchange_code(self, code):

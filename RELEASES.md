@@ -35,8 +35,17 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
   - Phone numbers come from My page. The opt-in switch is the consent; texts honor STOP replies.
   - Twilio keys stay in function secrets, never in the repo.
 - **Email:** sent from a department Gmail / Workspace account (Gmail API from a Cloud Function, or SMTP from `server.py`), to the contact email on My page, else the sign-in email. Free at this size; the fallback for anyone without the app.
-- **When:** a trade is sent to you, a board post you could take goes up (optional, can be noisy), someone responds to your trade, your response is picked, a set trade is cancelled. One message per event, with a link to the Trades tab; no names or details beyond the date and rank group.
-- **Opt-out:** both switches stay on the member's own page; texts also honor STOP replies.
+- **The details are in the alert,** so nobody has to open the page just to decide:
+  - **A trade sent to you:** "Lester,D (Lt · E10) wants a 24-hr trade for Sat Oct 17, Watch 26, at E10. 'Daughter's recital.' You're off that day; you work the day after."
+  - **A response to your trade:** "Schnelker,R (Capt · E01) can take Sat Oct 17. Swap: you work their Mon Oct 19."
+  - **Your response was picked, or a set trade was cancelled:** the date, the other person and the terms.
+  - Names and dates show on lock screens; that's the point.
+- **Answer from the alert, without signing in:**
+  - **Text:** "Reply 1 = interested, pay back later · 2 and a date = swap (e.g. 2 10/23)", or "PICK" on a response to your own trade. Twilio forwards replies to the server, which matches the phone number to a member and runs the same checks as the page.
+  - **Email:** buttons with signed, single-use links that expire after 7 days (I'm interested · pay back later; or open to pick a swap day).
+  - **App:** the same actions on the notification.
+- **What alerts you:** trades sent to you and responses to your trades, always (on whichever channels you turned on). **Board posts** are a separate setting, saved now: **Off** (the default; people browse the board when they want), **Daily summary** (one message listing new posts you could take), or **Each new post**.
+- **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
 ### Calendar sync (iCal / Google Calendar)
 - **Subscribe link:** each signed-in person gets a private calendar feed (`…/cal/<secret>.ics`) of their own schedule, built from the same logic as their person page (`TourMath.dayFor`). Add it in Google Calendar (Other calendars → From URL), Apple Calendar / iPhone (Add subscription) or Outlook.

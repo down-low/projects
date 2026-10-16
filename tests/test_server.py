@@ -425,7 +425,10 @@ class TradeTest(unittest.TestCase):
 
         # alerts opt-in is stored on the account
         st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "app": False, "email": True})
-        self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False, "email": True}))
+        self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False, "email": True, "board": "off"}))
+        st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "board": "daily"})
+        self.assertEqual((st, me["alerts"]["board"]), (200, "daily"))
+        self.assertEqual(taker.req("PUT", "/api/me/alerts", {"board": "always"})[0], 400)
 
         # an expired trade is closed to responses
         self.app.write("UPDATE trades SET date = '2020-01-01', status = 'open' WHERE id = ?", (t["id"],))

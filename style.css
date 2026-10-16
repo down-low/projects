@@ -717,3 +717,5 @@ ol.shifts .when .trade-link { margin-left: 0; font-size: 0.82rem; }
 .demo-bar p { margin: 0; font-size: 0.9rem; }
 .demo-bar label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
 .demo-bar select { width: 100%; }
+.trade-alerts .alert-board { display: flex; flex-direction: column; gap: 3px; margin-top: 8px; font-size: 0.75rem; color: var(--muted); }
+.trade-alerts .alert-board select { width: 100%; }

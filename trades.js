@@ -237,8 +237,11 @@
         '<label class="chk"><input type="checkbox" data-alert="text"' + (a.text ? " checked" : "") + "> Notify me by text</label>" +
         '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" +
         '<label class="chk"><input type="checkbox" data-alert="email"' + (a.email ? " checked" : "") + "> Notify me by email</label>" +
-        '<p class="hint">Available at launch. Your choice is saved now; alerts start with the department server. App alerts need the app ' +
-        "installed on your phone; texts come from the department's number; email goes to the address on your account.</p></details>";
+        '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
+          return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
+        }).join("") + "</select></label>" +
+        '<p class="hint">Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the ' +
+        "details and a one-tap reply, so there's no need to open the page.</p></details>";
     }
 
     function wireTab() {
@@ -252,8 +255,8 @@
       out.querySelectorAll("[data-alert]").forEach(function (c) {
         c.onchange = function () {
           var vals = {};
-          out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.checked; });
-          backend().setAlerts(vals).catch(function () { c.checked = !c.checked; });
+          out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
+          backend().setAlerts(vals).catch(function () { if (c.tagName !== "SELECT") c.checked = !c.checked; });
         };
       });
       out.querySelectorAll("[data-reply]").forEach(function (b) {

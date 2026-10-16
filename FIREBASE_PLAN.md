@@ -33,7 +33,7 @@ These need answers before any build work:
 | `profiles` (birth / hire dates) | `profiles/{key}`; owner and admins only |
 | `/api/stats` (average age and years of service) | Callable function that returns only the averages |
 | `trades`, `trade_replies` tables (claude.ai page: `trades`, `tradeReplies`, `members`) | `trades/{id}`, `tradeReplies/{id}`; the claim is `users/{uid}.pos` |
-| Trade alerts opt-in (`alert_text`, `alert_app`, `alert_email`) | `users/{uid}.alerts` `{text, app, email}` plus `fcmTokens/{uid}/{token}` |
+| Trade alerts opt-in (`alert_text`, `alert_app`, `alert_email`) | `users/{uid}.alerts` `{text, app, email, board}` plus `fcmTokens/{uid}/{token}` |
 | `audit` table | `audit/…`, written by functions and Firestore triggers only |
 
 ## Firestore data model
@@ -84,6 +84,10 @@ These need answers before any build work:
   - **texts** through **Twilio** (A2P 10DLC registered; Google has no SMS API);
   - **email** through the **Gmail API** from a department Workspace account.
   - Twilio keys and the Gmail sender's credentials live in **Secret Manager**.
+  - Messages carry the details (who, date, watch, station, note, day-before / day-after for the reader) and one-tap actions; board posts follow `users/{uid}.alerts.board` (`off` | `daily` | `each`).
+- **`boardDigest`** (scheduled, daily): one summary per person with `board: "daily"` of new board posts they could take.
+- **`smsReply`** (HTTPS, Twilio webhook, signature checked): handles text replies (1, 2 + date, PICK) from a member's phone number with the same checks as `pickTrade`.
+- **`tradeAction`** (HTTPS): signed, single-use email links (expire after 7 days, tied to the trade and the person).
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
