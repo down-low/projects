@@ -107,7 +107,7 @@ These need answers before any build work:
 
 ## Launch steps
 
-1. Create the Firebase project (on the account decided above), enable Google sign-in, Firestore (production mode) and Storage, and choose the Blaze plan with a **budget alert** (e.g. $10/month).
+1. Create the Firebase project (on the account decided above), enable Google, email-link and phone sign-in (see "Sign-in without a Google account" in `RELEASES.md`), Firestore (production mode) and Storage, and choose the Blaze plan with a **budget alert** (e.g. $10/month).
 2. Deploy rules and functions. Set `ADMIN_EMAILS` and the allowed domains as function config.
 3. Run the import: records from the claude.ai page database; roster, IDs and PDFs to Storage.
 4. Deploy Hosting. Sign in as the first admin, approve a test member and a test editor, and walk through every screen on a phone and a desktop.
