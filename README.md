@@ -42,6 +42,17 @@ Editors can record, per person (on the **By person** tab):
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
+## 2027 vacancy awards
+
+Editors apply the 2027 Vacancy Awards (26 A-082) from **2027 awards** (header link on desktop, More menu on phones).
+
+- `python3 tools/extract_awards.py` reads `docs/vacancy-awards-26A082.pdf` into `data/vacancy-awards-2027.json` (364 rows, 346 positions; it checks the report's "Positions Awarded" totals). A position listed twice has an unstarred row (awarded on paper) and a starred row (the person who works it); the starred row is the one applied.
+- **Matching:** by Employee ID first, then last name + first initial at the person's current company (the report's last column), then a unique name anywhere. Anyone not found is added as a new person with the rank of their current class.
+- **Date:** each move starts on the first day of the awarded seat's tour on or after **Jan 16, 2027**. A cover the person has elsewhere ends the day before. Dates can be changed per row.
+- **Statuses:** **Ready**; **Check** (pick between people with the same name, an open-ended D or WE that stays on, or another person covering the seat); **Recorded** (already on the page); **No move** (already in the seat, or awarded on paper while the starred replacement works it). A move from the 2027 transfer list (newer than the awards) wins over the award and is shown under Check without an Apply option.
+- **Apply N ready moves** writes one cover per move (noted "2027 award (26 A-082)"), plus any added people; re-running skips what's recorded. **Apply anyway** on a Check row includes it. **Remove award moves** deletes everything the import wrote and puts back the end dates it changed (an open-ended cover gets its open end back on the shared page; the server keeps the last date).
+- On the schedule a moved person shows "2027 move" in their new seat, and their old seat shows them away.
+
 ## Shift trades
 
 Members trade full 24-hour shifts. Approval, if any, happens outside the tool; once both people agree, the trade is set and the schedule shows it.

@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
 STATUS_CODES = CODES | {TRADED}
@@ -1004,7 +1004,7 @@ def make_handler(app):
             if path == "/api/admin/users":
                 self.require("admin")
                 return self.send_json(200, app.admin_users())
-            if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json"):
+            if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json", "/data/vacancy-awards-2027.json"):
                 self.require("active")
                 self.path = path
                 return super().do_GET()

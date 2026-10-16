@@ -79,11 +79,12 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
+    $("awards-link").classList.toggle("on", v === "awards");
     store("view", v);
     render();
   }
@@ -96,6 +97,7 @@
     else if (state.view === "me") Accounts.renderMe();
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
+    else if (state.view === "awards") Awards.render();
     else renderRank();
   }
 
@@ -214,7 +216,8 @@
   // Tags for a Who's working row: acting, covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " : "Acting for ") + esc(x.slot.name || "vacant spot") + "</span>");
+    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(x.slot.name || "vacant spot")
+      : /^2027 (award|assignment)/.test(x.acting.note || "") ? "2027 move" : "Acting for " + esc(x.slot.name || "vacant spot")) + "</span>");
     if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
     if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
@@ -824,6 +827,7 @@
 
     state.sixMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     Dash.wireDash();
+    $("awards-link").onclick = function () { setView("awards"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -909,6 +913,7 @@
     if (v === "me") return serverMode() && backend.isActive();
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
+    if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
     return false;
   }
   function applyAccountUi() {
@@ -916,6 +921,7 @@
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
+    $("awards-link").hidden = !tabAllowed("awards");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
@@ -1007,6 +1013,11 @@
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
   });
 
+  var Awards = window.AwardViews({
+    $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    people: function () { return people; }, data: function () { return data; }, renderAll: renderAll, RANKS: RANK_ORDER,
+  });
+
   var Accounts = window.AccountViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; },
     people: function () { return people; }, recs: function () { return recs; }, shift: shift, tourOn: tourOn,
@@ -1044,8 +1055,13 @@
         var json = function (url) {
           return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };
-        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json")])
-          .then(function (got) { requiredData = got[0]; emplIds = got[1]; recsVersion++; boot(rows); });
+        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
+          .then(function (got) {
+            requiredData = got[0]; emplIds = got[1]; recsVersion++;
+            window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
+            window.AWARDS_2027 = window.AWARDS_2027 || got[2];
+            boot(rows);
+          });
       });
     }).catch(loadError);
   }

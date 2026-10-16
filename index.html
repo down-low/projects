@@ -22,6 +22,7 @@
           <ul id="docs-list"></ul>
         </details>
         <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
+        <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -126,6 +127,10 @@
     <div class="grid-wrap" id="rank-grid"></div>
   </section>
 
+  <section class="view" id="view-awards" role="region" aria-label="2027 vacancy awards" hidden>
+    <div id="awards-detail"></div>
+  </section>
+
   <section class="view" id="view-trades" role="tabpanel" aria-labelledby="tab-trades" hidden>
     <div id="trades-detail"></div>
   </section>
@@ -154,6 +159,7 @@
         <li><button type="button" data-go="six">6 of 9 tours</button></li>
         <li><button type="button" data-go="rank">Rank month grid</button></li>
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
+        <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
       </ul>
       <h3 class="sheet-sec" id="sheet-docs-h" hidden>Documents</h3>
       <ul class="sheet-list" id="sheet-docs"></ul>
@@ -194,6 +200,7 @@
 <script src="admin.js"></script>
 <script src="dashboard.js"></script>
 <script src="trades.js"></script>
+<script src="awards.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

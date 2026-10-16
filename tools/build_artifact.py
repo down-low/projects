@@ -81,6 +81,7 @@ def main():
     data = data.replace("</", "<\\/")
     required = json.dumps(json.load(open(os.path.join(ROOT, "data", "required-staffing.json"))), separators=(",", ":"))
     ids = json.dumps(json.load(open(os.path.join(ROOT, "data", "employee-ids.json"))), separators=(",", ":")).replace("</", "<\\/")
+    awards = json.dumps(json.load(open(os.path.join(ROOT, "data", "vacancy-awards-2027.json"))), separators=(",", ":")).replace("</", "<\\/")
     docs = json.dumps(json.load(open(os.path.join(ROOT, "docs", "index.json"))), separators=(",", ":")).replace("</", "<\\/")
     snap = ""
     title = "SFFD Tour Schedule (view only)" if snapshot is not None else "SFFD Tour Schedule"
@@ -94,13 +95,14 @@ def main():
         f'<link rel="stylesheet" href="{fonts}">\n'
         f"<style>\n{read('style.css')}</style>\n"
         f"{body}\n"
-        f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};{snap}</script>\n"
+        f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};{snap}</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"
         f"<script>\n{read('store.js')}</script>\n"
         f"<script>\n{read('admin.js')}</script>\n"
         f"<script>\n{read('dashboard.js')}</script>\n"
         f"<script>\n{read('trades.js')}</script>\n"
+        f"<script>\n{read('awards.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)
