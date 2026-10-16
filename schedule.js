@@ -74,6 +74,14 @@
   }
   // The cover assignment filling position `targetPos` on d, or null.
   function coverOn(targetPos, d, covers) { return activeOn(covers, "targetPos", targetPos, d); }
+  // Every cover assignment on position targetPos on d (two people can share a seat's tour), newest first.
+  function coversOn(targetPos, d, covers) {
+    var day = isoDate(d), out = [];
+    (covers || []).forEach(function (r) {
+      if (r.targetPos === targetPos && r.start <= day && (!r.end || r.end >= day)) out.push(r);
+    });
+    return out.sort(newer);
+  }
   // What the person `coverKey` (their position number, or "person:<id>") is covering on d, or null.
   function coveringOn(coverKey, d, covers) { return activeOn(covers, "coverKey", coverKey, d); }
 
@@ -155,7 +163,7 @@
     sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
-    coverOn: coverOn, coveringOn: coveringOn, dayFor: dayFor,
+    coverOn: coverOn, coversOn: coversOn, coveringOn: coveringOn, dayFor: dayFor,
   };
   root.TourMath = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

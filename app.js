@@ -111,21 +111,21 @@
     slots().forEach(function (p) {
       var s = shift(p, d);
       if (!s) return;
-      var cov = coverOf(p.pos, d);
+      var covs = M.coversOn(p.pos, d, recs.covers), cov = covs[0] || null;
       var away = p.name ? coveringBy(p.pos, d) : null;
       var base = { slot: p, co: s.co || home(p), role: s.role, swingCover: s.swing && s.co !== p.company, tour: s.tour };
       rows.push(Object.assign({}, base, {
         who: p.name ? p : null, name: p.name, status: s.status,
         away: away, coveredBy: cov, off: !!(s.status || away || (cov && p.name)),
       }));
-      if (cov) {
-        var coverer = byPos[cov.coverKey];
-        var coverStatus = M.statusFor(cov.coverKey, d, recs.statuses);
+      covs.forEach(function (c) { // usually one; two people can work the same seat's tour
+        var coverer = byPos[c.coverKey];
+        var coverStatus = M.statusFor(c.coverKey, d, recs.statuses);
         rows.push(Object.assign({}, base, {
-          who: coverer || null, name: coverer ? coverer.name : cov.coverName, acting: cov,
+          who: coverer || null, name: coverer ? coverer.name : c.coverName, acting: c,
           status: coverStatus, off: !!coverStatus,
         }));
-      }
+      });
     });
     return rows;
   }
