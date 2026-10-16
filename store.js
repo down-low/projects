@@ -151,7 +151,7 @@
           },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
-            return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app } }));
+            return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app, email: !!a.email } }));
           },
           postTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -338,7 +338,7 @@
       canTrade: function () { return true; },
       myKey: function () { return st.as; },
       myMember: function () { return { key: st.as, alerts: st.alerts[st.as] || {} }; },
-      setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app }; return Promise.resolve(); },
+      setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app, email: !!a.email }; return Promise.resolve(); },
       postTrade: function (rec) {
         rec = Object.assign({}, rec, { id: "demo" + ++st.n, status: "open", createdAt: nowIso() });
         st.trades = st.trades.concat([rec]);

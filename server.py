@@ -60,6 +60,7 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("people", "emplId", "TEXT"),
     ("users", "alert_text", "INTEGER NOT NULL DEFAULT 0"),
     ("users", "alert_app", "INTEGER NOT NULL DEFAULT 0"),
+    ("users", "alert_email", "INTEGER NOT NULL DEFAULT 0"),
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
 ]
@@ -331,7 +332,7 @@ class App:
             "shareContact": bool(u["share_contact"]),
             "claimRequest": json.loads(u["claim_request"]) if u.get("claim_request") else None,
             "profile": self.profile(u["pos"]) if u["pos"] else None,
-            "alerts": {"text": bool(u.get("alert_text")), "app": bool(u.get("alert_app"))},
+            "alerts": {"text": bool(u.get("alert_text")), "app": bool(u.get("alert_app")), "email": bool(u.get("alert_email"))},
         }
 
     def clean_person_fields(self, body):
@@ -820,8 +821,8 @@ class App:
         return self.get_trade(trade_id)
 
     def save_alerts(self, u, body):
-        self.write("UPDATE users SET alert_text = ?, alert_app = ? WHERE id = ?",
-                   (1 if body.get("text") else 0, 1 if body.get("app") else 0, u["id"]))
+        self.write("UPDATE users SET alert_text = ?, alert_app = ?, alert_email = ? WHERE id = ?",
+                   tuple(1 if body.get(k) else 0 for k in ("text", "app", "email")) + (u["id"],))
 
     # ---------- Google ----------
     def exchange_code(self, code):

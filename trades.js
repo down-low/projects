@@ -233,10 +233,12 @@
 
     function alertsHtml() {
       var m = backend().myMember() || {}, a = m.alerts || {};
-      return '<details class="trade-alerts"><summary>Alerts</summary>' +
+      return '<details class="trade-alerts"' + (ui.alertsOpen ? " open" : "") + "><summary>Alerts</summary>" +
         '<label class="chk"><input type="checkbox" data-alert="text"' + (a.text ? " checked" : "") + "> Notify me by text</label>" +
         '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" +
-        '<p class="hint">Available at launch. Your choice is saved now; text and app alerts start with the department server.</p></details>';
+        '<label class="chk"><input type="checkbox" data-alert="email"' + (a.email ? " checked" : "") + "> Notify me by email</label>" +
+        '<p class="hint">Available at launch. Your choice is saved now; alerts start with the department server. App alerts need the app ' +
+        "installed on your phone; texts come from the department's number; email goes to the address on your account.</p></details>";
     }
 
     function wireTab() {
@@ -308,6 +310,8 @@
           backend().unclaim(b.dataset.unclaim).then(function () { api.renderAll(true); }, function (er) { b.textContent = er.message; });
         };
       });
+      var af = out.querySelector("details.trade-alerts");
+      if (af) af.addEventListener("toggle", function () { ui.alertsOpen = af.open; });
       var cf = out.querySelector("details.claims-fold");
       if (cf) cf.addEventListener("toggle", function () { ui.claimsOpen = cf.open; });
     }

@@ -424,8 +424,8 @@ class TradeTest(unittest.TestCase):
         self.assertEqual(len([c for c in poster.req("GET", "/api/records")[1]["covers"] if c["tradeId"] == t4["id"]]), 1)
 
         # alerts opt-in is stored on the account
-        st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "app": False})
-        self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False}))
+        st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "app": False, "email": True})
+        self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False, "email": True}))
 
         # an expired trade is closed to responses
         self.app.write("UPDATE trades SET date = '2020-01-01', status = 'open' WHERE id = ?", (t["id"],))

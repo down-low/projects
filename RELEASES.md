@@ -26,11 +26,15 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Server:** serve the manifest, icons and service worker to everyone (signed in or not) so phones can install it; HTTPS is already required.
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
-### Shift-trade alerts (text and app)
-The Trades tab already stores each member's opt-in ("Notify me by text / app", shown as "available at launch"). With the server:
+### Shift-trade alerts (app, text and email)
+The Trades tab already stores each member's opt-in: three switches, "Notify me by text / in the app / by email", shown as "available at launch". With the server:
 
-- **App (push):** Firebase Cloud Messaging. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push.
-- **Text (SMS):** a provider such as Twilio, sent from a Cloud Function (or `server.py`). Phone numbers come from My page; the provider's keys stay in function config, never in the repo.
+- **App (push):** Firebase Cloud Messaging, free. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push. On iPhone, notifications only work after the app is added to the Home Screen (Apple's rule for web apps).
+- **Text (SMS):** the department's **Twilio** account, sent from a Cloud Function (or `server.py`). Google has no SMS-sending API (Google Voice has none, Firebase only texts sign-in codes), and carrier email-to-text gateways are unreliable (AT&T's is shut down), so texts need Twilio.
+  - **Start early:** US texts from an app need **A2P 10DLC** registration in Twilio (brand plus campaign). It takes days to a couple of weeks, with a small monthly fee plus a fraction of a cent per text.
+  - Phone numbers come from My page. The opt-in switch is the consent; texts honor STOP replies.
+  - Twilio keys stay in function secrets, never in the repo.
+- **Email:** sent from a department Gmail / Workspace account (Gmail API from a Cloud Function, or SMTP from `server.py`), to the contact email on My page, else the sign-in email. Free at this size; the fallback for anyone without the app.
 - **When:** a trade is sent to you, a board post you could take goes up (optional, can be noisy), someone responds to your trade, your response is picked, a set trade is cancelled. One message per event, with a link to the Trades tab; no names or details beyond the date and rank group.
 - **Opt-out:** both switches stay on the member's own page; texts also honor STOP replies.
 
@@ -58,4 +62,4 @@ The Trades tab already stores each member's opt-in ("Notify me by text / app", s
 - Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
 - View-only snapshot link with records baked in (no sign-in needed).
 - Holidays on the calendars (12 city holidays plus Halloween and Mother's Day as observances), worked out for any year.
-- Shift trades: "this is me" claim, Trade wizard (payback, recipients by division and battalion, board), Trades tab (board, sent to me, my trades, owed shifts), TR (traded off) on the schedule. Text and app alerts come with the server launch.
+- Shift trades: "this is me" claim, Trade wizard (payback, recipients by division and battalion, board), Trades tab (board, sent to me, my trades, owed shifts), TR (traded off) on the schedule. App, text and email alerts come with the server launch.

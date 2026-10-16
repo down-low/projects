@@ -66,7 +66,7 @@ Members trade full 24-hour shifts. Approval, if any, happens outside the tool; o
 - **Picking.** The poster sees each response's terms and picks one. The trade is set: a one-day cover puts the taker on the poster's seat ("Trade for …") and the poster is marked **TR** (traded off). A swap also does the reverse on the swap day. **Cancel trade** reverts it.
 - **Owed shifts.** A "pay back later" trade shows "owes a shift" on both people's pages until a later trade between them, the other way round, is set.
 - **Trades tab:** **Sent to me**, the **Board** (open posts you could take, filtered by date range and battalion) and **My trades**. Open trades expire when their day passes.
-- **Alerts:** "Notify me by text / app" switches are saved now; texts (e.g. Twilio) and app pushes (Firebase Cloud Messaging) start with the server launch.
+- **Alerts:** "Notify me by text / in the app / by email" switches are saved now. App pushes (Firebase Cloud Messaging), texts (Twilio) and email (Gmail / Workspace) start with the server launch.
 - **On the shared claude.ai page,** members need **Contributor** access to trade (Viewers can look). The page database can't hide one record from some viewers, so "only the people you send it to see it" is a filter in the page; anyone with page access could read the data. The server enforces it. A set trade's cover and TR records are kept on the trade there, so schedule records stay editor-only (`python3 tools/build_artifact.py --capabilities` prints the access rules to publish with).
 - The view-only snapshot shows set trades on the schedule but has no Trades tab.
 
@@ -156,7 +156,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
 | `PUT /api/staffing/<company>` `{required: n or null}`, `PUT /api/profiles/<key>`, `GET /api/admin/profiles` | admins |
-| `GET /api/trades` (only trades you may see), `PUT /api/me/alerts` `{text, app}` | approved accounts |
+| `GET /api/trades` (only trades you may see), `PUT /api/me/alerts` `{text, app, email}` | approved accounts |
 | `POST /api/trades` `{date, note?, audience: {board, to: [keys]}}`, `PATCH /api/trades/<id>` `{audience}` (widen only), `POST /api/trades/<id>/replies` `{proposal: {swapDate} or {later: true}, note?}`, `POST /api/trades/<id>/pick` `{replyId}`, `POST /api/trades/<id>/cancel` | approved accounts linked to a roster position (pick and cancel: the poster; admins may cancel) |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.

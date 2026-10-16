@@ -33,7 +33,7 @@ These need answers before any build work:
 | `profiles` (birth / hire dates) | `profiles/{key}`; owner and admins only |
 | `/api/stats` (average age and years of service) | Callable function that returns only the averages |
 | `trades`, `trade_replies` tables (claude.ai page: `trades`, `tradeReplies`, `members`) | `trades/{id}`, `tradeReplies/{id}`; the claim is `users/{uid}.pos` |
-| Trade alerts opt-in (`alert_text`, `alert_app`) | `users/{uid}.alerts` plus `fcmTokens/{uid}/{token}` |
+| Trade alerts opt-in (`alert_text`, `alert_app`, `alert_email`) | `users/{uid}.alerts` `{text, app, email}` plus `fcmTokens/{uid}/{token}` |
 | `audit` table | `audit/…`, written by functions and Firestore triggers only |
 
 ## Firestore data model
@@ -79,7 +79,11 @@ These need answers before any build work:
 - **Audit triggers:** on writes to the record collections, append to `audit`.
 - **`pickTrade`, `cancelTrade`** (callable, the poster): re-check eligibility with the same rules as `server.py` (rank group from `RANK_GROUPS`, off that day, no status; for a swap, the taker works the swap day and the poster is free), then write or remove the cover and TR records in one transaction.
 - **`expireTrades`** (scheduled, nightly): marks open trades whose date has passed as expired.
-- **Trade alerts:** a Firestore trigger on `trades` and `tradeReplies` sends **Firebase Cloud Messaging** pushes and **SMS** (e.g. Twilio) to people who opted in. Twilio keys live in function secrets.
+- **Trade alerts:** a Firestore trigger on `trades` and `tradeReplies` sends, to each person by the channels they opted into:
+  - **app** pushes through **Firebase Cloud Messaging**;
+  - **texts** through **Twilio** (A2P 10DLC registered; Google has no SMS API);
+  - **email** through the **Gmail API** from a department Workspace account.
+  - Twilio keys and the Gmail sender's credentials live in **Secret Manager**.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
