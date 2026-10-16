@@ -47,7 +47,7 @@ These need answers before any build work:
   - `createdBy` becomes the editor's uid.
 - **`contacts/{uid}`** `{pos, contactEmail, phoneMobile, phoneOther, share}`.
 - **`profiles/{key}`** `{birthDate, hireDate, updatedAt, updatedBy}`; the key is a position number or `person:<id>`.
-- **`trades/{id}`** `{posterKey, seatPos, date, paybackDate|null, note, audience: {board, to: [keys]}, status: open|set|cancelled|expired, takerKey, replyId, proposal, createdAt, setAt}`.
+- **`trades/{id}`** `{posterKey, seatPos, date, note, audience: {board, to: [keys]}, status: open|set|cancelled|expired, takerKey, replyId, proposal, createdAt, setAt}`.
 - **`tradeReplies/{id}`** `{tradeId, takerKey, proposal: {swapDate}|{later: true}, swapSeatPos, note, createdAt}`.
   - Picking a response runs in the `pickTrade` function (below), which writes the one-day cover and TR status records with `tradeId`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.

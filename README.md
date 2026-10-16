@@ -57,11 +57,12 @@ Members trade full 24-hour shifts. Approval, if any, happens outside the tool; o
   | Battalion Chief | Battalion Chief (H40) |
   | Its own rank | Rescue Captain, ISS, Pilot, Marine Engineer |
 
-- **Posting.** On your page, open **Next shifts** and tap **Trade** next to a day. Three steps:
-  1. **Payback:** leave it open, or offer a specific day you'd work for them.
-  2. **Who:** everyone eligible, grouped by division and battalion, tagged when they work the day before or after. Check everyone, a division, a battalion or individuals.
-  3. **Post:** to the selected people, the board (everyone eligible), or both. **Send to more people** widens it later.
-- **Responding.** **I'm interested**, then propose a swap day (one of your shifts they'd work) or pay back later.
+- **A day's options.** On a person's page, tap a calendar day or a row in **Next shifts**: **Trade this shift** (your own page), **Mark this day** VA / S / D / WE (editors, one day), and **Who's working** that day. On your own page, **Trade** also sits under each date in Next shifts.
+- **Posting.** Two steps:
+  1. **Who:** everyone eligible, grouped by division and battalion, tagged when they work the day before or after. Check everyone, a division, a battalion or individuals.
+  2. **Post:** to the selected people, the board (everyone eligible), or both, with an optional note. **Send to more people** widens it later.
+  The poster doesn't offer a payback day, since they don't know yet who will take it.
+- **Responding.** **I'm interested**, then suggest a payback day (one of your shifts they'd work) or pay back later.
 - **Picking.** The poster sees each response's terms and picks one. The trade is set: a one-day cover puts the taker on the poster's seat ("Trade for …") and the poster is marked **TR** (traded off). A swap also does the reverse on the swap day. **Cancel trade** reverts it.
 - **Owed shifts.** A "pay back later" trade shows "owes a shift" on both people's pages until a later trade between them, the other way round, is set.
 - **Trades tab:** **Sent to me**, the **Board** (open posts you could take, filtered by date range and battalion) and **My trades**. Open trades expire when their day passes.
@@ -156,7 +157,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
 | `PUT /api/staffing/<company>` `{required: n or null}`, `PUT /api/profiles/<key>`, `GET /api/admin/profiles` | admins |
 | `GET /api/trades` (only trades you may see), `PUT /api/me/alerts` `{text, app}` | approved accounts |
-| `POST /api/trades` `{date, paybackDate?, note?, audience: {board, to: [keys]}}`, `PATCH /api/trades/<id>` `{audience}` (widen only), `POST /api/trades/<id>/replies` `{proposal: {swapDate} or {later: true}, note?}`, `POST /api/trades/<id>/pick` `{replyId}`, `POST /api/trades/<id>/cancel` | approved accounts linked to a roster position (pick and cancel: the poster; admins may cancel) |
+| `POST /api/trades` `{date, note?, audience: {board, to: [keys]}}`, `PATCH /api/trades/<id>` `{audience}` (widen only), `POST /api/trades/<id>/replies` `{proposal: {swapDate} or {later: true}, note?}`, `POST /api/trades/<id>/pick` `{replyId}`, `POST /api/trades/<id>/cancel` | approved accounts linked to a roster position (pick and cancel: the poster; admins may cancel) |
 
 `dist/tour-schedule.html` is a single self-contained file (data inlined) that can be opened directly or shared.
 

@@ -696,3 +696,16 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
 .wz-name { min-width: 0; }
 .wz-name .hint { font-size: 0.8rem; }
 .wz-nav { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0 4px; border-top: 1px solid var(--line); }
+
+/* Tappable days: calendar cells and Next shifts rows open that day's options */
+.cal .d.tap, ol.shifts li.tap { cursor: pointer; }
+.cal .d.tap:hover { outline: 1px solid var(--muted); outline-offset: -1px; }
+ol.shifts li.tap:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
+ol.shifts .when .trade-link, ol.shifts .when .tag { display: block; width: max-content; margin: 2px 0 0; font-weight: 500; }
+ol.shifts .when .trade-link { margin-left: 0; font-size: 0.82rem; }
+.day-line { margin: 0; padding: 4px 20px 10px; color: var(--muted); font-size: 0.92rem; }
+.day-acts { border-top: 1px solid var(--line); }
+.day-acts > * + * { border-top: 1px solid var(--line); }
+.day-leave { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px 4px; border-top: 1px solid var(--line); }
+.day-leave .k { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.day-leave .btn { min-width: 44px; min-height: 40px; }

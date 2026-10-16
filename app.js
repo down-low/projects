@@ -310,8 +310,8 @@
       var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
       var hol = M.holidayFor(d);
       if (hol) monthHolidays.push({ d: d, h: hol });
-      cells += '<div class="d' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
-        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
+      cells += '<div class="d tap' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
+        '" data-day="' + iso(d) + '" role="button" tabindex="0" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
         '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
     }
 
@@ -361,9 +361,9 @@
       esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
       (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
-        return '<li><span class="when">' + esc(shortDate(n.d)) + '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
-          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "") +
-            Trades.tradeLink(p, n.d)) + "</span></li>";
+        return '<li class="tap" data-day="' + iso(n.d) + '"><span class="when">' + esc(shortDate(n.d)) + (n.s.status ? "" : Trades.tradeLink(p, n.d)) +
+          '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
+          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
       historyCard(p, datesCard(p)) + "</div></div>";
 
@@ -371,10 +371,70 @@
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     wireDates(p);
+    // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
+    out.querySelectorAll("[data-day]").forEach(function (el) {
+      var open = function (e) { if (!e.target.closest("[data-trade-day], .tag")) openDay(p, el.dataset.day, el); };
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
+    });
     out.querySelectorAll("details[data-fold]").forEach(function (el) {
       el.addEventListener("toggle", function () { state.folds[el.dataset.fold] = el.open; });
     });
   }
+  /* ---------- One day's options (from the calendar or Next shifts) ----------
+     Trade the shift (your own page), mark one-day leave (editors), or see who's working that day. */
+  var dayOpener = null;
+  function openDay(p, dIso, opener) {
+    var d = fromIso(dIso), s = day(p, d), t = iso(today());
+    var trade = Trades.tradeFor(p.pos, dIso);
+    var cov = !p.added || p.tour ? coverOf(p.pos, d) : null;
+    var line = s && s.status ? statusPill(s.status) + " " + esc(STATUS_LABEL[s.status]) +
+        (cov && s.status === "TR" ? " · " + esc(cov.coverName || nameOf(cov.coverKey)) + " works it" : "")
+      : s ? (s.acting ? "Acting at " : "Working at ") + esc(s.co || home(p)) + (s.role ? " " + esc(s.role) : "") + " · Tour " + s.tour
+      : coveringBy(p.pos, d) && shift(p, d) ? "Away, covering another position" : "Off";
+    var acts = [];
+    if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
+      acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
+        : '<button type="button" data-day-act="trade">Trade this shift<span class="hint">Send it to people who are off, or post it to the board</span></button>');
+    }
+    var leave = "";
+    if (s && !s.status && backend && backend.canEdit()) {
+      leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S", "D", "WE"].map(function (c) {
+        return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
+      }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
+    }
+    acts.push('<button type="button" data-day-act="who">Who\'s working<span class="hint">Everyone on duty ' + esc(shortDate(d)) + "</span></button>");
+    var hol = M.holidayFor(d);
+    $("day-title").textContent = shortDate(d);
+    $("day-body").innerHTML = '<p class="day-line">' + esc(p.name) + " · Watch " + M.watchFor(d) + (hol ? " · " + esc(hol.name) : "") + "<br>" + line + "</p>" +
+      '<div class="sheet-list day-acts">' + acts.join("") + "</div>" + leave;
+    dayOpener = opener || document.activeElement;
+    $("day-sheet").hidden = false;
+    $("day-sheet").querySelector(".sheet-x").focus();
+    $("day-body").querySelectorAll("[data-day-act]").forEach(function (b) {
+      b.onclick = function () {
+        var a = b.dataset.dayAct;
+        closeDay();
+        if (a === "trade") Trades.openWizard(p.pos, dIso);
+        else if (a === "trades") setView("trades");
+        else { state.date = d; setView("date"); }
+      };
+    });
+    $("day-body").querySelectorAll("[data-day-leave]").forEach(function (b) {
+      b.onclick = function () {
+        var code = b.dataset.dayLeave;
+        say($("day-msg"), "Saving…");
+        backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" })
+          .then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
+      };
+    });
+  }
+  function closeDay() {
+    if ($("day-sheet").hidden) return;
+    $("day-sheet").hidden = true;
+    if (dayOpener && dayOpener.focus && document.contains(dayOpener)) dayOpener.focus();
+  }
+
   /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
      (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
@@ -902,7 +962,11 @@
       }
       if (e.target.closest("a")) closeSheet();
     });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("more-sheet").hidden) closeSheet(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (!$("day-sheet").hidden) closeDay(); else if (!$("more-sheet").hidden) closeSheet();
+    });
+    $("day-sheet").addEventListener("click", function (e) { if (e.target.closest("[data-close]")) closeDay(); });
   }
   function renderEditChip() {
     var el = $("edit-chip");

@@ -700,6 +700,19 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
 .wz-name { min-width: 0; }
 .wz-name .hint { font-size: 0.8rem; }
 .wz-nav { position: sticky; bottom: 0; background: var(--surface); padding: 10px 0 4px; border-top: 1px solid var(--line); }
+
+/* Tappable days: calendar cells and Next shifts rows open that day's options */
+.cal .d.tap, ol.shifts li.tap { cursor: pointer; }
+.cal .d.tap:hover { outline: 1px solid var(--muted); outline-offset: -1px; }
+ol.shifts li.tap:hover { background: color-mix(in srgb, var(--line) 30%, transparent); }
+ol.shifts .when .trade-link, ol.shifts .when .tag { display: block; width: max-content; margin: 2px 0 0; font-weight: 500; }
+ol.shifts .when .trade-link { margin-left: 0; font-size: 0.82rem; }
+.day-line { margin: 0; padding: 4px 20px 10px; color: var(--muted); font-size: 0.92rem; }
+.day-acts { border-top: 1px solid var(--line); }
+.day-acts > * + * { border-top: 1px solid var(--line); }
+.day-leave { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 20px 4px; border-top: 1px solid var(--line); }
+.day-leave .k { font-size: 0.72rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+.day-leave .btn { min-width: 44px; min-height: 40px; }
 </style>
 
 <div class="page">
@@ -860,6 +873,16 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     </section>
   </div>
 </div>
+  <div class="sheet" id="day-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="day-title">
+      <div class="sheet-head">
+        <h2 id="day-title">Day</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div id="day-body"></div>
+    </section>
+  </div>
   <div class="sheet" id="trade-sheet" hidden>
     <div class="sheet-backdrop" data-close></div>
     <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="trade-title">
@@ -2433,7 +2456,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false };
-    var wiz = null; // the open wizard: {poster, date, seat, step, payback, note, sel: {key: true}, board, send, widen: trade|null}
+    var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
     function recs() { return api.recs(); }
@@ -2503,13 +2526,17 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
 
     /* ---------- Person page hooks ---------- */
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
+    // My open or set trade for that day, or null.
+    function tradeFor(pos, dIso) {
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+    }
     function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
       if (!canTradeFor(p.pos)) return "";
-      var dIso = api.iso(d);
-      var t = trades().filter(function (x) { return x.posterKey === p.pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0];
-      if (t) return ' <span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
-      return ' <button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
+      var dIso = api.iso(d), t = tradeFor(p.pos, dIso);
+      if (dIso < todayIso()) return "";
+      if (t) return '<span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
+      return '<button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
     }
     // Owed shifts and the "This is me" link for a person's page.
     function personExtras(p) {
@@ -2559,7 +2586,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
         '<div class="trades">' +
         '<div class="card trade-me"><div><b>' + esc(mine.name) + '</b> <span class="hint">' + esc(mine.rank + " · " + api.home(mine)) +
         (api.tourOn(mine, api.today()) ? " · Tour " + api.tourOn(mine, api.today()) : "") + "</span></div>" +
-        '<p class="hint">To trade a shift, open <button class="linkish" data-pos="' + esc(key) + '">your page</button> and tap Trade next to the day.</p>' +
+        '<p class="hint">To trade a shift, open <button class="linkish" data-pos="' + esc(key) + '">your page</button> and tap the day, or Trade under it in Next shifts.</p>' +
         alertsHtml() + "</div>" +
         (lines.length ? '<div class="card"><h3>Owed shifts</h3><ul class="tlist plain">' + lines.map(function (l) { return "<li>" + l + "</li>"; }).join("") + "</ul></div>" : "") +
         section("Sent to me", sent.sort(byDate).map(offerCard).join("") || '<p class="hint">Nobody has sent you a trade.</p>') +
@@ -2571,7 +2598,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
           }).join("") + "</select></label></div>" +
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
-          '<p class="hint">You haven\'t posted a trade. Tap Trade next to a shift on your page.</p>') +
+          '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
         adminClaimsHtml() + "</div>";
       wireTab();
     }
@@ -2588,7 +2615,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       return '<article class="trade" data-id="' + esc(t.id) + '"><div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         '<span class="trade-who">' + who(p) + "</span></div>" +
         '<div class="trade-terms">' + (seat && api.home(seat) !== api.home(p) ? "At " + esc(api.home(seat)) + " · " : "") +
-        (t.paybackDate ? "Wants you to work for them; offers " + esc(dateText(t.paybackDate)) + " back" : "Payback open") +
+        "24-hour shift" +
         (adj.before ? ' <span class="tag">You work the day before</span>' : "") + (adj.after ? ' <span class="tag">You work the day after</span>' : "") + "</div>" +
         (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") +
         (mineR ? '<p class="hint">You responded: ' + esc(terms(mineR.proposal)) + (mineR.note ? " · " + esc(mineR.note) : "") +
@@ -2597,11 +2624,11 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
         (open ? replyForm(t, mineR) : "") + "</article>";
     }
     function replyForm(t, prev) {
-      var later = prev ? !!prev.proposal.later : !t.paybackDate;
-      var swap = prev && prev.proposal.swapDate || t.paybackDate || "";
+      var later = prev ? !!prev.proposal.later : false;
+      var swap = prev && prev.proposal.swapDate || "";
       return '<form class="edit reply-form" data-trade="' + esc(t.id) + '" novalidate>' +
         '<fieldset class="choice"><legend>How they pay you back</legend>' +
-        '<label class="chk"><input type="radio" name="rp-kind" value="swap"' + (later ? "" : " checked") + '> Swap: they work one of my days</label>' +
+        '<label class="chk"><input type="radio" name="rp-kind" value="swap"' + (later ? "" : " checked") + '> Suggest a day: they work one of my shifts</label>' +
         '<label class="indent">My day they\'d work<input type="date" id="rp-swap" min="' + todayIso() + '" value="' + esc(swap) + '"></label>' +
         '<label class="chk"><input type="radio" name="rp-kind" value="later"' + (later ? " checked" : "") + "> Pay back later</label></fieldset>" +
         '<label>Note<input type="text" id="rp-note" maxlength="300" placeholder="Optional" value="' + esc(prev ? prev.note || "" : "") + '"></label>' +
@@ -2620,7 +2647,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
         body = '<p class="hint">' + [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ") +
-          (t.paybackDate ? " · offering " + esc(dateText(t.paybackDate)) + " back" : " · payback open") + "</p>" +
+          "</p>" +
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
@@ -2838,8 +2865,8 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       var el = M.eligibleTakers(d, poster, ctx());
       var sel = {};
       if (widen) (widen.audience.to || []).forEach(function (k) { sel[k] = true; });
-      wiz = { poster: poster, date: dateIso, seat: widen ? widen.seatPos : seatOn(poster, d), step: widen ? 2 : 1, payback: "", later: true, note: "",
-        el: el, sel: sel, board: widen ? !!widen.audience.board : false, send: true, widen: widen || null, open: {} };
+      wiz = { poster: poster, date: dateIso, seat: widen ? widen.seatPos : seatOn(poster, d), step: 2, note: "",
+        el: el, sel: sel, board: widen ? !!widen.audience.board : true, send: true, widen: widen || null, open: {} };
       $("trade-sheet").hidden = false;
       drawWizard();
     }
@@ -2868,17 +2895,12 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     function drawWizard() {
       var w = wiz, body = $("trade-body"), d = api.fromIso(w.date), seat = byPos()[w.seat];
       $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + api.shortDate(d);
-      var steps = '<ol class="wiz-steps">' + ["Payback", "Who", "Post"].map(function (s, i) {
-        return '<li class="' + (w.step === i + 1 ? "on" : w.step > i + 1 ? "done" : "") + '">' + s + "</li>";
+      // Steps: 2 = who, 3 = post. The poster doesn't offer a payback day; whoever is interested suggests one.
+      var steps = '<ol class="wiz-steps">' + ["Who", "Post"].map(function (s, i) {
+        return '<li class="' + (w.step === i + 2 ? "on" : w.step > i + 2 ? "done" : "") + '">' + s + "</li>";
       }).join("") + "</ol>";
       var html = steps + '<p class="hint">Your 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
-      if (w.step === 1) {
-        html += '<fieldset class="choice"><legend>What you offer back</legend>' +
-          '<label class="chk"><input type="radio" name="wz-pay" value="later"' + (w.later ? " checked" : "") + "> Leave it open: they propose a swap day or pay back later</label>" +
-          '<label class="chk"><input type="radio" name="wz-pay" value="day"' + (w.later ? "" : " checked") + "> A specific day: I work one of their shifts</label>" +
-          '<label class="indent">Day I\'d work for them<input type="date" id="wz-day" min="' + todayIso() + '" value="' + esc(w.payback) + '"' + (w.later ? " disabled" : "") + "></label></fieldset>" +
-          '<label>Note<input type="text" id="wz-note" maxlength="300" placeholder="Optional, e.g. kid\'s graduation" value="' + esc(w.note) + '"></label>';
-      } else if (w.step === 2) {
+      if (w.step === 2) {
         var gs = groups(), all = w.el.length && w.el.every(function (e) { return w.sel[e.p.pos]; });
         html += w.el.length
           ? '<p class="hint">' + w.el.length + " " + esc(M.rankGroup(w.poster.rank)) + (w.el.length === 1 ? " is" : "s are") + " off that day. Pick who to send it to.</p>" +
@@ -2906,10 +2928,10 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
           '<label class="chk"><input type="checkbox" id="wz-send"' + (w.send && n ? " checked" : "") + (n ? "" : " disabled") + "> Selected people (" + n + ")</label>" +
           '<label class="chk"><input type="checkbox" id="wz-board"' + (w.board ? " checked" : "") + (w.widen && w.widen.audience.board ? " disabled" : "") +
           "> Board: everyone who could take it</label></fieldset>" +
-          '<p class="hint">You can send it to more people or add it to the board later.</p>' +
-          (w.widen ? "" : '<p class="trade-terms">' + (w.later ? "Payback open" : "You offer to work " + esc(dateText(w.payback))) + (w.note ? " · " + esc(w.note) : "") + "</p>");
+          (w.widen ? "" : '<label>Note<input type="text" id="wz-note" maxlength="300" placeholder="Optional, e.g. kid\'s graduation" value="' + esc(w.note) + '"></label>') +
+          '<p class="hint">Whoever is interested suggests a day to pay you back, or pay back later. You pick. You can send it to more people or add it to the board later.</p>';
       }
-      html += '<div class="row wz-nav">' + (w.step > (w.widen ? 2 : 1) ? '<button class="btn" type="button" id="wz-back">Back</button>' : "") +
+      html += '<div class="row wz-nav">' + (w.step > 2 ? '<button class="btn" type="button" id="wz-back">Back</button>' : "") +
         (w.step < 3 ? '<button class="btn primary" type="button" id="wz-next">Next</button>' : '<button class="btn primary" type="button" id="wz-post">' + (w.widen ? "Save" : "Post trade") + "</button>") +
         '<span class="msg" id="wz-msg" role="status"></span></div>';
       body.innerHTML = html;
@@ -2917,11 +2939,6 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     }
     function wireWizard() {
       var w = wiz, body = $("trade-body");
-      if (w.step === 1) {
-        body.querySelectorAll("[name=wz-pay]").forEach(function (r) {
-          r.onchange = function () { w.later = this.value === "later"; $("wz-day").disabled = w.later; if (!w.later) $("wz-day").focus(); };
-        });
-      }
       body.querySelectorAll("details.wz-bt").forEach(function (dt) { dt.addEventListener("toggle", function () { w.open[dt.dataset.key] = dt.open; }); });
       var setAll = function (list, on) { list.forEach(function (e) { if (!locked(e.p.pos)) w.sel[e.p.pos] = on; }); drawWizard(); };
       var gs = w.step === 2 ? groups() : [];
@@ -2943,10 +2960,6 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       if ($("wz-back")) $("wz-back").onclick = function () { keep(); w.step--; drawWizard(); };
       if ($("wz-next")) $("wz-next").onclick = function () {
         keep();
-        if (w.step === 1 && !w.later) {
-          var why = paybackProblem(w.payback);
-          if (why) return api.say($("wz-msg"), why, true);
-        }
         w.step++;
         drawWizard();
       };
@@ -2954,17 +2967,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     }
     function keep() {
       var w = wiz;
-      if (w.step === 1) { w.payback = $("wz-day").value; w.note = $("wz-note").value.trim(); }
-      if (w.step === 3) { w.send = $("wz-send").checked; w.board = $("wz-board").checked; }
-    }
-    // A payback day must be one I'm off (and free); whoever takes the trade would have to work it.
-    function paybackProblem(day) {
-      if (!day) return "Pick the day you'd work for them, or leave it open.";
-      if (day < todayIso() || day === wiz.date) return "Pick a later day, not the traded day.";
-      var d = api.fromIso(day);
-      if (api.day(wiz.poster, d)) return "You're already scheduled on " + dateText(day) + ".";
-      if (M.statusFor(wiz.poster.pos, d, recs().statuses)) return "You're marked off on " + dateText(day) + ".";
-      return null;
+      if (w.step === 3) { w.send = $("wz-send").checked; w.board = $("wz-board").checked; if ($("wz-note")) w.note = $("wz-note").value.trim(); }
     }
     function post() {
       keep();
@@ -2976,7 +2979,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       var p = w.widen
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade({ posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          paybackDate: w.later ? null : w.payback, note: w.note, audience: aud });
+          note: w.note, audience: aud });
       p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
@@ -2992,7 +2995,7 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);
 </script>
@@ -3309,8 +3312,8 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
       var hol = M.holidayFor(d);
       if (hol) monthHolidays.push({ d: d, h: hol });
-      cells += '<div class="d' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
-        '" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
+      cells += '<div class="d tap' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
+        '" data-day="' + iso(d) + '" role="button" tabindex="0" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
         '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
     }
 
@@ -3360,9 +3363,9 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
       (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
-        return '<li><span class="when">' + esc(shortDate(n.d)) + '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
-          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "") +
-            Trades.tradeLink(p, n.d)) + "</span></li>";
+        return '<li class="tap" data-day="' + iso(n.d) + '"><span class="when">' + esc(shortDate(n.d)) + (n.s.status ? "" : Trades.tradeLink(p, n.d)) +
+          '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
+          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
       historyCard(p, datesCard(p)) + "</div></div>";
 
@@ -3370,10 +3373,70 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     wireDates(p);
+    // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
+    out.querySelectorAll("[data-day]").forEach(function (el) {
+      var open = function (e) { if (!e.target.closest("[data-trade-day], .tag")) openDay(p, el.dataset.day, el); };
+      el.addEventListener("click", open);
+      el.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); open(e); } });
+    });
     out.querySelectorAll("details[data-fold]").forEach(function (el) {
       el.addEventListener("toggle", function () { state.folds[el.dataset.fold] = el.open; });
     });
   }
+  /* ---------- One day's options (from the calendar or Next shifts) ----------
+     Trade the shift (your own page), mark one-day leave (editors), or see who's working that day. */
+  var dayOpener = null;
+  function openDay(p, dIso, opener) {
+    var d = fromIso(dIso), s = day(p, d), t = iso(today());
+    var trade = Trades.tradeFor(p.pos, dIso);
+    var cov = !p.added || p.tour ? coverOf(p.pos, d) : null;
+    var line = s && s.status ? statusPill(s.status) + " " + esc(STATUS_LABEL[s.status]) +
+        (cov && s.status === "TR" ? " · " + esc(cov.coverName || nameOf(cov.coverKey)) + " works it" : "")
+      : s ? (s.acting ? "Acting at " : "Working at ") + esc(s.co || home(p)) + (s.role ? " " + esc(s.role) : "") + " · Tour " + s.tour
+      : coveringBy(p.pos, d) && shift(p, d) ? "Away, covering another position" : "Off";
+    var acts = [];
+    if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
+      acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
+        : '<button type="button" data-day-act="trade">Trade this shift<span class="hint">Send it to people who are off, or post it to the board</span></button>');
+    }
+    var leave = "";
+    if (s && !s.status && backend && backend.canEdit()) {
+      leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S", "D", "WE"].map(function (c) {
+        return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
+      }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
+    }
+    acts.push('<button type="button" data-day-act="who">Who\'s working<span class="hint">Everyone on duty ' + esc(shortDate(d)) + "</span></button>");
+    var hol = M.holidayFor(d);
+    $("day-title").textContent = shortDate(d);
+    $("day-body").innerHTML = '<p class="day-line">' + esc(p.name) + " · Watch " + M.watchFor(d) + (hol ? " · " + esc(hol.name) : "") + "<br>" + line + "</p>" +
+      '<div class="sheet-list day-acts">' + acts.join("") + "</div>" + leave;
+    dayOpener = opener || document.activeElement;
+    $("day-sheet").hidden = false;
+    $("day-sheet").querySelector(".sheet-x").focus();
+    $("day-body").querySelectorAll("[data-day-act]").forEach(function (b) {
+      b.onclick = function () {
+        var a = b.dataset.dayAct;
+        closeDay();
+        if (a === "trade") Trades.openWizard(p.pos, dIso);
+        else if (a === "trades") setView("trades");
+        else { state.date = d; setView("date"); }
+      };
+    });
+    $("day-body").querySelectorAll("[data-day-leave]").forEach(function (b) {
+      b.onclick = function () {
+        var code = b.dataset.dayLeave;
+        say($("day-msg"), "Saving…");
+        backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" })
+          .then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
+      };
+    });
+  }
+  function closeDay() {
+    if ($("day-sheet").hidden) return;
+    $("day-sheet").hidden = true;
+    if (dayOpener && dayOpener.focus && document.contains(dayOpener)) dayOpener.focus();
+  }
+
   /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
      (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
@@ -3901,7 +3964,11 @@ details.wz-bt li .chk { flex: 1 1 auto; min-width: 0; }
       }
       if (e.target.closest("a")) closeSheet();
     });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("more-sheet").hidden) closeSheet(); });
+    document.addEventListener("keydown", function (e) {
+      if (e.key !== "Escape") return;
+      if (!$("day-sheet").hidden) closeDay(); else if (!$("more-sheet").hidden) closeSheet();
+    });
+    $("day-sheet").addEventListener("click", function (e) { if (e.target.closest("[data-close]")) closeDay(); });
   }
   function renderEditChip() {
     var el = $("edit-chip");

@@ -722,11 +722,8 @@ class App:
             raise BadRequest("You don't work that day")
         if self.one("SELECT id FROM trades WHERE posterKey = ? AND date = ? AND status IN ('open', 'set')", (me, day)):
             raise HttpError(409, "You already have a trade for that day")
-        payback = valid_date(body.get("paybackDate"), "paybackDate", required=False)
-        if payback and (payback == day or payback < dt.date.today().isoformat()):
-            raise BadRequest("Pick a payback day after today, other than the traded day")
         rec = {"id": uuid.uuid4().hex, "posterKey": me, "posterName": (self.lookup(me) or {}).get("name"), "seatPos": seat,
-               "date": day, "paybackDate": payback, "note": clean_text(body.get("note"), "note"),
+               "date": day, "paybackDate": None, "note": clean_text(body.get("note"), "note"),
                "audience": json.dumps(self.clean_audience(body, me)), "status": "open", "createdAt": now()}
         self.write("INSERT INTO trades (id,posterKey,posterName,seatPos,date,paybackDate,note,audience,status,createdAt) "
                    "VALUES (:id,:posterKey,:posterName,:seatPos,:date,:paybackDate,:note,:audience,:status,:createdAt)", rec)

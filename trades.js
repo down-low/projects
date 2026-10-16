@@ -11,7 +11,7 @@
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false };
-    var wiz = null; // the open wizard: {poster, date, seat, step, payback, note, sel: {key: true}, board, send, widen: trade|null}
+    var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
     function recs() { return api.recs(); }
@@ -81,13 +81,17 @@
 
     /* ---------- Person page hooks ---------- */
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
+    // My open or set trade for that day, or null.
+    function tradeFor(pos, dIso) {
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+    }
     function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
       if (!canTradeFor(p.pos)) return "";
-      var dIso = api.iso(d);
-      var t = trades().filter(function (x) { return x.posterKey === p.pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0];
-      if (t) return ' <span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
-      return ' <button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
+      var dIso = api.iso(d), t = tradeFor(p.pos, dIso);
+      if (dIso < todayIso()) return "";
+      if (t) return '<span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
+      return '<button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
     }
     // Owed shifts and the "This is me" link for a person's page.
     function personExtras(p) {
@@ -137,7 +141,7 @@
         '<div class="trades">' +
         '<div class="card trade-me"><div><b>' + esc(mine.name) + '</b> <span class="hint">' + esc(mine.rank + " · " + api.home(mine)) +
         (api.tourOn(mine, api.today()) ? " · Tour " + api.tourOn(mine, api.today()) : "") + "</span></div>" +
-        '<p class="hint">To trade a shift, open <button class="linkish" data-pos="' + esc(key) + '">your page</button> and tap Trade next to the day.</p>' +
+        '<p class="hint">To trade a shift, open <button class="linkish" data-pos="' + esc(key) + '">your page</button> and tap the day, or Trade under it in Next shifts.</p>' +
         alertsHtml() + "</div>" +
         (lines.length ? '<div class="card"><h3>Owed shifts</h3><ul class="tlist plain">' + lines.map(function (l) { return "<li>" + l + "</li>"; }).join("") + "</ul></div>" : "") +
         section("Sent to me", sent.sort(byDate).map(offerCard).join("") || '<p class="hint">Nobody has sent you a trade.</p>') +
@@ -149,7 +153,7 @@
           }).join("") + "</select></label></div>" +
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
-          '<p class="hint">You haven\'t posted a trade. Tap Trade next to a shift on your page.</p>') +
+          '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
         adminClaimsHtml() + "</div>";
       wireTab();
     }
@@ -166,7 +170,7 @@
       return '<article class="trade" data-id="' + esc(t.id) + '"><div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         '<span class="trade-who">' + who(p) + "</span></div>" +
         '<div class="trade-terms">' + (seat && api.home(seat) !== api.home(p) ? "At " + esc(api.home(seat)) + " · " : "") +
-        (t.paybackDate ? "Wants you to work for them; offers " + esc(dateText(t.paybackDate)) + " back" : "Payback open") +
+        "24-hour shift" +
         (adj.before ? ' <span class="tag">You work the day before</span>' : "") + (adj.after ? ' <span class="tag">You work the day after</span>' : "") + "</div>" +
         (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") +
         (mineR ? '<p class="hint">You responded: ' + esc(terms(mineR.proposal)) + (mineR.note ? " · " + esc(mineR.note) : "") +
@@ -175,11 +179,11 @@
         (open ? replyForm(t, mineR) : "") + "</article>";
     }
     function replyForm(t, prev) {
-      var later = prev ? !!prev.proposal.later : !t.paybackDate;
-      var swap = prev && prev.proposal.swapDate || t.paybackDate || "";
+      var later = prev ? !!prev.proposal.later : false;
+      var swap = prev && prev.proposal.swapDate || "";
       return '<form class="edit reply-form" data-trade="' + esc(t.id) + '" novalidate>' +
         '<fieldset class="choice"><legend>How they pay you back</legend>' +
-        '<label class="chk"><input type="radio" name="rp-kind" value="swap"' + (later ? "" : " checked") + '> Swap: they work one of my days</label>' +
+        '<label class="chk"><input type="radio" name="rp-kind" value="swap"' + (later ? "" : " checked") + '> Suggest a day: they work one of my shifts</label>' +
         '<label class="indent">My day they\'d work<input type="date" id="rp-swap" min="' + todayIso() + '" value="' + esc(swap) + '"></label>' +
         '<label class="chk"><input type="radio" name="rp-kind" value="later"' + (later ? " checked" : "") + "> Pay back later</label></fieldset>" +
         '<label>Note<input type="text" id="rp-note" maxlength="300" placeholder="Optional" value="' + esc(prev ? prev.note || "" : "") + '"></label>' +
@@ -198,7 +202,7 @@
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
         body = '<p class="hint">' + [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ") +
-          (t.paybackDate ? " · offering " + esc(dateText(t.paybackDate)) + " back" : " · payback open") + "</p>" +
+          "</p>" +
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
@@ -416,8 +420,8 @@
       var el = M.eligibleTakers(d, poster, ctx());
       var sel = {};
       if (widen) (widen.audience.to || []).forEach(function (k) { sel[k] = true; });
-      wiz = { poster: poster, date: dateIso, seat: widen ? widen.seatPos : seatOn(poster, d), step: widen ? 2 : 1, payback: "", later: true, note: "",
-        el: el, sel: sel, board: widen ? !!widen.audience.board : false, send: true, widen: widen || null, open: {} };
+      wiz = { poster: poster, date: dateIso, seat: widen ? widen.seatPos : seatOn(poster, d), step: 2, note: "",
+        el: el, sel: sel, board: widen ? !!widen.audience.board : true, send: true, widen: widen || null, open: {} };
       $("trade-sheet").hidden = false;
       drawWizard();
     }
@@ -446,17 +450,12 @@
     function drawWizard() {
       var w = wiz, body = $("trade-body"), d = api.fromIso(w.date), seat = byPos()[w.seat];
       $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + api.shortDate(d);
-      var steps = '<ol class="wiz-steps">' + ["Payback", "Who", "Post"].map(function (s, i) {
-        return '<li class="' + (w.step === i + 1 ? "on" : w.step > i + 1 ? "done" : "") + '">' + s + "</li>";
+      // Steps: 2 = who, 3 = post. The poster doesn't offer a payback day; whoever is interested suggests one.
+      var steps = '<ol class="wiz-steps">' + ["Who", "Post"].map(function (s, i) {
+        return '<li class="' + (w.step === i + 2 ? "on" : w.step > i + 2 ? "done" : "") + '">' + s + "</li>";
       }).join("") + "</ol>";
       var html = steps + '<p class="hint">Your 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
-      if (w.step === 1) {
-        html += '<fieldset class="choice"><legend>What you offer back</legend>' +
-          '<label class="chk"><input type="radio" name="wz-pay" value="later"' + (w.later ? " checked" : "") + "> Leave it open: they propose a swap day or pay back later</label>" +
-          '<label class="chk"><input type="radio" name="wz-pay" value="day"' + (w.later ? "" : " checked") + "> A specific day: I work one of their shifts</label>" +
-          '<label class="indent">Day I\'d work for them<input type="date" id="wz-day" min="' + todayIso() + '" value="' + esc(w.payback) + '"' + (w.later ? " disabled" : "") + "></label></fieldset>" +
-          '<label>Note<input type="text" id="wz-note" maxlength="300" placeholder="Optional, e.g. kid\'s graduation" value="' + esc(w.note) + '"></label>';
-      } else if (w.step === 2) {
+      if (w.step === 2) {
         var gs = groups(), all = w.el.length && w.el.every(function (e) { return w.sel[e.p.pos]; });
         html += w.el.length
           ? '<p class="hint">' + w.el.length + " " + esc(M.rankGroup(w.poster.rank)) + (w.el.length === 1 ? " is" : "s are") + " off that day. Pick who to send it to.</p>" +
@@ -484,10 +483,10 @@
           '<label class="chk"><input type="checkbox" id="wz-send"' + (w.send && n ? " checked" : "") + (n ? "" : " disabled") + "> Selected people (" + n + ")</label>" +
           '<label class="chk"><input type="checkbox" id="wz-board"' + (w.board ? " checked" : "") + (w.widen && w.widen.audience.board ? " disabled" : "") +
           "> Board: everyone who could take it</label></fieldset>" +
-          '<p class="hint">You can send it to more people or add it to the board later.</p>' +
-          (w.widen ? "" : '<p class="trade-terms">' + (w.later ? "Payback open" : "You offer to work " + esc(dateText(w.payback))) + (w.note ? " · " + esc(w.note) : "") + "</p>");
+          (w.widen ? "" : '<label>Note<input type="text" id="wz-note" maxlength="300" placeholder="Optional, e.g. kid\'s graduation" value="' + esc(w.note) + '"></label>') +
+          '<p class="hint">Whoever is interested suggests a day to pay you back, or pay back later. You pick. You can send it to more people or add it to the board later.</p>';
       }
-      html += '<div class="row wz-nav">' + (w.step > (w.widen ? 2 : 1) ? '<button class="btn" type="button" id="wz-back">Back</button>' : "") +
+      html += '<div class="row wz-nav">' + (w.step > 2 ? '<button class="btn" type="button" id="wz-back">Back</button>' : "") +
         (w.step < 3 ? '<button class="btn primary" type="button" id="wz-next">Next</button>' : '<button class="btn primary" type="button" id="wz-post">' + (w.widen ? "Save" : "Post trade") + "</button>") +
         '<span class="msg" id="wz-msg" role="status"></span></div>';
       body.innerHTML = html;
@@ -495,11 +494,6 @@
     }
     function wireWizard() {
       var w = wiz, body = $("trade-body");
-      if (w.step === 1) {
-        body.querySelectorAll("[name=wz-pay]").forEach(function (r) {
-          r.onchange = function () { w.later = this.value === "later"; $("wz-day").disabled = w.later; if (!w.later) $("wz-day").focus(); };
-        });
-      }
       body.querySelectorAll("details.wz-bt").forEach(function (dt) { dt.addEventListener("toggle", function () { w.open[dt.dataset.key] = dt.open; }); });
       var setAll = function (list, on) { list.forEach(function (e) { if (!locked(e.p.pos)) w.sel[e.p.pos] = on; }); drawWizard(); };
       var gs = w.step === 2 ? groups() : [];
@@ -521,10 +515,6 @@
       if ($("wz-back")) $("wz-back").onclick = function () { keep(); w.step--; drawWizard(); };
       if ($("wz-next")) $("wz-next").onclick = function () {
         keep();
-        if (w.step === 1 && !w.later) {
-          var why = paybackProblem(w.payback);
-          if (why) return api.say($("wz-msg"), why, true);
-        }
         w.step++;
         drawWizard();
       };
@@ -532,17 +522,7 @@
     }
     function keep() {
       var w = wiz;
-      if (w.step === 1) { w.payback = $("wz-day").value; w.note = $("wz-note").value.trim(); }
-      if (w.step === 3) { w.send = $("wz-send").checked; w.board = $("wz-board").checked; }
-    }
-    // A payback day must be one I'm off (and free); whoever takes the trade would have to work it.
-    function paybackProblem(day) {
-      if (!day) return "Pick the day you'd work for them, or leave it open.";
-      if (day < todayIso() || day === wiz.date) return "Pick a later day, not the traded day.";
-      var d = api.fromIso(day);
-      if (api.day(wiz.poster, d)) return "You're already scheduled on " + dateText(day) + ".";
-      if (M.statusFor(wiz.poster.pos, d, recs().statuses)) return "You're marked off on " + dateText(day) + ".";
-      return null;
+      if (w.step === 3) { w.send = $("wz-send").checked; w.board = $("wz-board").checked; if ($("wz-note")) w.note = $("wz-note").value.trim(); }
     }
     function post() {
       keep();
@@ -554,7 +534,7 @@
       var p = w.widen
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade({ posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          paybackDate: w.later ? null : w.payback, note: w.note, audience: aud });
+          note: w.note, audience: aud });
       p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
@@ -570,6 +550,6 @@
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);
