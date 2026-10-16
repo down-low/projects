@@ -593,7 +593,6 @@ details.fold[open] > summary { margin-bottom: 10px; }
   .tab-ico, .lbl-phone { display: block; }
   .lbl-wide { display: none; }
   #tab-person { order: 1; } #tab-date { order: 2; } #tab-trades { order: 3; } #tab-dash { order: 4; } .tab-more { display: flex; order: 5; }
-  .trade-filters label { flex: 1 1 7em; }
   .trade-panel { max-height: 92vh; }
   #tab-rank, #tab-me, #tab-admin { display: none !important; }
   .foot { display: none; }
@@ -659,7 +658,10 @@ ul.tlist { list-style: none; margin: 0; padding: 0; display: flex; flex-directio
 ul.tlist li { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line); }
 ul.tlist li:last-child { border-bottom: 0; }
 ul.tlist.plain li { display: block; }
-.trade-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+/* Board filters: From and To share a row; Battalion below on phones, alongside on wider screens */
+.trade-filters { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.trade-filters input, .trade-filters select { width: 100%; min-width: 0; }
+@media (max-width: 640px) { .trade-filters { grid-template-columns: 1fr 1fr; } .trade-filters label:last-child { grid-column: 1 / -1; } }
 .trade-filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
 .trade-alerts summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .trade-alerts .chk { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; margin-top: 6px; }

@@ -57,7 +57,7 @@ Members trade full 24-hour shifts. Approval, if any, happens outside the tool; o
   | Battalion Chief | Battalion Chief (H40) |
   | Its own rank | Rescue Captain, ISS, Pilot, Marine Engineer |
 
-- **A day's options.** On a person's page, tap a calendar day or a row in **Next shifts**: **Trade this shift** (your own page), **Mark this day** VA / S / D / WE (editors, one day), and **Who's working** that day. On your own page, **Trade** also sits under each date in Next shifts.
+- **A day's options.** On a person's page, tap a calendar day or a row in **Next shifts**: **Trade this shift** (your own page) and **Mark this day** VA or S (editors, one day; D and WE stay in the Edit forms). On your own page, **Trade** also sits under each date in Next shifts.
 - **Posting.** Two steps:
   1. **Who:** everyone eligible, grouped by division and battalion, tagged when they work the day before or after. Check everyone, a division, a battalion or individuals.
   2. **Post:** to the selected people, the board (everyone eligible), or both, with an optional note. **Send to more people** widens it later.

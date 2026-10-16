@@ -298,6 +298,7 @@
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit());
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -310,8 +311,8 @@
       var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
       var hol = M.holidayFor(d);
       if (hol) monthHolidays.push({ d: d, h: hol });
-      cells += '<div class="d tap' + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") +
-        '" data-day="' + iso(d) + '" role="button" tabindex="0" title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
+      cells += '<div class="d' + (tappable ? " tap" : "") + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") + '"' +
+        (tappable ? ' data-day="' + iso(d) + '" role="button" tabindex="0"' : "") + ' title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
         '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
     }
 
@@ -361,7 +362,7 @@
       esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
       (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
-        return '<li class="tap" data-day="' + iso(n.d) + '"><span class="when">' + esc(shortDate(n.d)) + (n.s.status ? "" : Trades.tradeLink(p, n.d)) +
+        return "<li" + (tappable ? ' class="tap" data-day="' + iso(n.d) + '"' : "") + '><span class="when">' + esc(shortDate(n.d)) + (n.s.status ? "" : Trades.tradeLink(p, n.d)) +
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
@@ -382,7 +383,8 @@
     });
   }
   /* ---------- One day's options (from the calendar or Next shifts) ----------
-     Trade the shift (your own page), mark one-day leave (editors), or see who's working that day. */
+     Trade the shift (your own page) or mark one day VA or S (editors; D and WE stay in the Edit forms).
+     Days are only tappable for someone who can do one of those. */
   var dayOpener = null;
   function openDay(p, dIso, opener) {
     var d = fromIso(dIso), s = day(p, d), t = iso(today());
@@ -399,15 +401,15 @@
     }
     var leave = "";
     if (s && !s.status && backend && backend.canEdit()) {
-      leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S", "D", "WE"].map(function (c) {
+      leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S"].map(function (c) {
         return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
       }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
     }
-    acts.push('<button type="button" data-day-act="who">Who\'s working<span class="hint">Everyone on duty ' + esc(shortDate(d)) + "</span></button>");
+    if (!acts.length && !leave) return; // nothing to do on this day
     var hol = M.holidayFor(d);
     $("day-title").textContent = shortDate(d);
     $("day-body").innerHTML = '<p class="day-line">' + esc(p.name) + " · Watch " + M.watchFor(d) + (hol ? " · " + esc(hol.name) : "") + "<br>" + line + "</p>" +
-      '<div class="sheet-list day-acts">' + acts.join("") + "</div>" + leave;
+      (acts.length ? '<div class="sheet-list day-acts">' + acts.join("") + "</div>" : "") + leave;
     dayOpener = opener || document.activeElement;
     $("day-sheet").hidden = false;
     $("day-sheet").querySelector(".sheet-x").focus();
@@ -416,8 +418,7 @@
         var a = b.dataset.dayAct;
         closeDay();
         if (a === "trade") Trades.openWizard(p.pos, dIso);
-        else if (a === "trades") setView("trades");
-        else { state.date = d; setView("date"); }
+        else setView("trades");
       };
     });
     $("day-body").querySelectorAll("[data-day-leave]").forEach(function (b) {
