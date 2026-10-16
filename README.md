@@ -48,10 +48,10 @@ Editors apply the 2027 Vacancy Awards (26 A-082) from **2027 awards** (header li
 
 - `python3 tools/extract_awards.py` reads `docs/vacancy-awards-26A082.pdf` into `data/vacancy-awards-2027.json` (364 rows, 346 positions; it checks the report's "Positions Awarded" totals). A position listed twice has an unstarred row (awarded on paper) and a starred row (the person who works it); the starred row is the one applied.
 - **Matching:** by Employee ID first, then last name + first initial at the person's current company (the report's last column), then a unique name anywhere. Anyone not found is added as a new person with the rank of their current class.
-- **Date:** each move starts on the first day of the awarded seat's tour on or after **Jan 16, 2027**. A cover the person has elsewhere ends the day before. Dates can be changed per row.
+- **Date:** each move starts on the first day of the awarded seat's tour on or after **Jan 16, 2027**. Dates can be changed per row.
+- **Owned seat vs cover:** an award (or a 2027 transfer-list assignment) changes the seat a person **owns**. A cover is a separate assignment, willing or mandated, and keeps running until someone ends it. While it runs they work the cover and their new seat shows them away ("Acting at …", tagged "2027 seat"); once it's ended they work their new seat. Their old seat is vacant from the move date unless someone else moves in. A person's page shows **Own seat from …** next to **Covering**.
 - **Statuses:** **Ready**; **Check** (pick between people with the same name, an open-ended D or WE that stays on, or another person covering the seat); **Recorded** (already on the page); **No move** (already in the seat, or awarded on paper while the starred replacement works it). A move from the 2027 transfer list (newer than the awards) wins over the award and is shown under Check without an Apply option.
-- **Apply N ready moves** writes one cover per move (noted "2027 award (26 A-082)"), plus any added people; re-running skips what's recorded. **Apply anyway** on a Check row includes it. **Remove award moves** deletes everything the import wrote and puts back the end dates it changed (an open-ended cover gets its open end back on the shared page; the server keeps the last date).
-- On the schedule a moved person shows "2027 move" in their new seat, and their old seat shows them away.
+- **Apply N ready moves** writes one move per award (stored with the covers, marked `move: true` and noted "2027 award (26 A-082)"), plus any added people; nothing else is changed, and re-running skips what's recorded. **Apply anyway** on a Check row includes it. **Remove award moves** deletes everything the import wrote.
 
 ## Shift trades
 

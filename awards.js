@@ -3,11 +3,12 @@
  * AwardPlan.plan(awards, ctx) works out every award (also used from Node to check the numbers):
  *   ctx: {data: roster positions, added: added people ({pos: "person:<id>", name, rank, company, emplId}),
  *         ids: EMPLOYEE_IDS.ids (position -> {id}), opts: {statuses, changes, covers, byPos}}
- *   Result rows: {award, person|null, candidates, date, status, notes[], ends: [cover], addRank}
+ *   Result rows: {award, person|null, candidates, date, status, notes[], addRank, locked}
  *   status: "ready" | "check" | "loaded" (already recorded) | "nomove" (already holds the seat, or a starred
  *   replacement works the seat on paper) .
- * A move is a cover from the effective date onward (as the 2027 transfer-list import): the awardee works the awarded
- * seat's tour and company, and their old seat shows them away. Open-ended covers elsewhere end the day before.
+ * A move changes the seat the awardee owns, from the effective date on: it's stored with the covers but marked as a move
+ * (`move: true`, note "2027 award ..."; see TourMath.isMove). A cover the awardee has elsewhere is a separate assignment
+ * and keeps running until someone ends it; while it runs they work the cover and their new seat shows them away.
  * window.AwardViews(api) -> {render} draws the admin screen (editors).
  */
 (function (root) {
@@ -48,7 +49,7 @@
     awards.forEach(function (a) { if (a.starred) starred[a.pos] = true; });
     var rows = awards.map(function (a) {
       var target = ctx.opts.byPos[a.pos];
-      var row = { award: a, person: null, candidates: [], date: target ? firstDay(target, ctx.opts.changes) : START, status: "ready", notes: [], ends: [] };
+      var row = { award: a, person: null, candidates: [], date: target ? firstDay(target, ctx.opts.changes) : START, status: "ready", notes: [] };
       var cands = byName[nameKey(a.name)] || [];
       row.person = byId[a.emplId] || null;
       if (!row.person) {
@@ -86,27 +87,22 @@
         row.status = "nomove";
         row.notes.push("Already holds this seat");
       }
-      // Covers elsewhere that would still run on the effective date end the day before.
-      row.ends = covers.filter(function (c) {
-        return c.coverKey === key && c.targetPos !== a.pos && c.start < row.date && (!c.end || c.end >= row.date) && !c.tradeId;
+      // A cover elsewhere still running on the date keeps going (it's an assignment, not their seat).
+      var keeps = covers.filter(function (c) {
+        return c.coverKey === key && !M.isMove(c) && c.targetPos !== a.pos && c.start < row.date && (!c.end || c.end >= row.date) && !c.tradeId;
       });
-      if (row.ends.length) {
-        if (row.status === "nomove") row.status = "ready";
-        row.notes.push("Ends " + row.ends.map(function (c) { return "cover on " + c.targetPos; }).join(", ") + " on " + addDays(row.date, -1));
-      }
+      if (keeps.length) row.notes.push("Cover on " + keeps.map(function (c) { return c.targetPos; }).join(", ") + " continues until it's ended");
       if (row.status === "nomove") return row;
       var open = statuses.filter(function (s) { return s.pos === key && s.start < row.date && !s.end && !s.tradeId; })[0];
       if (open) { row.status = "check"; row.notes.push("Open-ended " + open.code + " since " + open.start + " stays on"); }
       return row;
     });
-    // Second pass: someone else covering the awarded seat on the date, unless their own award move ends that cover.
-    var ending = {};
-    rows.forEach(function (r) { if (r.status === "ready" || r.status === "check") r.ends.forEach(function (c) { ending[c.id] = true; }); });
+    // Second pass: someone else covering the awarded seat on the date (covers keep running, so the seat stays covered).
     rows.forEach(function (r) {
       if ((r.status !== "ready" && r.status !== "check") || !r.person || r.locked) return;
       var key = r.person.pos, pos = r.award.pos;
       var other = covers.filter(function (c) {
-        return c.targetPos === pos && c.coverKey !== key && !ending[c.id] && (!c.end || c.end >= r.date) && c.start <= r.date;
+        return c.targetPos === pos && c.coverKey !== key && (!c.end || c.end >= r.date) && c.start <= r.date;
       })[0];
       if (other) { r.status = "check"; r.notes.push("Seat also covered by " + (other.coverName || other.coverKey) + " from " + other.start); }
     });
@@ -160,7 +156,7 @@
       var applied = api.recs().covers.filter(function (c) { return String(c.note || "").indexOf(TAG) === 0; }).length;
       out.innerHTML = '<div class="card awards-head"><h3>2027 vacancy awards</h3>' +
         '<p class="hint">' + esc(root.AWARDS_2027.source) + ", " + esc(root.AWARDS_2027.reportDate || "") + ". Each move starts on the first day of the new " +
-        "seat's tour on or after Jan 16, 2027; the old spot ends the day before.</p>" +
+        "seat's tour on or after Jan 16, 2027. Covers people have elsewhere keep running until they're ended.</p>" +
         '<div class="aw-tiles">' + [["ready", "Ready"], ["check", "Check"], ["loaded", "Recorded"], ["nomove", "No move"]].map(function (x) {
           return '<button type="button" class="aw-tile' + (ui.filter === x[0] ? " on" : "") + '" data-aw-filter="' + x[0] + '"><b>' + n[x[0]] + "</b>" + x[1] + "</button>";
         }).join("") + "</div>" +
@@ -218,13 +214,8 @@
             : backend.addPerson({ name: shortName(a.name), rank: r.addRank, company: null, tour: null, emplId: a.emplId, note: a.name + " · " + TAG })
               .then(function (res) { return "person:" + res.id; });
           return who.then(function (key) {
-            var ends = r.ends.reduce(function (q, c) { return q.then(function () { return backend.endCover(c.id, addDays(r.date, -1)); }); }, Promise.resolve());
-            return ends.then(function () {
-              // `ended` keeps the covers this move cut short, so Remove can put their end dates back.
-              return backend.addCover({ coverKey: key, coverName: p ? p.name : shortName(a.name), targetPos: a.pos, start: r.date, end: null,
-                note: TAG + " · ID " + a.emplId + (a.from ? " · from " + a.from : ""),
-                ended: r.ends.map(function (c) { return { id: c.id, end: c.end || null }; }) });
-            });
+            return backend.addCover({ coverKey: key, coverName: p ? p.name : shortName(a.name), targetPos: a.pos, start: r.date, end: null,
+              move: true, note: TAG + " · ID " + a.emplId + (a.from ? " · from " + a.from : "") });
           }).then(function () { done++; say("Applied " + done + " of " + ready.length + "…"); });
         };
       });
@@ -243,12 +234,7 @@
       ui.busy = true;
       var covers = recs.covers.filter(function (c) { return String(c.note || "").indexOf(TAG) === 0; });
       var people = (recs.people || []).filter(function (x) { return String(x.note || "").indexOf(TAG) !== -1; });
-      // Put back the end dates of covers the moves cut short (open-ended ones need the page database; the server keeps a date).
-      var restore = [];
-      covers.forEach(function (c) { (c.ended || []).forEach(function (e) { restore.push(e); }); });
-      var steps = restore.filter(function (e) { return e.end || backend.mode === "db"; })
-        .map(function (e) { return function () { return backend.endCover(e.id, e.end); }; })
-        .concat(covers.map(function (c) { return function () { n++; return backend.remove("covers", c.id); }; }))
+      var steps = covers.map(function (c) { return function () { n++; return backend.remove("covers", c.id); }; })
         .concat(people.map(function (x) { return function () { n++; return backend.remove("people", x.id); }; }));
       steps.reduce(function (q, f) { return q.then(f); }, Promise.resolve()).then(function () {
         ui.busy = false; ui.msg = "Removed " + n + " records."; api.renderAll(true);

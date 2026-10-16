@@ -370,16 +370,20 @@
       api.data().forEach(function (p) {
         var co = Org.apparatus(p.company || p.title);
         if (hiddenCo(co)) return;
+        // The seat's owner on d: whoever moved in (2027 award or assignment), else the listed holder unless they moved out.
+        var mvIn = M.movesInto(p.pos, d, recs.covers), mvOut = p.name && M.movedTo(p.pos, d, recs.covers);
+        var key = mvIn ? mvIn.coverKey : mvOut && mvOut.targetPos !== p.pos ? null : p.name ? p.pos : null;
+        var name = mvIn ? ((api.byPos()[mvIn.coverKey] || {}).name || mvIn.coverName) : key ? p.name : null;
         var reason = null;
-        if (!p.name) reason = "Vacant";
+        if (!key) reason = mvOut ? "Vacant · " + p.name + " moved to " + ((api.byPos()[mvOut.targetPos] || {}).title || mvOut.targetPos) : "Vacant";
         else {
-          var st = recs.statuses.filter(function (x) { return x.pos === p.pos && x.code === "D" && x.start <= isoD && !x.end; })[0];
-          var away = M.coveringOn(p.pos, d, recs.covers);
-          if (st) reason = p.name + " · Disabled since " + api.shortDate(api.fromIso(st.start));
-          else if (away) reason = p.name + " · acting at " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
+          var st = recs.statuses.filter(function (x) { return x.pos === key && x.code === "D" && x.start <= isoD && !x.end; })[0];
+          var away = M.actingOn(key, d, recs.covers);
+          if (st) reason = name + " · Disabled since " + api.shortDate(api.fromIso(st.start));
+          else if (away) reason = name + " · acting at " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
         }
         if (!reason) return;
-        var cover = recs.covers.filter(function (c) { return c.targetPos === p.pos && (!c.end || c.end >= isoD); })
+        var cover = recs.covers.filter(function (c) { return c.targetPos === p.pos && !M.isMove(c) && (!c.end || c.end >= isoD); })
           .sort(function (a, b) { return a.start.localeCompare(b.start); })[0] || null;
         out.push({ p: p, co: co, where: Org.locate(co), reason: reason, cover: cover });
       });

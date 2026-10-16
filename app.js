@@ -108,19 +108,23 @@
 
   /* ---------- One day, every seat ----------
      Rows for each scheduled seat (roster positions and added people with a tour) on date d:
-     the holder row (name null for a vacant seat) and, when the seat is covered, a row for the person covering.
-     Row: {slot, co, tour, role, who, name, status, off, away, coveredBy, acting, swingCover} */
+     the owner row (name null for a vacant seat) and, when the seat is covered, a row for the person covering.
+     The owner is whoever moved into the seat (a 2027 award or assignment), else the vacancy-list holder unless they moved
+     out. An owner on a cover elsewhere shows away. Row: {slot, co, tour, role, who, name, status, off, away, coveredBy,
+     acting, moved, swingCover} */
   function dayRows(d) {
     var rows = [];
     slots().forEach(function (p) {
       var s = shift(p, d);
       if (!s) return;
+      var o = ownerOn(p, d);
       var covs = M.coversOn(p.pos, d, recs.covers), cov = covs[0] || null;
-      var away = p.name ? coveringBy(p.pos, d) : null;
+      var away = o.key ? M.actingOn(o.key, d, recs.covers) : null;
+      var status = o.key ? M.statusFor(o.key, d, recs.statuses) : null;
       var base = { slot: p, co: s.co || home(p), role: s.role, swingCover: s.swing && s.co !== p.company, tour: s.tour };
       rows.push(Object.assign({}, base, {
-        who: p.name ? p : null, name: p.name, status: s.status,
-        away: away, coveredBy: cov, off: !!(s.status || away || (cov && p.name)),
+        who: o.person, name: o.name, status: status, moved: o.moved,
+        away: away, coveredBy: cov, off: !!(status || away || (cov && o.name)),
       }));
       covs.forEach(function (c) { // usually one; two people can work the same seat's tour
         var coverer = byPos[c.coverKey];
@@ -132,6 +136,19 @@
       });
     });
     return rows;
+  }
+  // Who owns seat p on d: {key, person, name, moved}. moved is the move record when someone moved in.
+  function ownerOn(p, d) {
+    var mv = M.movesInto(p.pos, d, recs.covers);
+    if (mv) return { key: mv.coverKey, person: byPos[mv.coverKey] || null, name: (byPos[mv.coverKey] || {}).name || mv.coverName, moved: mv };
+    var out = p.name ? M.movedTo(p.pos, d, recs.covers) : null;
+    if (!p.name || (out && out.targetPos !== p.pos)) return { key: null, person: null, name: null, moved: null };
+    return { key: p.pos, person: p, name: p.name, moved: null };
+  }
+  // The seat person p owns on d: their vacancy-list seat, or the one a move gave them.
+  function ownSeatOn(p, d) {
+    var mv = M.movedTo(p.pos, d, recs.covers);
+    return mv && byPos[mv.targetPos] ? byPos[mv.targetPos] : p.added && !p.tour ? null : p;
   }
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
@@ -222,8 +239,9 @@
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
     if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
     else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
-    if (x.slot.open && !x.acting) tags.push('<span class="tag tag-open">Spot open for bid</span>');
+    if (x.slot.open && !x.acting && !x.moved) tags.push('<span class="tag tag-open">Spot open for bid</span>');
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
+    if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">2027 seat</span>');
     return tags;
   }
 
@@ -306,7 +324,7 @@
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
       // On their own tour days while covering elsewhere, show "Away".
-      var awayDay = !s && !(p.added && !p.tour) && coveringBy(p.pos, d) && shift(p, d);
+      var own = ownSeatOn(p, d), awayDay = !s && own && M.actingOn(p.pos, d, recs.covers) && shift(own, d);
       if (s) { if (s.status) offCount++; else if (s.acting) actingCount++; else workCount++; }
       var cover = s && !s.acting && s.swing && s.co !== p.company;
       var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : "W" + M.watchFor(d);
@@ -329,8 +347,11 @@
     var upcoming = recs.tourChanges.filter(function (c) { return c.pos === p.pos && c.effective > iso(t); })
       .sort(function (a, b) { return a.effective.localeCompare(b.effective); })[0];
     var statusNow = M.statusFor(p.pos, t, recs.statuses);
-    var actingNow = coveringBy(p.pos, t) || recs.covers.filter(function (c) { return c.coverKey === p.pos && c.start > iso(t); })
+    var actingNow = M.actingOn(p.pos, t, recs.covers) || recs.covers.filter(function (c) { return c.coverKey === p.pos && !M.isMove(c) && c.start > iso(t); })
       .sort(function (a, b) { return a.start.localeCompare(b.start); })[0];
+    // A move to a new owned seat (2027 award or assignment), current or coming up.
+    var moveNext = recs.covers.filter(function (c) { return c.coverKey === p.pos && M.isMove(c) && (!c.end || c.end >= iso(t)); })
+      .sort(function (a, b) { return b.start.localeCompare(a.start); })[0];
     var coveredNow = p.added ? null : coverOf(p.pos, t);
 
     out.innerHTML =
@@ -347,6 +368,8 @@
           kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
       (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : "Covering", slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
+      (moveNext ? kv(moveNext.start > iso(t) ? "Own seat from " + shortDate(fromIso(moveNext.start)) : "Own seat", (byPos[moveNext.targetPos] || {}).title + " " + moveNext.targetPos +
+        (actingNow && (!actingNow.end || actingNow.end >= moveNext.start) ? " · the cover above continues until it's ended" : "")) : "") +
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
@@ -396,7 +419,7 @@
     var line = s && s.status ? statusPill(s.status) + " " + esc(STATUS_LABEL[s.status]) +
         (cov && s.status === "TR" ? " · " + esc(cov.coverName || nameOf(cov.coverKey)) + " works it" : "")
       : s ? (s.acting ? "Acting at " : "Working at ") + esc(s.co || home(p)) + (s.role ? " " + esc(s.role) : "") + " · Tour " + s.tour
-      : coveringBy(p.pos, d) && shift(p, d) ? "Away, covering another position" : "Off";
+      : ownSeatOn(p, d) && M.actingOn(p.pos, d, recs.covers) && shift(ownSeatOn(p, d), d) ? "Away, covering another position" : "Off";
     var acts = [];
     if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
       acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
@@ -709,7 +732,7 @@
       return '<tr><th class="who" scope="row">' + who + '<span class="meta">' + esc(home(p)) + " T" + tourOn(p, m) + (p.swingType ? " " + esc(p.swingType) : "") + "</span></th>" +
         dates.map(function (d) {
           var s = p.name ? day(p, d) : shift(p, d);
-          var awayDay = !s && p.name && coveringBy(p.pos, d) && shift(p, d);
+          var awayDay = !s && p.name && M.actingOn(p.pos, d, recs.covers) && shift(ownSeatOn(p, d) || p, d);
           var cls = "c" + (s ? (s.status ? " off st-" + s.status : s.acting ? " acting" : s.swing && s.co !== p.company ? " cover" : " on") : awayDay ? " away" : "") +
             (sameDay(d, t) ? " today-col" : "") + (!s && !awayDay && (d.getDay() === 0 || d.getDay() === 6) ? " weekend" : "");
           var txt = s ? (s.status ? s.status : (s.acting || (s.swing && s.co !== p.company)) ? s.co : "") : awayDay ? "AW" : "";

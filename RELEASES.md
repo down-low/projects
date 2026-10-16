@@ -11,7 +11,7 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 - **Matching:** awardees are matched to roster people by last name plus first initial (`Pereira,Joshua M` → `Pereira,J`), with EmplID kept for future imports. Names that don't match are created as added people.
 - **Review before applying:** an admin screen lists each move (from position, to position, computed effective date) with unmatched or ambiguous names flagged, then applies them as dated moves.
 - **Seats left behind** become vacant from the same date unless another award fills them.
-- **Built (10/2026):** the **2027 awards** screen (editors) does all of the above: 310 moves ready, 18 to check, 37 needing no move, against the records of 10/16/2026. It moves to Shipped once applied on the shared page.
+- **Built (10/2026):** the **2027 awards** screen (editors) does all of the above: 308 moves ready, 19 to check, 38 needing no move, against the records of 10/16/2026. A move changes the seat a person owns; covers they have elsewhere keep running until ended. It moves to Shipped once applied on the shared page.
 
 ## With the server launch
 

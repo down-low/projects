@@ -62,28 +62,40 @@
     };
   }
 
-  // Active record in `list` whose `field` equals `key` on date d (start..end inclusive, open end allowed).
-  function activeOn(list, field, key, d) {
-    var day = isoDate(d), best = null;
-    if (list) for (var i = 0; i < list.length; i++) {
-      var r = list[i];
-      if (r[field] !== key || r.start > day || (r.end && r.end < day)) continue;
-      if (!best || newer(r, best) < 0) best = r;
-    }
-    return best;
-  }
-  // The cover assignment filling position `targetPos` on d, or null.
-  function coverOn(targetPos, d, covers) { return activeOn(covers, "targetPos", targetPos, d); }
-  // Every cover assignment on position targetPos on d (two people can share a seat's tour), newest first.
-  function coversOn(targetPos, d, covers) {
+  /* Two kinds of record share the covers list:
+     - a cover: an assignment (acting, detailed, mandated) that runs until someone ends it;
+     - a move: a change of the seat a person owns (a 2027 award or transfer-list assignment, or `move: true`).
+     While a cover runs it wins over the person's owned seat, moved or not: Lester keeps his acting cover on E10 after his
+     award moves his own seat to E12, and E12 shows him away until the cover is ended. */
+  function isMove(c) { return !!(c && (c.move || /^2027 (award|assignment)/.test(c.note || ""))); }
+  function activeAll(list, field, key, d) {
     var day = isoDate(d), out = [];
-    (covers || []).forEach(function (r) {
-      if (r.targetPos === targetPos && r.start <= day && (!r.end || r.end >= day)) out.push(r);
-    });
+    (list || []).forEach(function (r) { if (r[field] === key && r.start <= day && (!r.end || r.end >= day)) out.push(r); });
     return out.sort(newer);
   }
-  // What the person `coverKey` (their position number, or "person:<id>") is covering on d, or null.
-  function coveringOn(coverKey, d, covers) { return activeOn(covers, "coverKey", coverKey, d); }
+  // The cover (not move) person `coverKey` is working on d, or null.
+  function actingOn(coverKey, d, covers) {
+    return activeAll(covers, "coverKey", coverKey, d).filter(function (c) { return !isMove(c); })[0] || null;
+  }
+  // The move that sets the seat person `coverKey` owns on d, or null (they own their vacancy-list seat).
+  function movedTo(coverKey, d, covers) {
+    return activeAll(covers, "coverKey", coverKey, d).filter(isMove)[0] || null;
+  }
+  // The move that makes someone the owner of seat `targetPos` on d, or null.
+  function movesInto(targetPos, d, covers) {
+    return activeAll(covers, "targetPos", targetPos, d).filter(isMove)[0] || null;
+  }
+  // Covers (not moves) on position targetPos on d whose person is really working it (two can share a seat's tour), newest first.
+  function coversOn(targetPos, d, covers) {
+    return activeAll(covers, "targetPos", targetPos, d).filter(function (c) {
+      return !isMove(c) && actingOn(c.coverKey, d, covers) === c;
+    });
+  }
+  // The cover filling position `targetPos` on d, or null.
+  function coverOn(targetPos, d, covers) { return coversOn(targetPos, d, covers)[0] || null; }
+  // Where the person `coverKey` (their position number, or "person:<id>") works instead of their vacancy-list seat on d:
+  // a cover if one runs, else the move to their owned seat, or null.
+  function coveringOn(coverKey, d, covers) { return actingOn(coverKey, d, covers) || movedTo(coverKey, d, covers); }
 
   // A person's day. key: position number or "person:<id>"; p: their own position (null for added people).
   // While covering, they follow the covered position's schedule and company; otherwise their own.
@@ -201,6 +213,7 @@
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
     effectiveTour: effectiveTour, statusFor: statusFor, isoDate: isoDate, TOUR_OFFSETS: TOUR_OFFSETS,
     coverOn: coverOn, coversOn: coversOn, coveringOn: coveringOn, dayFor: dayFor,
+    isMove: isMove, actingOn: actingOn, movedTo: movedTo, movesInto: movesInto,
   };
   root.TourMath = api;
   if (typeof module !== "undefined" && module.exports) module.exports = api;

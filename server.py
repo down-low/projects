@@ -640,8 +640,9 @@ class App:
 
     def seat_on(self, key, day):
         """The seat person `key` works on `day` (their own, or the one they cover), or None when they are off."""
+        # A cover (assignment) wins over a move to a new owned seat (2027 award or assignment), as TourMath.coveringOn.
         cover = self.one('SELECT targetPos FROM covers WHERE coverKey = ? AND start <= ? AND ("end" IS NULL OR "end" >= ?) '
-                         "ORDER BY createdAt DESC LIMIT 1", (key, day, day))
+                         "ORDER BY (note LIKE '2027 award%' OR note LIKE '2027 assignment%') ASC, createdAt DESC LIMIT 1", (key, day, day))
         if cover:
             target = self.lookup(cover["targetPos"])
             ok = target and self.tour_works(self.effective_tour(cover["targetPos"], target, day), day)

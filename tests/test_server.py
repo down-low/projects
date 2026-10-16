@@ -435,3 +435,20 @@ class TradeTest(unittest.TestCase):
         poster.req("GET", "/api/trades")
         self.assertEqual(self.app.get_trade(t["id"])["status"], "expired")
         self.assertEqual(taker.req("POST", f"/api/trades/{t['id']}/replies", {"proposal": {"later": True}})[0], 409)
+
+    def test_cover_wins_over_move(self):
+        """A 2027 move changes the seat someone owns; a cover they have elsewhere keeps winning until it's ended."""
+        a = self.app
+        lt = next(k for k, p in sorted(a.positions.items()) if p["rank"] == "Lieutenant" and p.get("name") and not p.get("swing"))
+        days = [f"2027-01-{n:02d}" for n in range(16, 31)]
+        capt = next(k for k, p in sorted(a.positions.items()) if p["rank"] == "Captain" and any(a.tour_works(p["tour"], d) for d in days))
+        new = next(k for k, p in sorted(a.positions.items()) if p["rank"] == "Lieutenant" and k != lt and p["tour"] != a.positions[capt]["tour"])
+        ins = 'INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",note,createdAt,createdBy) VALUES (?,?,?,?,?,?,?,?,?)'
+        a.write(ins, ("c1", lt, "x", capt, "2026-10-01", None, "", "2026-10-01T00:00:00Z", "t"))
+        a.write(ins, ("m1", lt, "x", new, "2027-01-16", None, "2027 award (26 A-082)", "2026-10-20T00:00:00Z", "t"))
+        cday = next(d for d in days if a.tour_works(a.positions[capt]["tour"], d))
+        self.assertEqual(a.seat_on(lt, cday), capt)  # the newer move doesn't end the cover
+        a.write('UPDATE covers SET "end" = ? WHERE id = ?', ("2027-01-15", "c1"))
+        nday = next(d for d in days if a.tour_works(a.positions[new]["tour"], d))
+        self.assertEqual(a.seat_on(lt, nday), new)  # cover ended: they work their new seat
+        a.write("DELETE FROM covers WHERE id IN ('c1', 'm1')")
