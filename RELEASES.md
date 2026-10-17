@@ -49,8 +49,12 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
 ### Invites from trades
-A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know.
+A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know. There are two kinds of "not on yet":
 
+- **On the roster but not signed in:** on the vacancy list (or already added), so the tool knows their seat, tour and Employee ID. The trade invite below is for them.
+- **Not in the tool at all:** new hires, detailed or relief staff, anyone never added. The tool has no seat or tour for them, so it can't offer them a trade yet; **Invite someone** (further down) gets them in first.
+
+#### People on the roster who haven't signed in
 - **Not on yet:** in the Trade wizard's Who list and in My trades, recipients without a linked account are marked "not on yet", with a count ("4 of 9 aren't on yet").
 - **Invite them:** one button opens the poster's own phone share sheet (or an `sms:` link) with a ready text: "Lester (Lt E10) wants to trade Sat Oct 17 with you. See it and reply: <host>/t/<code>".
   - **The text comes from the poster's phone, not the department's Twilio number.** We have no numbers for people who haven't signed up, US texting rules (TCPA, 10DLC) require prior consent, and a colleague's text gets opened. No texting cost either.
@@ -60,6 +64,16 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
   - **ID matches the roster:** the account is linked and approved at once, and they land on the trade ready to respond. The Admin page shows "Joined by invite from Lester · date" with Undo (unlink and disable).
   - **No match:** the normal claim, waiting for an admin.
 - **Limits:** only people the poster actually sent the trade to can be invited; up to 20 invites per poster a day; nothing about other people shows before sign-in.
+
+#### People not in the tool yet
+- **Invite someone to the schedule:** a button on the Trades tab (and in the More menu) opens the phone's share sheet, so the member picks from their own Contacts, with a ready text: "I'm using the SFFD tour schedule to trade shifts. Join here: <host>/join/<code>".
+- **Typing a number** instead only opens the member's Messages app with that number and the text filled in (an `sms:` link). **The number is never saved:** the tool doesn't keep coworkers' phone numbers they didn't give it, and the text still comes from a colleague.
+- **The join link** is a general invite (no trade), tied to the inviter, single use, expires in 14 days; up to 10 a day per member.
+- **Signing up:** Google sign-in, then the existing **I'm not on the list** form (name, rank, apparatus, tour, Employee ID). The request shows on the Admin page as "Invited by Lester"; an admin approves it with **Approve and add to roster**, which adds them with their apparatus and tour. No automatic approval here, since there's no roster entry to check the ID against.
+- **Then they're in like anyone else:** eligible for trades by rank group and tour, on boards and in the Trade wizard's Who list. The Who list ends with "Can't find them? **Invite someone**", which opens the same share.
+- **Without an invite** (word of mouth, the QR poster), the claim screen tries the roster first (Employee ID match) and falls back to "I'm not on the list".
+
+#### Also
 - **Also spreads it:** every alert, email and daily board summary links back; a QR-code poster for station kitchens opens the same sign-up and claim (Employee ID step, no trade); station champions; a "who's on" count per battalion for admins.
 
 ### Calendar sync (iCal / Google Calendar)
