@@ -48,6 +48,20 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **What alerts you:** trades sent to you and responses to your trades, always (on whichever channels you turned on). **Board posts** are a separate setting, saved now: **Off** (the default; people browse the board when they want), **Daily summary** (one message listing new posts you could take), or **Each new post**.
 - **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
+### Invites from trades
+A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know.
+
+- **Not on yet:** in the Trade wizard's Who list and in My trades, recipients without a linked account are marked "not on yet", with a count ("4 of 9 aren't on yet").
+- **Invite them:** one button opens the poster's own phone share sheet (or an `sms:` link) with a ready text: "Lester (Lt E10) wants to trade Sat Oct 17 with you. See it and reply: <host>/t/<code>".
+  - **The text comes from the poster's phone, not the department's Twilio number.** We have no numbers for people who haven't signed up, US texting rules (TCPA, 10DLC) require prior consent, and a colleague's text gets opened. No texting cost either.
+- **The link (`/t/<code>`):** a random code for one recipient, tied to the trade, the recipient and the inviter. It expires when the trade's day passes or after 14 days, and works once.
+  - **Before sign-in it shows only** "A Lieutenant wants to trade a 24-hr shift on Sat Oct 17", with no names, and **Sign in with Google to see it**.
+  - **After Google sign-in**, the claim screen is filled in for the person it was meant for ("Are you Alvarenga,G, Capt E32?") and asks for their Employee ID.
+  - **ID matches the roster:** the account is linked and approved at once, and they land on the trade ready to respond. The Admin page shows "Joined by invite from Lester · date" with Undo (unlink and disable).
+  - **No match:** the normal claim, waiting for an admin.
+- **Limits:** only people the poster actually sent the trade to can be invited; up to 20 invites per poster a day; nothing about other people shows before sign-in.
+- **Also spreads it:** every alert, email and daily board summary links back; a QR-code poster for station kitchens opens the same sign-up and claim (Employee ID step, no trade); station champions; a "who's on" count per battalion for admins.
+
 ### Calendar sync (iCal / Google Calendar)
 - **Subscribe link:** each signed-in person gets a private calendar feed (`…/cal/<secret>.ics`) of their own schedule, built from the same logic as their person page (`TourMath.dayFor`). Add it in Google Calendar (Other calendars → From URL), Apple Calendar / iPhone (Add subscription) or Outlook.
 - **On the feed:** one event per work day titled with the company and tour (e.g. "E21 · Tour 15"), acting or covering noted in the description, leave days (VA / S / D) marked, holidays named on the day; about 12 months ahead and 1 month back. All-day events by default, or a set shift start (e.g. 08:00 for 24 hours) once confirmed.

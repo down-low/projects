@@ -51,6 +51,7 @@ These need answers before any build work:
 - **`tradeReplies/{id}`** `{tradeId, takerKey, proposal: {swapDate}|{later: true}, swapSeatPos, note, createdAt}`.
   - Picking a response runs in the `pickTrade` function (below), which writes the one-day cover and TR status records with `tradeId`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.
+- **`tradeInvites/{code}`** `{tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites from trades (see `RELEASES.md`, Invites from trades). Written and read only by functions.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
 ## Security rules (outline)
@@ -88,6 +89,10 @@ These need answers before any build work:
 - **`boardDigest`** (scheduled, daily): one summary per person with `board: "daily"` of new board posts they could take.
 - **`smsReply`** (HTTPS, Twilio webhook, signature checked): handles text replies (1, 2 + date, PICK) from a member's phone number with the same checks as `pickTrade`.
 - **`tradeAction`** (HTTPS): signed, single-use email links (expire after 7 days, tied to the trade and the person).
+- **Invites from trades:**
+  - **`createInvite`** (callable, the poster): checks the trade was sent to that recipient and that they have no linked account; at most 20 a day per poster; returns the code for the share text.
+  - **`inviteInfo`** (public HTTPS): for `/t/<code>`, returns only the rank group, the date and "24-hr shift", or "expired".
+  - **`redeemInvite`** (callable, signed in): with the code and an Employee ID that matches the invited roster entry, links the account to that position, approves it (`approvedBy: "invite"`, `invitedBy`), sets the custom claims and marks the code used. A mismatch falls back to a normal pending claim.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
