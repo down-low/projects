@@ -64,7 +64,9 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("users", "alert_board", "TEXT NOT NULL DEFAULT 'off'"),
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
+    ("covers", "kind", "TEXT"),
 ]
+COVER_KINDS = {"acting", "cover", "shadow", "relief"}  # empty: worked out from the two ranks
 # Shift trades: who can take whose shift. Ranks not listed trade with their own rank only. Mirrors RANK_GROUPS in schedule.js.
 RANK_GROUPS = {"Firefighter": "Firefighter", "FF/Paramedic": "FF/Paramedic", "Lieutenant": "Officer", "Captain": "Officer",
                "Battalion Chief": "Battalion Chief"}
@@ -533,10 +535,13 @@ class App:
         end = valid_date(body.get("end"), "end", required=False)
         if end and end < start:
             raise BadRequest("end must be on or after start")
+        kind = body.get("kind") or None
+        if kind is not None and kind not in COVER_KINDS:
+            raise BadRequest("kind must be acting, cover, shadow or relief")
         rec = {"id": uuid.uuid4().hex, "coverKey": key, "coverName": cover_name, "targetPos": target, "start": start,
-               "end": end, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
-        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",note,createdAt,createdBy) '
-                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:note,:createdAt,:createdBy)', rec)
+               "end": end, "kind": kind, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
+        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",kind,note,createdAt,createdBy) '
+                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:kind,:note,:createdAt,:createdBy)', rec)
         return rec
 
     def end_cover(self, rec_id, body):

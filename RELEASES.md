@@ -18,6 +18,17 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 ### Hosting on Firebase
 Hosting, Google sign-in, Firestore and Storage in place of `server.py`; see **`FIREBASE_PLAN.md`** for the data model, security rules, functions, migration, tests and launch steps. First confirm with the department or city IT where employee data may be hosted.
 
+### Sign-in without a Google account
+Offer these alongside Google sign-in (all built into Firebase Auth), so members without a Google account can still sign in:
+
+- **Email link (no password):** enter any email address and tap the sign-in link sent to it. Free; nothing to forget. This is the main backup.
+- **Phone number (text code):** enter a cell number and type the 6-digit code texted to it. Good for people who don't check email, and it supplies the number for trade text alerts. Each text costs a few cents (check current Firebase pricing; set a budget alert).
+- **Maybe later:**
+  - **Microsoft sign-in** with city work accounts, if the city uses Microsoft 365 and IT allows it;
+  - **Apple sign-in**, which needs a $99/year Apple developer account;
+  - **email and password**, only if members ask for it.
+- **Same claim flow for everyone:** after any sign-in, find yourself by name or Empl ID and confirm your station and tour; an admin approves or undoes the claim. One person can link more than one sign-in method to the same account.
+
 ### Installable app (PWA)
 Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.
 

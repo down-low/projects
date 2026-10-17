@@ -74,7 +74,7 @@
         if (covered) return;
         if (!r.name) b.short.push("Vacant seat · " + r.slot.title + " (" + r.slot.pos + ")");
         else if (r.status) b.short.push(r.name + " · " + api.STATUS_LABEL[r.status] + " · not covered");
-        else if (r.away) b.short.push(r.name + " · acting at " + ((api.byPos()[r.away.targetPos] || {}).company || r.away.targetPos));
+        else if (r.away) b.short.push(r.name + " · " + api.kindWord(r.away, 2).toLowerCase() + " " + ((api.byPos()[r.away.targetPos] || {}).company || r.away.targetPos));
         else b.short.push(r.name + " · off");
       });
       Object.keys(defs).forEach(function (co) { bucket(co); });
@@ -155,7 +155,7 @@
             return '<li><button class="linkish" data-pos="' + esc(x.who ? x.who.pos : x.slot.pos) + '">' + esc(x.name) + "</button> " +
               '<span class="hint">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span>" +
               (isCovering(x) ? ' <span class="tag tag-acting">Covering</span>' : ' <span class="tag">Regular</span>') +
-              (x.acting ? ' <span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>" : "") +
+              (x.acting ? ' <span class="tag tag-acting">' + (api.KIND[x.kind] || api.KIND.cover)[1] + " " + esc(x.slot.name || "vacant spot") + "</span>" : "") +
               (x.swingCover ? ' <span class="tag">Swing from ' + esc(x.slot.company) + "</span>" : "") +
               (x.slot.added ? ' <span class="tag">Added</span>' : "") + "</li>";
           }).join("") + "</ul>" : '<p class="hint">Nobody scheduled.</p>') + "</div>" +
@@ -286,7 +286,7 @@
                 nums(r.working, r.required) + "</button>" +
                 (coOpen ? '<ul class="pt-people">' + x.people.map(function (p) {
                   var tags = [];
-                  if (p.acting) tags.push("covering " + (p.slot.name || "vacant seat"));
+                  if (p.acting) tags.push((api.KIND[p.kind] || api.KIND.cover)[1].toLowerCase() + " " + (p.slot.name || "vacant seat"));
                   else if (p.swingCover) tags.push("swing from " + p.slot.company);
                   if (p.slot.open && !p.acting) tags.push("open for bid");
                   return '<li><button class="linkish" data-pos="' + esc(p.who ? p.who.pos : p.slot.pos) + '">' + esc(p.name) + "</button>" +
@@ -380,7 +380,7 @@
           var st = recs.statuses.filter(function (x) { return x.pos === key && x.code === "D" && x.start <= isoD && !x.end; })[0];
           var away = M.actingOn(key, d, recs.covers);
           if (st) reason = name + " · Disabled since " + api.shortDate(api.fromIso(st.start));
-          else if (away) reason = name + " · acting at " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
+          else if (away) reason = name + " · " + api.kindWord(away, 2).toLowerCase() + " " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
         }
         if (!reason) return;
         var cover = recs.covers.filter(function (c) { return c.targetPos === p.pos && !M.isMove(c) && (!c.end || c.end >= isoD); })
