@@ -121,7 +121,7 @@
       var covs = M.coversOn(p.pos, d, recs.covers);
       var away = o.key ? M.actingOn(o.key, d, recs.covers) : null;
       var status = o.key ? M.statusFor(o.key, d, recs.statuses) : null;
-      // Acting and covering take the seat; shadowing and relief fill it only when the owner isn't working.
+      // Acting and covering take the seat; shadowing and extra fill it only when the owner isn't working.
       var cov = covs.filter(M.takesSeat)[0] || ((status || away || !o.name) && covs[0]) || null;
       var base = { slot: p, co: s.co || home(p), role: s.role, swingCover: s.swing && s.co !== p.company, tour: s.tour };
       rows.push(Object.assign({}, base, {
@@ -152,9 +152,9 @@
     var mv = M.movedTo(p.pos, d, recs.covers);
     return mv && byPos[mv.targetPos] ? byPos[mv.targetPos] : p.added && !p.tour ? null : p;
   }
-  // Cover kind for a record (acting, cover, shadow, relief) and its wording.
+  // Cover kind for a record (acting, cover, shadow, extra) and its wording.
   var KIND = { acting: ["Acting", "Acting for", "Acting at"], cover: ["Covering", "Covering for", "Covering at"],
-    shadow: ["Shadowing", "Shadowing", "Shadowing at"], relief: ["Relief", "Relief with", "Relief at"] };
+    shadow: ["Shadowing", "Shadowing", "Shadowing at"], extra: ["Also assigned", "Also assigned with", "Also at"] };
   function kindOf(c) {
     var who = byPos[c.coverKey], seat = byPos[c.targetPos];
     return M.coverKind(c, who && who.rank, seat && seat.rank);
@@ -257,10 +257,10 @@
     return whoLink(x.name, x.who) + (h ? ' <s class="held">' + whoLink(h.name, h.who) + "</s>" +
       (h.status ? " " + statusPill(h.status) : h.away ? ' <span class="hint">at ' + esc((byPos[h.away.targetPos] || {}).company || h.away.targetPos) + "</span>" : "") : "");
   }
-  // Tags for a Who's working row: acting / covering / shadowing / relief, covered, swing, open for bid, added.
+  // Tags for a Who's working row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) {
+    if (x.acting && x.kind !== "extra") {
       var k = KIND[x.kind] || KIND.cover;
       tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(x.slot.name || "vacant spot")
         : /^2027 (award|assignment)/.test(x.acting.note || "") ? "2027 move"
@@ -272,7 +272,7 @@
     else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
     if (x.slot.open && !x.acting && !x.moved) tags.push('<span class="tag tag-open">Spot open for bid</span>');
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
-    if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">2027 seat</span>');
+    if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">' + (/^2027 (award|assignment)/.test(x.moved.note || "") ? "2027 seat" : "Moved here") + "</span>");
     return tags;
   }
 
@@ -604,7 +604,7 @@
       '<label>Position to cover<input type="text" id="fc-target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>' +
       '<label>Type<select id="fc-kind"><option value="">Covering or acting (by rank)</option><option value="cover">Covering · same rank, in someone\'s spot</option>' +
       '<option value="acting">Acting · temporarily promoted to the seat\'s rank</option><option value="shadow">Shadowing · day-to-day LWLP (usually VR)</option>' +
-      '<option value="relief">Relief · alongside the holder, sent where needed</option></select></label>' +
+      '<option value="extra">Also in this seat · same tour, alongside the holder (e.g. two captains)</option></select></label>' +
       '<div class="row"><label>From<input type="date" id="fc-start" value="' + t + '" required></label>' +
       '<label>To<input type="date" id="fc-end" disabled></label></div>' +
       '<label class="chk"><input type="checkbox" id="fc-open" checked> No end date yet</label>' +

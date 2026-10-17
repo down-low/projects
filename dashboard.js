@@ -90,7 +90,7 @@
     }
 
     // Someone filling a seat that isn't their own: a cover assignment, or an added person not on the vacancy list.
-    function isCovering(r) { return !!(r.acting || (r.who && r.who.added)); }
+    function isCovering(r) { return !!((r.acting && r.kind !== "extra") || (r.who && r.who.added)); }
 
     function stats(d) {
       var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0, WE: 0, TR: 0 }, named = 0, full = 0;

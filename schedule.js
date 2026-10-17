@@ -77,9 +77,9 @@
      acting  - officially promoted to the seat's rank for now (lower rank in a higher seat);
      cover   - in someone else's seat while they're injured, away or working elsewhere (same rank);
      shadow  - day-to-day promotion (LWLP, like work like pay), usually VR20/VR30/VR40 relief;
-     relief  - assigned alongside the seat's holder and sent where needed day to day.
+     extra   - a second person on the same seat and tour, working alongside the holder (e.g. two captains on one tour).
      Records without a kind are "acting" when the person ranks below the seat, else "cover".
-     Shadow and relief don't take the seat from a holder who is working; they fill it when it's empty. */
+     Shadow and extra don't take the seat from a holder who is working; they fill it when it's empty. */
   var RANK_LEVEL = { "Firefighter": 1, "FF/Paramedic": 1, "ISS": 1, "Pilot": 1, "Marine Engineer": 1,
     "Lieutenant": 2, "Captain": 3, "Rescue Captain": 3, "Battalion Chief": 4 };
   function coverKind(c, covererRank, seatRank) {
@@ -87,7 +87,7 @@
     var a = RANK_LEVEL[covererRank], b = RANK_LEVEL[seatRank];
     return a && b && a < b ? "acting" : "cover";
   }
-  function takesSeat(c) { return c.kind !== "shadow" && c.kind !== "relief"; }
+  function takesSeat(c) { return c.kind !== "shadow" && c.kind !== "extra"; }
 
   // The cover (not move) person `coverKey` is working on d, or null.
   function actingOn(coverKey, d, covers) {

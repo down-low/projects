@@ -32,7 +32,7 @@ Editors can record, per person (on the **By person** tab):
   - **Acting**: officially, temporarily promoted to the seat's rank until demoted.
   - **Covering**: in someone else's spot (voluntarily or mandatorily) while they are injured or working elsewhere.
   - **Shadowing**: day-to-day promotion (LWLP, like work like pay), usually VR20 / VR30 / VR40 relief. A shadow doesn't take the seat from a holder who is working (both show); it fills the seat when the holder is off or the seat is empty.
-  - **Relief**: assigned alongside the seat's holder and sent where needed day to day (e.g. a second captain on the same tour). Like shadowing, it never takes the seat from a working holder.
+  - **Also in this seat**: a second person on the same seat and tour, working alongside the holder (e.g. two captains on one tour). No tag on Who's working, counted as Regular on the dashboard, and it never takes the seat from the holder.
   - Left blank, the type is Acting when the person ranks below the seat and Covering otherwise.
 - **Who's working** shows a covered seat on one line: the person working it, with the holder beside them struck through (and their leave code, or where they are), and a tag for the type.
 - **Add a person** not on the vacancy list (relief, detailed or new staff): **Not on the list? Add a person** under the person search, then give them a cover assignment.
@@ -168,7 +168,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/me`, `POST /auth/logout` | anyone |
 | `POST /api/me/claim` `{pos, note}` | pending accounts |
 | `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
-| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, kind?, note?}` (kind: acting, cover, shadow or relief), `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, company?, tour?, emplId?, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
+| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, kind?, note?}` (kind: acting, cover, shadow or extra), `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, company?, tour?, emplId?, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
 | `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
