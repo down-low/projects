@@ -86,7 +86,7 @@ Members trade full 24-hour shifts. Approval, if any, happens outside the tool; o
 - **Alerts:** "Notify me by text / in the app / by email" switches, and **Board posts** (Off, Daily summary, Each new post; Off by default), are saved now. App pushes (Firebase Cloud Messaging), texts (Twilio) and email (Gmail / Workspace) start with the server launch. Trades sent to you and responses to yours always alert, with the details and a one-tap reply; see `RELEASES.md`.
 - **On the shared claude.ai page,** members need **Contributor** access to trade (Viewers can look). The page database can't hide one record from some viewers, so "only the people you send it to see it" is a filter in the page; anyone with page access could read the data. The server enforces it. A set trade's cover and TR records are kept on the trade there, so schedule records stay editor-only (`python3 tools/build_artifact.py --capabilities` prints the access rules to publish with).
 - The view-only snapshot shows set trades on the schedule but has no Trades tab.
-- **Invites** (with the server launch): a poster can text people who aren't on yet a link to the trade from their own phone; signing in with Google and a matching Employee ID gets them straight in. See `RELEASES.md`.
+- **Invites** (with the server launch): a poster can text a trade link, from their own phone, to roster people who haven't signed in; Google sign-in and a matching Employee ID get them straight in. People not in the tool at all get a general join link (**Invite someone**) and use "I'm not on the list", approved by an admin. Typed numbers are never saved. See `RELEASES.md`.
 
 ## Holidays
 
