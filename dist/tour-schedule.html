@@ -3632,6 +3632,12 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       var h = r.acting && holders.get(r.acting);
       if (h && !used.has(h)) { r.held = h; used.add(h); }
     });
+    // Someone covering the seat but off (e.g. on D) sits beside whoever is working it in their place.
+    rows.forEach(function (r) {
+      if (!r.acting || !r.off || used.has(r)) return;
+      var w = rows.filter(function (x) { return x !== r && x.slot === r.slot && x.acting && !x.off && !x.held && !used.has(x); })[0];
+      if (w) { w.held = r; used.add(r); }
+    });
     return rows.filter(function (r) { return !used.has(r); });
   }
   function whoLink(name, who) {
