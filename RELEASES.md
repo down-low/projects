@@ -67,7 +67,11 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
 
 #### People on the roster who haven't signed in
 - **Not on yet:** in the Trade wizard's Who list and in My trades, recipients without a linked account are marked "not on yet", with a count ("4 of 9 aren't on yet").
-- **Invite them:** one button opens the poster's own phone share sheet (or an `sms:` link) with a ready text: "Lester (Lt E10) wants to trade Sat Oct 17 with you. See it and reply: <host>/t/<code>".
+- **Invite them:** a button next to each name opens the poster's Messages app (an `sms:` link, or the share sheet) with the text filled in by the tool, e.g. "Goforth (FF/PM, E05) wants to trade Christmas, Fri Dec 25, 24 hrs at E05. You're off that day. Interested? Tap to see it and answer: <host>/t/<code>".
+  - **Filled in:** who's asking (rank, station), the day, date and where, "you're off that day" (plus "you work the day before/after" when true), the poster's note, and the person's own link. The recipient's number is filled in when it's in the poster's Contacts. The poster can edit the text, then taps Send.
+  - **One text per person:** each link is made for one person, so it proves who's answering.
+  - **Invite all** ("Invite 4 not on yet") steps through them: Messages opens for the first with everything filled in; tap Send, come back, and the next one opens, with a count (2 of 4) and Skip. Phones don't let a web app send texts on its own, so each still needs one tap on Send.
+  - **The link** shows the trade and lets them answer straight away (see Answering without an account), then sign up with Google and their Employee ID when the trade is picked.
   - **The text comes from the poster's phone, not the department's Twilio number.** We have no numbers for people who haven't signed up, US texting rules (TCPA, 10DLC) require prior consent, and a colleague's text gets opened. No texting cost either.
 - **The link (`/t/<code>`):** a random code for one recipient, tied to the trade, the recipient and the inviter. It expires when the trade's day passes or after 14 days, and works once.
   - **Before sign-in it shows only** "A Lieutenant wants to trade a 24-hr shift on Sat Oct 17", with no names, and **Sign in with Google to see it**.
@@ -111,6 +115,7 @@ People who haven't signed up can still answer, two ways. The department number n
 - **Not planned:** two-way Google Calendar sync. It would need people to grant Calendar access, and a subscription covers the need.
 
 ## Later
+- **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
