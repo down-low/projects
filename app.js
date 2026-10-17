@@ -343,6 +343,57 @@
     if (state.view !== "person") setView("person"); else renderPerson();
   }
 
+  /* ---------- List sheet: the people or seats behind a count (Stats summary) ----------
+     spec: {title, people: [{p, detail, note}]} grouped by rank, or {title, seats: [{p, detail}]} grouped by battalion. */
+  var listSpec = null;
+  function showList(spec) {
+    listSpec = spec;
+    $("list-q").value = "";
+    drawList();
+    $("list-sheet").hidden = false;
+    $("list-q").focus();
+  }
+  function drawList() {
+    var spec = listSpec, match = makeMatcher($("list-q").value.trim());
+    var rows = (spec.people || spec.seats).filter(function (r) {
+      return !match || match({ name: r.p.name || "", title: r.p.title || "", co: home(r.p), tour: tourOn(r.p, state.dashDate), pos: r.p.pos, id: r.p.emplId });
+    });
+    var total = (spec.people || spec.seats).length;
+    $("list-title").textContent = spec.title + " · " + total;
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      var g;
+      if (spec.people) g = r.p.rank || "Other";
+      else { var o = Organization.locate(r.p.company); g = o ? o.division.name + " · " + o.battalion.name : "Other"; }
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(r);
+    });
+    if (spec.people) order.sort(function (a, b) { return (RANK_ORDER.indexOf(a) + 99) % 99 - (RANK_ORDER.indexOf(b) + 99) % 99; });
+    else order.sort(function (a, b) { return Organization.order(groups[a][0].p.company) - Organization.order(groups[b][0].p.company); });
+    $("list-body").innerHTML = (rows.length < total ? '<p class="hint">' + rows.length + " of " + total + " match.</p>" : "") +
+      (rows.length ? order.map(function (g) {
+        var list = groups[g].sort(function (a, b) { return coKey(home(a.p)).localeCompare(coKey(home(b.p))) || String(a.p.name).localeCompare(String(b.p.name)); });
+        return '<details class="group" open><summary>' + esc(g) + ' <span class="n">' + list.length + '</span></summary><ul class="tlist plain list-rows">' +
+          list.map(function (r) {
+            var t = tourOn(r.p, state.dashDate);
+            var who = spec.people
+              ? (byPos[r.p.pos] ? '<button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : esc(r.p.name))
+              : '<b class="mono">' + esc(r.p.pos) + "</b>" + (r.p.name ? ' <button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : "");
+            return "<li>" + who + ' <span class="hint">' + esc(r.p.title || "") + (spec.people && !r.p.added ? " · " + esc(r.p.pos) : "") + (t ? " · T" + t : "") + "</span>" +
+              (r.detail ? "<div>" + esc(r.detail) + "</div>" : "") + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "") + "</li>";
+          }).join("") + "</ul></details>";
+      }).join("") : '<p class="hint">Nothing matches.</p>');
+  }
+  function wireList() {
+    $("list-q").oninput = drawList;
+    $("list-sheet").addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) { $("list-sheet").hidden = true; return; }
+      var b = e.target.closest("[data-list-pos]");
+      if (b) { $("list-sheet").hidden = true; choosePerson(b.dataset.listPos); }
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") $("list-sheet").hidden = true; });
+  }
+
   function renderPerson() {
     var p = byPos[state.personPos];
     var out = $("person-detail");
@@ -845,6 +896,7 @@
 
     document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
     wireSheet();
+    wireList();
     Fix.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
@@ -1082,7 +1134,7 @@
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
     requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
-    kindWord: kindWord, KIND: KIND,
+    kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
   var Trades = window.TradeViews({

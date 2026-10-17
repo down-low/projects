@@ -756,3 +756,11 @@ ul.tlist.verify li { align-items: center; }
 ul.tlist.fixes li { align-items: flex-start; }
 ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .fix-applying { border-color: var(--today); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Stats summary counts open the list behind them */
+.num-link { font: inherit; font-variant-numeric: tabular-nums; text-decoration-color: var(--muted); }
+.num-link:hover { text-decoration-color: var(--accent); }
+.list-panel { width: min(100%, 720px); }
+#list-q { width: 100%; margin-bottom: 4px; }
+ul.list-rows li { padding: 7px 14px; }
+ul.list-rows li .linkish { font-weight: 600; }

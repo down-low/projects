@@ -760,6 +760,14 @@ ul.tlist.verify li { align-items: center; }
 ul.tlist.fixes li { align-items: flex-start; }
 ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
 .fix-applying { border-color: var(--today); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Stats summary counts open the list behind them */
+.num-link { font: inherit; font-variant-numeric: tabular-nums; text-decoration-color: var(--muted); }
+.num-link:hover { text-decoration-color: var(--accent); }
+.list-panel { width: min(100%, 720px); }
+#list-q { width: 100%; margin-bottom: 4px; }
+ul.list-rows li { padding: 7px 14px; }
+ul.list-rows li .linkish { font-weight: 600; }
 </style>
 
 <div class="page">
@@ -941,6 +949,19 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
         <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
       </div>
       <div id="day-body"></div>
+    </section>
+  </div>
+  <div class="sheet" id="list-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel list-panel" role="dialog" aria-modal="true" aria-labelledby="list-title">
+      <div class="sheet-head">
+        <h2 id="list-title">List</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body">
+        <input type="search" id="list-q" placeholder="Filter by name, company, tour or position" autocomplete="off" aria-label="Filter the list">
+        <div id="list-body"></div>
+      </div>
     </section>
   </div>
   <div class="sheet" id="fix-sheet" hidden>
@@ -2129,10 +2150,44 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
         var st = M.statusFor(p.pos, d, recs.statuses);
         if (st) counts[st]++; else full++;
       });
-      var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD); }).length;
+      var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD) && !M.isMove(c); }).length;
       var open = api.data().filter(function (p) { return p.open; }).length;
       var vacant = api.data().filter(function (p) { return !p.name; }).length;
       return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, WE: counts.WE, TR: counts.TR, acting: acting, open: open, vacant: vacant };
+    }
+
+    /* The rows behind one Stats summary count, for the list sheet: {title, people: [...]} or {title, seats: [...]}. Same rules as
+       stats(d), so the list length always equals the number in the table. */
+    function statList(key, d) {
+      var isoD = api.iso(d), recs = api.recs(), byPos = api.byPos(), label = (STAT_ROWS.filter(function (r) { return r[0] === key; })[0] || [])[1];
+      var title = label + " · " + api.shortDate(d);
+      if (key === "acting") {
+        var cv = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD) && !M.isMove(c); });
+        return { title: title, people: cv.map(function (c) {
+          var p = byPos[c.coverKey], seat = byPos[c.targetPos];
+          return { p: p || { pos: c.coverKey, name: c.coverName || c.coverKey, rank: "" },
+            detail: api.kindWord(c) + " · " + (seat ? (seat.name && seat.pos !== c.coverKey ? seat.name + "'s seat, " : "") + seat.title + (seat.added ? "" : " " + seat.pos) : c.targetPos) +
+              (c.end ? " · to " + api.shortDate(api.fromIso(c.end)) : ""), note: c.note };
+        }) };
+      }
+      if (key === "open" || key === "vacant") {
+        return { title: title, seats: api.data().filter(function (p) { return key === "open" ? p.open : !p.name; }).map(function (p) {
+          var c = M.coversOn(p.pos, d, recs.covers)[0];
+          return { p: p, detail: c ? "Covered by " + (c.coverName || c.coverKey) : "" };
+        }) };
+      }
+      var out = [];
+      api.people().forEach(function (p) {
+        var code = M.statusFor(p.pos, d, recs.statuses);
+        if (key === "full" ? code : code !== key) return;
+        var rec = null;
+        if (code) recs.statuses.forEach(function (s) {
+          if (s.pos === p.pos && s.code === code && s.start <= isoD && (!s.end || s.end >= isoD) && (!rec || String(s.createdAt) > String(rec.createdAt))) rec = s;
+        });
+        out.push({ p: p, detail: rec ? "From " + api.shortDate(api.fromIso(rec.start)) + (rec.end ? " to " + api.shortDate(api.fromIso(rec.end)) : " onward") : "",
+          note: rec && rec.note });
+      });
+      return { title: title, people: out };
     }
 
     /* ---------- Dashboard ---------- */
@@ -2261,8 +2316,7 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
         '<div class="card stats"><h3>Stats summary</h3><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) + statRow("Traded off (TR)", st.TR) +
-        statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
+        statRows(st) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         "</tbody></table>" + '<p class="hint" id="st-note"></p></div>' +
         '<div class="card summary-card"><div class="cal-head"><h3>Schedule summary</h3>' +
@@ -2348,8 +2402,7 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
         '<div class="pt">' + tree.html + "</div>" +
         reportCard(d, all, tree.working) +
         '<details class="card fold"><summary><h3>Stats summary</h3></summary><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) + statRow("Traded off (TR)", st.TR) +
-        statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
+        statRows(st) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         '</tbody></table><p class="hint" id="st-note"></p></details>';
       if ($("report-card")) $("report-card").ontoggle = function () { dash.reportOpen = this.open; };
@@ -2487,7 +2540,14 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
       });
     }
 
-    function statRow(k, v) { return '<tr><th scope="row">' + esc(k) + '</th><td class="num">' + v + "</td></tr>"; }
+    // Stats summary rows; each non-zero count opens the list behind it (statList).
+    var STAT_ROWS = [["full", "Full duty"], ["VA", "Vacation (VA)"], ["S", "Sick (S)"], ["D", "Disabled (D)"], ["WE", "Working elsewhere (WE)"],
+      ["TR", "Traded off (TR)"], ["acting", "Acting / covering"], ["open", "Spots open for bid"], ["vacant", "Vacant seats"]];
+    function statRows(st) { return STAT_ROWS.map(function (r) { return statRow(r[1], st[r[0]], r[0]); }).join(""); }
+    function statRow(k, v, key) {
+      return '<tr><th scope="row">' + esc(k) + '</th><td class="num">' +
+        (key && v ? '<button type="button" class="linkish num-link" data-stat="' + key + '">' + v + "</button>" : v) + "</td></tr>";
+    }
     function loadStats(d, n) {
       var my = ++statsReq;
       var b = api.backend();
@@ -2505,6 +2565,8 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
         if (e.target.closest("#go-report-date")) { api.state().dashDate = api.fromIso(reportData().asOf); return renderDash(); }
         var g = e.target.closest("[data-goto]");
         if (g) { dash.q = g.dataset.goto; $("dash-q").value = g.dataset.goto; dash.open[g.dataset.goto] = true; dash.reportOpen = true; return renderDash(); }
+        var sl = e.target.closest("[data-stat]");
+        if (sl) return api.showList(statList(sl.dataset.stat, api.state().dashDate));
         var tg = e.target.closest("[data-tog]");
         if (tg) { dash.open[tg.dataset.tog] = tg.getAttribute("aria-expanded") !== "true"; return renderDash(); }
         var t = e.target.closest("[data-sort],[data-drill],[data-edit],[data-reset],[data-cancel]");
@@ -4112,6 +4174,57 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
     if (state.view !== "person") setView("person"); else renderPerson();
   }
 
+  /* ---------- List sheet: the people or seats behind a count (Stats summary) ----------
+     spec: {title, people: [{p, detail, note}]} grouped by rank, or {title, seats: [{p, detail}]} grouped by battalion. */
+  var listSpec = null;
+  function showList(spec) {
+    listSpec = spec;
+    $("list-q").value = "";
+    drawList();
+    $("list-sheet").hidden = false;
+    $("list-q").focus();
+  }
+  function drawList() {
+    var spec = listSpec, match = makeMatcher($("list-q").value.trim());
+    var rows = (spec.people || spec.seats).filter(function (r) {
+      return !match || match({ name: r.p.name || "", title: r.p.title || "", co: home(r.p), tour: tourOn(r.p, state.dashDate), pos: r.p.pos, id: r.p.emplId });
+    });
+    var total = (spec.people || spec.seats).length;
+    $("list-title").textContent = spec.title + " · " + total;
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      var g;
+      if (spec.people) g = r.p.rank || "Other";
+      else { var o = Organization.locate(r.p.company); g = o ? o.division.name + " · " + o.battalion.name : "Other"; }
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(r);
+    });
+    if (spec.people) order.sort(function (a, b) { return (RANK_ORDER.indexOf(a) + 99) % 99 - (RANK_ORDER.indexOf(b) + 99) % 99; });
+    else order.sort(function (a, b) { return Organization.order(groups[a][0].p.company) - Organization.order(groups[b][0].p.company); });
+    $("list-body").innerHTML = (rows.length < total ? '<p class="hint">' + rows.length + " of " + total + " match.</p>" : "") +
+      (rows.length ? order.map(function (g) {
+        var list = groups[g].sort(function (a, b) { return coKey(home(a.p)).localeCompare(coKey(home(b.p))) || String(a.p.name).localeCompare(String(b.p.name)); });
+        return '<details class="group" open><summary>' + esc(g) + ' <span class="n">' + list.length + '</span></summary><ul class="tlist plain list-rows">' +
+          list.map(function (r) {
+            var t = tourOn(r.p, state.dashDate);
+            var who = spec.people
+              ? (byPos[r.p.pos] ? '<button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : esc(r.p.name))
+              : '<b class="mono">' + esc(r.p.pos) + "</b>" + (r.p.name ? ' <button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : "");
+            return "<li>" + who + ' <span class="hint">' + esc(r.p.title || "") + (spec.people && !r.p.added ? " · " + esc(r.p.pos) : "") + (t ? " · T" + t : "") + "</span>" +
+              (r.detail ? "<div>" + esc(r.detail) + "</div>" : "") + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "") + "</li>";
+          }).join("") + "</ul></details>";
+      }).join("") : '<p class="hint">Nothing matches.</p>');
+  }
+  function wireList() {
+    $("list-q").oninput = drawList;
+    $("list-sheet").addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) { $("list-sheet").hidden = true; return; }
+      var b = e.target.closest("[data-list-pos]");
+      if (b) { $("list-sheet").hidden = true; choosePerson(b.dataset.listPos); }
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") $("list-sheet").hidden = true; });
+  }
+
   function renderPerson() {
     var p = byPos[state.personPos];
     var out = $("person-detail");
@@ -4614,6 +4727,7 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 
     document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
     wireSheet();
+    wireList();
     Fix.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
@@ -4851,7 +4965,7 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
     requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
-    kindWord: kindWord, KIND: KIND,
+    kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
   var Trades = window.TradeViews({
