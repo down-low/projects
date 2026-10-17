@@ -48,7 +48,7 @@ These need answers before any build work:
 - **`contacts/{uid}`** `{pos, contactEmail, phoneMobile, phoneOther, share}`.
 - **`profiles/{key}`** `{birthDate, hireDate, updatedAt, updatedBy}`; the key is a position number or `person:<id>`.
 - **`trades/{id}`** `{posterKey, seatPos, date, note, audience: {board, to: [keys]}, status: open|set|cancelled|expired, takerKey, replyId, proposal, createdAt, setAt}`.
-- **`tradeReplies/{id}`** `{tradeId, takerKey, proposal: {swapDate}|{later: true}, swapSeatPos, note, createdAt}`.
+- **`tradeReplies/{id}`** `{tradeId, takerKey, proposal: {swapDate}|{later: true}, swapSeatPos, note, createdAt, verified, via: "app" | "link" | "poster", recordedBy}`. `via: "poster"` is an answer the poster entered (**Add their answer**); `via: "link"` came from a trade invite link before sign-in and stays `verified: false` until the taker signs in with a matching Employee ID. A trade picked on an unverified answer is `pending` until then.
   - Picking a response runs in the `pickTrade` function (below), which writes the one-day cover and TR status records with `tradeId`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.
 - **`tradeInvites/{code}`** `{kind: "trade" | "join", tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites (see `RELEASES.md`, Invites from trades). A `trade` invite is for a roster person who hasn't signed in; a `join` invite (no trade or recipient) is for someone not in the tool yet. Written and read only by functions.
@@ -91,6 +91,11 @@ These need answers before any build work:
 - **`boardDigest`** (scheduled, daily): one summary per person with `board: "daily"` of new board posts they could take.
 - **`smsReply`** (HTTPS, Twilio webhook, signature checked): handles text replies (1, 2 + date, PICK) from a member's phone number with the same checks as `pickTrade`.
 - **`tradeAction`** (HTTPS): signed, single-use email links (expire after 7 days, tied to the trade and the person).
+- **Answers without an account** (see `RELEASES.md`, Answering without an account):
+  - **`recordAnswer`** (callable, the poster): adds a `via: "poster"` reply for someone who could take that day, checked with the same rules as `pickTrade`.
+  - **`answerFromInvite`** (public HTTPS): a trade invite code plus a proposal; one answer per code, rate-limited; saves a `via: "link"`, unverified reply.
+  - **`pickTrade`** on an unverified reply sets the trade to `pending`; **`redeemInvite`** finishes it (writes the cover and TR) once the taker's Employee ID matches.
+  - **`lapsePendingPicks`** (scheduled, hourly): a pending pick not verified by 48 hours before the shift, or 24 hours after the pick, lapses back to `open` and the poster is told.
 - **Invites from trades:**
   - **`createInvite`** (callable): for `kind: "trade"`, checks the trade was sent to that recipient and that they have no linked account (20 a day per poster); for `kind: "join"`, no trade (10 a day per member). Returns the code for the share text. Phone numbers typed by the member never reach the server.
   - **`inviteInfo`** (public HTTPS): for `/t/<code>`, returns only the rank group, the date and "24-hr shift", or "expired".

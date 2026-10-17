@@ -76,6 +76,20 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
   - **No match:** the normal claim, waiting for an admin.
 - **Limits:** only people the poster actually sent the trade to can be invited; up to 20 invites per poster a day; nothing about other people shows before sign-in.
 
+#### Answering without an account
+People who haven't signed up can still answer, two ways. The department number never texts them (no numbers, consent rules, and a "yes" from an unknown number can't be tied to a person).
+
+- **Add their answer (the poster records it).** The invite text went from the poster's phone, so replies come back to the poster ("I'm in, pay me back later"). On their open trade the poster taps **Add their answer**:
+  - picks the person from those who could take that day (same rank group, off, no status), members or not;
+  - enters the terms: a swap day (checked as usual) or pay back later, plus a note such as "replied by text";
+  - the answer shows as "Hardy · told you by text".
+  - **Pick** sets the trade as usual (cover and TR), so the schedule shows it. A member who's named gets the usual "your response was picked" alert with **Not me** to dispute it. The trade's record shows who entered the answer, and admins can see and cancel it, as with any trade agreed by text today.
+- **Answer from the link (no account yet).** The trade invite page (`/t/<code>`, tied to one person) has **I'm interested · pay back later** and **Suggest a swap day** (only their own work days that the poster is off) before any sign-in.
+  - The answer is saved as **not verified**, and the poster can pick it. The trade then waits as **Picked · waiting for them to sign in**.
+  - When they sign in with Google and their Employee ID matches, the trade is set and both are told.
+  - If they haven't verified by 48 hours before the shift, or 24 hours after the pick (whichever comes first), the pick lapses and the poster is told.
+  - Verifying only at the pick keeps answering easy while stopping a forwarded link from committing someone else to a shift.
+
 #### People not in the tool yet
 - **Invite someone to the schedule:** a button on the Trades tab (and in the More menu) opens the phone's share sheet, so the member picks from their own Contacts, with a ready text: "I'm using the SFFD tour schedule to trade shifts. Join here: <host>/join/<code>".
 - **Typing a number** instead only opens the member's Messages app with that number and the text filled in (an `sms:` link). **The number is never saved:** the tool doesn't keep coworkers' phone numbers they didn't give it, and the text still comes from a colleague.
