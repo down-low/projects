@@ -165,7 +165,7 @@
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
 
-  /* ---------- Who's working (by date) ---------- */
+  /* ---------- Projection: everyone on a date ---------- */
   function renderDate() {
     var d = state.date;
     var w = M.watchFor(d);
@@ -270,7 +270,7 @@
     var t = (recs.trades || []).filter(function (x) { return x.id === c.tradeId; })[0];
     return t ? nameOf(t.posterKey) : null;
   }
-  // Tags for a Who's working row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
+  // Tags for a Projection row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
     if (x.acting && x.kind !== "extra") {
@@ -289,7 +289,7 @@
     return tags;
   }
 
-  /* ---------- By person ---------- */
+  /* ---------- Schedule: one person ---------- */
   var suggestIdx = -1;
   function matches(q) {
     var match = makeMatcher(q);
@@ -404,7 +404,7 @@
     var out = $("person-detail");
     if (!p) {
       out.innerHTML = '<div class="empty">Type a last name, a company (E10) or a position number above to see that person\'s tour, their work days for any month, and their next shifts. ' +
-        people.length + " people are listed across " + data.length + " positions. You can also click any name in the Who's working list.</div>";
+        people.length + " people are listed across " + data.length + " positions. You can also click any name on the Projection tab.</div>";
       return;
     }
     var m = state.personMonth;

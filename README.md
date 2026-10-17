@@ -2,8 +2,8 @@
 
 Look up who is working on any date, when a given person works, or a month roster for a rank.
 
-- **Who's working**: pick a date and see the watch number, the 9 tours working, and everyone on duty grouped by rank. Swing positions show the company they cover.
-- **By person**: search by name, company or position number. Shows the person's tour, a month calendar of work days, and their next shifts.
+- **Projection**: pick a date and see the watch number, the 9 tours working, and everyone on duty grouped by rank. Swing positions show the company they cover.
+- **Schedule**: search by name, company or position number. Shows the person's tour, a month calendar of work days, and their next shifts.
 - **By rank**: a month grid of every position in a rank, filterable by company and tour.
 
 ## How the schedule is computed
@@ -23,7 +23,7 @@ The math lives in `schedule.js`; positions are in `data/positions.json`; storage
 
 ## Tour changes and leave (VA / S / D / WE)
 
-Editors can record, per person (on the **By person** tab):
+Editors can record, per person (on the **Schedule** tab):
 
 - **Status**: VA vacation, S sick, D disabled or WE working elsewhere (TR, traded off, comes only from a set shift trade) (e.g. an admin assignment not on the vacancy list), for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
 - **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
@@ -32,19 +32,19 @@ Editors can record, per person (on the **By person** tab):
   - **Acting**: officially, temporarily promoted to the seat's rank until demoted.
   - **Covering**: in someone else's spot (voluntarily or mandatorily) while they are injured or working elsewhere.
   - **Shadowing**: day-to-day promotion (LWLP, like work like pay), usually VR20 / VR30 / VR40 relief. A shadow doesn't take the seat from a holder who is working (both show); it fills the seat when the holder is off or the seat is empty.
-  - **Also in this seat**: a second person on the same seat and tour, working alongside the holder (e.g. two captains on one tour). No tag on Who's working, counted as Regular on the dashboard, and it never takes the seat from the holder.
+  - **Also in this seat**: a second person on the same seat and tour, working alongside the holder (e.g. two captains on one tour). No tag on Projection, counted as Regular on the dashboard, and it never takes the seat from the holder.
   - Left blank, the type is Acting when the person ranks below the seat and Covering otherwise.
-- **Who's working** shows a covered seat on one line: the person working it, with the holder beside them struck through (and their leave code, or where they are), and a tag for the type.
+- **Projection** shows a covered seat on one line: the person working it, with the holder beside them struck through (and their leave code, or where they are), and a tag for the type.
 - **Add a person** not on the vacancy list (relief, detailed or new staff): **Not on the list? Add a person** under the person search, then give them a cover assignment.
 
-## Dashboard, 6 of 9, Documents
+## Staffing, 6 of 9, Documents
 
-- **Dashboard** (first tab): for any date, **Total Working Staff** and **Positions Needing Staff**, then a table per apparatus with Required, Working, Extra, Missing and Total (Total = Working − Required; Extra and Missing are its positive and negative parts). Click an apparatus to drill down to who is working and which seats are short and why (vacant seat, leave not covered, acting elsewhere). Sort by any column, search, or show only short apparatus. **Required** defaults to the usual number of positions scheduled at that apparatus across a 31-day cycle (E10 = 4, T01 = 5); admins can click the number to override it or reset it. **Group by** division (Division → battalion → apparatus, the default), battalion, or apparatus only. The structure comes from the Daily Balance Report and lives in `organization.js`; each division and battalion row shows subtotals and expands to its apparatus. Rescue captains appear as RC1–RC4 and the fireboat pilots and marine engineers under FB3, as in the report.
+- **Staffing** (first tab on desktop): for any date, **Total Working Staff** and **Positions Needing Staff**, then a table per apparatus with Required, Working, Extra, Missing and Total (Total = Working − Required; Extra and Missing are its positive and negative parts). Click an apparatus to drill down to who is working and which seats are short and why (vacant seat, leave not covered, acting elsewhere). Sort by any column, search, or show only short apparatus. **Required** defaults to the usual number of positions scheduled at that apparatus across a 31-day cycle (E10 = 4, T01 = 5); admins can click the number to override it or reset it. **Group by** division (Division → battalion → apparatus, the default), battalion, or apparatus only. The structure comes from the Daily Balance Report and lives in `organization.js`; each division and battalion row shows subtotals and expands to its apparatus. Rescue captains appear as RC1–RC4 and the fireboat pilots and marine engineers under FB3, as in the report.
 - **Required staffing (313 a day)** comes from the Daily Balance Report: for each apparatus, the report's headcount minus its over/under. `python3 tools/extract_balance.py <report.pdf>` regenerates `data/required-staffing.json` and checks the totals against the report. Admins can still override any apparatus. HQFD / AO is hidden for now (`hidden: true` in `organization.js`).
 - **Regular, Covering, Open**: Working is split into Regular (people in their own seat or on a swing) and Covering (cover assignments and added people). Open is what's still short, which would need overtime.
 - **Working but not in the tool**: on the Balance report's date, a card compares each apparatus's report headcount with the tool's and lists where the report has more people, with an overall estimate (report working minus overtime hires, minus the tool's working).
 - **Open seats** (editors): every vacant position and every position whose holder is away long-term (open-ended D or acting elsewhere), grouped by division and battalion, with an **Assign** box to record who is covering it long-term. Filter by No cover / Covered / All.
-- **Stats summary**: full duty, VA, S, D, WE, acting/covering, spots open for bid, vacant seats, and **average age** and **average years of service** from birth and hire dates. Dates are entered by the person on My page or by an admin on the By person page; they are private, and the dashboard only shows averages. Click any number to see who or which seats it counts (grouped by rank, or by battalion for seats), with dates and notes; tap a name to open their page.
+- **Stats summary**: full duty, VA, S, D, WE, acting/covering, spots open for bid, vacant seats, and **average age** and **average years of service** from birth and hire dates. Dates are entered by the person on My page or by an admin on the Schedule page; they are private, and the dashboard only shows averages. Click any number to see who or which seats it counts (grouped by rank, or by battalion for seats), with dates and notes; tap a name to open their page.
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
@@ -90,14 +90,14 @@ Members trade full 24-hour shifts. Approval, if any, happens outside the tool; o
 
 ## Holidays
 
-A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Who's working and the Dashboard / Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`). A fixed-date holiday on a weekend shows on the day it's observed, marked "(observed)": Saturday moves to the Friday before, Sunday to the Monday after (July 4, 2027 → Mon July 5; Christmas 2027 → Fri Dec 24; New Year's Day 2028 → Fri Dec 31, 2027). Halloween and Mother's Day don't move.
+A green dot marks holidays on a person's calendar (with that month's holidays listed underneath), the rank grid header, the header date, Projection and the Staffing date: New Year's Day, Martin Luther King, Jr.'s Birthday, Presidents' Day, Memorial Day, Juneteenth, Independence Day, Labor Day, Indigenous Peoples Day and Italian American Heritage Day, Veterans Day, Thanksgiving Day, the Day After Thanksgiving and Christmas Day. Halloween and Mother's Day are shown as observances (hollow dot). Dates are worked out for any year (`TourMath.holidayFor`). A fixed-date holiday on a weekend shows on the day it's observed, marked "(observed)": Saturday moves to the Friday before, Sunday to the Monday after (July 4, 2027 → Mon July 5; Christmas 2027 → Fri Dec 24; New Year's Day 2028 → Fri Dec 31, 2027). Halloween and Mother's Day don't move.
 
 ## On phones
 
-Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Find**, **Today**, **Trades** (when you can trade), **Staffing** and **More**. Find opens first.
+Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Schedule**, **Projection**, **Trades** (when you can trade), **Staffing** and **More**. Schedule opens first. The tabs have the same names on desktop.
 
-- **Find**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top; next shifts, history and the editing forms fold away.
-- **Today**: everyone working that day, grouped by rank as on desktop, one row per person (company, name, position, tour, leave and cover tags). The filter narrows it by name, ID, company or tour.
+- **Schedule**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top; next shifts, history and the editing forms fold away.
+- **Projection**: everyone working that day, grouped by rank as on desktop, one row per person (company, name, position, tour, leave and cover tags). The filter narrows it by name, ID, company or tour.
 - **Staffing**: Required / On duty / Open tiles, then division → battalion → apparatus → people with on duty / needed (tap to drill down), and the stats and Balance-report cards below.
 - **More** (or ☰): 6 of 9, the rank month grid, Open seats (editors), the documents, My page, Admin and Sign out. Menu items carry `data-need` (member, editor, admin, signed-in) and are hidden from people who can't use them.
 

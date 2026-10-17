@@ -136,6 +136,7 @@ Builds on the invites above; this one comes from an admin, not a trade.
 - Required staffing from the Balance report (313), Regular / Covering / Open split, "working but not in the tool" check, Open seats worklist for long-term covers.
 - Employee IDs: searchable, shown on person pages, duplicate names flagged.
 - Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
+- Tabs named **Schedule** (one person), **Projection** (everyone on a date) and **Staffing** on phone and desktop alike.
 - View-only snapshot link with records baked in (no sign-in needed).
 - Holidays on the calendars (12 city holidays plus Halloween and Mother's Day as observances), worked out for any year.
 - Shift trades: "this is me" claim, Trade wizard (payback, recipients by division and battalion, board), Trades tab (board, sent to me, my trades, owed shifts), TR (traded off) on the schedule. App, text and email alerts come with the server launch.

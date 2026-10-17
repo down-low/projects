@@ -795,9 +795,9 @@ ul.list-rows li .linkish { font-weight: 600; }
   </header>
 
   <nav class="tabs" role="tablist" aria-label="View">
-    <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"/></svg><span class="lbl-wide">Dashboard</span><span class="lbl-phone">Staffing</span></button>
-    <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lbl-wide">Who's working</span><span class="lbl-phone">Today</span></button>
-    <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="lbl-wide">By person</span><span class="lbl-phone">Find</span></button>
+    <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"/></svg><span class="lbl-wide">Staffing</span><span class="lbl-phone">Staffing</span></button>
+    <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lbl-wide">Projection</span><span class="lbl-phone">Projection</span></button>
+    <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="lbl-wide">Schedule</span><span class="lbl-phone">Schedule</span></button>
     <button class="tab" role="tab" id="tab-trades" data-view="trades" aria-controls="view-trades" hidden><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><span class="lbl-wide">Trades</span><span class="lbl-phone">Trades</span></button>
     <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
     <button class="tab" role="tab" id="tab-me" data-view="me" aria-controls="view-me" hidden>My page</button>
@@ -2438,7 +2438,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         '<span class="hint">Report: ' + reportTotal + " working, including " + ot + " overtime hires (about " + regular + " regular). Tool: " + toolWorking +
         ". <b>About " + est + " people working who aren't in the tool.</b></span></summary>" +
         '<p class="hint">Apparatus where the Balance report shows more people than the tool (' + sumGaps + " in all; some of these are overtime hires, which the report doesn't split by apparatus). " +
-        "To fix a gap, add the person on the By person tab, or give them a cover assignment from Open seats.</p>" +
+        "To fix a gap, add the person on the Schedule tab, or give them a cover assignment from Open seats.</p>" +
         '<div class="gap-groups">' + Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).map(function (k) {
           return '<div><h4>' + esc(k) + "</h4><ul>" + groups[k].map(function (g) {
             return '<li><button class="linkish" data-goto="' + esc(g.co) + '">' + esc(g.co) + "</button> report " + g.report + ", tool " + g.tool + ' <b class="gap">+' + g.gap + "</b></li>";
@@ -2512,7 +2512,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         '<datalist id="cover-dl">' + api.people().map(function (p) {
           return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
         }).join("") + "</datalist>" +
-        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the By person tab, then assign them here. ' +
+        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the Schedule tab, then assign them here. ' +
         "To end a cover, open the person and use End today.</p></div>";
       seats.msg = "";
       $("seats-back").onclick = function () { api.state().seatsOpen = false; renderDash(); };
@@ -3996,7 +3996,7 @@ ul.list-rows li .linkish { font-weight: 600; }
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
 
-  /* ---------- Who's working (by date) ---------- */
+  /* ---------- Projection: everyone on a date ---------- */
   function renderDate() {
     var d = state.date;
     var w = M.watchFor(d);
@@ -4101,7 +4101,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     var t = (recs.trades || []).filter(function (x) { return x.id === c.tradeId; })[0];
     return t ? nameOf(t.posterKey) : null;
   }
-  // Tags for a Who's working row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
+  // Tags for a Projection row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
     if (x.acting && x.kind !== "extra") {
@@ -4120,7 +4120,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     return tags;
   }
 
-  /* ---------- By person ---------- */
+  /* ---------- Schedule: one person ---------- */
   var suggestIdx = -1;
   function matches(q) {
     var match = makeMatcher(q);
@@ -4235,7 +4235,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     var out = $("person-detail");
     if (!p) {
       out.innerHTML = '<div class="empty">Type a last name, a company (E10) or a position number above to see that person\'s tour, their work days for any month, and their next shifts. ' +
-        people.length + " people are listed across " + data.length + " positions. You can also click any name in the Who's working list.</div>";
+        people.length + " people are listed across " + data.length + " positions. You can also click any name on the Projection tab.</div>";
       return;
     }
     var m = state.personMonth;
