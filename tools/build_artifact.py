@@ -35,6 +35,7 @@ CAPABILITIES = {
         {"path": "members/{self}", "write": "interact"},
         {"path": "trades", "read": "view", "write": "interact"},
         {"path": "tradeReplies", "read": "view", "write": "interact"},
+        {"path": "corrections", "read": "admin", "write": "interact"},  # members send, admins read and apply
     ]},
     "user": {},
 }
@@ -104,6 +105,7 @@ def main():
         f"<script>\n{read('dashboard.js')}</script>\n"
         f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('awards.js')}</script>\n"
+        f"<script>\n{read('corrections.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)

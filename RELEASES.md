@@ -101,7 +101,15 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
 
+### Invite texts from admins: sign up, claim, verify
+Builds on the invites above; this one comes from an admin, not a trade.
+- **Who:** an admin picks everyone, a battalion, or only people not yet verified, and sends a text to the staff-list cell number on file (admin-only contacts).
+- **Text:** "SFFD Tour Schedule: confirm your info and get trade alerts → <link>". The link carries a one-time code tied to the person's seat (expires after 14 days; one active invite per person).
+- **Opening it:** sign in (Google, email link or phone code), then the claim is filled in with their seat; they confirm station and tour and land on **Verify my info**.
+- **Safety:** only admins send; STOP is honoured (Twilio opt-out list); a seat already claimed and verified by someone else goes to an admin instead.
+
 ## Shipped
+- Corrections: **Something wrong?** on every person page and **Verify my info** after "This is me" (also on your own page). Members send fixes (seat, leave / WE, covering / acting / shadowing, tour, Employee ID, own cell number, other); a "This is me" station or tour that differs from the roster sends one automatically. Admins see them under **Corrections** (count on the header link and menu); **Apply** opens the person's page with the edit form filled in and marks it applied on save; a cell number goes straight into the admin-only contacts.
 - Google sign-in, My page, Admin; claim-and-approve, and requests from people not on the vacancy list.
 - Tour changes, VA/S/D leave, cover assignments, added people.
 - Dashboard (staffing summary by apparatus, stat summary), "6 of 9" tour intersections, Documents menu.

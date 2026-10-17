@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
 STATUS_CODES = CODES | {TRADED}
@@ -66,6 +66,8 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("statuses", "tradeId", "TEXT"),
     ("covers", "kind", "TEXT"),
 ]
+CORRECTION_KINDS = {"seat", "status", "cover", "tour", "id", "cell", "other"}
+CORRECTION_STATES = {"applied", "dismissed"}
 COVER_KINDS = {"acting", "cover", "shadow", "extra"}  # empty: worked out from the two ranks
 # Shift trades: who can take whose shift. Ranks not listed trade with their own rank only. Mirrors RANK_GROUPS in schedule.js.
 RANK_GROUPS = {"Firefighter": "Firefighter", "FF/Paramedic": "FF/Paramedic", "Lieutenant": "Officer", "Captain": "Officer",
@@ -127,6 +129,11 @@ CREATE TABLE IF NOT EXISTS trade_replies (
   swapSeatPos TEXT, note TEXT, createdAt TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS trade_replies_trade ON trade_replies(tradeId);
+CREATE TABLE IF NOT EXISTS corrections (
+  id TEXT PRIMARY KEY, aboutKey TEXT NOT NULL, kind TEXT NOT NULL, details TEXT, note TEXT,
+  byId TEXT, byName TEXT, byKey TEXT, state TEXT NOT NULL DEFAULT 'open', reason TEXT,
+  handledBy TEXT, handledAt TEXT, createdAt TEXT NOT NULL
+);
 CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL, actor_id TEXT, action TEXT NOT NULL, detail TEXT
 );
@@ -414,6 +421,44 @@ class App:
         return out
 
     # ---------- admin ----------
+    # ---------- corrections (members suggest, admins apply or dismiss) ----------
+    def add_correction(self, u, body):
+        about = body.get("aboutKey")
+        if not isinstance(about, str) or not (about in self.positions or about.startswith(PERSON_PREFIX)):
+            raise BadRequest("aboutKey must be a position number or person:<id>")
+        kind = body.get("kind")
+        if kind not in CORRECTION_KINDS:
+            raise BadRequest("kind must be one of " + ", ".join(sorted(CORRECTION_KINDS)))
+        details = body.get("details") or {}
+        if not isinstance(details, dict) or len(json.dumps(details)) > 2000:
+            raise BadRequest("details must be a small object")
+        rec = {"id": uuid.uuid4().hex, "aboutKey": about, "kind": kind, "details": json.dumps(details),
+               "note": clean_text(body.get("note"), "note"), "byId": u["id"], "byName": u["display_name"] or u["google_email"],
+               "byKey": u["pos"], "createdAt": now()}
+        self.write("INSERT INTO corrections (id,aboutKey,kind,details,note,byId,byName,byKey,createdAt) "
+                   "VALUES (:id,:aboutKey,:kind,:details,:note,:byId,:byName,:byKey,:createdAt)", rec)
+        return {"id": rec["id"], "state": "open"}
+
+    def corrections(self):
+        out = []
+        for r in self.all("SELECT * FROM corrections ORDER BY createdAt DESC"):
+            r = dict(r)
+            r["details"] = json.loads(r["details"] or "{}")
+            out.append(r)
+        return out
+
+    def handle_correction(self, u, rec_id, body):
+        if not self.one("SELECT id FROM corrections WHERE id = ?", (rec_id,)):
+            raise HttpError(404, "No such correction")
+        state = body.get("state")
+        if state not in CORRECTION_STATES:
+            raise BadRequest("state must be applied or dismissed")
+        self.write("UPDATE corrections SET state = ?, reason = ?, handledBy = ?, handledAt = ? WHERE id = ?",
+                   (state, clean_text(body.get("reason"), "reason"), u["display_name"] or u["google_email"], now(), rec_id))
+        r = dict(self.one("SELECT * FROM corrections WHERE id = ?", (rec_id,)))
+        r["details"] = json.loads(r["details"] or "{}")
+        return r
+
     def admin_users(self):
         rows = self.all("SELECT * FROM users ORDER BY (status = 'pending' AND claim_pos IS NOT NULL) DESC, status, display_name")
         out = []
@@ -1010,6 +1055,9 @@ def make_handler(app):
             if path == "/api/admin/users":
                 self.require("admin")
                 return self.send_json(200, app.admin_users())
+            if path == "/api/admin/corrections":
+                self.require("editor")
+                return self.send_json(200, app.corrections())
             if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json", "/data/vacancy-awards-2027.json"):
                 self.require("active")
                 self.path = path
@@ -1098,6 +1146,9 @@ def make_handler(app):
             if m:
                 u = self.require("admin")
                 return self.send_json(200, app.admin_action(u, m.group(1), self.body()))
+            if path == "/api/corrections":
+                u = self.require("active")
+                return self.send_json(201, app.add_correction(u, self.body()))
             if path == "/api/trades":
                 u = self.trader()
                 rec = app.post_trade(u, self.body())
@@ -1128,6 +1179,12 @@ def make_handler(app):
             m = re.fullmatch(r"/api/trades/([0-9a-f]{32})", self.path_only())
             if m:
                 return self.send_json(200, app.widen_trade(self.trader(), m.group(1), self.body()))
+            m = re.fullmatch(r"/api/admin/corrections/([0-9a-f]{32})", self.path_only())
+            if m:
+                u = self.require("editor")
+                rec = app.handle_correction(u, m.group(1), self.body())
+                app.audit(u, "correction " + rec["state"], {"id": rec["id"]})
+                return self.send_json(200, rec)
             m = re.fullmatch(r"/api/covers/([0-9a-f]{32})", self.path_only())
             if not m:
                 raise HttpError(404, "Not found")

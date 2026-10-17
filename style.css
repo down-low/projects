@@ -746,3 +746,13 @@ ul.aw-list li { display: flex; flex-wrap: wrap; justify-content: space-between; 
 li.aw-check .aw-st { background: var(--accent-soft); color: var(--accent); }
 li.aw-ready .aw-st { background: var(--tr-soft); color: var(--tr); }
 li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(--muted); font-weight: 500; }
+
+/* Corrections: "Something wrong?" link, Verify my info, admin list */
+.fix-kv { flex-basis: 100%; }
+.fix-link { font-size: 0.85rem; color: var(--muted); }
+.fix-form label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.fix-form select, .fix-form input { width: 100%; }
+ul.tlist.verify li { align-items: center; }
+ul.tlist.fixes li { align-items: flex-start; }
+ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fix-applying { border-color: var(--today); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }

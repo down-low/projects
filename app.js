@@ -79,12 +79,13 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
     $("awards-link").classList.toggle("on", v === "awards");
+    $("fixes-link").classList.toggle("on", v === "fixes");
     store("view", v);
     render();
   }
@@ -98,6 +99,7 @@
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
+    else if (state.view === "fixes") Fix.render();
     else renderRank();
   }
 
@@ -410,7 +412,7 @@
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -434,6 +436,8 @@
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
+    Fix.wireLinks($("person-detail"));
+    Fix.prefill(p);
     wireDates(p);
     // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
     out.querySelectorAll("[data-day]").forEach(function (el) {
@@ -671,7 +675,7 @@
       say(msg, "Saving…");
       backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
         kind: $("fc-kind").value || null })
-        .then(function () { renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
     fs.onsubmit = function (e) {
@@ -681,7 +685,7 @@
       if (end && end < start) return say(msg, "The end date is before the start date.", true);
       say(msg, "Saving…");
       backend.addStatus({ pos: p.pos, name: p.name, code: $("fs-code").value, start: start, end: end, note: $("fs-note").value.trim() })
-        .then(function () { renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     if (ft) ft.onsubmit = function (e) {
       e.preventDefault();
@@ -690,7 +694,7 @@
       if (tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
       say(msg, "Saving…");
       backend.addTourChange({ pos: p.pos, name: p.name, tour: tour, effective: eff, note: $("ft-note").value.trim() })
-        .then(function () { renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
   }
   function say(el, text, isErr) {
@@ -841,6 +845,7 @@
 
     document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
     wireSheet();
+    Fix.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -892,6 +897,7 @@
     state.sixMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     Dash.wireDash();
     $("awards-link").onclick = function () { setView("awards"); };
+    $("fixes-link").onclick = function () { setView("fixes"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -978,7 +984,14 @@
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
+    if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     return false;
+  }
+  // Open corrections, on the header link and the menu item (admins).
+  function fixesBadge() {
+    var n = Fix.count();
+    $("fixes-link").textContent = "Corrections" + (n ? " (" + n + ")" : "");
+    $("fixes-count").textContent = n ? n + " open" : "";
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
@@ -986,6 +999,7 @@
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
+    $("fixes-link").hidden = !tabAllowed("fixes");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
@@ -1076,6 +1090,14 @@
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
+    afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+  });
+
+  var Fix = window.CorrectionViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, slotFromInput: slotFromInput, choosePerson: choosePerson,
+    renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
   var Awards = window.AwardViews({
@@ -1094,8 +1116,10 @@
   /* ---------- Start ---------- */
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
-      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [] };
+      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
+      corrections: r.corrections || [] };
     recsVersion++;
+    fixesBadge();
     if (r.contacts) contacts = r.contacts;
     if (booted) rebuildPeople();
     renderAll();

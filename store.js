@@ -20,7 +20,8 @@
 (function (root) {
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
-    members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts" };
+    members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
+    corrections: "corrections" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -64,12 +65,13 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
-          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts) });
+          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
+          corrections: records.corrections });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
@@ -158,6 +160,31 @@
             if (!editable && memberId !== uid) return Promise.reject(new Error(NO_EDIT));
             return db.collection("members").doc(memberId).delete();
           },
+          /* Corrections: any signed-in member sends one (read by admins only); admins apply or dismiss. */
+          canSuggest: function () { return tradeOk(); },
+          suggest: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            rec.state = "open";
+            var m = myMember();
+            rec.byKey = m ? m.key : null;
+            return tw(addRec("corrections", rec));
+          },
+          handleCorrection: function (id, state, reason) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection("corrections").doc(id).update({ state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() });
+          },
+          setVerified: function () {
+            if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
+            return tw(db.collection("members").doc(uid).update({ verifiedAt: nowIso() }));
+          },
+          // Admins: put a cell number in the staff-list contacts record.
+          setCell: function (key, cell) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
+            var cells = Object.assign({}, doc ? doc.cells : {});
+            cells[key] = cell;
+            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+          },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
             return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" } }));
@@ -227,11 +254,13 @@
     function active() { return !!(me && me.signedIn && me.status === "active"); }
     function refresh() {
       if (!active()) return Promise.resolve();
-      return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; })]).then(function (res) {
+      var admin = me.role === "admin" || me.role === "editor";
+      return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; }),
+        admin ? getJson("api/admin/corrections").catch(function () { return []; }) : Promise.resolve([])]).then(function (res) {
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
           people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
-          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [] });
+          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [] });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -256,6 +285,11 @@
             contacts: function () { return contacts; },
             signOut: function () { return call("POST", "auth/logout").then(function () { location.href = location.pathname; }); },
             claim: function (pos, note) { return call("POST", "api/me/claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+            canSuggest: function () { return active(); },
+            suggest: function (rec) { return thenRefresh(call("POST", "api/corrections", rec)); },
+            handleCorrection: function (id, state, reason) {
+              return thenRefresh(call("PATCH", "api/admin/corrections/" + encodeURIComponent(id), { state: state, reason: reason || null }));
+            },
             claimRequest: function (req) { return call("POST", "api/me/claim", { request: req }).then(function (j) { me = j; return j; }); },
             rosterNames: function () { return getJson("api/roster-names"); },
             saveContact: function (c) { return thenRefresh(call("PUT", "api/me/contact", c).then(function (j) { me = j; return j; })); },

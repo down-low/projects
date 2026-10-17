@@ -750,6 +750,16 @@ ul.aw-list li { display: flex; flex-wrap: wrap; justify-content: space-between; 
 li.aw-check .aw-st { background: var(--accent-soft); color: var(--accent); }
 li.aw-ready .aw-st { background: var(--tr-soft); color: var(--tr); }
 li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(--muted); font-weight: 500; }
+
+/* Corrections: "Something wrong?" link, Verify my info, admin list */
+.fix-kv { flex-basis: 100%; }
+.fix-link { font-size: 0.85rem; color: var(--muted); }
+.fix-form label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.fix-form select, .fix-form input { width: 100%; }
+ul.tlist.verify li { align-items: center; }
+ul.tlist.fixes li { align-items: flex-start; }
+ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fix-applying { border-color: var(--today); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 </style>
 
 <div class="page">
@@ -766,6 +776,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
         </details>
         <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
         <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
+        <button class="hdr-link" id="fixes-link" type="button" aria-controls="view-fixes" hidden>Corrections</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -851,6 +862,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       <label>Note<input type="text" id="ap-note" maxlength="500" placeholder="Optional"></label>
       <div class="row"><button class="btn primary" type="submit">Add person</button><span class="msg" id="ap-msg" role="status"></span></div>
     </form>
+    <div class="card fix-applying" id="fix-applying" role="status" hidden></div>
     <div id="person-detail"></div>
   </section>
 
@@ -868,6 +880,10 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     </div>
     <p class="hint" id="rank-count"></p>
     <div class="grid-wrap" id="rank-grid"></div>
+  </section>
+
+  <section class="view" id="view-fixes" role="region" aria-label="Corrections" hidden>
+    <div id="fixes-detail"></div>
   </section>
 
   <section class="view" id="view-awards" role="region" aria-label="2027 vacancy awards" hidden>
@@ -903,6 +919,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
         <li><button type="button" data-go="rank">Rank month grid</button></li>
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
         <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
+        <li data-need="editor"><button type="button" data-go="fixes">Corrections <span class="hint" id="fixes-count"></span></button></li>
       </ul>
       <h3 class="sheet-sec" id="sheet-docs-h" hidden>Documents</h3>
       <ul class="sheet-list" id="sheet-docs"></ul>
@@ -924,6 +941,16 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
         <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
       </div>
       <div id="day-body"></div>
+    </section>
+  </div>
+  <div class="sheet" id="fix-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="fix-title">
+      <div class="sheet-head">
+        <h2 id="fix-title">Something wrong?</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body" id="fix-body"></div>
     </section>
   </div>
   <div class="sheet" id="trade-sheet" hidden>
@@ -1248,7 +1275,8 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
 (function (root) {
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
-    members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts" };
+    members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
+    corrections: "corrections" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -1292,12 +1320,13 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
-          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts) });
+          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
+          corrections: records.corrections });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
@@ -1386,6 +1415,31 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
             if (!editable && memberId !== uid) return Promise.reject(new Error(NO_EDIT));
             return db.collection("members").doc(memberId).delete();
           },
+          /* Corrections: any signed-in member sends one (read by admins only); admins apply or dismiss. */
+          canSuggest: function () { return tradeOk(); },
+          suggest: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            rec.state = "open";
+            var m = myMember();
+            rec.byKey = m ? m.key : null;
+            return tw(addRec("corrections", rec));
+          },
+          handleCorrection: function (id, state, reason) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection("corrections").doc(id).update({ state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() });
+          },
+          setVerified: function () {
+            if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
+            return tw(db.collection("members").doc(uid).update({ verifiedAt: nowIso() }));
+          },
+          // Admins: put a cell number in the staff-list contacts record.
+          setCell: function (key, cell) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
+            var cells = Object.assign({}, doc ? doc.cells : {});
+            cells[key] = cell;
+            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+          },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
             return tw(db.collection("members").doc(uid).update({ alerts: { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" } }));
@@ -1455,11 +1509,13 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     function active() { return !!(me && me.signedIn && me.status === "active"); }
     function refresh() {
       if (!active()) return Promise.resolve();
-      return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; })]).then(function (res) {
+      var admin = me.role === "admin" || me.role === "editor";
+      return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; }),
+        admin ? getJson("api/admin/corrections").catch(function () { return []; }) : Promise.resolve([])]).then(function (res) {
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
           people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
-          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [] });
+          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [] });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -1484,6 +1540,11 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
             contacts: function () { return contacts; },
             signOut: function () { return call("POST", "auth/logout").then(function () { location.href = location.pathname; }); },
             claim: function (pos, note) { return call("POST", "api/me/claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+            canSuggest: function () { return active(); },
+            suggest: function (rec) { return thenRefresh(call("POST", "api/corrections", rec)); },
+            handleCorrection: function (id, state, reason) {
+              return thenRefresh(call("PATCH", "api/admin/corrections/" + encodeURIComponent(id), { state: state, reason: reason || null }));
+            },
             claimRequest: function (req) { return call("POST", "api/me/claim", { request: req }).then(function (j) { me = j; return j; }); },
             rosterNames: function () { return getJson("api/roster-names"); },
             saveContact: function (c) { return thenRefresh(call("PUT", "api/me/contact", c).then(function (j) { me = j; return j; })); },
@@ -2978,8 +3039,12 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
         e.preventDefault();
         var p = byPos()[ui.claimPick];
         api.say($("cl-msg"), "Saving…");
-        backend().claimMember({ key: p.pos, emplId: p.emplId || null, confirmedStation: $("cl-co").value, confirmedTour: +$("cl-tour").value })
-          .then(function () { ui.claimPick = null; ui.claimQ = ""; api.renderAll(true); }, function (er) { api.say($("cl-msg"), er.message, true); });
+        var station = $("cl-co").value, tour = +$("cl-tour").value;
+        backend().claimMember({ key: p.pos, emplId: p.emplId || null, confirmedStation: station, confirmedTour: tour })
+          .then(function () {
+            ui.claimPick = null; ui.claimQ = ""; api.renderAll(true);
+            if (api.afterClaim) api.afterClaim(p, station, tour);
+          }, function (er) { api.say($("cl-msg"), er.message, true); });
       };
     }
     // Admins: who has claimed whom, with Undo. A station or tour that differs from the roster is flagged.
@@ -3392,6 +3457,301 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
+/* Corrections: members tell admins what's wrong; admins apply it with the usual edit forms.
+ * window.CorrectionViews(api) -> {link, open, openVerify, render, prefill, saved, count, afterClaim}. `api` comes from app.js.
+ * - "Something wrong?" on any person page opens a short form: wrong seat, leave / working elsewhere, covering / acting /
+ *   shadowing, tour, Employee ID, cell number (own page only) or other. It writes a correction; nothing changes until an
+ *   admin applies it.
+ * - "Verify my info" (after "This is me", and on your own page) lists what the tool has for you, each with Correct / Fix.
+ * - Admins see open corrections on the Corrections view. Apply opens the person's page with the matching edit form filled
+ *   in; saving it marks the correction applied. Corrections are only readable by admins (page rule `read: admin`).
+ */
+(function (root) {
+  "use strict";
+  var M = root.TourMath;
+
+  root.CorrectionViews = function (api) {
+    var $ = api.$, esc = api.esc;
+    var KINDS = [
+      ["seat", "Wrong seat or not working here"],
+      ["status", "On leave or working elsewhere"],
+      ["cover", "Covering, acting or shadowing"],
+      ["tour", "Wrong tour"],
+      ["id", "Wrong Employee ID"],
+      ["cell", "My cell number"],
+      ["other", "Something else"],
+    ];
+    var ui = { about: null, kind: "seat", sent: {}, verify: false, show: "open", applying: null };
+
+    function backend() { return api.backend(); }
+    function byPos() { return api.byPos(); }
+    function myKey() { var b = backend(); return b && b.myKey ? b.myKey() : null; }
+    function canSuggest() { var b = backend(); return !!(b && b.canSuggest && b.canSuggest()); }
+    function isAdmin() { var b = backend(); return !!(b && b.canEdit && b.canEdit()); }
+    function list() { return (api.recs().corrections || []).slice().sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); }); }
+    function nameOf(key) { var p = byPos()[key]; return p ? p.name : key; }
+    function seatText(pos) { var p = byPos()[pos]; return p ? (p.name ? p.name + " · " : "") + p.title + " " + (p.added ? "" : pos) : pos; }
+    function count() { return list().filter(function (c) { return c.state === "open"; }).length; }
+    function todayIso() { return api.iso(api.today()); }
+
+    // ---------- "Something wrong?" link (person page) ----------
+    function link(p) {
+      if (!canSuggest() || !p) return "";
+      var mine = myKey() === p.pos;
+      return '<div class="kv fix-kv"><span class="v">' +
+        (mine ? '<button type="button" class="btn small" data-verify>Verify my info</button> ' : "") +
+        '<button type="button" class="linkish fix-link" data-fix="' + esc(p.pos) + '">Something wrong?</button>' +
+        (ui.sent[p.pos] ? ' <span class="hint">Sent, thanks. An admin will review it.</span>' : "") + "</span></div>";
+    }
+    function wireLinks(scope) {
+      (scope || document).querySelectorAll("[data-fix]").forEach(function (b) { b.onclick = function () { open(b.dataset.fix); }; });
+      (scope || document).querySelectorAll("[data-verify]").forEach(function (b) { b.onclick = function () { openVerify(); }; });
+    }
+
+    // ---------- The form ----------
+    function open(key, kind) {
+      ui.about = key;
+      ui.kind = kind || (myKey() === key ? "seat" : "status");
+      ui.verify = false;
+      draw();
+      $("fix-sheet").hidden = false;
+      var f = $("fix-body").querySelector("select, input, textarea");
+      if (f) f.focus();
+    }
+    function close() { $("fix-sheet").hidden = true; ui.verify = false; }
+    function kindOptions() {
+      var mine = myKey() === ui.about;
+      return KINDS.filter(function (k) { return k[0] !== "cell" || mine; }).map(function (k) {
+        return '<option value="' + k[0] + '"' + (k[0] === ui.kind ? " selected" : "") + ">" + esc(k[1]) + "</option>";
+      }).join("");
+    }
+    function fieldsHtml(kind) {
+      var t = todayIso(), p = byPos()[ui.about] || {};
+      var seat = '<label>Where are they?<input type="text" id="fx-seat" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>';
+      if (kind === "seat") return seat + '<label>Since (if you know)<input type="date" id="fx-start"></label>';
+      if (kind === "status") {
+        return '<div class="row"><label>What<select id="fx-code"><option value="D">D · Disability</option><option value="WE">WE · Working elsewhere</option>' +
+          '<option value="VA">VA · Vacation</option><option value="S">S · Sick</option></select></label>' +
+          '<label>From<input type="date" id="fx-start" value="' + t + '"></label><label>To (optional)<input type="date" id="fx-end"></label></div>';
+      }
+      if (kind === "cover") {
+        return seat.replace("Where are they?", "Which seat?") +
+          '<div class="row"><label>Type<select id="fx-ckind"><option value="cover">Covering</option><option value="acting">Acting</option>' +
+          '<option value="shadow">Shadowing (LWLP)</option><option value="extra">Also in this seat</option></select></label>' +
+          '<label>From<input type="date" id="fx-start" value="' + t + '"></label></div>';
+      }
+      if (kind === "tour") {
+        var cur = api.tourOn(p, api.today());
+        return '<div class="row"><label>Right tour<select id="fx-tour">' + Array.apply(null, Array(31)).map(function (_, i) {
+          return '<option value="' + (i + 1) + '"' + (i + 1 === cur ? " selected" : "") + ">Tour " + (i + 1) + "</option>";
+        }).join("") + '</select></label><label>Since (if you know)<input type="date" id="fx-start"></label></div>';
+      }
+      if (kind === "id") return '<label>Right Employee ID<input type="text" id="fx-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off"></label>';
+      if (kind === "cell") return '<label>Your cell number<input type="tel" id="fx-cell" maxlength="20" placeholder="(415) 555-0100"></label>' +
+        '<p class="hint">Only admins see it. It is used to reach you about trades.</p>';
+      return "";
+    }
+    function draw() {
+      var p = byPos()[ui.about] || { name: ui.about };
+      $("fix-title").textContent = ui.verify ? "Verify my info" : "Something wrong?";
+      if (ui.verify) return drawVerify();
+      $("fix-body").innerHTML = '<p><b>' + esc(p.name) + "</b>" + (p.title ? ' <span class="hint">' + esc(p.title) + "</span>" : "") + "</p>" +
+        '<form class="edit fix-form" id="fx-form" novalidate><label>What\'s wrong?<select id="fx-kind">' + kindOptions() + "</select></label>" +
+        fieldsHtml(ui.kind) +
+        '<label>Note' + (ui.kind === "other" ? "" : " (optional)") + '<input type="text" id="fx-note" maxlength="500" placeholder="Anything that helps an admin check it"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Send</button><span class="msg" id="fx-msg" role="status"></span></div>' +
+        '<p class="hint">Nothing changes until an admin checks it.</p></form>';
+      $("fx-kind").onchange = function () { ui.kind = this.value; draw(); };
+      $("fx-form").onsubmit = function (e) { e.preventDefault(); send(); };
+    }
+    function val(id) { var el = $(id); return el ? el.value.trim() : ""; }
+    function send() {
+      var msg = $("fx-msg"), d = {}, k = ui.kind;
+      if (k === "seat" || k === "cover") {
+        d.seat = api.slotFromInput(val("fx-seat"));
+        if (!d.seat) return api.say(msg, "Pick the seat from the list.", true);
+      }
+      if (k === "status") { d.code = val("fx-code"); d.end = val("fx-end") || null; }
+      if (k === "cover") d.coverKind = val("fx-ckind");
+      if (k === "tour") d.tour = +val("fx-tour");
+      if (k === "id") {
+        d.emplId = val("fx-id").toUpperCase();
+        if (!/^[A-Z]{2}\d{4}$/.test(d.emplId)) return api.say(msg, "An Employee ID is two letters and four numbers.", true);
+      }
+      if (k === "cell") {
+        d.cell = val("fx-cell");
+        if (d.cell.replace(/\D/g, "").length < 10) return api.say(msg, "Enter a 10-digit number.", true);
+      }
+      if ($("fx-start")) d.start = val("fx-start") || null;
+      var note = val("fx-note");
+      if (k === "other" && !note) return api.say(msg, "Say what's wrong in the note.", true);
+      api.say(msg, "Sending…");
+      backend().suggest({ aboutKey: ui.about, kind: k, details: d, note: note || null }).then(function () {
+        ui.sent[ui.about] = true;
+        if (ui.back) { ui.verify = true; ui.back = false; drawVerify(); return; }
+        close();
+        api.renderAll();
+      }, function (er) { api.say(msg, er.message, true); });
+    }
+
+    // ---------- Verify my info ----------
+    function openVerify(forKey) {
+      var key = forKey || myKey();
+      if (!key) return;
+      ui.about = key;
+      ui.verify = true;
+      $("fix-title").textContent = "Verify my info";
+      drawVerify();
+      $("fix-sheet").hidden = false;
+    }
+    function drawVerify() {
+      var p = byPos()[ui.about];
+      if (!p) return close();
+      var t = api.today(), s = api.day(p, t), st = api.statusFor(p.pos, t);
+      var cover = (api.recs().covers || []).filter(function (c) { return c.coverKey === p.pos && c.start <= todayIso() && (!c.end || c.end >= todayIso()) && !M.isMove(c); })[0];
+      var rows = [
+        ["Name", p.name, "other"],
+        ["Employee ID", p.emplId || "Not on file", "id"],
+        ["Rank", p.rank, "other"],
+        ["Seat", p.added ? "Added, not on the vacancy list" : p.title + " · " + p.pos, "seat"],
+        ["Tour", api.tourOn(p, t) ? "Tour " + api.tourOn(p, t) : "None", "tour"],
+        ["Right now", cover ? api.kindWord(cover) + " " + seatText(cover.targetPos) : "In my own seat", "cover"],
+        ["Leave", st ? st + " · " + (api.STATUS_LABEL[st] || st) : "None", "status"],
+        ["Cell number", "Admins only. Add or update it here", "cell"],
+      ];
+      var m = backend().myMember ? backend().myMember() : null;
+      $("fix-body").innerHTML = '<p class="hint">This is what the schedule has for you. Tap <b>Fix</b> on anything that\'s wrong; an admin checks it before it changes.</p>' +
+        '<ul class="tlist verify">' + rows.map(function (r) {
+          return '<li><div><span class="hint">' + esc(r[0]) + "</span><div>" + esc(r[1]) + '</div></div><button class="btn small" type="button" data-vfix="' + r[2] + '">Fix</button></li>';
+        }).join("") + "</ul>" +
+        (s && s.acting ? "" : "") +
+        '<div class="row"><button class="btn primary" type="button" id="vf-done">Looks right</button><span class="msg" id="vf-msg" role="status"></span></div>' +
+        (m && m.verifiedAt ? '<p class="hint">Last checked ' + esc(api.shortDate(new Date(m.verifiedAt))) + ".</p>" : "");
+      $("fix-body").querySelectorAll("[data-vfix]").forEach(function (b) {
+        b.onclick = function () { ui.verify = false; ui.back = true; ui.kind = b.dataset.vfix; draw(); };
+      });
+      $("vf-done").onclick = function () {
+        api.say($("vf-msg"), "Saving…");
+        backend().setVerified().then(function () { close(); api.renderAll(); }, function (er) { api.say($("vf-msg"), er.message, true); });
+      };
+    }
+    // After "This is me": a station or tour that differs from the roster becomes a correction, then Verify opens.
+    function afterClaim(p, station, tour) {
+      var t = api.today(), off = station !== api.home(p) || tour !== api.tourOn(p, t);
+      var done = off && backend().suggest
+        ? backend().suggest({ aboutKey: p.pos, kind: "seat", details: { station: station, tour: tour },
+          note: 'From "This is me": says ' + station + ", Tour " + tour + "; roster has " + api.home(p) + ", Tour " + (api.tourOn(p, t) || "none") })
+          .catch(function () {})
+        : Promise.resolve();
+      return done.then(function () { openVerify(p.pos); });
+    }
+
+    // ---------- Admin list ----------
+    function summary(c) {
+      var d = c.details || {};
+      if (c.kind === "seat") return d.seat ? "Is in " + seatText(d.seat) + (d.start ? " since " + api.shortDate(api.fromIso(d.start)) : "")
+        : "Says " + (d.station || "?") + ", Tour " + (d.tour || "?");
+      if (c.kind === "status") return d.code + " · " + (api.STATUS_LABEL[d.code] || "") + " from " + (d.start ? api.shortDate(api.fromIso(d.start)) : "?") +
+        (d.end ? " to " + api.shortDate(api.fromIso(d.end)) : "");
+      if (c.kind === "cover") return (api.KIND[d.coverKind] || api.KIND.cover)[0] + " " + seatText(d.seat) + (d.start ? " from " + api.shortDate(api.fromIso(d.start)) : "");
+      if (c.kind === "tour") return "Tour " + d.tour + (d.start ? " since " + api.shortDate(api.fromIso(d.start)) : "");
+      if (c.kind === "id") return "Employee ID " + d.emplId;
+      if (c.kind === "cell") return "Cell number (hidden until you apply it)";
+      return "See note";
+    }
+    function render() {
+      var el = $("fixes-detail");
+      if (!isAdmin()) { el.innerHTML = '<div class="empty">Only admins see corrections.</div>'; return; }
+      var all = list(), shown = all.filter(function (c) {
+        return ui.show === "all" ? true : ui.show === "open" ? c.state === "open" : c.state !== "open";
+      });
+      var members = api.recs().members || [];
+      var verified = members.filter(function (m) { return m.verifiedAt; }).length;
+      el.innerHTML = '<div class="card"><h2 class="view-title">Corrections</h2>' +
+        '<p class="hint">Sent by members from "Something wrong?" and "Verify my info". Apply opens the person\'s page with the edit form filled in; saving marks it applied.</p>' +
+        '<p>' + count() + " open · " + verified + " of " + members.length + " claimed accounts verified</p>" +
+        '<div class="seg" role="group" aria-label="Show">' + [["open", "Open"], ["done", "Done"], ["all", "All"]].map(function (s) {
+          return '<button class="btn small' + (ui.show === s[0] ? " primary" : "") + '" type="button" data-fshow="' + s[0] + '">' + s[1] + "</button>";
+        }).join("") + "</div>" +
+        (shown.length ? '<ul class="tlist fixes">' + shown.map(function (c) {
+          var who = byPos()[c.aboutKey];
+          return '<li><div><b>' + (who ? '<button class="linkish" data-pos="' + esc(c.aboutKey) + '">' + esc(who.name) + "</button>" : esc(c.aboutKey)) + "</b> " +
+            '<span class="hint">' + esc(who ? who.title : "") + "</span>" +
+            "<div>" + esc(summary(c)) + "</div>" + (c.note ? '<div class="hint">“' + esc(c.note) + "”</div>" : "") +
+            '<div class="hint">From ' + esc(c.byName || (c.byKey ? nameOf(c.byKey) : "a member")) + " · " + esc(api.shortDate(new Date(c.createdAt))) +
+            (c.state !== "open" ? " · " + esc(c.state) + (c.reason ? ": " + esc(c.reason) : "") : "") + "</div></div>" +
+            (c.state === "open" ? '<div class="acts"><button class="btn small primary" data-fapply="' + esc(c.id) + '">Apply</button>' +
+              '<button class="btn small" data-fdismiss="' + esc(c.id) + '">Dismiss</button></div>' : "") + "</li>";
+        }).join("") + "</ul>" : '<p class="hint">Nothing here.</p>') + '<span class="msg" id="fl-msg" role="status"></span></div>';
+      el.querySelectorAll("[data-fshow]").forEach(function (b) { b.onclick = function () { ui.show = b.dataset.fshow; render(); }; });
+      el.querySelectorAll("[data-pos]").forEach(function (b) { b.onclick = function () { api.choosePerson(b.dataset.pos); }; });
+      el.querySelectorAll("[data-fdismiss]").forEach(function (b) {
+        b.onclick = function () {
+          if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm dismiss"; return; }
+          backend().handleCorrection(b.dataset.fdismiss, "dismissed").then(render, function (er) { api.say($("fl-msg"), er.message, true); });
+        };
+      });
+      el.querySelectorAll("[data-fapply]").forEach(function (b) { b.onclick = function () { apply(b.dataset.fapply); }; });
+    }
+    function apply(id) {
+      var c = list().filter(function (x) { return x.id === id; })[0];
+      if (!c) return;
+      if (c.kind === "cell" && backend().setCell) {
+        return backend().setCell(c.aboutKey, c.details.cell).then(function () { return backend().handleCorrection(c.id, "applied"); })
+          .then(render, function (er) { api.say($("fl-msg"), er.message, true); });
+      }
+      ui.applying = c;
+      api.choosePerson(c.aboutKey);
+    }
+    // Called after the person page renders: fill in the edit form for the correction being applied.
+    function prefill(p) {
+      var c = ui.applying;
+      var bar = $("fix-applying");
+      if (!c || c.aboutKey !== p.pos) { if (bar) bar.hidden = true; return; }
+      var d = c.details || {};
+      bar.hidden = false;
+      bar.innerHTML = "<b>Applying a correction:</b> " + esc(summary(c)) + (c.note ? " · “" + esc(c.note) + "”" : "") +
+        ' <button class="btn small" type="button" id="fa-done">Mark applied</button> <button class="btn small" type="button" id="fa-cancel">Cancel</button>';
+      $("fa-done").onclick = function () { finish(); };
+      $("fa-cancel").onclick = function () { ui.applying = null; bar.hidden = true; };
+      var fold = document.querySelector('#person-detail [data-fold="edit"]');
+      if (fold) fold.open = true;
+      function set(id, v) { var el = $(id); if (el && v != null && v !== "") { el.value = v; el.dispatchEvent(new Event("change")); } }
+      if (c.kind === "status") {
+        set("fs-code", d.code); set("fs-start", d.start);
+        if (d.end) { if ($("fs-open")) $("fs-open").checked = false; set("fs-end", d.end); }
+        else if ($("fs-open")) { $("fs-open").checked = true; $("fs-open").dispatchEvent(new Event("change")); }
+        focusForm("f-status");
+      } else if (c.kind === "cover" || (c.kind === "seat" && d.seat)) {
+        set("fc-target", d.seat); set("fc-kind", d.coverKind || ""); set("fc-start", d.start || todayIso());
+        focusForm("f-cover");
+      } else if (c.kind === "tour" || (c.kind === "seat" && d.tour)) {
+        set("ft-tour", d.tour); set("ft-eff", d.start || todayIso());
+        focusForm("f-tour");
+      }
+    }
+    function focusForm(id) { var f = $(id); if (f) f.scrollIntoView({ block: "center" }); }
+    function finish() {
+      var c = ui.applying;
+      if (!c) return Promise.resolve();
+      ui.applying = null;
+      if ($("fix-applying")) $("fix-applying").hidden = true;
+      return backend().handleCorrection(c.id, "applied").catch(function () {});
+    }
+    // An edit form on the person page saved: the correction being applied is done.
+    function saved() { if (ui.applying) finish(); }
+
+    function wire() {
+      $("fix-sheet").addEventListener("click", function (e) { if (e.target.closest("[data-close]")) close(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("fix-sheet").hidden) close(); });
+    }
+
+    return { link: link, wireLinks: wireLinks, open: open, openVerify: openVerify, render: render, prefill: prefill, saved: saved,
+      count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest };
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
 (function () {
   "use strict";
   var M = window.TourMath;
@@ -3473,12 +3833,13 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
     $("awards-link").classList.toggle("on", v === "awards");
+    $("fixes-link").classList.toggle("on", v === "fixes");
     store("view", v);
     render();
   }
@@ -3492,6 +3853,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
+    else if (state.view === "fixes") Fix.render();
     else renderRank();
   }
 
@@ -3804,7 +4166,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -3828,6 +4190,8 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
+    Fix.wireLinks($("person-detail"));
+    Fix.prefill(p);
     wireDates(p);
     // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
     out.querySelectorAll("[data-day]").forEach(function (el) {
@@ -4065,7 +4429,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       say(msg, "Saving…");
       backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
         kind: $("fc-kind").value || null })
-        .then(function () { renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
     fs.onsubmit = function (e) {
@@ -4075,7 +4439,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       if (end && end < start) return say(msg, "The end date is before the start date.", true);
       say(msg, "Saving…");
       backend.addStatus({ pos: p.pos, name: p.name, code: $("fs-code").value, start: start, end: end, note: $("fs-note").value.trim() })
-        .then(function () { renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     if (ft) ft.onsubmit = function (e) {
       e.preventDefault();
@@ -4084,7 +4448,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
       if (tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
       say(msg, "Saving…");
       backend.addTourChange({ pos: p.pos, name: p.name, tour: tour, effective: eff, note: $("ft-note").value.trim() })
-        .then(function () { renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
   }
   function say(el, text, isErr) {
@@ -4235,6 +4599,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
 
     document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
     wireSheet();
+    Fix.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -4286,6 +4651,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     state.sixMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     Dash.wireDash();
     $("awards-link").onclick = function () { setView("awards"); };
+    $("fixes-link").onclick = function () { setView("fixes"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -4372,7 +4738,14 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
+    if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     return false;
+  }
+  // Open corrections, on the header link and the menu item (admins).
+  function fixesBadge() {
+    var n = Fix.count();
+    $("fixes-link").textContent = "Corrections" + (n ? " (" + n + ")" : "");
+    $("fixes-count").textContent = n ? n + " open" : "";
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
@@ -4380,6 +4753,7 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
+    $("fixes-link").hidden = !tabAllowed("fixes");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
@@ -4470,6 +4844,14 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
+    afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+  });
+
+  var Fix = window.CorrectionViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, slotFromInput: slotFromInput, choosePerson: choosePerson,
+    renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
   var Awards = window.AwardViews({
@@ -4488,8 +4870,10 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
   /* ---------- Start ---------- */
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
-      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [] };
+      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
+      corrections: r.corrections || [] };
     recsVersion++;
+    fixesBadge();
     if (r.contacts) contacts = r.contacts;
     if (booted) rebuildPeople();
     renderAll();

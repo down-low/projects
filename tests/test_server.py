@@ -222,6 +222,28 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(a.req("GET", "/api/me")[1]["signedIn"], False)
         self.assertGreater(len(self.app.all("SELECT * FROM audit")), 5)
 
+    def test_corrections(self):
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        m = self.client()
+        m.google_login("member3@example.org")
+        _, users, _ = admin.req("GET", "/api/admin/users")
+        mid = next(u["id"] for u in users if u["googleEmail"] == "member3@example.org")
+        admin.req("POST", f"/api/admin/users/{mid}", {"action": "approve"})
+
+        fix = {"aboutKey": "10EOC03M", "kind": "status", "details": {"code": "D", "start": "2026-10-01"}, "note": "Hurt on duty"}
+        for bad in [dict(fix, kind="nope"), dict(fix, aboutKey="NOPE"), dict(fix, details="x")]:
+            self.assertEqual(m.req("POST", "/api/corrections", bad)[0], 400, bad)
+        st, rec, _ = m.req("POST", "/api/corrections", fix)
+        self.assertEqual((st, rec["state"]), (201, "open"))
+        self.assertEqual(m.req("GET", "/api/admin/corrections")[0], 403)
+        self.assertEqual(m.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "applied"})[0], 403)
+        _, items, _ = admin.req("GET", "/api/admin/corrections")
+        self.assertEqual((len(items), items[0]["details"]["code"], items[0]["byName"]), (1, "D", "Member3"))
+        self.assertEqual(admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "open"})[0], 400)
+        st, done, _ = admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "applied"})
+        self.assertEqual((st, done["state"]), (200, "applied"))
+
     def test_covers_and_people(self):
         admin = self.client()
         admin.google_login("chief@example.org")
