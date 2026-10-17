@@ -234,11 +234,14 @@ class ServerTest(unittest.TestCase):
         cover = {"coverKey": "10ENL31M", "targetPos": "10EOC03M", "start": "2026-10-14"}
         self.assertEqual(m.req("POST", "/api/covers", cover)[0], 403)
         bad = [dict(cover, targetPos="10ENL31M"), dict(cover, targetPos="NOPE"), dict(cover, coverKey="person:abc"),
-               dict(cover, end="2026-10-01"), dict(cover, start="2026-13-01")]
+               dict(cover, end="2026-10-01"), dict(cover, start="2026-13-01"), dict(cover, kind="promoted")]
         for b in bad:
             self.assertEqual(admin.req("POST", "/api/covers", b)[0], 400, b)
         st, rec, _ = admin.req("POST", "/api/covers", cover)
         self.assertEqual((st, rec["coverName"], rec["end"]), (201, "Lester,D", None))
+        st, sh, _ = admin.req("POST", "/api/covers", dict(cover, kind="shadow", start="2026-12-01"))
+        self.assertEqual((st, sh["kind"], rec["kind"]), (201, "shadow", None))
+        self.assertEqual(admin.req("DELETE", f"/api/covers/{sh['id']}")[0], 200)
         self.assertEqual(admin.req("PATCH", f"/api/covers/{rec['id']}", {"end": "2026-10-01"})[0], 400)
         st, ended, _ = admin.req("PATCH", f"/api/covers/{rec['id']}", {"end": "2026-11-30"})
         self.assertEqual((st, ended["end"]), (200, "2026-11-30"))

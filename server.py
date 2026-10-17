@@ -56,7 +56,9 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("people", "company", "TEXT"),
     ("people", "tour", "INTEGER"),
     ("people", "emplId", "TEXT"),
+    ("covers", "kind", "TEXT"),
 ]
+COVER_KINDS = {"acting", "cover", "shadow", "relief"}  # empty: worked out from the two ranks
 SESSION_COOKIE = "ts_session"
 OAUTH_COOKIE = "ts_oauth"
 SESSION_DAYS = 30
@@ -505,10 +507,13 @@ class App:
         end = valid_date(body.get("end"), "end", required=False)
         if end and end < start:
             raise BadRequest("end must be on or after start")
+        kind = body.get("kind") or None
+        if kind is not None and kind not in COVER_KINDS:
+            raise BadRequest("kind must be acting, cover, shadow or relief")
         rec = {"id": uuid.uuid4().hex, "coverKey": key, "coverName": cover_name, "targetPos": target, "start": start,
-               "end": end, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
-        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",note,createdAt,createdBy) '
-                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:note,:createdAt,:createdBy)', rec)
+               "end": end, "kind": kind, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
+        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",kind,note,createdAt,createdBy) '
+                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:kind,:note,:createdAt,:createdBy)', rec)
         return rec
 
     def end_cover(self, rec_id, body):

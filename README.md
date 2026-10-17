@@ -28,7 +28,13 @@ Editors can record, per person (on the **By person** tab):
 - **Status**: VA vacation, S sick, D disabled or WE working elsewhere (e.g. an admin assignment not on the vacancy list), for a date range. Leave the end date open for an open-ended status. The person still shows on their scheduled days, struck through and marked with the code, and is counted as off rather than on duty. If two ranges overlap, the newer entry wins.
 - **Tour change**: a new tour from an effective date. Earlier dates keep the old tour. A swing position's company rotation only applies on its original tour; after a change it shows its home company.
 
-- **Cover assignment** (temporary acting, e.g. covering an injured captain): on the covering person's page, **Cover another position**, pick the position, a start date and optionally an end date. While it runs, that person works the covered position's tour and company and shows as "Acting for" the holder; the holder shows "Covered by"; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover.
+- **Cover assignment**: on the covering person's page, **Cover another position**, pick the position, a type, a start date and optionally an end date. While it runs, that person works the covered position's tour and company; the coverer's own spot shows them away. Mark the holder's leave (for example D) separately. **End today** closes an open-ended cover. Types:
+  - **Acting**: officially, temporarily promoted to the seat's rank until demoted.
+  - **Covering**: in someone else's spot (voluntarily or mandatorily) while they are injured or working elsewhere.
+  - **Shadowing**: day-to-day promotion (LWLP, like work like pay), usually VR20 / VR30 / VR40 relief. A shadow doesn't take the seat from a holder who is working (both show); it fills the seat when the holder is off or the seat is empty.
+  - **Relief**: assigned alongside the seat's holder and sent where needed day to day (e.g. a second captain on the same tour). Like shadowing, it never takes the seat from a working holder.
+  - Left blank, the type is Acting when the person ranks below the seat and Covering otherwise.
+- **Who's working** shows a covered seat on one line: the person working it, with the holder beside them struck through (and their leave code, or where they are), and a tag for the type.
 - **Add a person** not on the vacancy list (relief, detailed or new staff): **Not on the list? Add a person** under the person search, then give them a cover assignment.
 
 ## Dashboard, 6 of 9, Documents
@@ -123,7 +129,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `GET /api/me`, `POST /auth/logout` | anyone |
 | `POST /api/me/claim` `{pos, note}` | pending accounts |
 | `GET /api/records`, `GET /api/contacts`, `GET /data/positions.json`, `PUT /api/me/contact` `{contactEmail, phoneMobile, phoneOther, shareContact}` | approved accounts |
-| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, note?}`, `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, company?, tour?, emplId?, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
+| `POST /api/statuses` `{pos, code, start, end?, note?}`, `POST /api/tour-changes` `{pos, tour, effective, note?}`, `POST /api/covers` `{coverKey, targetPos, start, end?, kind?, note?}` (kind: acting, cover, shadow or relief), `PATCH /api/covers/<id>` `{end}`, `POST /api/people` `{name, rank, company?, tour?, emplId?, note?}`, `DELETE /api/{statuses,tour-changes,covers,people}/<id>` | editors, admins |
 | `GET /api/admin/users`, `POST /api/admin/users/<id>` `{action: approve, reject, role, link, unlink, disable, enable}` | admins |
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |

@@ -111,8 +111,10 @@
     slots().forEach(function (p) {
       var s = shift(p, d);
       if (!s) return;
-      var covs = M.coversOn(p.pos, d, recs.covers), cov = covs[0] || null;
+      var covs = M.coversOn(p.pos, d, recs.covers);
       var away = p.name ? coveringBy(p.pos, d) : null;
+      // Acting and covering take the seat; shadowing and relief fill it only when the holder isn't working.
+      var cov = covs.filter(M.takesSeat)[0] || ((s.status || away || !p.name) && covs[0]) || null;
       var base = { slot: p, co: s.co || home(p), role: s.role, swingCover: s.swing && s.co !== p.company, tour: s.tour };
       rows.push(Object.assign({}, base, {
         who: p.name ? p : null, name: p.name, status: s.status,
@@ -122,13 +124,21 @@
         var coverer = byPos[c.coverKey];
         var coverStatus = M.statusFor(c.coverKey, d, recs.statuses);
         rows.push(Object.assign({}, base, {
-          who: coverer || null, name: coverer ? coverer.name : c.coverName, acting: c,
+          who: coverer || null, name: coverer ? coverer.name : c.coverName, acting: c, kind: kindOf(c),
           status: coverStatus, off: !!coverStatus,
         }));
       });
     });
     return rows;
   }
+  // Cover kind for a record (acting, cover, shadow, relief) and its wording.
+  var KIND = { acting: ["Acting", "Acting for", "Acting at"], cover: ["Covering", "Covering for", "Covering at"],
+    shadow: ["Shadowing", "Shadowing", "Shadowing at"], relief: ["Relief", "Relief with", "Relief at"] };
+  function kindOf(c) {
+    var who = byPos[c.coverKey], seat = byPos[c.targetPos];
+    return M.coverKind(c, who && who.rank, seat && seat.rank);
+  }
+  function kindWord(c, i) { return KIND[kindOf(c)][i || 0]; }
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
 
@@ -160,7 +170,7 @@
       else coveredN++;
     });
     var offParts = ["VA", "S", "D", "WE"].filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
-    if (awayN) offParts.push(awayN + " acting elsewhere");
+    if (awayN) offParts.push(awayN + " covering elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
     if (phone) {
@@ -178,6 +188,7 @@
       $("date-results").innerHTML = '<div class="empty">Nobody matches this filter on ' + esc(shortDate(d)) + ". Clear the filter or pick another rank.</div>";
       return;
     }
+    rows = mergeCovered(rows);
     var groups = {};
     rows.forEach(function (r) { (groups[r.slot.rank] = groups[r.slot.rank] || []).push(r); });
     var html = RANK_ORDER.filter(function (r) { return groups[r]; }).map(function (r) {
@@ -186,10 +197,8 @@
         // Phones: the same rank groups as a list, one row per person (company, name, position, tour, status).
         return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + '</span></summary><ul class="plist">' +
           list.map(function (x) {
-            var name = x.name
-              ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
-              : '<span class="vacant">Vacant</span>';
-            return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(Organization.apparatus(x.co)) + '</span><span class="pl-main">' + name +
+            var name = nameCell(x);
+            return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(Organization.apparatus(x.co)) + '</span><span class="pl-main"><span class="pl-names">' + name + "</span>" +
               '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
               '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
           }).join("") + "</ul></details>";
@@ -197,9 +206,7 @@
       return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + "</span></summary>" +
         '<div class="table-wrap"><table class="list"><thead><tr><th>Company</th><th>Name</th><th>Position</th><th>Tour</th><th></th></tr></thead><tbody>' +
         list.map(function (x) {
-          var name = x.name
-            ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
-            : '<span class="vacant">Vacant</span>';
+          var name = nameCell(x);
           var tags = rowTags(x);
           return "<tr" + (x.off ? ' class="is-off"' : "") + "><td class=\"co\">" + esc(x.co) + "</td><td>" + name + "</td><td>" + esc(x.slot.title) +
             (x.role ? " · " + esc(x.role) : "") + (x.slot.added ? "" : ' <span class="hint">' + esc(x.slot.pos) + "</span>") + '</td><td class="mono">' + x.tour + "</td><td>" +
@@ -209,11 +216,35 @@
     $("date-results").innerHTML = html;
   }
 
-  // Tags for a Who's working row: acting, covered, swing, open for bid, added.
+  // One row per covered seat: the person working it, with the holder beside them struck through.
+  function mergeCovered(rows) {
+    var holders = new Map();
+    rows.forEach(function (r) { if (!r.acting && r.coveredBy && r.name) holders.set(r.coveredBy, r); });
+    var used = new Set();
+    rows.forEach(function (r) {
+      var h = r.acting && holders.get(r.acting);
+      if (h && !used.has(h)) { r.held = h; used.add(h); }
+    });
+    return rows.filter(function (r) { return !used.has(r); });
+  }
+  function whoLink(name, who) {
+    return who ? '<button class="linkish" data-pos="' + esc(who.pos) + '">' + esc(name) + "</button>" : esc(name);
+  }
+  function nameCell(x) {
+    if (!x.name) return '<span class="vacant">Vacant</span>';
+    var h = x.held;
+    return whoLink(x.name, x.who) + (h ? ' <s class="held">' + whoLink(h.name, h.who) + "</s>" +
+      (h.status ? " " + statusPill(h.status) : h.away ? ' <span class="hint">at ' + esc((byPos[h.away.targetPos] || {}).company || h.away.targetPos) + "</span>" : "") : "");
+  }
+  // Tags for a Who's working row: acting / covering / shadowing / relief, covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) tags.push('<span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>");
-    if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
+    if (x.acting) {
+      var k = KIND[x.kind] || KIND.cover;
+      tags.push('<span class="tag tag-acting">' + (x.held ? k[0]
+        : x.slot.name ? k[1] + " " + esc(x.slot.name) : k[0] + " · vacant spot") + "</span>");
+    }
+    if (x.away) tags.push('<span class="tag tag-away">' + kindWord(x.away, 2) + " " + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
     if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
     else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
@@ -340,8 +371,8 @@
           (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
           kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
-      (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : "Covering", slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
-      (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
+      (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow), slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
+      (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
       twinsHtml(p) + contactHtml(p) + "</div>" +
@@ -360,7 +391,7 @@
       (next.length ? "" : '<p class="hint">No shifts in the next 120 days.</p>') + '<ol class="shifts">' +
       next.map(function (n) {
         return '<li><span class="when">' + esc(shortDate(n.d)) + '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
-          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
+          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
       historyCard(p, datesCard(p)) + "</div></div>";
 
@@ -457,8 +488,8 @@
     })).concat(recs.covers.filter(function (c) { return c.coverKey === p.pos || c.targetPos === p.pos; }).map(function (c) {
       var mine = c.coverKey === p.pos;
       return { kind: "covers", id: c.id, sort: c.start, openEnded: !c.end && c.start <= iso(today()),
-        html: '<span class="st st-A">' + (mine ? "AC" : "CV") + "</span> <b>" + (mine ? "Covering " + esc(slotLabel(c.targetPos))
-          : "Covered by " + esc(c.coverName || nameOf(c.coverKey))) + "</b> " + esc(rangeText(c)), note: c.note };
+        html: '<span class="st st-A">' + (mine ? "AC" : "CV") + "</span> <b>" + (mine ? kindWord(c) + " " + esc(slotLabel(c.targetPos))
+          : esc(c.coverName || nameOf(c.coverKey)) + " · " + kindWord(c).toLowerCase()) + "</b> " + esc(rangeText(c)), note: c.note };
     })).sort(function (a, b) { return b.sort.localeCompare(a.sort); });
 
     var list = items.length ? '<ul class="hist">' + items.map(function (it) {
@@ -479,6 +510,9 @@
       '<form class="edit" id="f-cover" novalidate><h4>Cover another position</h4>' +
       '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>" +
       '<label>Position to cover<input type="text" id="fc-target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>' +
+      '<label>Type<select id="fc-kind"><option value="">Covering or acting (by rank)</option><option value="cover">Covering · same rank, in someone\'s spot</option>' +
+      '<option value="acting">Acting · temporarily promoted to the seat\'s rank</option><option value="shadow">Shadowing · day-to-day LWLP (usually VR)</option>' +
+      '<option value="relief">Relief · alongside the holder, sent where needed</option></select></label>' +
       '<div class="row"><label>From<input type="date" id="fc-start" value="' + t + '" required></label>' +
       '<label>To<input type="date" id="fc-end" disabled></label></div>' +
       '<label class="chk"><input type="checkbox" id="fc-open" checked> No end date yet</label>' +
@@ -537,7 +571,8 @@
       if (!start) return say(msg, "Pick a start date.", true);
       if (end && end < start) return say(msg, "The end date is before the start date.", true);
       say(msg, "Saving…");
-      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim() })
+      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
+        kind: $("fc-kind").value || null })
         .then(function () { renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
@@ -925,6 +960,7 @@
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
     requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
+    kindWord: kindWord, KIND: KIND,
   });
 
   var Accounts = window.AccountViews({
