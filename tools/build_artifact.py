@@ -30,10 +30,14 @@ CAPABILITIES = {
         {"path": "people", "read": "view", "write": "admin"},
         {"path": "staffing", "read": "view", "write": "admin"},
         {"path": "profiles", "read": "admin", "write": "admin"},
+        {"path": "contacts", "read": "admin", "write": "admin"},  # cell numbers from the staff list
         {"path": "members", "read": "view", "write": "admin"},
         {"path": "members/{self}", "write": "interact"},
         {"path": "trades", "read": "view", "write": "interact"},
         {"path": "tradeReplies", "read": "view", "write": "interact"},
+        # Corrections: each member writes and reads only their own record; admins read and update all.
+        {"path": "corrections", "read": "admin", "write": "admin"},
+        {"path": "corrections/{self}", "read": "interact", "write": "interact"},
     ]},
     "user": {},
 }
@@ -103,6 +107,7 @@ def main():
         f"<script>\n{read('dashboard.js')}</script>\n"
         f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('awards.js')}</script>\n"
+        f"<script>\n{read('corrections.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)

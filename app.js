@@ -79,12 +79,13 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
     $("awards-link").classList.toggle("on", v === "awards");
+    $("fixes-link").classList.toggle("on", v === "fixes");
     store("view", v);
     render();
   }
@@ -98,6 +99,7 @@
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
+    else if (state.view === "fixes") Fix.render();
     else renderRank();
   }
 
@@ -118,9 +120,11 @@
       var s = shift(p, d);
       if (!s) return;
       var o = ownerOn(p, d);
-      var covs = M.coversOn(p.pos, d, recs.covers), cov = covs[0] || null;
+      var covs = M.coversOn(p.pos, d, recs.covers);
       var away = o.key ? M.actingOn(o.key, d, recs.covers) : null;
       var status = o.key ? M.statusFor(o.key, d, recs.statuses) : null;
+      // Acting and covering take the seat; shadowing and extra fill it only when the owner isn't working.
+      var cov = covs.filter(M.takesSeat)[0] || ((status || away || !o.name) && covs[0]) || null;
       var base = { slot: p, co: s.co || home(p), role: s.role, swingCover: s.swing && s.co !== p.company, tour: s.tour };
       rows.push(Object.assign({}, base, {
         who: o.person, name: o.name, status: status, moved: o.moved,
@@ -130,7 +134,7 @@
         var coverer = byPos[c.coverKey];
         var coverStatus = M.statusFor(c.coverKey, d, recs.statuses);
         rows.push(Object.assign({}, base, {
-          who: coverer || null, name: coverer ? coverer.name : c.coverName, acting: c,
+          who: coverer || null, name: coverer ? coverer.name : c.coverName, acting: c, kind: kindOf(c),
           status: coverStatus, off: !!coverStatus,
         }));
       });
@@ -150,6 +154,14 @@
     var mv = M.movedTo(p.pos, d, recs.covers);
     return mv && byPos[mv.targetPos] ? byPos[mv.targetPos] : p.added && !p.tour ? null : p;
   }
+  // Cover kind for a record (acting, cover, shadow, extra) and its wording.
+  var KIND = { acting: ["Acting", "Acting for", "Acting at"], cover: ["Covering", "Covering for", "Covering at"],
+    shadow: ["Shadowing", "Shadowing", "Shadowing at"], extra: ["Also assigned", "Also assigned with", "Also at"] };
+  function kindOf(c) {
+    var who = byPos[c.coverKey], seat = byPos[c.targetPos];
+    return M.coverKind(c, who && who.rank, seat && seat.rank);
+  }
+  function kindWord(c, i) { return M.isMove(c) ? ["Moved", "Moved to", "Moved to"][i || 0] : KIND[kindOf(c)][i || 0]; }
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
 
@@ -181,7 +193,7 @@
       else coveredN++;
     });
     var offParts = OFF_CODES.filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
-    if (awayN) offParts.push(awayN + " acting elsewhere");
+    if (awayN) offParts.push(awayN + " covering elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
     var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
     if (phone) {
@@ -199,6 +211,7 @@
       $("date-results").innerHTML = '<div class="empty">Nobody matches this filter on ' + esc(shortDate(d)) + ". Clear the filter or pick another rank.</div>";
       return;
     }
+    rows = mergeCovered(rows);
     var groups = {};
     rows.forEach(function (r) { (groups[r.slot.rank] = groups[r.slot.rank] || []).push(r); });
     var html = RANK_ORDER.filter(function (r) { return groups[r]; }).map(function (r) {
@@ -207,10 +220,8 @@
         // Phones: the same rank groups as a list, one row per person (company, name, position, tour, status).
         return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + '</span></summary><ul class="plist">' +
           list.map(function (x) {
-            var name = x.name
-              ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
-              : '<span class="vacant">Vacant</span>';
-            return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(Organization.apparatus(x.co)) + '</span><span class="pl-main">' + name +
+            var name = nameCell(x);
+            return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(Organization.apparatus(x.co)) + '</span><span class="pl-main"><span class="pl-names">' + name + "</span>" +
               '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
               '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
           }).join("") + "</ul></details>";
@@ -218,9 +229,7 @@
       return '<details class="group" open><summary>' + esc(r) + ' <span class="n">' + list.length + "</span></summary>" +
         '<div class="table-wrap"><table class="list"><thead><tr><th>Company</th><th>Name</th><th>Position</th><th>Tour</th><th></th></tr></thead><tbody>' +
         list.map(function (x) {
-          var name = x.name
-            ? (x.who ? '<button class="linkish" data-pos="' + esc(x.who.pos) + '">' + esc(x.name) + "</button>" : esc(x.name))
-            : '<span class="vacant">Vacant</span>';
+          var name = nameCell(x);
           var tags = rowTags(x);
           return "<tr" + (x.off ? ' class="is-off"' : "") + "><td class=\"co\">" + esc(x.co) + "</td><td>" + name + "</td><td>" + esc(x.slot.title) +
             (x.role ? " · " + esc(x.role) : "") + (x.slot.added ? "" : ' <span class="hint">' + esc(x.slot.pos) + "</span>") + '</td><td class="mono">' + x.tour + "</td><td>" +
@@ -230,23 +239,53 @@
     $("date-results").innerHTML = html;
   }
 
+  // One row per covered seat: the person working it, with the holder beside them struck through.
+  function mergeCovered(rows) {
+    var holders = new Map();
+    rows.forEach(function (r) { if (!r.acting && r.coveredBy && r.name) holders.set(r.coveredBy, r); });
+    var used = new Set();
+    rows.forEach(function (r) {
+      var h = r.acting && holders.get(r.acting);
+      if (h && !used.has(h)) { r.held = h; used.add(h); }
+    });
+    // Someone covering the seat but off (e.g. on D) sits beside whoever is working it in their place.
+    rows.forEach(function (r) {
+      if (!r.acting || !r.off || used.has(r)) return;
+      var w = rows.filter(function (x) { return x !== r && x.slot === r.slot && x.acting && !x.off && !x.held && !used.has(x); })[0];
+      if (w) { w.held = r; used.add(r); }
+    });
+    return rows.filter(function (r) { return !used.has(r); });
+  }
+  function whoLink(name, who) {
+    return who ? '<button class="linkish" data-pos="' + esc(who.pos) + '">' + esc(name) + "</button>" : esc(name);
+  }
+  function nameCell(x) {
+    if (!x.name) return '<span class="vacant">Vacant</span>';
+    var h = x.held;
+    return whoLink(x.name, x.who) + (h ? ' <s class="held">' + whoLink(h.name, h.who) + "</s>" +
+      (h.status ? " " + statusPill(h.status) : h.away ? ' <span class="hint">at ' + esc((byPos[h.away.targetPos] || {}).company || h.away.targetPos) + "</span>" : "") : "");
+  }
   // Who a trade cover works for: the poster of the trade (they may be covering someone else's seat themselves).
   function tradePoster(c) {
     var t = (recs.trades || []).filter(function (x) { return x.id === c.tradeId; })[0];
     return t ? nameOf(t.posterKey) : null;
   }
-  // Tags for a Who's working row: acting, covered, swing, open for bid, added.
+  // Tags for a Who's working row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(tradePoster(x.acting) || x.slot.name || "vacant spot")
-      : /^2027 (award|assignment)/.test(x.acting.note || "") ? "2027 move" : "Acting for " + esc(x.slot.name || "vacant spot")) + "</span>");
-    if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
+    if (x.acting && x.kind !== "extra") {
+      var k = KIND[x.kind] || KIND.cover;
+      tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(tradePoster(x.acting) || x.slot.name || "vacant spot")
+        : /^2027 (award|assignment)/.test(x.acting.note || "") ? "2027 move"
+        : x.held ? k[0] : x.slot.name ? k[1] + " " + esc(x.slot.name) : k[0] + " · vacant spot") + "</span>");
+    }
+    if (x.away) tags.push('<span class="tag tag-away">' + kindWord(x.away, 2) + " " + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
     if (x.swingCover) tags.push('<span class="tag">Swing from ' + esc(x.slot.company) + "</span>");
     else if (x.slot.swingType && !x.acting) tags.push('<span class="tag">' + esc(x.slot.swingType) + "</span>");
     if (x.slot.open && !x.acting && !x.moved) tags.push('<span class="tag tag-open">Spot open for bid</span>');
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
-    if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">2027 seat</span>');
+    if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">' + (/^2027 (award|assignment)/.test(x.moved.note || "") ? "2027 seat" : "Moved here") + "</span>");
     return tags;
   }
 
@@ -307,6 +346,57 @@
     $("person-input").setAttribute("aria-expanded", "false");
     store("person", pos);
     if (state.view !== "person") setView("person"); else renderPerson();
+  }
+
+  /* ---------- List sheet: the people or seats behind a count (Stats summary) ----------
+     spec: {title, people: [{p, detail, note}]} grouped by rank, or {title, seats: [{p, detail}]} grouped by battalion. */
+  var listSpec = null;
+  function showList(spec) {
+    listSpec = spec;
+    $("list-q").value = "";
+    drawList();
+    $("list-sheet").hidden = false;
+    $("list-q").focus();
+  }
+  function drawList() {
+    var spec = listSpec, match = makeMatcher($("list-q").value.trim());
+    var rows = (spec.people || spec.seats).filter(function (r) {
+      return !match || match({ name: r.p.name || "", title: r.p.title || "", co: home(r.p), tour: tourOn(r.p, state.dashDate), pos: r.p.pos, id: r.p.emplId });
+    });
+    var total = (spec.people || spec.seats).length;
+    $("list-title").textContent = spec.title + " · " + total;
+    var groups = {}, order = [];
+    rows.forEach(function (r) {
+      var g;
+      if (spec.people) g = r.p.rank || "Other";
+      else { var o = Organization.locate(r.p.company); g = o ? o.division.name + " · " + o.battalion.name : "Other"; }
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(r);
+    });
+    if (spec.people) order.sort(function (a, b) { return (RANK_ORDER.indexOf(a) + 99) % 99 - (RANK_ORDER.indexOf(b) + 99) % 99; });
+    else order.sort(function (a, b) { return Organization.order(groups[a][0].p.company) - Organization.order(groups[b][0].p.company); });
+    $("list-body").innerHTML = (rows.length < total ? '<p class="hint">' + rows.length + " of " + total + " match.</p>" : "") +
+      (rows.length ? order.map(function (g) {
+        var list = groups[g].sort(function (a, b) { return coKey(home(a.p)).localeCompare(coKey(home(b.p))) || String(a.p.name).localeCompare(String(b.p.name)); });
+        return '<details class="group" open><summary>' + esc(g) + ' <span class="n">' + list.length + '</span></summary><ul class="tlist plain list-rows">' +
+          list.map(function (r) {
+            var t = tourOn(r.p, state.dashDate);
+            var who = spec.people
+              ? (byPos[r.p.pos] ? '<button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : esc(r.p.name))
+              : '<b class="mono">' + esc(r.p.pos) + "</b>" + (r.p.name ? ' <button class="linkish" data-list-pos="' + esc(r.p.pos) + '">' + esc(r.p.name) + "</button>" : "");
+            return "<li>" + who + ' <span class="hint">' + esc(r.p.title || "") + (spec.people && !r.p.added ? " · " + esc(r.p.pos) : "") + (t ? " · T" + t : "") + "</span>" +
+              (r.detail ? "<div>" + esc(r.detail) + "</div>" : "") + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "") + "</li>";
+          }).join("") + "</ul></details>";
+      }).join("") : '<p class="hint">Nothing matches.</p>');
+  }
+  function wireList() {
+    $("list-q").oninput = drawList;
+    $("list-sheet").addEventListener("click", function (e) {
+      if (e.target.closest("[data-close]")) { $("list-sheet").hidden = true; return; }
+      var b = e.target.closest("[data-list-pos]");
+      if (b) { $("list-sheet").hidden = true; choosePerson(b.dataset.listPos); }
+    });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") $("list-sheet").hidden = true; });
   }
 
   function renderPerson() {
@@ -372,13 +462,13 @@
           (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
           kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
-      (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : "Covering", slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
+      (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow), slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
       (moveNext ? kv(moveNext.start > iso(t) ? "Own seat from " + shortDate(fromIso(moveNext.start)) : "Own seat", (byPos[moveNext.targetPos] || {}).title + " " + moveNext.targetPos +
         (actingNow && (!actingNow.end || actingNow.end >= moveNext.start) ? " · the cover above continues until it's ended" : "")) : "") +
-      (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + rangeText(coveredNow)) : "") +
+      (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -395,13 +485,15 @@
       next.map(function (n) {
         return "<li" + (tappable ? ' class="tap" data-day="' + iso(n.d) + '"' : "") + '><span class="when">' + esc(shortDate(n.d)) + (n.s.status ? "" : Trades.tradeLink(p, n.d)) +
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
-          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? "Acting " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
+          " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
       historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
+    Fix.wireLinks($("person-detail"));
+    Fix.prefill(p);
     wireDates(p);
     // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
     out.querySelectorAll("[data-day]").forEach(function (el) {
@@ -554,8 +646,8 @@
     })).concat(recs.covers.filter(function (c) { return c.coverKey === p.pos || c.targetPos === p.pos; }).map(function (c) {
       var mine = c.coverKey === p.pos;
       return { kind: "covers", id: c.id, trade: !!c.tradeId, sort: c.start, openEnded: !c.end && c.start <= iso(today()),
-        html: '<span class="st st-A">' + (mine ? "AC" : "CV") + "</span> <b>" + (mine ? "Covering " + esc(slotLabel(c.targetPos))
-          : "Covered by " + esc(c.coverName || nameOf(c.coverKey))) + "</b> " + esc(rangeText(c)), note: c.note };
+        html: '<span class="st st-A">' + (mine ? "AC" : "CV") + "</span> <b>" + (mine ? kindWord(c) + " " + esc(slotLabel(c.targetPos))
+          : esc(c.coverName || nameOf(c.coverKey)) + " · " + kindWord(c).toLowerCase()) + "</b> " + esc(rangeText(c)), note: c.note };
     })).sort(function (a, b) { return b.sort.localeCompare(a.sort); });
 
     var list = items.length ? '<ul class="hist">' + items.map(function (it) {
@@ -576,6 +668,9 @@
       '<form class="edit" id="f-cover" novalidate><h4>Cover another position</h4>' +
       '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>" +
       '<label>Position to cover<input type="text" id="fc-target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>' +
+      '<label>Type<select id="fc-kind"><option value="">Covering or acting (by rank)</option><option value="cover">Covering · same rank, in someone\'s spot</option>' +
+      '<option value="acting">Acting · temporarily promoted to the seat\'s rank</option><option value="shadow">Shadowing · day-to-day LWLP (usually VR)</option>' +
+      '<option value="extra">Also in this seat · same tour, alongside the holder (e.g. two captains)</option></select></label>' +
       '<div class="row"><label>From<input type="date" id="fc-start" value="' + t + '" required></label>' +
       '<label>To<input type="date" id="fc-end" disabled></label></div>' +
       '<label class="chk"><input type="checkbox" id="fc-open" checked> No end date yet</label>' +
@@ -634,8 +729,9 @@
       if (!start) return say(msg, "Pick a start date.", true);
       if (end && end < start) return say(msg, "The end date is before the start date.", true);
       say(msg, "Saving…");
-      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim() })
-        .then(function () { renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
+        kind: $("fc-kind").value || null })
+        .then(function () { Fix.saved(); renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
     fs.onsubmit = function (e) {
@@ -645,7 +741,7 @@
       if (end && end < start) return say(msg, "The end date is before the start date.", true);
       say(msg, "Saving…");
       backend.addStatus({ pos: p.pos, name: p.name, code: $("fs-code").value, start: start, end: end, note: $("fs-note").value.trim() })
-        .then(function () { renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
     if (ft) ft.onsubmit = function (e) {
       e.preventDefault();
@@ -654,7 +750,7 @@
       if (tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
       say(msg, "Saving…");
       backend.addTourChange({ pos: p.pos, name: p.name, tour: tour, effective: eff, note: $("ft-note").value.trim() })
-        .then(function () { renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
+        .then(function () { Fix.saved(); renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
     };
   }
   function say(el, text, isErr) {
@@ -667,10 +763,10 @@
     if (!c || !(c.email || c.phoneMobile || c.phoneOther)) return "";
     var bits = [];
     if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
-    [["Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+    [[c.staffList ? "" : "Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
       if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
     });
-    return '<div class="kv contact-kv"><span class="k">Contact for swaps' + (c.shared ? "" : " · not shared, admins only") + '</span><span class="v contact-v">' +
+    return '<div class="kv contact-kv"><span class="k">' + (c.staffList ? "Cell · staff list, admins only" : "Contact for swaps" + (c.shared ? "" : " · not shared, admins only")) + '</span><span class="v contact-v">' +
       bits.join('<span class="sep"> · </span>') + "</span></div>";
   }
   function rangeText(r) {
@@ -805,6 +901,8 @@
 
     document.querySelectorAll(".tab[data-view]").forEach(function (b) { b.onclick = function () { setView(b.dataset.view); }; });
     wireSheet();
+    wireList();
+    Fix.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -856,6 +954,7 @@
     state.sixMonth = new Date(t.getFullYear(), t.getMonth(), 1);
     Dash.wireDash();
     $("awards-link").onclick = function () { setView("awards"); };
+    $("fixes-link").onclick = function () { setView("fixes"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -942,7 +1041,14 @@
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
+    if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     return false;
+  }
+  // Open corrections, on the header link and the menu item (admins).
+  function fixesBadge() {
+    var n = Fix.count();
+    $("fixes-link").textContent = "Corrections" + (n ? " (" + n + ")" : "");
+    $("fixes-count").textContent = n ? n + " open" : "";
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
@@ -950,6 +1056,7 @@
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
+    $("fixes-link").hidden = !tabAllowed("fixes");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
@@ -1032,6 +1139,7 @@
     people: function () { return people; }, data: function () { return data; }, STATUS_LABEL: STATUS_LABEL, coKey: coKey,
     backend: function () { return backend; }, state: function () { return state; },
     requiredData: function () { return requiredData; }, isPhone: function () { return isPhone(); },
+    kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
   var Trades = window.TradeViews({
@@ -1039,6 +1147,14 @@
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
+    afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+  });
+
+  var Fix = window.CorrectionViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, slotFromInput: slotFromInput, choosePerson: choosePerson,
+    renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
   var Awards = window.AwardViews({
@@ -1057,8 +1173,10 @@
   /* ---------- Start ---------- */
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
-      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [] };
+      staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
+      corrections: r.corrections || [] };
     recsVersion++;
+    fixesBadge();
     if (r.contacts) contacts = r.contacts;
     if (booted) rebuildPeople();
     renderAll();

@@ -534,7 +534,12 @@ details.fold[open] > summary { margin-bottom: 10px; }
 .plist .pl-sub { color: var(--muted); font-size: 0.8rem; }
 .plist .pl-tags { grid-column: 2; display: flex; flex-wrap: wrap; gap: 4px; }
 .plist .pl-tags:empty { display: none; }
-.plist li.is-off .pl-main > :first-child { text-decoration: line-through; color: var(--muted); }
+.plist li.is-off .pl-names > :first-child { text-decoration: line-through; color: var(--muted); }
+.pl-names { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 8px; }
+/* Covered seat: the holder beside the person working it, struck through */
+s.held { color: var(--muted); text-decoration-color: var(--muted); font-weight: 400; }
+s.held .linkish, .plist .pl-main s.held .linkish { color: var(--muted); font-weight: 400; text-decoration: line-through; }
+s.held + .st { margin-left: 2px; }
 
 /* ---------- Phone layout (≤ 640px): compact header, bottom tab bar, More sheet ---------- */
 .menu-btn, .tab-ico, .lbl-phone, .tab-more { display: none; }
@@ -741,3 +746,21 @@ ul.aw-list li { display: flex; flex-wrap: wrap; justify-content: space-between; 
 li.aw-check .aw-st { background: var(--accent-soft); color: var(--accent); }
 li.aw-ready .aw-st { background: var(--tr-soft); color: var(--tr); }
 li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(--muted); font-weight: 500; }
+
+/* Corrections: "Something wrong?" link, Verify my info, admin list */
+.fix-kv { flex-basis: 100%; }
+.fix-link { font-size: 0.85rem; color: var(--muted); }
+.fix-form label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.fix-form select, .fix-form input { width: 100%; }
+ul.tlist.verify li { align-items: center; }
+ul.tlist.fixes li { align-items: flex-start; }
+ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.fix-applying { border-color: var(--today); display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+
+/* Stats summary counts open the list behind them */
+.num-link { font: inherit; font-variant-numeric: tabular-nums; text-decoration-color: var(--muted); }
+.num-link:hover { text-decoration-color: var(--accent); }
+.list-panel { width: min(100%, 720px); }
+#list-q { width: 100%; margin-bottom: 4px; }
+ul.list-rows li { padding: 7px 14px; }
+ul.list-rows li .linkish { font-weight: 600; }

@@ -18,6 +18,17 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 ### Hosting on Firebase
 Hosting, Google sign-in, Firestore and Storage in place of `server.py`; see **`FIREBASE_PLAN.md`** for the data model, security rules, functions, migration, tests and launch steps. First confirm with the department or city IT where employee data may be hosted.
 
+### Sign-in without a Google account
+Offer these alongside Google sign-in (all built into Firebase Auth), so members without a Google account can still sign in:
+
+- **Email link (no password):** enter any email address and tap the sign-in link sent to it. Free; nothing to forget. This is the main backup.
+- **Phone number (text code):** enter a cell number and type the 6-digit code texted to it. Good for people who don't check email, and it supplies the number for trade text alerts. Each text costs a few cents (check current Firebase pricing; set a budget alert).
+- **Maybe later:**
+  - **Microsoft sign-in** with city work accounts, if the city uses Microsoft 365 and IT allows it;
+  - **Apple sign-in**, which needs a $99/year Apple developer account;
+  - **email and password**, only if members ask for it.
+- **Same claim flow for everyone:** after any sign-in, find yourself by name or Empl ID and confirm your station and tour; an admin approves or undoes the claim. One person can link more than one sign-in method to the same account.
+
 ### Installable app (PWA)
 Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.
 
@@ -90,7 +101,15 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
 
+### Invite texts from admins: sign up, claim, verify
+Builds on the invites above; this one comes from an admin, not a trade.
+- **Who:** an admin picks everyone, a battalion, or only people not yet verified, and sends a text to the staff-list cell number on file (admin-only contacts).
+- **Text:** "SFFD Tour Schedule: confirm your info and get trade alerts → <link>". The link carries a one-time code tied to the person's seat (expires after 14 days; one active invite per person).
+- **Opening it:** sign in (Google, email link or phone code), then the claim is filled in with their seat; they confirm station and tour and land on **Verify my info**.
+- **Safety:** only admins send; STOP is honoured (Twilio opt-out list); a seat already claimed and verified by someone else goes to an admin instead.
+
 ## Shipped
+- Corrections: **Something wrong?** on every person page and **Verify my info** after "This is me" (also on your own page). Members send fixes (seat, leave / WE, covering / acting / shadowing, tour, Employee ID, own cell number, other); a "This is me" station or tour that differs from the roster sends one automatically. Admins see them under **Corrections** (count on the header link and menu); **Apply** opens the person's page with the edit form filled in and marks it applied on save; a cell number goes straight into the admin-only contacts.
 - Google sign-in, My page, Admin; claim-and-approve, and requests from people not on the vacancy list.
 - Tour changes, VA/S/D leave, cover assignments, added people.
 - Dashboard (staffing summary by apparatus, stat summary), "6 of 9" tour intersections, Documents menu.

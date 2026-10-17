@@ -410,8 +410,12 @@
         e.preventDefault();
         var p = byPos()[ui.claimPick];
         api.say($("cl-msg"), "Saving…");
-        backend().claimMember({ key: p.pos, emplId: p.emplId || null, confirmedStation: $("cl-co").value, confirmedTour: +$("cl-tour").value })
-          .then(function () { ui.claimPick = null; ui.claimQ = ""; api.renderAll(true); }, function (er) { api.say($("cl-msg"), er.message, true); });
+        var station = $("cl-co").value, tour = +$("cl-tour").value;
+        backend().claimMember({ key: p.pos, emplId: p.emplId || null, confirmedStation: station, confirmedTour: tour })
+          .then(function () {
+            ui.claimPick = null; ui.claimQ = ""; api.renderAll(true);
+            if (api.afterClaim) api.afterClaim(p, station, tour);
+          }, function (er) { api.say($("cl-msg"), er.message, true); });
       };
     }
     // Admins: who has claimed whom, with Undo. A station or tour that differs from the roster is flagged.

@@ -74,7 +74,7 @@
         if (covered) return;
         if (!r.name) b.short.push("Vacant seat · " + r.slot.title + " (" + r.slot.pos + ")");
         else if (r.status) b.short.push(r.name + " · " + api.STATUS_LABEL[r.status] + " · not covered");
-        else if (r.away) b.short.push(r.name + " · acting at " + ((api.byPos()[r.away.targetPos] || {}).company || r.away.targetPos));
+        else if (r.away) b.short.push(r.name + " · " + api.kindWord(r.away, 2).toLowerCase() + " " + ((api.byPos()[r.away.targetPos] || {}).company || r.away.targetPos));
         else b.short.push(r.name + " · off");
       });
       Object.keys(defs).forEach(function (co) { bucket(co); });
@@ -90,7 +90,7 @@
     }
 
     // Someone filling a seat that isn't their own: a cover assignment, or an added person not on the vacancy list.
-    function isCovering(r) { return !!(r.acting || (r.who && r.who.added)); }
+    function isCovering(r) { return !!((r.acting && r.kind !== "extra") || (r.who && r.who.added)); }
 
     function stats(d) {
       var isoD = api.iso(d), recs = api.recs(), counts = { VA: 0, S: 0, D: 0, WE: 0, TR: 0 }, named = 0, full = 0;
@@ -99,10 +99,44 @@
         var st = M.statusFor(p.pos, d, recs.statuses);
         if (st) counts[st]++; else full++;
       });
-      var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD); }).length;
+      var acting = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD) && !M.isMove(c); }).length;
       var open = api.data().filter(function (p) { return p.open; }).length;
       var vacant = api.data().filter(function (p) { return !p.name; }).length;
       return { named: named, full: full, VA: counts.VA, S: counts.S, D: counts.D, WE: counts.WE, TR: counts.TR, acting: acting, open: open, vacant: vacant };
+    }
+
+    /* The rows behind one Stats summary count, for the list sheet: {title, people: [...]} or {title, seats: [...]}. Same rules as
+       stats(d), so the list length always equals the number in the table. */
+    function statList(key, d) {
+      var isoD = api.iso(d), recs = api.recs(), byPos = api.byPos(), label = (STAT_ROWS.filter(function (r) { return r[0] === key; })[0] || [])[1];
+      var title = label + " · " + api.shortDate(d);
+      if (key === "acting") {
+        var cv = recs.covers.filter(function (c) { return c.start <= isoD && (!c.end || c.end >= isoD) && !M.isMove(c); });
+        return { title: title, people: cv.map(function (c) {
+          var p = byPos[c.coverKey], seat = byPos[c.targetPos];
+          return { p: p || { pos: c.coverKey, name: c.coverName || c.coverKey, rank: "" },
+            detail: api.kindWord(c) + " · " + (seat ? (seat.name && seat.pos !== c.coverKey ? seat.name + "'s seat, " : "") + seat.title + (seat.added ? "" : " " + seat.pos) : c.targetPos) +
+              (c.end ? " · to " + api.shortDate(api.fromIso(c.end)) : ""), note: c.note };
+        }) };
+      }
+      if (key === "open" || key === "vacant") {
+        return { title: title, seats: api.data().filter(function (p) { return key === "open" ? p.open : !p.name; }).map(function (p) {
+          var c = M.coversOn(p.pos, d, recs.covers)[0];
+          return { p: p, detail: c ? "Covered by " + (c.coverName || c.coverKey) : "" };
+        }) };
+      }
+      var out = [];
+      api.people().forEach(function (p) {
+        var code = M.statusFor(p.pos, d, recs.statuses);
+        if (key === "full" ? code : code !== key) return;
+        var rec = null;
+        if (code) recs.statuses.forEach(function (s) {
+          if (s.pos === p.pos && s.code === code && s.start <= isoD && (!s.end || s.end >= isoD) && (!rec || String(s.createdAt) > String(rec.createdAt))) rec = s;
+        });
+        out.push({ p: p, detail: rec ? "From " + api.shortDate(api.fromIso(rec.start)) + (rec.end ? " to " + api.shortDate(api.fromIso(rec.end)) : " onward") : "",
+          note: rec && rec.note });
+      });
+      return { title: title, people: out };
     }
 
     /* ---------- Dashboard ---------- */
@@ -155,7 +189,7 @@
             return '<li><button class="linkish" data-pos="' + esc(x.who ? x.who.pos : x.slot.pos) + '">' + esc(x.name) + "</button> " +
               '<span class="hint">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span>" +
               (isCovering(x) ? ' <span class="tag tag-acting">Covering</span>' : ' <span class="tag">Regular</span>') +
-              (x.acting ? ' <span class="tag tag-acting">Acting for ' + esc(x.slot.name || "vacant spot") + "</span>" : "") +
+              (x.acting ? ' <span class="tag tag-acting">' + (api.KIND[x.kind] || api.KIND.cover)[1] + " " + esc(x.slot.name || "vacant spot") + "</span>" : "") +
               (x.swingCover ? ' <span class="tag">Swing from ' + esc(x.slot.company) + "</span>" : "") +
               (x.slot.added ? ' <span class="tag">Added</span>' : "") + "</li>";
           }).join("") + "</ul>" : '<p class="hint">Nobody scheduled.</p>') + "</div>" +
@@ -231,8 +265,7 @@
         reportCard(d, all, working) +
         '<div class="dash-grid">' +
         '<div class="card stats"><h3>Stats summary</h3><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) + statRow("Traded off (TR)", st.TR) +
-        statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
+        statRows(st) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         "</tbody></table>" + '<p class="hint" id="st-note"></p></div>' +
         '<div class="card summary-card"><div class="cal-head"><h3>Schedule summary</h3>' +
@@ -286,7 +319,7 @@
                 nums(r.working, r.required) + "</button>" +
                 (coOpen ? '<ul class="pt-people">' + x.people.map(function (p) {
                   var tags = [];
-                  if (p.acting) tags.push("covering " + (p.slot.name || "vacant seat"));
+                  if (p.acting) tags.push((api.KIND[p.kind] || api.KIND.cover)[1].toLowerCase() + " " + (p.slot.name || "vacant seat"));
                   else if (p.swingCover) tags.push("swing from " + p.slot.company);
                   if (p.slot.open && !p.acting) tags.push("open for bid");
                   return '<li><button class="linkish" data-pos="' + esc(p.who ? p.who.pos : p.slot.pos) + '">' + esc(p.name) + "</button>" +
@@ -318,8 +351,7 @@
         '<div class="pt">' + tree.html + "</div>" +
         reportCard(d, all, tree.working) +
         '<details class="card fold"><summary><h3>Stats summary</h3></summary><table class="list kv-table"><tbody>' +
-        statRow("Full duty", st.full) + statRow("Vacation (VA)", st.VA) + statRow("Sick (S)", st.S) + statRow("Disabled (D)", st.D) + statRow("Working elsewhere (WE)", st.WE) + statRow("Traded off (TR)", st.TR) +
-        statRow("Acting / covering", st.acting) + statRow("Spots open for bid", st.open) + statRow("Vacant seats", st.vacant) +
+        statRows(st) +
         '<tr><th scope="row">Average age</th><td class="num" id="st-age">…</td></tr><tr><th scope="row">Average YOS</th><td class="num" id="st-yos">…</td></tr>' +
         '</tbody></table><p class="hint" id="st-note"></p></details>';
       if ($("report-card")) $("report-card").ontoggle = function () { dash.reportOpen = this.open; };
@@ -380,7 +412,7 @@
           var st = recs.statuses.filter(function (x) { return x.pos === key && x.code === "D" && x.start <= isoD && !x.end; })[0];
           var away = M.actingOn(key, d, recs.covers);
           if (st) reason = name + " · Disabled since " + api.shortDate(api.fromIso(st.start));
-          else if (away) reason = name + " · acting at " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
+          else if (away) reason = name + " · " + api.kindWord(away, 2).toLowerCase() + " " + ((api.byPos()[away.targetPos] || {}).company || away.targetPos);
         }
         if (!reason) return;
         var cover = recs.covers.filter(function (c) { return c.targetPos === p.pos && !M.isMove(c) && (!c.end || c.end >= isoD); })
@@ -457,7 +489,14 @@
       });
     }
 
-    function statRow(k, v) { return '<tr><th scope="row">' + esc(k) + '</th><td class="num">' + v + "</td></tr>"; }
+    // Stats summary rows; each non-zero count opens the list behind it (statList).
+    var STAT_ROWS = [["full", "Full duty"], ["VA", "Vacation (VA)"], ["S", "Sick (S)"], ["D", "Disabled (D)"], ["WE", "Working elsewhere (WE)"],
+      ["TR", "Traded off (TR)"], ["acting", "Acting / covering"], ["open", "Spots open for bid"], ["vacant", "Vacant seats"]];
+    function statRows(st) { return STAT_ROWS.map(function (r) { return statRow(r[1], st[r[0]], r[0]); }).join(""); }
+    function statRow(k, v, key) {
+      return '<tr><th scope="row">' + esc(k) + '</th><td class="num">' +
+        (key && v ? '<button type="button" class="linkish num-link" data-stat="' + key + '">' + v + "</button>" : v) + "</td></tr>";
+    }
     function loadStats(d, n) {
       var my = ++statsReq;
       var b = api.backend();
@@ -475,6 +514,8 @@
         if (e.target.closest("#go-report-date")) { api.state().dashDate = api.fromIso(reportData().asOf); return renderDash(); }
         var g = e.target.closest("[data-goto]");
         if (g) { dash.q = g.dataset.goto; $("dash-q").value = g.dataset.goto; dash.open[g.dataset.goto] = true; dash.reportOpen = true; return renderDash(); }
+        var sl = e.target.closest("[data-stat]");
+        if (sl) return api.showList(statList(sl.dataset.stat, api.state().dashDate));
         var tg = e.target.closest("[data-tog]");
         if (tg) { dash.open[tg.dataset.tog] = tg.getAttribute("aria-expanded") !== "true"; return renderDash(); }
         var t = e.target.closest("[data-sort],[data-drill],[data-edit],[data-reset],[data-cancel]");

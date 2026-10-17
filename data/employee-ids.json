@@ -1,10 +1,60 @@
 {
- "source": "IDs from the 2027 transfer list and 2027 Vacancy Awards (26 A-082), matched by name and current assignment",
+ "source": "IDs from the 2027 transfer list, 2027 Vacancy Awards (26 A-082), assignment change notices and the internal staff list, matched by name and current assignment",
  "ids": {
+  "01BO002M": {
+   "id": "AT0783",
+   "name": "Attia,Laura C",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "01BO003M": {
+   "id": "PE8271",
+   "name": "Peterson,Michael D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01BO201M": {
+   "id": "RI1361",
+   "name": "Rivieccio,Claudio N",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "01BO202M": {
+   "id": "MO5148",
+   "name": "Molloy,Daniel J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "01BO203M": {
+   "id": "TH7542",
+   "name": "Thompson,David B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "01BT204M": {
    "id": "CH1691",
    "name": "Choy,A",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "01ENL31M": {
+   "id": "MC4392",
+   "name": "McCloskey,Daniel Patrick",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01EOA06M": {
+   "id": "LO4180",
+   "name": "Locks,Hamid",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01EOA07M": {
+   "id": "KE0810",
+   "name": "Kelly,Timothy P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01EOA08M": {
+   "id": "MO3051",
+   "name": "Moreau,Sebastien M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01EOC01M": {
+   "id": "SC1354",
+   "name": "Schnelker,Raymond",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "01EOD05M": {
    "id": "EV3145",
@@ -16,6 +66,51 @@
    "name": "Villavicencio,Julian A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "01EOL02M": {
+   "id": "CA1510",
+   "name": "Calonico III,Frederick L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01EOL03M": {
+   "id": "BE9782",
+   "name": "Bendo,Donny",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "01ETL10M": {
+   "id": "KI8274",
+   "name": "Kimmel,David J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "01ROR01M": {
+   "id": "MA2244",
+   "name": "Mason,Michael",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01ROR02M": {
+   "id": "BL3302",
+   "name": "Blair,Christopher M.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01ROR03M": {
+   "id": "SM6264",
+   "name": "Smith,Joshua G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOC22M": {
+   "id": "MU2368",
+   "name": "Mullane,Sean E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOD18M": {
+   "id": "QU0607",
+   "name": "Quesada,Geoffrey R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOD19M": {
+   "id": "ZI6472",
+   "name": "Zimmerman,Shawn A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "01SOD20M": {
    "id": "CO1959",
    "name": "Coppin,Raleigh J",
@@ -26,15 +121,90 @@
    "name": "Estupinian,Gavin D",
    "source": "2027 transfer list"
   },
+  "01SOE16M": {
+   "id": "WA0765",
+   "name": "Waterman,Kailin M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOE17M": {
+   "id": "RO2042",
+   "name": "Rodriguez,Steven M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF10M": {
+   "id": "VI3883",
+   "name": "Vickery,Christopher J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF11M": {
+   "id": "CA1263",
+   "name": "Cacharelis,Nicholas G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF12M": {
+   "id": "MA1061",
+   "name": "Mason,Scott J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF13M": {
+   "id": "RY3111",
+   "name": "Ryan,Patrick M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF24M": {
+   "id": "DI6042",
+   "name": "Dietzen,Tyler R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF25M": {
+   "id": "KA0321",
+   "name": "Kauf,Alec G.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01SOF26M": {
+   "id": "VE9839",
+   "name": "Veach,Jay D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "01SOL21M": {
    "id": "NA1978",
    "name": "Nackord,Dwight G",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "01SOL23M": {
+   "id": "CR8813",
+   "name": "Cruz,Stephen D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "01STL30M": {
    "id": "GI1079",
    "name": "Ginotti,Gregory A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01STX14M": {
+   "id": "RA1224",
+   "name": "Ramsey,Bradley H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01TOC05M": {
+   "id": "PA2131",
+   "name": "Pardini,Kevin J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01TOD01M": {
+   "id": "TI1295",
+   "name": "Tizio,Jon J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01TOD02M": {
+   "id": "GO0799",
+   "name": "Gomez,Ivan C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "01TOD03M": {
+   "id": "CR0996",
+   "name": "Creighton,Theodore R",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "01TOE26M": {
    "id": "SM4729",
@@ -45,6 +215,11 @@
    "id": "PE4646",
    "name": "Perez,Patrick L",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "01TOE28M": {
+   "id": "DE6122",
+   "name": "Deguzman,Joerdan J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "01TOF10M": {
    "id": "CH2779",
@@ -61,10 +236,20 @@
    "name": "Sudano,Jared C",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "01TOL04M": {
+   "id": "BR9023",
+   "name": "Browne,Gregory J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "01TOL06M": {
    "id": "HA4631",
    "name": "Harrington,John J",
    "source": "2027 transfer list"
+  },
+  "01TOT29M": {
+   "id": "PA2797",
+   "name": "Pacheco Magana,Jorge F",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "01TOT30M": {
    "id": "DU3091",
@@ -81,10 +266,75 @@
    "name": "Carrillo,Michael E",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "02BO005M": {
+   "id": "GI1082",
+   "name": "Gin,Wayland",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02BO006M": {
+   "id": "VI6015",
+   "name": "Viglizzo,Joseph R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02BO007M": {
+   "id": "SZ1174",
+   "name": "Szutu,Nathan M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02BO205M": {
+   "id": "SC9401",
+   "name": "Schwartz,Matt W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02BO206M": {
+   "id": "HI8693",
+   "name": "Hickey,John A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "02BO207M": {
    "id": "PE8323",
    "name": "Pereira,Joshua M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02DO021M": {
+   "id": "IB7859",
+   "name": "Ibarra,Lorenzo",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02DO022M": {
+   "id": "RO1274",
+   "name": "Rosa,Anthony J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02EOA01M": {
+   "id": "CO1420",
+   "name": "Collinson,Robert E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02EOA30M": {
+   "id": "MC7991",
+   "name": "McFall,Scott D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02EOA31M": {
+   "id": "ME3213",
+   "name": "Mei,Douglas",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02EOC02M": {
+   "id": "LU4695",
+   "name": "Lui,Daniel A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02EOD04M": {
+   "id": "KA7940",
+   "name": "Kavanaugh,John P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02EOD05M": {
+   "id": "WU4526",
+   "name": "Wu,Jimmy N",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "02EOD06M": {
    "id": "TR5497",
@@ -96,15 +346,185 @@
    "name": "Rivas,Marcelo J",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "02EOE09M": {
+   "id": "MO2124",
+   "name": "Morello,John M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02EOL01M": {
+   "id": "PA5702",
+   "name": "Pastori,Sean M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02ETA02M": {
+   "id": "CH2238",
+   "name": "Choi,Young J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02ETX10M": {
+   "id": "YO2415",
+   "name": "Young,Vincent K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "02ROR05M": {
    "id": "AV6782",
    "name": "Avila,Clementino L",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "02ROR07M": {
+   "id": "FI3940",
+   "name": "Filiss,Elisabeth J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOC26M": {
+   "id": "HU6141",
+   "name": "Hutchinson,Matt F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOD21M": {
+   "id": "CA9622",
+   "name": "Caungula,Yusufu B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOD22M": {
+   "id": "BO2021",
+   "name": "Bowers,Brandon A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOD23M": {
+   "id": "HA4076",
+   "name": "Hall,Darryl T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOE18M": {
+   "id": "CA1626",
+   "name": "Calvillo,Alexandro",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02SOE19M": {
+   "id": "PO9799",
+   "name": "Potter,Robert R.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOE20M": {
+   "id": "DU4274",
+   "name": "Duggan,Robert M.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF11M": {
+   "id": "ME6940",
+   "name": "Megia,Rexie I",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF12M": {
+   "id": "MU1883",
+   "name": "Murphy,Liam E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF13M": {
+   "id": "OD3525",
+   "name": "O'Donnell,Daniel F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF15M": {
+   "id": "HU3769",
+   "name": "Hutslar,Curtis S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF16M": {
+   "id": "DO1545",
+   "name": "Domeier,Joey M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOF17M": {
+   "id": "TO8687",
+   "name": "Towner,Ryan E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOL24M": {
+   "id": "MC2192",
+   "name": "McCarthy,Sean E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02SOL25M": {
+   "id": "MU1237",
+   "name": "Murtagh,Andrew J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "02STX14M": {
+   "id": "QW7146",
+   "name": "Qwist,Eigil",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOC07M": {
+   "id": "TH0404",
+   "name": "Thompson,Michael M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOD02M": {
+   "id": "OL2999",
+   "name": "O'Leary,Benjamin K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOD03M": {
+   "id": "UY2152",
+   "name": "Uy,Ryan C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOD04M": {
+   "id": "GE2231",
+   "name": "Gee,Matthew G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "02TOE27M": {
    "id": "CA3082",
    "name": "Castillo,Clarence",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "02TOE29M": {
+   "id": "PE1318",
+   "name": "Pelayo,Miguel A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOF11M": {
+   "id": "BO3518",
+   "name": "Boyle,Thomas J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOF12M": {
+   "id": "BA3346",
+   "name": "Barbero,Emily M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOF13M": {
+   "id": "WA5997",
+   "name": "Watson,Ryan P.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOL05M": {
+   "id": "MI5771",
+   "name": "Miles,Richard A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOL06M": {
+   "id": "DI7183",
+   "name": "Digre,Michael F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOT01M": {
+   "id": "YU0993",
+   "name": "Yu,Dennis",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TOT31M": {
+   "id": "HA1886",
+   "name": "Harrigan,Miles W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "02TTX26M": {
+   "id": "KN3680",
+   "name": "Knuepfel,Kurt H",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "03BO208M": {
    "id": "MC6913",
@@ -121,15 +541,35 @@
    "name": "Kuhn,K",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "03DO028M": {
+   "id": "HO4855",
+   "name": "Horn,Susie B",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "03EOA05M": {
    "id": "FE3953",
    "name": "Feerick,Timothy D",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "03EOA06M": {
+   "id": "YE1036",
+   "name": "Yeo,Alexander C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03EOC22M": {
+   "id": "WH8588",
+   "name": "Whittaker,Dean J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "03EOD24M": {
    "id": "MA1291",
    "name": "Marconi,Gavin R",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03EOD25M": {
+   "id": "TO1321",
+   "name": "Tokuda,Ryan N",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "03EOD26M": {
    "id": "PR1413",
@@ -146,15 +586,60 @@
    "name": "Welsh II,Philip J",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "03EOE29M": {
+   "id": "AR2287",
+   "name": "Armenta,Martin",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03EOL21M": {
+   "id": "SN4792",
+   "name": "Snyder,Jesse S",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "03EOL23M": {
+   "id": "CU1122",
+   "name": "Custodio,Antonio T",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "03ETX30M": {
+   "id": "ME1361",
+   "name": "Menchaca,Joshua",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03ROR09M": {
+   "id": "SC3611",
+   "name": "Schorr,Justin H.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03ROR10M": {
+   "id": "CO3858",
+   "name": "Covitz,Jeffrey A.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03TOC27M": {
+   "id": "CO7835",
+   "name": "Cordero,Kenneth C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "03TOD22M": {
    "id": "WA4890",
    "name": "Walker,Colin L",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "03TOD23M": {
+   "id": "FA2058",
+   "name": "Fazio,Joe R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "03TOD24M": {
    "id": "BR1263",
    "name": "Brown,Patrick A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "03TOE16M": {
+   "id": "AH1713",
+   "name": "Ahern,Brian",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "03TOE17M": {
    "id": "OL3222",
@@ -181,10 +666,50 @@
    "name": "Sanders,Derrick",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "03TOL25M": {
+   "id": "TH4011",
+   "name": "Thornton,Thomas C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03TOL26M": {
+   "id": "MA1284",
+   "name": "Mauberret,Mark R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03TOT19M": {
+   "id": "BL3353",
+   "name": "Blake,Jovan R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "03TOT20M": {
+   "id": "ST5868",
+   "name": "Stiveson,Eric M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "03TOT21M": {
    "id": "RO3648",
    "name": "Ross,Vincin R",
    "source": "2027 transfer list"
+  },
+  "03TTX15M": {
+   "id": "CA1608",
+   "name": "Cannata,Jason V",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04BO211M": {
+   "id": "KA0423",
+   "name": "Kaialoa,Shayne D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "04BO212M": {
+   "id": "LE1207",
+   "name": "Leal,Eric D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "04BO213M": {
+   "id": "RO6076",
+   "name": "Rollins,Floyd K",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "04EOC01M": {
    "id": "AP0725",
@@ -206,20 +731,105 @@
    "name": "Martinez,Ivan",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "04EOE26M": {
+   "id": "CR3133",
+   "name": "Crismon,Kayla M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "04EOE27M": {
    "id": "JO5174",
    "name": "Joyce,Chanel",
    "source": "2027 transfer list"
+  },
+  "04EOE28M": {
+   "id": "PA2835",
+   "name": "Padilla,Cristina M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04EOF23M": {
+   "id": "LE7112",
+   "name": "Lee,Jay K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04EOL02M": {
+   "id": "SW1892",
+   "name": "Swanson,Amy D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "04ETX25M": {
    "id": "WA3686",
    "name": "Wagner,Emily A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "04ROR11M": {
+   "id": "QU0375",
+   "name": "Quinto,Nash D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04ROR12M": {
+   "id": "BA0093",
+   "name": "Bassett,Paul L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04ROR13M": {
+   "id": "KU5388",
+   "name": "Kuzma,Robert C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOC05M": {
+   "id": "CA4618",
+   "name": "Carter,Colin P",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "04TOD07M": {
+   "id": "HO4680",
+   "name": "Hong,Johnny",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOD08M": {
+   "id": "CR5970",
+   "name": "Crisologo,Jordan D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOD09M": {
+   "id": "CA2671",
+   "name": "Cariola,Jarrod R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOE13M": {
+   "id": "RA2887",
+   "name": "Ramirez,Adrian E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOL04M": {
+   "id": "TI2478",
+   "name": "Tibbits,Zachary J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "04TOL06M": {
    "id": "DE0551",
    "name": "Devaty,J",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "04TOT10M": {
+   "id": "AY9528",
+   "name": "Aymerich,David F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOT11M": {
+   "id": "GR4611",
+   "name": "Grace,Timothy J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TOT12M": {
+   "id": "KI1542",
+   "name": "Kikawa,Steven R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "04TTX16M": {
+   "id": "TH1808",
+   "name": "Thomas,Shane M",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "05BO225M": {
    "id": "SC1471",
@@ -231,10 +841,20 @@
    "name": "Cavellini,Neal J.",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "05BO227M": {
+   "id": "OC0537",
+   "name": "O'Connell,James T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "05EOA11M": {
    "id": "MO4643",
    "name": "Moyer,Timothy A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05EOA12M": {
+   "id": "MA6896",
+   "name": "Manfredi,Taylor",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "05EOA13M": {
    "id": "BI1512",
@@ -246,6 +866,41 @@
    "name": "Rosser,Ronald R",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "05EOD08M": {
+   "id": "KE1123",
+   "name": "Kelly,Tyler M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOD09M": {
+   "id": "AN1260",
+   "name": "Anderson,Ross M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOD10M": {
+   "id": "CA1867",
+   "name": "Casserly,Patrick J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOE11M": {
+   "id": "KR1124",
+   "name": "Kristoff,Mitchell R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOE12M": {
+   "id": "CL3130",
+   "name": "Cleary,Brian S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOE13M": {
+   "id": "SW3345",
+   "name": "Sweeney,Stephen",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05EOL05M": {
+   "id": "SI1216",
+   "name": "Silva,Matthew A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "05EOL07M": {
    "id": "SI1725",
    "name": "Silva,Jeremy J",
@@ -256,40 +911,205 @@
    "name": "Capurro,V",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "05ETX14M": {
+   "id": "HA5462",
+   "name": "Hanley,James C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOD05M": {
+   "id": "DU1683",
+   "name": "Dunne,Johnpatrick",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOD06M": {
+   "id": "KE1837",
+   "name": "Keller,Steven A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOD07M": {
+   "id": "DO7697",
+   "name": "Doonan,Scott T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOE30M": {
+   "id": "OB1639",
+   "name": "Oberzeir,Christopher J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOE31M": {
+   "id": "BR5315",
+   "name": "Bracco,Steven R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "05TOF17M": {
    "id": "KA3008",
    "name": "Kasper,Jack A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "05TOL08M": {
+   "id": "WA2639",
+   "name": "Walsh,Kevin B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOL09M": {
+   "id": "ME1493",
+   "name": "Melanephy,Michael P",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "05TOT02M": {
    "id": "MU1445",
    "name": "Murphy,Daniel W",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "05TOT03M": {
+   "id": "GA0299",
+   "name": "Gabriel,Gaylord A.T.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "05TOT04M": {
+   "id": "SA2164",
+   "name": "Sabella,Nicholas A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "05TTX29M": {
    "id": "FO4577",
    "name": "Forni,Christopher M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06BO221M": {
+   "id": "JO5420",
+   "name": "Johannessen,Thomas R.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06BO222M": {
+   "id": "MC4957",
+   "name": "McKeon,Kevin A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06BO223M": {
+   "id": "SC2112",
+   "name": "Scoble,Henry B",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "06EOA09M": {
+   "id": "PL1804",
+   "name": "Plescia,Mark J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06EOA10M": {
+   "id": "RO2656",
+   "name": "Roliz,Phillip J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "06EOA11M": {
    "id": "HO6124",
    "name": "Hoyt,Joshua B",
    "source": "2027 transfer list"
   },
+  "06EOC13M": {
+   "id": "BA1163",
+   "name": "Baker,Matthew W",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "06EOD15M": {
+   "id": "TA1861",
+   "name": "Tani,Michele",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06EOD16M": {
+   "id": "BU2670",
+   "name": "Bustamante,Paul",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06EOD17M": {
+   "id": "CA2139",
+   "name": "Casey,Daniel D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06EOE19M": {
+   "id": "MA2493",
+   "name": "Maurer,Jesse T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06EOE20M": {
+   "id": "LU3075",
+   "name": "Luker,Kevin C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "06EOL12M": {
    "id": "CH8051",
    "name": "Chambre,Christopher P.",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06EOL14M": {
+   "id": "BA5256",
+   "name": "Barr,Matthew R",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "06ETL11M": {
    "id": "YE1385",
    "name": "Yee,Andrew B",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "06ETX21M": {
+   "id": "ME3205",
+   "name": "Medeiros,Kenneth P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOC17M": {
+   "id": "BA4388",
+   "name": "Barden,Brian D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOD12M": {
+   "id": "MC4152",
+   "name": "McCarthy,Brian E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOD13M": {
+   "id": "CA4273",
+   "name": "Cappa,Stephen A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOD14M": {
+   "id": "YO5760",
+   "name": "Young,Miles C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOE06M": {
+   "id": "ST1649",
+   "name": "Steinberg,Paul A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOE07M": {
+   "id": "MA1459",
+   "name": "Maher,James H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOE08M": {
+   "id": "LU3651",
+   "name": "Lujan III,Benjamin E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "06TOF22M": {
    "id": "WO1430",
    "name": "Wong,Brian M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "06TOF23M": {
+   "id": "GR4597",
+   "name": "Green,Stuart T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOF24M": {
+   "id": "SA5004",
+   "name": "Sami,Christian D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOL15M": {
+   "id": "RA3445",
+   "name": "Ramos,Reuben N",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "06TOL16M": {
    "id": "SU1757",
@@ -301,15 +1121,105 @@
    "name": "Westerman,Erik",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "06TOT10M": {
+   "id": "KI4618",
+   "name": "Kilgore,Joseph J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TOT11M": {
+   "id": "GL8781",
+   "name": "Gleason,Andrew E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "06TTX05M": {
+   "id": "HE1091",
+   "name": "Hemenez,Travis W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07BO218M": {
+   "id": "TO7971",
+   "name": "Toby,Ryan M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "07BO219M": {
+   "id": "KI9180",
+   "name": "Kircher,Glenn E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07BO220M": {
+   "id": "ST8910",
+   "name": "Styles,Robert A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOA10M": {
+   "id": "DE2302",
+   "name": "DeGraffenreid,Miles E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOA11M": {
+   "id": "MC8444",
+   "name": "McCoo,Richard",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOA12M": {
+   "id": "GA1461",
+   "name": "Gama,Dennis G.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOD25M": {
+   "id": "RU1377",
+   "name": "Ruiz,Ricardo",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOD26M": {
+   "id": "MO3260",
+   "name": "Moncada,Dimas R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOD27M": {
+   "id": "BI1404",
+   "name": "Bickham,Cody J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOE28M": {
+   "id": "AI5684",
+   "name": "Aikhionbare,Osayande A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOE29M": {
+   "id": "AD2217",
+   "name": "Adams,Ronald G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07EOE30M": {
+   "id": "PA3312",
+   "name": "Paredes,Daniel A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "07EOL23M": {
    "id": "HE2150",
    "name": "Hewling,Devin S",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "07EOL24M": {
+   "id": "SA3142",
+   "name": "Sansoni,Vincent A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "07ETL28M": {
    "id": "MA8269",
    "name": "Marcaletti,Jeffrey P.",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "07ETX31M": {
+   "id": "MI4671",
+   "name": "Miller,Anthony",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07TOC27M": {
+   "id": "BE3903",
+   "name": "Bendik,Anthony J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "07TOD24M": {
    "id": "GU3107",
@@ -321,30 +1231,85 @@
    "name": "Beede,Justin A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "07TOE17M": {
+   "id": "WE1151",
+   "name": "Weaver,Vincent T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07TOL25M": {
+   "id": "TA1483",
+   "name": "Tassone,Justin S",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "07TOL26M": {
+   "id": "RA3098",
+   "name": "Rademacher,Joshua P",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "07TOT19M": {
+   "id": "TA6670",
+   "name": "Taylor,Grady D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "07TOT20M": {
    "id": "LO5347",
    "name": "Londono,Armando",
    "source": "2027 transfer list"
+  },
+  "07TOT21M": {
+   "id": "VA1765",
+   "name": "Vail,Matthew C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "07TTX15M": {
+   "id": "NA2384",
+   "name": "Nave,Laura K",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "08BO216M": {
+   "id": "IB3665",
+   "name": "Ibarra-Rivera,Luis A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "08BO217M": {
    "id": "RA9634",
    "name": "Ramirez,Robert D",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "08EOA22M": {
+   "id": "RO1792",
+   "name": "Romero,Phillip A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "08EOA23M": {
    "id": "WH2834",
    "name": "Wheel,Gavin C",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOA24M": {
+   "id": "MA7955",
+   "name": "Martin,Kimberly A",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "08EOC11M": {
    "id": "RA6138",
    "name": "Ramirez,C",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "08EOD14M": {
+   "id": "BU7021",
+   "name": "Burns,Randy E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "08EOD15M": {
    "id": "AL1630",
    "name": "Alalamua,Aliki E",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08EOD16M": {
+   "id": "VA2128",
+   "name": "Valladares,Elan K",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "08EOE17M": {
    "id": "RE2483",
@@ -366,10 +1331,20 @@
    "name": "Paganini,N",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "08TOD11M": {
+   "id": "GI0168",
+   "name": "Giacomini,Joseph W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "08TOD12M": {
    "id": "RA1164",
    "name": "Rabbitt,David V",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOD13M": {
+   "id": "QU9918",
+   "name": "Quirke,James D",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "08TOE05M": {
    "id": "LA1273",
@@ -380,6 +1355,16 @@
    "id": "PO1145",
    "name": "Poole,Nicholas M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "08TOF20M": {
+   "id": "RU2198",
+   "name": "Russo,Joel R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "08TOF21M": {
+   "id": "ME1366",
+   "name": "Merz,John K",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "08TOF22M": {
    "id": "SL1789",
@@ -396,10 +1381,60 @@
    "name": "Brandenburg,Kenneth W",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "08TOT09M": {
+   "id": "PE2341",
+   "name": "Petruzzella,Anthony J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "08TOT10M": {
+   "id": "SM4665",
+   "name": "Smith,Anthony W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "08TTX04M": {
+   "id": "HA1826",
+   "name": "Hart,James R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09BO026M": {
+   "id": "DA0719",
+   "name": "Dacalanio,Manuel T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09BO225M": {
+   "id": "WI9580",
+   "name": "Winn,Dustin B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09BO226M": {
+   "id": "DA4388",
+   "name": "Darmstadt,Scott H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09BO227M": {
+   "id": "LE8507",
+   "name": "Lee,Matthew J.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "09ENL31M": {
    "id": "FO5446",
    "name": "Forbes,Kirk E",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09EOA01M": {
+   "id": "GO1208",
+   "name": "Goepel,Daniel N",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09EOA02M": {
+   "id": "VI0682",
+   "name": "Vizcarra,Rhaymond A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09EOA31M": {
+   "id": "BR1274",
+   "name": "Brierley,Sean C",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "09EOD08M": {
    "id": "CH1334",
@@ -426,10 +1461,50 @@
    "name": "Aliehsan,Sirwan M",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "09EOL05M": {
+   "id": "TH1557",
+   "name": "Thomas,Eli C.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "09EOL06M": {
    "id": "BR1100",
    "name": "Brown,Xavier L",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09ETX13M": {
+   "id": "GO1105",
+   "name": "Gonzalez,Alexis R",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "09TOC09M": {
+   "id": "VA2403",
+   "name": "Vail,Edmund G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOD04M": {
+   "id": "FU2098",
+   "name": "Fung,Jonathan M.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOD06M": {
+   "id": "SH9289",
+   "name": "Shear,Jerry R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOE29M": {
+   "id": "TO9513",
+   "name": "Tolliver,Damen J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOE30M": {
+   "id": "JA3635",
+   "name": "James,James J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOE31M": {
+   "id": "CA6718",
+   "name": "Cavestany,Leonardo B",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "09TOF16M": {
    "id": "PE1798",
@@ -446,65 +1521,325 @@
    "name": "Harris,Matthew P",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "09TOL07M": {
+   "id": "CH7124",
+   "name": "Chin,William",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "09TOL08M": {
    "id": "HE2351",
    "name": "Helmer,Nicholas K",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "09TOT02M": {
+   "id": "CH3169",
+   "name": "Cheung,Jimmy",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TOT03M": {
+   "id": "CH0675",
+   "name": "Chow,Jack K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "09TTX28M": {
+   "id": "KO0680",
+   "name": "Kotake,Chuteh M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10BO228M": {
+   "id": "TR6847",
+   "name": "Triplitt,Cantrez M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "10BO230M": {
+   "id": "SM0735",
+   "name": "Smith,Michael T",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "10ENL31M": {
    "id": "LE2603",
    "name": "Lester,David J",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "10EOA14M": {
+   "id": "LE3297",
+   "name": "Lepper Jr.,Edwin V",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10EOA16M": {
+   "id": "BL0205",
+   "name": "Blanchfield,Reno E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10EOC03M": {
+   "id": "WE1407",
+   "name": "Weddle,Todd",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "10EOD05M": {
    "id": "WO5306",
    "name": "Wong,Andrew W",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10EOD06M": {
+   "id": "VA4297",
+   "name": "Vaesau,Siuea I",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10EOD07M": {
+   "id": "EU2811",
+   "name": "Eubanks,Alexis A",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "10EOE08M": {
    "id": "EL1533",
    "name": "Ellingson,Derek T",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "10EOE09M": {
+   "id": "SP2764",
+   "name": "Spencer,Marcus D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10EOE10M": {
+   "id": "RO1065",
+   "name": "Rozo,Christian",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10EOL02M": {
+   "id": "FI9651",
+   "name": "Figueroa,Steve",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "10EOL04M": {
+   "id": "BE3109",
+   "name": "Berg,Daniel C",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "10ETL01M": {
+   "id": "MA4473",
+   "name": "Matej,Jonathan F",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "10ETX11M": {
+   "id": "TY3068",
+   "name": "Tyler,Trevor P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10TOC07M": {
+   "id": "NE0812",
+   "name": "Neff,Tim J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10TOD02M": {
+   "id": "TA4152",
+   "name": "Tasto,Henry H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10TOD03M": {
+   "id": "SA1909",
+   "name": "Sategna,John R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "10TOD04M": {
+   "id": "PA1072",
+   "name": "Pasquale,Jesse J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "10TOE27M": {
    "id": "RO3657",
    "name": "Roa,Kenneth John F",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10TOE28M": {
+   "id": "LY1265",
+   "name": "Ly,Jeremy A",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "10TOF12M": {
    "id": "ST3065",
    "name": "Stephens,Michael",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "10TOL05M": {
+   "id": "WA1582",
+   "name": "Warren,Patrick B",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "10TOL06M": {
+   "id": "AS4949",
+   "name": "Asturias,Anthony F",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "10TOT30M": {
    "id": "TA2004",
    "name": "Tanaka,Eric S",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "10TTX26M": {
+   "id": "OS2293",
+   "name": "O'Shaughnessy,James A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOA13M": {
+   "id": "RI7727",
+   "name": "Ribeiro,Jeremiah J.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOA15M": {
+   "id": "HA7460",
+   "name": "Hardy,Vincent J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOD04M": {
+   "id": "HO0365",
+   "name": "Hom,Richard",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOD05M": {
+   "id": "VA2180",
+   "name": "Vagenas,John P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOE07M": {
+   "id": "WI2432",
+   "name": "Williams,Rodrigo A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOE08M": {
+   "id": "RO3677",
+   "name": "Roemer,Mikael J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOE09M": {
+   "id": "RI4462",
+   "name": "Riahi,Sina",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11EOL02M": {
+   "id": "LI5262",
+   "name": "Limon,Armando D",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "11EOL03M": {
    "id": "MI3945",
    "name": "Michaelis,Luke Robert",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "11ETA19M": {
+   "id": "DE1709",
+   "name": "Deering-Estrada,Ramon",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11ETL04M": {
+   "id": "BR8178",
+   "name": "Bristow,Maiko F",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "11ETX10M": {
+   "id": "MU2355",
+   "name": "Murphy,Timothy J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOC06M": {
+   "id": "MU7721",
+   "name": "Murray,David L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "11TOD02M": {
    "id": "HE2733",
    "name": "Hernandez,Jose A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "11TOD03M": {
+   "id": "MC3793",
+   "name": "McHugh,Michael S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOE27M": {
+   "id": "HE1797",
+   "name": "Henry,Quincy R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOE28M": {
+   "id": "HU3482",
+   "name": "Hutchinson,Bryan D",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "11TOE29M": {
    "id": "BR4204",
    "name": "Brennan,Connor V",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "11TOF14M": {
+   "id": "CA2809",
+   "name": "Cadigan,Jeramiah M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOF16M": {
+   "id": "JO4306",
+   "name": "Jonoubeh,Lukas M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOL05M": {
+   "id": "GU0148",
+   "name": "Guajardo,Michael",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOL07M": {
+   "id": "PA2903",
+   "name": "Parish,James H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TOT01M": {
+   "id": "DO5687",
+   "name": "Dorsey,William B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "11TOT30M": {
    "id": "TU1130",
    "name": "Tuiasosopo,Tyler",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "11TOT31M": {
+   "id": "AB3834",
+   "name": "Abbey,Steven M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "11TTX26M": {
+   "id": "FL1548",
+   "name": "Flores,Nicolas S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "12EOA17M": {
    "id": "SC3830",
    "name": "Scafani,Stephen T",
    "source": "2027 transfer list"
+  },
+  "12EOA18M": {
+   "id": "WA1256",
+   "name": "Warner,Ross D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12EOA19M": {
+   "id": "LA1555",
+   "name": "Lakin,Ronnie J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12EOD28M": {
+   "id": "JE4441",
+   "name": "Jesson,Brian G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12EOD30M": {
+   "id": "BE7619",
+   "name": "Beam,Joseph E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12EOE01M": {
+   "id": "AN1369",
+   "name": "Anderson,Ashley",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "12EOE02M": {
    "id": "ZE2176",
@@ -516,6 +1851,16 @@
    "name": "Vermillion,Tiffany",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "12EOL26M": {
+   "id": "CO7709",
+   "name": "Collins,Brian T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12EOL27M": {
+   "id": "LE5705",
+   "name": "Leonardo,Octavio J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "12ETA20M": {
    "id": "GO1520",
    "name": "Gonzales,Joseph M",
@@ -525,6 +1870,16 @@
    "id": "WO2653",
    "name": "Wong,Arthur C",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOC30M": {
+   "id": "DE9065",
+   "name": "Del Grande,Joseph C",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "12TOD25M": {
+   "id": "BO1199",
+   "name": "Bosia,Cody",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "12TOD26M": {
    "id": "ED1676",
@@ -561,30 +1916,140 @@
    "name": "De Cossio,Dean M",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "12TOL28M": {
+   "id": "HU7687",
+   "name": "Hua,Scott V",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12TOT22M": {
+   "id": "TO4310",
+   "name": "Townson,Jamarre A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "12TOT23M": {
    "id": "WO3928",
    "name": "Wofford-Howard,Camille E",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "12TOT24M": {
+   "id": "MI2260",
+   "name": "Mishima,Christopher T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "12TTX18M": {
+   "id": "FR4761",
+   "name": "Friedman,Emily R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13EOA03M": {
+   "id": "PA9442",
+   "name": "Pagan,David A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13EOA05M": {
+   "id": "CO5073",
+   "name": "Coleman,Christopher P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13EOD30M": {
+   "id": "LA3325",
+   "name": "Laxton,Thomas W",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "13EOD31M": {
    "id": "AR3396",
    "name": "Arenas,Conrad D",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "13EOE01M": {
+   "id": "MA1225",
+   "name": "Maiden,Justine L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "13EOE02M": {
    "id": "TA2926",
    "name": "Tann,Kevin S",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "13EOL27M": {
+   "id": "JO1365",
+   "name": "Johnson,Andre D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "13EOL28M": {
+   "id": "MO2724",
+   "name": "Moroney,Noel John",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "13TOD28M": {
+   "id": "AG1567",
+   "name": "Aguas,Carlos M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOE20M": {
+   "id": "MO2666",
+   "name": "Montoya III,Mario",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOE21M": {
+   "id": "RU4433",
+   "name": "Rubio,Ignacio J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOE22M": {
+   "id": "LU6316",
+   "name": "Lucas,Peter D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOF16M": {
+   "id": "MC2504",
+   "name": "McGee,John B.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOF17M": {
+   "id": "HO5352",
+   "name": "Hoper,Charles M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOF18M": {
+   "id": "GR3168",
+   "name": "Gracia,Ricardo A",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "13TOL29M": {
    "id": "MC1398",
    "name": "McDonald Jr,R",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "13TOL30M": {
+   "id": "ES7694",
+   "name": "Escobar,Julio C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOT23M": {
+   "id": "MA5426",
+   "name": "Manalo,Angelo J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "13TOT24M": {
+   "id": "NO3180",
+   "name": "Noguchi,Kenichi P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "13TOT25M": {
    "id": "SO3924",
    "name": "Sowers,D",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "13TTX19M": {
+   "id": "RE1607",
+   "name": "Reynolds,Scott A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "14EOA21M": {
+   "id": "LE3678",
+   "name": "Lewis,Adam B.",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "14EOA22M": {
    "id": "GE3434",
@@ -595,6 +2060,21 @@
    "id": "NI1083",
    "name": "Nilsson,Blake K",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14EOC12M": {
+   "id": "AY2066",
+   "name": "Ayers,John J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "14EOD15M": {
+   "id": "SM3423",
+   "name": "Smith,Phillip",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "14EOD17M": {
+   "id": "ED1780",
+   "name": "Edison,Bradley Z",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "14EOE18M": {
    "id": "MU2796",
@@ -611,20 +2091,45 @@
    "name": "Higgins,H",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "14EOL14M": {
+   "id": "LE5871",
+   "name": "Lewis,Simon D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "14ETA24M": {
    "id": "DI1513",
    "name": "Dierks,Ezekeal G",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14ETL11M": {
+   "id": "FR2767",
+   "name": "Freeman,Garrett J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "14ETX21M": {
    "id": "HA1389",
    "name": "Harris,Katharine",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "14TOD12M": {
+   "id": "PA1849",
+   "name": "Pastrano,Anthony D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "14TOD13M": {
+   "id": "GU1276",
+   "name": "Guzman,Bryson D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "14TOE06M": {
    "id": "OD1098",
    "name": "O'Donnell,Sean T",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOE07M": {
+   "id": "PE6399",
+   "name": "Petrini,David J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "14TOE08M": {
    "id": "HA1949",
@@ -636,25 +2141,185 @@
    "name": "Murphy,John J",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "14TOF24M": {
+   "id": "HA6857",
+   "name": "Hagan,Connor M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "14TOF25M": {
    "id": "LA3001",
    "name": "Lam,Wilson P",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "14TOL15M": {
+   "id": "ST3930",
+   "name": "Stornetta,Stephan E",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "14TOL17M": {
    "id": "WO5868",
    "name": "Wong,L",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "14TOT09M": {
+   "id": "SM1439",
+   "name": "Smith,Oliver R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "14TOT11M": {
+   "id": "CU4862",
+   "name": "Cusick,Joshua E. Ravi",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOA27M": {
+   "id": "LA2852",
+   "name": "Lau,Matthew",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOA28M": {
+   "id": "AL6892",
+   "name": "Alexander,Nicholas B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOA29M": {
+   "id": "LE5845",
+   "name": "Le,Phanh V",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOC15M": {
+   "id": "NO1425",
+   "name": "Noble,Don L",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "15EOD18M": {
+   "id": "KA8396",
+   "name": "Kasper,Carla R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOD19M": {
+   "id": "GA8370",
+   "name": "Garcia,Damian",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "15EOD20M": {
    "id": "PA3962",
    "name": "Pastrana,Noel E",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "15EOE21M": {
+   "id": "DE0804",
+   "name": "Debrunner,George J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOE22M": {
+   "id": "HI1431",
+   "name": "Hilliard,Bryan L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOE23M": {
+   "id": "PE2169",
+   "name": "Peterson,Randey T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOL16M": {
+   "id": "BL8082",
+   "name": "Bland,Jason W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15EOL17M": {
+   "id": "PR7532",
+   "name": "Pratt,Christopher K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "15ETL14M": {
    "id": "HO4160",
    "name": "Horta,Michael G",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "15ETX24M": {
+   "id": "HE1543",
+   "name": "Hennessy,Kevin R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOC20M": {
+   "id": "FI7786",
+   "name": "Fine,Bruce D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "15TOD09M": {
+   "id": "GO5747",
+   "name": "Gonzalez Jr,Pedro",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOD10M": {
+   "id": "OC8337",
+   "name": "O'Connor,Daniel L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOD11M": {
+   "id": "LA2109",
+   "name": "Lau,William J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOE03M": {
+   "id": "PR7767",
+   "name": "Price,Gideon G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOE04M": {
+   "id": "DE3592",
+   "name": "Delos Reyes,Michael L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOE05M": {
+   "id": "BR1010",
+   "name": "Brosnan,Niall J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOF26M": {
+   "id": "SC2247",
+   "name": "Scheumann,Jason A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOF28M": {
+   "id": "AG3015",
+   "name": "Aguilar,Thomas J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOL18M": {
+   "id": "MC9789",
+   "name": "McDermott,Paul B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOL19M": {
+   "id": "BO9243",
+   "name": "Boutilier,Christopher B.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOT06M": {
+   "id": "FA9060",
+   "name": "Farmer,Robin I",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOT07M": {
+   "id": "CR4282",
+   "name": "Cremen,Joseph N",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "15TOT08M": {
+   "id": "TO2849",
+   "name": "Tomko,Sean",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16EOA08M": {
+   "id": "BE4760",
+   "name": "Bernstein,Alex A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16EOA09M": {
+   "id": "TR3971",
+   "name": "Trim,Benjamin R",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "16EOA10M": {
    "id": "BA2628",
@@ -666,25 +2331,165 @@
    "name": "Aspelin,Lars A",
    "source": "2027 transfer list"
   },
+  "16EOD14M": {
+   "id": "SI9525",
+   "name": "Silva,Joseph A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16EOD16M": {
+   "id": "MO3816",
+   "name": "Moore,Christopher",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16EOE17M": {
+   "id": "ZA3012",
+   "name": "Zammarchi,Cristina L.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16EOE18M": {
+   "id": "MU1586",
+   "name": "Murphy,Michael M.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "16EOL13M": {
    "id": "ME1851",
    "name": "Meikle,James G",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "16ETX20M": {
+   "id": "MA2063",
+   "name": "Mar,Samantha C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOD12M": {
+   "id": "MA1287",
+   "name": "Mahoney,Ketric B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOD13M": {
+   "id": "ST0302",
+   "name": "Steele,Patric A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOD14M": {
+   "id": "ME2508",
+   "name": "Metz,Steven E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOE06M": {
+   "id": "AN1660",
+   "name": "Andersen,Cameron T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOL15M": {
+   "id": "RE1108",
+   "name": "Regala,Jason Q",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "16TOL16M": {
+   "id": "AL1116",
+   "name": "Aldridge,Jason W",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "16TOT09M": {
+   "id": "RA2530",
+   "name": "Rawlinson,Bryan R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "16TOT11M": {
+   "id": "AD7884",
+   "name": "Adams,Matthew K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOA04M": {
+   "id": "WO8180",
+   "name": "Wong,Gregory W.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOA05M": {
+   "id": "DU1169",
+   "name": "Dunagan,Christian A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOA06M": {
+   "id": "RO4650",
+   "name": "Ro,Thomas",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOC14M": {
+   "id": "MU0511",
+   "name": "Murphy,Brian E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOD17M": {
+   "id": "SC1290",
+   "name": "Schlesinger,Sean D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOD18M": {
+   "id": "SP5383",
+   "name": "Spear,Christopher T",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "17EOD19M": {
    "id": "CA3787",
    "name": "Castellanos,Anthony J",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "17EOE20M": {
+   "id": "TS2648",
+   "name": "Tse,Robi S.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17EOE21M": {
+   "id": "VI1066",
+   "name": "Viana Jr.,Eric J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "17EOL15M": {
    "id": "LI3191",
    "name": "Linney,Kenneth B",
    "source": "2027 transfer list"
   },
+  "17EOL16M": {
+   "id": "HI1543",
+   "name": "Hill,Jr,Jacob A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "17ETL20M": {
    "id": "AL1115",
    "name": "Alexander,Jonathan L",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "17ETX23M": {
+   "id": "DU1333",
+   "name": "Dunmire,Nathaniel S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOC18M": {
+   "id": "ZA1019",
+   "name": "Zammarchi,Erik Ryan",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOD14M": {
+   "id": "NA2347",
+   "name": "Navarro,Brady A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOD16M": {
+   "id": "CR1355",
+   "name": "Crawford,Titus J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOE08M": {
+   "id": "MU5436",
+   "name": "Murray,Douglas R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOE09M": {
+   "id": "CH7051",
+   "name": "Chappell,Andrew J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "17TOE10M": {
    "id": "PI4254",
@@ -706,6 +2511,26 @@
    "name": "Murphy, Patrick",
    "source": "2027 transfer list"
   },
+  "17TOL17M": {
+   "id": "DO3621",
+   "name": "Doherty,Patrick F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOL19M": {
+   "id": "ST1655",
+   "name": "Stewart,Dustin D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOT11M": {
+   "id": "NI3028",
+   "name": "Nickols,Robert R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "17TOT12M": {
+   "id": "RO5415",
+   "name": "Rogan,Sean M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "17TTX07M": {
    "id": "VI1845",
    "name": "Villarreal,Jayson V",
@@ -716,10 +2541,90 @@
    "name": "Payne,Travis K",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "18EOC21M": {
+   "id": "JU8829",
+   "name": "Jurado,Karl J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18EOD24M": {
+   "id": "CH1312",
+   "name": "Chadwick,Justin B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18EOD25M": {
+   "id": "KO5554",
+   "name": "Kojima,Dean T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18EOE28M": {
+   "id": "MA1138",
+   "name": "Marchant,Robert J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18EOE29M": {
+   "id": "CA1108",
+   "name": "Carter,James Y",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18EOL22M": {
+   "id": "RO1878",
+   "name": "Roy,Jeffrey R",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "18EOL23M": {
+   "id": "LA9540",
+   "name": "Lam,Kaiser K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18ETX23M": {
+   "id": "DA1471",
+   "name": "Davis,Antione H",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOC26M": {
+   "id": "WA7573",
+   "name": "Walsh,Brian P.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOE15M": {
+   "id": "SU1716",
+   "name": "Suarez,Matthew T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOE16M": {
+   "id": "IW1911",
+   "name": "Iwasaki,Jeff",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOE17M": {
+   "id": "PA2452",
+   "name": "Palacio,Marcos R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOT18M": {
+   "id": "KL4552",
+   "name": "Kliengklom,George W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "18TOT20M": {
+   "id": "TH4753",
+   "name": "Thurman,Michael A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "19EOA21M": {
+   "id": "MO1861",
+   "name": "Moody,James M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "19EOA22M": {
    "id": "VO1282",
    "name": "Von Motz,Christiaan E",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19EOD18M": {
+   "id": "WO2879",
+   "name": "Wong,Thomas",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "19EOD19M": {
    "id": "TR3173",
@@ -736,6 +2641,11 @@
    "name": "Swanson,Laura Wardell",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "19EOL16M": {
+   "id": "ST4263",
+   "name": "Strong,Steven",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "19EOL17M": {
    "id": "LO1408",
    "name": "Louie-Chelman,Robert M",
@@ -746,10 +2656,25 @@
    "name": "Benz,Cole D",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "19ETL14M": {
+   "id": "RO2238",
+   "name": "Rosenthal,Danielle R",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "19TOD09M": {
    "id": "SW3018",
    "name": "Swanson,David E",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "19TOD10M": {
+   "id": "LA4642",
+   "name": "Lagin,Noah P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "19TOD11M": {
+   "id": "GR4743",
+   "name": "Grant,Jeffrey P",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "19TOE03M": {
    "id": "LU3464",
@@ -761,6 +2686,21 @@
    "name": "Mellor,Isiah",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "19TOL18M": {
+   "id": "MC1167",
+   "name": "McDonald,Chris M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "19TOL19M": {
+   "id": "SE1235",
+   "name": "Serchia,Jamie",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "19TOT06M": {
+   "id": "AG4244",
+   "name": "Aguado,Anthony J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "19TOT07M": {
    "id": "FU2018",
    "name": "Fuller,Jim E",
@@ -771,10 +2711,25 @@
    "name": "Davis,Joshua E",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "20EOA28M": {
+   "id": "RO1221",
+   "name": "Robinson,Lauren S.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "20EOA29M": {
    "id": "EA2540",
    "name": "Eakle,Jason C.",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "20EOC23M": {
+   "id": "BE3660",
+   "name": "Bergmark,Heidi A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "20EOD25M": {
+   "id": "HO7724",
+   "name": "Horikiri,Geary J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "20EOD26M": {
    "id": "BA2315",
@@ -796,6 +2751,11 @@
    "name": "Cabaud,Nicole D",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "21EOA14M": {
+   "id": "MA5493",
+   "name": "Martinez,Brendan J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "21EOA15M": {
    "id": "GO3431",
    "name": "Goforth,Todd M",
@@ -816,30 +2776,230 @@
    "name": "Mejia,Camilo",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "21EOD06M": {
+   "id": "MC6191",
+   "name": "McGoldrick,Gavin J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "21EOD07M": {
+   "id": "RI1639",
+   "name": "Rix,John J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "21EOE08M": {
+   "id": "DU2026",
+   "name": "Dumont,Christopher J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "21EOE09M": {
+   "id": "PA9203",
+   "name": "Parks,Joshua E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "21EOE10M": {
+   "id": "CA3746",
+   "name": "Carrizalez,Francisco J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "21EOL03M": {
    "id": "DR5440",
    "name": "Dresser,Brian V",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "21EOL04M": {
+   "id": "RO8089",
+   "name": "Rogers,John D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "21ETX11M": {
+   "id": "RI9665",
+   "name": "Rivera,Sylvia",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "22EOA17M": {
+   "id": "AL1117",
+   "name": "Alvarado,Anthony J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "22EOD25M": {
+   "id": "SN3207",
+   "name": "Snow,Christina R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "22EOD26M": {
+   "id": "NG5481",
+   "name": "Nguyen,Phillip",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "22EOE30M": {
+   "id": "VI2988",
+   "name": "Villalobos,Josestevan",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "22EOL23M": {
+   "id": "WA1750",
+   "name": "Waters,Dave",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "22ETX31M": {
    "id": "MO4159",
    "name": "Morgan,Isla S",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "23EOC29M": {
+   "id": "OK6635",
+   "name": "O'Kane,Paul D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "23EOE03M": {
+   "id": "FA7328",
+   "name": "Fahrner,Mathew B.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "23EOL30M": {
+   "id": "CR3065",
+   "name": "Crehan,Michael P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "24EOD21M": {
+   "id": "LO1039",
+   "name": "Lovan,Kimani J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "24EOD22M": {
+   "id": "DI2053",
+   "name": "Dieu,William V",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "24EOD23M": {
+   "id": "SC2670",
+   "name": "Schmitt,Ross A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "24EOE24M": {
+   "id": "KI1378",
+   "name": "King,Mario G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "24EOL18M": {
+   "id": "PL2333",
+   "name": "Plata,Jorge A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "24EOL19M": {
    "id": "JA1161",
    "name": "Jaime-Lopez,Alberto G",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "24ETX27M": {
+   "id": "PY1961",
+   "name": "Pyatt,Joshua M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOA02M": {
+   "id": "LE1921",
+   "name": "Le,Ken",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOA04M": {
+   "id": "NG2127",
+   "name": "Nguyen,Henry",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOD16M": {
+   "id": "LA1276",
+   "name": "Lau,Kerby",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "25EOE19M": {
+   "id": "MI2915",
+   "name": "Miller,Cassandra",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOF21M": {
+   "id": "WO1471",
+   "name": "Woo,Eddy B",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOF22M": {
+   "id": "WA4221",
+   "name": "Walls,Tiffany A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "25EOL12M": {
+   "id": "BA1392",
+   "name": "Barton,Marilyn D",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "25EOL13M": {
    "id": "TU4821",
    "name": "Turner,Tami",
    "source": "2027 transfer list"
   },
+  "25ETX20M": {
+   "id": "FI1984",
+   "name": "Fisher,Aaron I",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOA16M": {
+   "id": "CR8559",
+   "name": "Cronander,Thalia G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOA17M": {
+   "id": "HO4999",
+   "name": "Hoelsken,Michael T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOA18M": {
+   "id": "CO1665",
+   "name": "Compilli,Angela M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOC25M": {
+   "id": "JE6107",
+   "name": "Jensen,Maribeth R.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOD28M": {
+   "id": "NO2110",
+   "name": "Northrop,Craig",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOD29M": {
+   "id": "MA1314",
+   "name": "Maes,Steven J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOD30M": {
+   "id": "ME1660",
+   "name": "Melendez,Carlos F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26EOL26M": {
+   "id": "LE4323",
+   "name": "Lemberg,Wesley J.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "26ETX03M": {
+   "id": "DE3189",
+   "name": "Dekelaita,Sasha M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "28EOC10M": {
    "id": "FO3293",
    "name": "Fogle,Thomas A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "28EOD11M": {
+   "id": "MA1259",
+   "name": "Majer,Milan",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "28EOD12M": {
+   "id": "DA2677",
+   "name": "Davis,Dana M",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "28EOE14M": {
    "id": "RO1790",
@@ -866,6 +3026,16 @@
    "name": "Galli,Cole",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "28EOF20M": {
+   "id": "NE3212",
+   "name": "Nelson,Chelsea D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "28EOL08M": {
+   "id": "SA2548",
+   "name": "Samson,Catherine E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "28EOL09M": {
    "id": "HA2238",
    "name": "Hartley,Connor G",
@@ -880,6 +3050,21 @@
    "id": "BI4350",
    "name": "Bigos,Brandon A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "29EOA14M": {
+   "id": "TE2009",
+   "name": "Teaford,Brad W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "29EOD01M": {
+   "id": "TO3771",
+   "name": "Tom,Kevin",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "29EOD02M": {
+   "id": "HA3615",
+   "name": "Hallisy,Sean P",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "29EOD03M": {
    "id": "WI2776",
@@ -896,15 +3081,35 @@
    "name": "Winslow,Charles B",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "29EOE06M": {
+   "id": "RA6553",
+   "name": "Rabbitt,Patrick J.",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "29EOL29M": {
    "id": "FL7197",
    "name": "Flaviani,Mario C",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "31EOC10M": {
+   "id": "SA1604",
+   "name": "Sankey,Daniel W",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "31EOD11M": {
+   "id": "YO9258",
+   "name": "You,Johnson F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "31EOD12M": {
    "id": "BO2638",
    "name": "Boston Lozano,K",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
+  },
+  "31EOD13M": {
+   "id": "PA7292",
+   "name": "Palm-Song,Nicholas",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "31EOE16M": {
    "id": "BE4771",
@@ -921,10 +3126,35 @@
    "name": "Voltaire,Olistide M",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "31EOL09M": {
+   "id": "AN5987",
+   "name": "Anderson,Hashim A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "32EOA08M": {
+   "id": "PE1312",
+   "name": "Pettine,Andrew",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "32EOA09M": {
+   "id": "HA3383",
+   "name": "Halpin,David R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "32EOA10M": {
    "id": "BE3128",
    "name": "Beere,Barry M",
    "source": "2027 transfer list"
+  },
+  "32EOC09M": {
+   "id": "AL2225",
+   "name": "Alvarenga,Gail M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "32EOD11M": {
+   "id": "MA6450",
+   "name": "Martinpinto,Stephen W",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "32EOD12M": {
    "id": "ST2691",
@@ -941,20 +3171,105 @@
    "name": "Gonzales Mejia,Erick R",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "32EOE16M": {
+   "id": "CO5831",
+   "name": "Corrette,Kristen L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "32EOL08M": {
+   "id": "DO1760",
+   "name": "Doudiet,Holly J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "32EOL10M": {
+   "id": "OR1465",
+   "name": "O'Rourke,Emily S",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "32ETX17M": {
    "id": "PR2271",
    "name": "Pratt IV,Edward J",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "33EOA05M": {
+   "id": "SA3566",
+   "name": "Sandoval,Christopher I.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOA06M": {
+   "id": "LI1251",
+   "name": "Litwin,James A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOA07M": {
+   "id": "LA2811",
+   "name": "Lauinger,David C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOC12M": {
+   "id": "BR2426",
+   "name": "Bryant,Scott D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "33EOD14M": {
+   "id": "LE5023",
+   "name": "Lee,Bryan K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOD15M": {
+   "id": "LA3908",
+   "name": "Langhorne,Mark N",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOD16M": {
+   "id": "RO1801",
+   "name": "Romanini,Jennifer M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOE17M": {
+   "id": "FI1076",
+   "name": "Fields,Tiffany A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOE18M": {
+   "id": "HA1605",
+   "name": "Hawthorne,Kevin T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOE19M": {
+   "id": "PH4856",
+   "name": "Phillips,Gurvis S",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "33EOL11M": {
+   "id": "HU1656",
+   "name": "Hunter,Khristina J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "33EOL13M": {
+   "id": "HO7057",
+   "name": "Honda,Jonathan M.",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "33ETX20M": {
    "id": "WI1133",
    "name": "Wilson,Joshua A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "34EOA18M": {
+   "id": "CH3355",
+   "name": "Christopherson,Andrew A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "34EOA19M": {
    "id": "PR2874",
    "name": "Prieto,Alison H",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "34EOA20M": {
+   "id": "NO4131",
+   "name": "Nordberg,Kristin L",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "34EOD23M": {
    "id": "DE2813",
@@ -971,35 +3286,320 @@
    "name": "Stricklin,Laurel A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "34EOL20M": {
+   "id": "GI9266",
+   "name": "Gibbs,Christina M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "35EOA26M": {
+   "id": "CA1671",
+   "name": "Canning,Lauren",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "35EOA27M": {
+   "id": "KN1816",
+   "name": "Knott,Michael L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "35EOA28M": {
+   "id": "WE4467",
+   "name": "Weber,Jay J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "35EOC18M": {
+   "id": "DR9511",
+   "name": "Draper,James B",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "35EOD20M": {
    "id": "SK3690",
    "name": "Skifter,Paul M",
    "source": "2027 transfer list"
+  },
+  "35EOD21M": {
+   "id": "CA1585",
+   "name": "Cacciotti,Marino",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "35FOG07M": {
+   "id": "MO2857",
+   "name": "Moore,Samuel C.",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "35FOG08M": {
+   "id": "AM3740",
+   "name": "Amdahl,Jeffrey C",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "35FOH02M": {
+   "id": "KN3440",
+   "name": "Knowlton,Jason J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "35FOH03M": {
+   "id": "ST1475",
+   "name": "Stewart,Brint J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "36EOA15M": {
+   "id": "NU5962",
+   "name": "Nunnery,Dustin P.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOA16M": {
+   "id": "HE1868",
+   "name": "Herron,Christopher M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOA17M": {
+   "id": "GR8373",
+   "name": "Groshong,John G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOC28M": {
+   "id": "MC3620",
+   "name": "McCoy,Charles F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOD01M": {
+   "id": "AC9556",
+   "name": "Acosta,Denny",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOD30M": {
+   "id": "OT4225",
+   "name": "Otey-Baeza,Diallo",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOD31M": {
+   "id": "ON1965",
+   "name": "O'Neil,Colter L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOE04M": {
+   "id": "CO1346",
+   "name": "Cody,William J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOF09M": {
+   "id": "GE5487",
+   "name": "Gerber,William E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOF10M": {
+   "id": "LE3287",
+   "name": "Leung,Andrew T",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "36EOL29M": {
+   "id": "DU5689",
+   "name": "Dugan,Christopher C",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "36ETX29M": {
    "id": "BA2018",
    "name": "Balla,Marshall C",
    "source": "2027 transfer list"
   },
+  "37EOA07M": {
+   "id": "FR2311",
+   "name": "Franklin,Nicholas D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "37EOA08M": {
+   "id": "TH4389",
+   "name": "Thoms,Nicole M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "37EOA09M": {
+   "id": "SE1000",
+   "name": "Sessa,Anthony J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "37EOD06M": {
+   "id": "BR2347",
+   "name": "Briones,Valerie L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "37EOE07M": {
+   "id": "BO2091",
+   "name": "Bochy,Greg D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "37EOE08M": {
+   "id": "AK2474",
+   "name": "Akers,Bradley M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "37EOE09M": {
+   "id": "VE1040",
+   "name": "Vermillion,Elle",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "37EOL02M": {
    "id": "CA2195",
    "name": "Cabrera,Oscar",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "38EOA04M": {
+   "id": "EN2500",
+   "name": "Enriquez,Matthew G",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOA05M": {
+   "id": "DU1575",
+   "name": "Duong,Kevin",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOA06M": {
+   "id": "WI1000",
+   "name": "Williamson,Eric C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOD21M": {
+   "id": "GU1339",
+   "name": "Gunther,Randy J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOD22M": {
+   "id": "DE2503",
+   "name": "Dea,Matthew A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOD23M": {
+   "id": "WA1866",
+   "name": "Ward,Grayson D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOE26M": {
+   "id": "CA3889",
+   "name": "Caba,Norman J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "38EOL18M": {
+   "id": "SM1491",
+   "name": "Smith,Kenneth D",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "38EOL20M": {
+   "id": "MO2081",
+   "name": "Montes,Suzanne",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "38ETX27M": {
    "id": "QU1434",
    "name": "Quinonez,David L",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "39EOA23M": {
+   "id": "SO6420",
+   "name": "Soriano,Che W.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOA24M": {
+   "id": "AR7544",
+   "name": "Archibald,Richard F",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOA25M": {
+   "id": "RO2228",
+   "name": "Rodil,Neal K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOC28M": {
+   "id": "LU3779",
+   "name": "Lui,Patricia Yuen",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "39EOD01M": {
+   "id": "KR8430",
+   "name": "Krikorian,David Z",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOD31M": {
+   "id": "SA6686",
+   "name": "Saunders,Edward M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOE03M": {
+   "id": "MC1487",
+   "name": "McHenry,Jordan A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOE04M": {
+   "id": "MA1018",
+   "name": "Machado,Brian A.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "39EOL29M": {
+   "id": "NI0255",
+   "name": "Nieto,Samuel P",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "39ETX06M": {
    "id": "KO9478",
    "name": "Ko,Tsz Lap",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "3FBOL09M": {
+   "id": "GI5319",
+   "name": "Giacalone,Stephen",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOC13M": {
+   "id": "MA8395",
+   "name": "Maguire,Stephen A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "40EOD14M": {
+   "id": "CH0266",
+   "name": "Chuop,Sola",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOD16M": {
+   "id": "MO1619",
+   "name": "Moore,James A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOE18M": {
+   "id": "MC4954",
+   "name": "McLoughlin,William C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOF21M": {
+   "id": "ST2750",
+   "name": "Story Jr.,Kruger",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOL11M": {
+   "id": "PO1111",
+   "name": "Posey,Christopher",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "40EOL12M": {
+   "id": "JI0337",
+   "name": "Jimenez,Jody Robert",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "41EOA28M": {
+   "id": "CA1684",
+   "name": "Caddy,Arran K",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "41EOA29M": {
+   "id": "GL3600",
+   "name": "Glickman,Eric C",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "41EOA30M": {
    "id": "DE4592",
    "name": "Demchuk,Dennis M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "41EOC30M": {
+   "id": "ES3956",
+   "name": "Estrada,Matthew S",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "41EOD01M": {
    "id": "HE5405",
@@ -1011,6 +3611,11 @@
    "name": "Simon-Duenas,M",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "41EOD31M": {
+   "id": "SA2273",
+   "name": "Sandoval,Raul",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "41EOE03M": {
    "id": "WI6119",
    "name": "Wilkinson,S",
@@ -1020,6 +3625,16 @@
    "id": "IR2452",
    "name": "Irvin,Christopher I",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "41EOE05M": {
+   "id": "PA1704",
+   "name": "Palmer,James W",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "41EOL28M": {
+   "id": "VI6275",
+   "name": "Vieira,Michael C",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "41EOL29M": {
    "id": "MA1542",
@@ -1031,10 +3646,30 @@
    "name": "Paik,A",
    "source": "Assignment change notice (Aug\u2013Oct 2026)"
   },
+  "42EOA07M": {
+   "id": "HO5458",
+   "name": "Hoffman,Graham P",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "42EOA08M": {
+   "id": "WH3674",
+   "name": "Whitlock,James A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "42EOA09M": {
+   "id": "RA3482",
+   "name": "Rado,Joshua A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "42EOC23M": {
    "id": "WE1747",
    "name": "Wehrman,Sean A",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "42EOD26M": {
+   "id": "HU2680",
+   "name": "Huie,Jared J",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "42EOE29M": {
    "id": "CO1596",
@@ -1056,15 +3691,65 @@
    "name": "Luong,Dennis A",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "43EOA22M": {
+   "id": "LI2378",
+   "name": "Lim,Andrew L",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "43EOD01M": {
    "id": "MA4878",
    "name": "Malek-Zadeh,Andrew E",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "43EOD30M": {
+   "id": "ME1569",
+   "name": "Mello,Robert A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "43EOD31M": {
+   "id": "CA7757",
+   "name": "Calderon,Douglas I",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "43EOE02M": {
+   "id": "TH2051",
+   "name": "Thurston,Nicholas M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "43EOE03M": {
+   "id": "AM2615",
+   "name": "Amaya-Pacas,Marlon E",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "43EOL27M": {
+   "id": "EM3890",
+   "name": "Emery II,John E",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "43EOL28M": {
+   "id": "RE9730",
+   "name": "Recendez,Robert J",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
   "43ETA26M": {
    "id": "HI3855",
    "name": "Higgins,Timothy W",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44EOA29M": {
+   "id": "PA1981",
+   "name": "Pancharoen,Anthony",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "44EOA30M": {
+   "id": "FU3935",
+   "name": "Fujimoto,Steven J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "44EOA31M": {
+   "id": "MC1376",
+   "name": "McHenry,Jacob I",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "44EOC24M": {
    "id": "KR5573",
@@ -1076,10 +3761,20 @@
    "name": "Mota,Rhett",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "44EOE01M": {
+   "id": "SH3212",
+   "name": "Shelton,Anton",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "44EOE30M": {
    "id": "BA2548",
    "name": "Barnes,Brent R.",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "44EOE31M": {
+   "id": "TR2099",
+   "name": "Treff,Nathaniel B",
+   "source": "Internal staff list (matched by name and rank or company)"
   },
   "44EOL26M": {
    "id": "WA1444",
@@ -1101,20 +3796,100 @@
    "name": "Prine,Jacqueline",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "48EOA21M": {
+   "id": "TH1294",
+   "name": "Thurston,Eric",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "48EOB11M": {
+   "id": "WA3993",
+   "name": "Wallett,Ryan J",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "48EOC05M": {
+   "id": "ST1527",
+   "name": "Storey,Eric R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "48EOD08M": {
    "id": "CH3157",
    "name": "Chan,Eric",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48EOL07M": {
+   "id": "FA9775",
+   "name": "Faenzi,Cynthia A",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "48HOD24M": {
+   "id": "DA6018",
+   "name": "Dastous,Neree",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "48HOL01M": {
+   "id": "FL3897",
+   "name": "Flores,John M",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "48HOL03M": {
+   "id": "MC4873",
+   "name": "McFarland,Gregory D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
   },
   "48TOD07M": {
    "id": "SU1901",
    "name": "Sullivan,Kenya M",
    "source": "2027 Vacancy Awards (26 A-082)"
   },
+  "48TOE01M": {
+   "id": "VA2688",
+   "name": "Vargas,Eric A",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
   "48TOE30M": {
    "id": "WI2477",
    "name": "Wilkins,Evander M",
    "source": "2027 Vacancy Awards (26 A-082)"
+  },
+  "48TOT04M": {
+   "id": "ON1765",
+   "name": "O'Neil,Andre R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "51EOA01M": {
+   "id": "PA2170",
+   "name": "Pancharoen,Brian",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "51EOA03M": {
+   "id": "CA3429",
+   "name": "Calvi,Andrew J.",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "51EOC08M": {
+   "id": "CA1901",
+   "name": "Cafferata,Dino M",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "51EOD13M": {
+   "id": "PR3470",
+   "name": "Prescott,Jennifer R",
+   "source": "Internal staff list (matched by name and rank or company)"
+  },
+  "51EOL09M": {
+   "id": "BO1829",
+   "name": "Bovo,Gregory B",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "51EOL10M": {
+   "id": "CH1897",
+   "name": "Chatfield,Shawn D",
+   "source": "Internal staff list (unique name match; list predates promotion)"
+  },
+  "51ETA04M": {
+   "id": "CR1831",
+   "name": "Craft,Christopher",
+   "source": "Internal staff list (matched by name and rank or company)"
   }
  }
 }

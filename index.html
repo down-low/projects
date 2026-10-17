@@ -23,6 +23,7 @@
         </details>
         <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
         <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
+        <button class="hdr-link" id="fixes-link" type="button" aria-controls="view-fixes" hidden>Corrections</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -108,6 +109,7 @@
       <label>Note<input type="text" id="ap-note" maxlength="500" placeholder="Optional"></label>
       <div class="row"><button class="btn primary" type="submit">Add person</button><span class="msg" id="ap-msg" role="status"></span></div>
     </form>
+    <div class="card fix-applying" id="fix-applying" role="status" hidden></div>
     <div id="person-detail"></div>
   </section>
 
@@ -125,6 +127,10 @@
     </div>
     <p class="hint" id="rank-count"></p>
     <div class="grid-wrap" id="rank-grid"></div>
+  </section>
+
+  <section class="view" id="view-fixes" role="region" aria-label="Corrections" hidden>
+    <div id="fixes-detail"></div>
   </section>
 
   <section class="view" id="view-awards" role="region" aria-label="2027 vacancy awards" hidden>
@@ -160,6 +166,7 @@
         <li><button type="button" data-go="rank">Rank month grid</button></li>
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
         <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
+        <li data-need="editor"><button type="button" data-go="fixes">Corrections <span class="hint" id="fixes-count"></span></button></li>
       </ul>
       <h3 class="sheet-sec" id="sheet-docs-h" hidden>Documents</h3>
       <ul class="sheet-list" id="sheet-docs"></ul>
@@ -183,6 +190,29 @@
       <div id="day-body"></div>
     </section>
   </div>
+  <div class="sheet" id="list-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel list-panel" role="dialog" aria-modal="true" aria-labelledby="list-title">
+      <div class="sheet-head">
+        <h2 id="list-title">List</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body">
+        <input type="search" id="list-q" placeholder="Filter by name, company, tour or position" autocomplete="off" aria-label="Filter the list">
+        <div id="list-body"></div>
+      </div>
+    </section>
+  </div>
+  <div class="sheet" id="fix-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="fix-title">
+      <div class="sheet-head">
+        <h2 id="fix-title">Something wrong?</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body" id="fix-body"></div>
+    </section>
+  </div>
   <div class="sheet" id="trade-sheet" hidden>
     <div class="sheet-backdrop" data-close></div>
     <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="trade-title">
@@ -201,6 +231,7 @@
 <script src="dashboard.js"></script>
 <script src="trades.js"></script>
 <script src="awards.js"></script>
+<script src="corrections.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

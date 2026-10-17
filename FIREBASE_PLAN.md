@@ -52,6 +52,8 @@ These need answers before any build work:
   - Picking a response runs in the `pickTrade` function (below), which writes the one-day cover and TR status records with `tradeId`.
 - **`audit/{id}`** `{at, actor, action, target, detail}`.
 - **`tradeInvites/{code}`** `{kind: "trade" | "join", tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites (see `RELEASES.md`, Invites from trades). A `trade` invite is for a roster person who hasn't signed in; a `join` invite (no trade or recipient) is for someone not in the tool yet. Written and read only by functions.
+- **`corrections/{id}`** `{aboutKey, kind, details, note, byUid, byKey, state: open|applied|dismissed, reason, handledBy, handledAt, createdAt}`: members create (rules: `create` if active, no read); admins read and update.
+- **`invites/{code}`** `{key, sentBy, sentAt, usedAt, expiresAt}`: admin invite texts (see `RELEASES.md`, Invite texts from admins). Written and read only by functions.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
 ## Security rules (outline)
@@ -93,6 +95,7 @@ These need answers before any build work:
   - **`createInvite`** (callable): for `kind: "trade"`, checks the trade was sent to that recipient and that they have no linked account (20 a day per poster); for `kind: "join"`, no trade (10 a day per member). Returns the code for the share text. Phone numbers typed by the member never reach the server.
   - **`inviteInfo`** (public HTTPS): for `/t/<code>`, returns only the rank group, the date and "24-hr shift", or "expired".
   - **`redeemInvite`** (callable, signed in): with the code and an Employee ID that matches the invited roster entry, links the account to that position, approves it (`approvedBy: "invite"`, `invitedBy`), sets the custom claims and marks the code used. A mismatch falls back to a normal pending claim. A `join` code stamps `invitedBy` on the user's "not on the list" `claimRequest`, which an admin approves as usual; the Admin users list shows "Invited by".
+- **`sendInvites`** (callable, admins): for chosen people, creates an `invites` code and texts the staff-list cell number through Twilio; skips anyone opted out or with an active invite. **`redeemInvite`** above also accepts these codes and pre-fills the claim with the invited seat.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
@@ -130,7 +133,7 @@ These need answers before any build work:
 
 ## Launch steps
 
-1. Create the Firebase project (on the account decided above), enable Google sign-in, Firestore (production mode) and Storage, and choose the Blaze plan with a **budget alert** (e.g. $10/month).
+1. Create the Firebase project (on the account decided above), enable Google, email-link and phone sign-in (see "Sign-in without a Google account" in `RELEASES.md`), Firestore (production mode) and Storage, and choose the Blaze plan with a **budget alert** (e.g. $10/month).
 2. Deploy rules and functions. Set `ADMIN_EMAILS` and the allowed domains as function config.
 3. Run the import: records from the claude.ai page database; roster, IDs and PDFs to Storage.
 4. Deploy Hosting. Sign in as the first admin, approve a test member and a test editor, and walk through every screen on a phone and a desktop.
