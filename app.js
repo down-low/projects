@@ -703,10 +703,10 @@
     if (!c || !(c.email || c.phoneMobile || c.phoneOther)) return "";
     var bits = [];
     if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
-    [["Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+    [[c.staffList ? "" : "Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
       if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
     });
-    return '<div class="kv contact-kv"><span class="k">Contact for swaps' + (c.shared ? "" : " · not shared, admins only") + '</span><span class="v contact-v">' +
+    return '<div class="kv contact-kv"><span class="k">' + (c.staffList ? "Cell · staff list, admins only" : "Contact for swaps" + (c.shared ? "" : " · not shared, admins only")) + '</span><span class="v contact-v">' +
       bits.join('<span class="sep"> · </span>') + "</span></div>";
   }
   function rangeText(r) {

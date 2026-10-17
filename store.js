@@ -20,12 +20,20 @@
 (function (root) {
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
-    members: "members", trades: "trades", tradeReplies: "tradeReplies" };
+    members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
 
   function nowIso() { return new Date().toISOString(); }
+  // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
+  function staffContacts(docs) {
+    var out = {};
+    (docs || []).forEach(function (d) {
+      Object.keys(d.cells || {}).forEach(function (k) { out[k] = { phoneMobile: d.cells[k], shared: false, staffList: true }; });
+    });
+    return out;
+  }
   /* A set trade carries its records (`legs`: the taker's one-day cover and the poster's TR, and the reverse for a swap) on
      the trade itself, so members can set trades while covers and statuses stay editor-only. They join the schedule here,
      and go away when the trade is cancelled. kind: "covers" | "statuses". */
@@ -56,12 +64,12 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
-          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies });
+          members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts) });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
