@@ -35,7 +35,9 @@ CAPABILITIES = {
         {"path": "members/{self}", "write": "interact"},
         {"path": "trades", "read": "view", "write": "interact"},
         {"path": "tradeReplies", "read": "view", "write": "interact"},
-        {"path": "corrections", "read": "admin", "write": "interact"},  # members send, admins read and apply
+        # Corrections: each member writes and reads only their own record; admins read and update all.
+        {"path": "corrections", "read": "admin", "write": "admin"},
+        {"path": "corrections/{self}", "read": "interact", "write": "interact"},
     ]},
     "user": {},
 }

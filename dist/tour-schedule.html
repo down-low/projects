@@ -1282,6 +1282,15 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
 
   function nowIso() { return new Date().toISOString(); }
+  /* Corrections live one record per member, `corrections/<user id>` = {items: {<id>: correction}}: each member writes and
+     reads only their own (page rule `corrections/{self}`), admins read and update all (rule at `corrections`). */
+  function flattenFixes(docs) {
+    var out = [];
+    (docs || []).forEach(function (d) {
+      Object.keys(d.items || {}).forEach(function (k) { out.push(Object.assign({}, d.items[k], { id: d.id + "/" + k, owner: d.id, item: k })); });
+    });
+    return out;
+  }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
   function staffContacts(docs) {
     var out = {};
@@ -1326,7 +1335,7 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: records.corrections });
+          corrections: flattenFixes(records.corrections) });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
@@ -1419,14 +1428,20 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
           canSuggest: function () { return tradeOk(); },
           suggest: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
+            var m = myMember(), item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
             rec.state = "open";
-            var m = myMember();
             rec.byKey = m ? m.key : null;
-            return tw(addRec("corrections", rec));
+            rec.createdAt = nowIso();
+            rec.createdBy = uid;
+            item[k] = rec;
+            var ref = db.collection("corrections").doc(uid);
+            return tw(ref.get().then(function (s) { return s.exists ? ref.update({ items: item }) : ref.set({ items: item }); }));
           },
           handleCorrection: function (id, state, reason) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
-            return db.collection("corrections").doc(id).update({ state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() });
+            var parts = String(id).split("/"), item = {};
+            item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
+            return db.collection("corrections").doc(parts[0]).update({ items: item });
           },
           setVerified: function () {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
