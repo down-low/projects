@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* Sample trades for the view-only demo page (tools/build_artifact.py --snapshot records.json --demo demo.json).
 
-   Usage: node tools/demo_trades.js records.json > demo.json
+   Usage: node tools/demo_trades.js records.json [--extra YYYY-MM-DD:POS] > demo.json
 
    Picks real roster people and dates from today on, using the same schedule math as the page:
    Lester (Lieutenant, E10) and Goforth (FF/Paramedic, E21) each post trades, colleagues in their rank groups post trades
@@ -72,5 +72,18 @@ colleagues(lester, ["Captain", "Lieutenant"], ["Vacation", "Family event", ""]);
 colleagues(goforth, ["FF/Paramedic"], ["Wedding", "", "Kid's game"]);
 // Someone who could take Goforth's board post, to view the board from the other side.
 const ffpm = eligible(goforth, g1).find((p) => !p.swing);
+const viewAs = [lester.pos, goforth.pos, swapper.pos, ffpm.pos];
 
-process.stdout.write(JSON.stringify({ people: [lester.pos, goforth.pos, swapper.pos, ffpm.pos], trades, tradeReplies: replies }));
+/* --extra YYYY-MM-DD:POS adds two people to "Viewing as" who could take POS's shift that day (one who isn't working the
+   day before or after, one who works the day after), so a trade on that day can be posted, answered and picked in the
+   demo. It adds no trade; the person testing posts it. */
+const ei = process.argv.indexOf("--extra");
+if (ei !== -1) {
+  const [day, pos] = (process.argv[ei + 1] || "").split(":");
+  const poster = byPos[pos], d = day && new Date(day + "T00:00:00");
+  if (!poster || !d || !works(poster, d)) throw new Error("--extra needs a date the position works, e.g. 2026-12-25:21EOA15M");
+  const takers = M.eligibleTakers(d, poster, { people, opts }).filter((e) => !e.p.swing && viewAs.indexOf(e.p.pos) === -1);
+  [takers.find((e) => !e.before && !e.after), takers.find((e) => e.after)].forEach((e) => { if (e) viewAs.push(e.p.pos); });
+}
+
+process.stdout.write(JSON.stringify({ people: viewAs, trades, tradeReplies: replies }));

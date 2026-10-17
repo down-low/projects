@@ -3594,10 +3594,15 @@ li.aw-loaded .aw-st, li.aw-nomove .aw-st { background: var(--line); color: var(-
     $("date-results").innerHTML = html;
   }
 
+  // Who a trade cover works for: the poster of the trade (they may be covering someone else's seat themselves).
+  function tradePoster(c) {
+    var t = (recs.trades || []).filter(function (x) { return x.id === c.tradeId; })[0];
+    return t ? nameOf(t.posterKey) : null;
+  }
   // Tags for a Who's working row: acting, covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
-    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(x.slot.name || "vacant spot")
+    if (x.acting) tags.push('<span class="tag tag-acting">' + (x.acting.tradeId ? "Trade for " + esc(tradePoster(x.acting) || x.slot.name || "vacant spot")
       : /^2027 (award|assignment)/.test(x.acting.note || "") ? "2027 move" : "Acting for " + esc(x.slot.name || "vacant spot")) + "</span>");
     if (x.away) tags.push('<span class="tag tag-away">Acting at ' + esc((byPos[x.away.targetPos] || {}).company || x.away.targetPos) + "</span>");
     else if (x.coveredBy && x.name) tags.push('<span class="tag tag-away">Covered by ' + esc(x.coveredBy.coverName || nameOf(x.coveredBy.coverKey)) + "</span>");
