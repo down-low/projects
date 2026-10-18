@@ -139,12 +139,14 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Admin default:** an admin sets the starting tab set for new members (e.g. a "simple" preset of Schedule and Trades).
 
 ## Later
+- **Paste import for assignment-change notices:** paste the notice table, review each row (matched person, seat, dates), then apply; writes the move log and the cover or move together.
 - **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
 
 ## Shipped
+- Move log: every assignment-change notice row is kept per person (from/to seat, Last Reg, First Reg, ranks, source) and shown in a closed **Moves** fold on their page.
 - **Employee cards** (admins only; header link or More menu, and **Employee card** on a person's page): find anyone and edit their whole record in one place: name, rank and Employee ID (roster seats through `rosterOverrides`, added people on their record), own seat and moves, current cover and its type, leave, tour changes, the staff-list cell number, the "This is me" claim (remove, with Undo), their corrections (apply, dismiss, reopen, delete), and a history of every record touching them with Edit and Delete. Members and viewers never see it. The screen opens on a roster: rank tiles with headcounts that filter a sortable, paged table with a column chooser and a status quick edit.
 - Corrections: **Something wrong?** on every person page and **Verify my info** after "This is me" (also on your own page). Members send fixes (seat, leave / WE, covering / acting / shadowing, tour, Employee ID, own cell number, other); a "This is me" station or tour that differs from the roster sends one automatically. Admins see them under **Corrections** (count on the header link and menu); **Apply** opens the person's page with the edit form filled in and marks it applied on save; a cell number goes straight into the admin-only contacts.
 - Google sign-in, My page, Admin; claim-and-approve, and requests from people not on the vacancy list.
