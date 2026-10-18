@@ -61,6 +61,8 @@ A back-office screen, separate from the member-facing person page: **Employee ca
 
 Changes write to the same records the schedule reads, so Projection, Schedule and Staffing update at once.
 
+**Roster.** With nobody open, the screen shows one tile per rank with its headcount (tap one to filter, **All** to clear) over a table of everyone. The table has search (same rules as Schedule), sorting by any column, 25 / 50 / 100 / All per page, and a **Columns** chooser (division, battalion, station, name, position, rank, H-class, tour, Employee ID, status, assignment, cell, birth and hire dates, age, years of service, claimed, open corrections) remembered per browser. The **Status** dropdown is a quick edit: VA, S, D or WE starts that status today with no end date; **Full duty** ends whatever is running today (a status that started today is removed). Dates and notes are edited on the card. To add a column later, add one entry to `COLUMNS` in `card.js`; a new stored field (email, DSW No, seniority number) also needs an admin-only page collection (one rule in `CAPABILITIES`, read in `store.js`).
+
 ## 2027 vacancy awards
 
 Editors apply the 2027 Vacancy Awards (26 A-082) from **2027 awards** (header link on desktop, More menu on phones).

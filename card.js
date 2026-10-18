@@ -1,5 +1,5 @@
 /* Employee card: one back-office screen where an admin finds a person and edits their whole record.
- * window.CardViews(api) -> {render, open(key)}. `api` comes from app.js. Admins only (page Editors, server admins); members
+ * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
  * Sections: identity (name, rank, Employee ID), own seat and moves, current assignment, leave, tour changes, cell number
  * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
@@ -13,7 +13,8 @@
     var $ = api.$, esc = api.esc;
     /* key: the person shown; edit: "section|kind|id" of the record whose edit form is open; undo: a removed claim
        ({key, member} on the shared page, {key, accountId} on the server). */
-    var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false };
+    var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false,
+      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false, profiles: null };
 
     function backend() { return api.backend(); }
     function byPos() { return api.byPos(); }
@@ -28,8 +29,6 @@
     function open(key) {
       ui.key = key;
       ui.edit = null;
-      var p = byPos()[key];
-      ui.q = p ? p.name || "" : "";
       api.show();
     }
 
@@ -83,6 +82,204 @@
         '<span class="fold-sum">' + sum + "</span></summary>" + body + "</details>";
     }
 
+    /* ---------- Roster: rank tiles over a table of everyone ----------
+       Tiles count people per rank and filter the table; the table has search, sorting, paging, a column chooser (remembered
+       per browser) and a status quick edit. Clicking a name opens that person's card.
+
+       To add a column, add one entry to COLUMNS: {key, label, get(p) -> sortable value, html?(p) -> cell HTML, on: shown by
+       default, phone: shown by default on phones}. A new stored field (e.g. email, DSW No, seniority number) needs the data
+       first: an admin-only page collection (one rule in tools/build_artifact.py CAPABILITIES, read in store.js and passed
+       through onChange like rosterOverrides), then a COLUMNS entry that reads it. */
+    var PAGE_SIZES = [25, 50, 100, 0]; // 0 = all
+    var STATUS_OPTS = [["", "Full duty"], ["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]];
+    function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
+    function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
+    function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
+    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? c.phoneMobile : ""; }
+    function claimed(p) {
+      if (serverMode()) return (ui.users || []).some(function (u) { return u.pos === p.pos; });
+      return (recs().members || []).some(function (m) { return m.key === p.pos; });
+    }
+    function openFixes(p) { return (recs().corrections || []).filter(function (c) { return c.aboutKey === p.pos && c.state === "open"; }).length; }
+    function current(p) { return (recs().covers || []).filter(function (c) { return c.coverKey === p.pos && !M.isMove(c) && c.start <= todayIso() && live(c); })[0] || null; }
+    var COLUMNS = [
+      { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
+      { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
+      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
+        html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
+      { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,
+        html: function (p) { return esc(p.title) + (p.added ? "" : ' <span class="hint mono">' + esc(p.pos) + "</span>"); } },
+      { key: "rank", label: "Rank", get: function (p) { return p.rank; }, sortKey: function (p) { return api.RANKS.indexOf(p.rank); } },
+      { key: "hclass", label: "H-class", get: function (p) { return p.hclass || ""; } },
+      { key: "tour", label: "Tour", get: function (p) { return api.tourOn(p, api.today()) || ""; }, num: true, on: true, phone: true },
+      { key: "id", label: "Employee ID", get: function (p) { return p.emplId || ""; }, on: true, html: function (p) { return p.emplId ? '<span class="mono">' + esc(p.emplId) + "</span>" : '<span class="hint">—</span>'; } },
+      { key: "status", label: "Status", get: function (p) { return api.statusFor(p.pos, api.today()) || ""; }, on: true, phone: true, html: statusCell },
+      { key: "asg", label: "Assignment", get: function (p) { var c = current(p); return c ? api.kindWord(c) + " " + ((byPos()[c.targetPos] || {}).company || c.targetPos) : ""; } },
+      { key: "cell", label: "Cell", get: cellOf },
+      { key: "birth", label: "Birth date", get: function (p) { return profile(p).birthDate || ""; }, needs: "profiles" },
+      { key: "age", label: "Age", get: function (p) { return yearsSince(profile(p).birthDate); }, num: true, needs: "profiles" },
+      { key: "hire", label: "Hire date", get: function (p) { return profile(p).hireDate || ""; }, needs: "profiles" },
+      { key: "yos", label: "Years of service", get: function (p) { return yearsSince(profile(p).hireDate); }, num: true, needs: "profiles" },
+      { key: "claimed", label: "Claimed", get: function (p) { return claimed(p) ? "Yes" : ""; }, needs: "users" },
+      { key: "fixes", label: "Open corrections", get: openFixes, num: true },
+      { key: "action", label: "Action", get: function () { return ""; }, on: true, nosort: true,
+        html: function (p) { return btn("Open", 'data-ckey="' + esc(p.pos) + '"'); } },
+    ];
+    function coSort(co) { var m = /^([A-Z]+)(\d+)$/.exec(co || ""); return m ? m[1] + ("000" + m[2]).slice(-3) : "ZZZ" + (co || ""); }
+    function visibleCols() {
+      if (!ui.cols) {
+        var saved = null;
+        try { saved = JSON.parse(api.recall("card-cols") || "null"); } catch (e) { saved = null; }
+        ui.cols = Array.isArray(saved) ? saved : COLUMNS.filter(function (c) { return api.isPhone() ? c.phone || c.key === "action" : c.on; }).map(function (c) { return c.key; });
+      }
+      return COLUMNS.filter(function (c) { return ui.cols.indexOf(c.key) !== -1; });
+    }
+    // Profiles and (on the server) accounts load only when a column that needs them is shown.
+    function loadNeeds(cols) {
+      var b = backend();
+      cols.forEach(function (c) {
+        if (c.needs === "profiles" && !ui.profiles && !ui.profilesLoading) {
+          ui.profilesLoading = true;
+          b.profiles().then(function (list) {
+            ui.profiles = {};
+            list.forEach(function (x) { ui.profiles[x.key] = x; });
+            ui.profilesLoading = false;
+            drawRoster();
+          }, function () { ui.profiles = {}; ui.profilesLoading = false; });
+        }
+        if (c.needs === "users" && serverMode() && !ui.users) linkedUsers("");
+      });
+    }
+
+    function statusCell(p) {
+      var code = api.statusFor(p.pos, api.today());
+      if (code === "TR") return '<select disabled aria-label="Status"><option>TR (trade)</option></select>';
+      return '<select data-cstatus="' + esc(p.pos) + '" aria-label="Status for ' + esc(p.name) + '">' + STATUS_OPTS.map(function (o) {
+        return '<option value="' + o[0] + '"' + (o[0] === (code || "") ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+      }).join("") + '</select> <span class="msg" data-cstatus-msg="' + esc(p.pos) + '" role="status"></span>';
+    }
+    // Quick edit: VA / S / D / WE from today, open-ended; Full duty ends whatever is running today (a status that starts
+    // today is removed, an older one ends yesterday). Trade records are left alone.
+    function setStatus(pos, code, msg) {
+      var b = backend(), p = byPos()[pos], t = todayIso();
+      if (!p) return;
+      api.say(msg, "Saving…");
+      var y = api.iso(new Date(api.today().getFullYear(), api.today().getMonth(), api.today().getDate() - 1));
+      var running = (recs().statuses || []).filter(function (s) { return s.pos === pos && !s.tradeId && s.start <= t && (!s.end || s.end >= t); });
+      var done = code
+        ? b.addStatus({ pos: pos, name: p.name, code: code, start: t, end: null, note: "Set from the roster table" })
+        : running.reduce(function (pr, s) {
+          return pr.then(function () { return s.start >= t ? b.remove("statuses", s.id) : b.update("statuses", s.id, { end: y }); });
+        }, Promise.resolve());
+      done.then(function () { api.renderAll(true); }, function (er) { api.say(msg, er.message, true); });
+    }
+
+    function rosterRows() {
+      var match = api.makeMatcher(ui.q), t = api.today();
+      var rows = api.people().filter(function (p) {
+        if (ui.rank && p.rank !== ui.rank) return false;
+        return !match || match({ name: p.name, title: p.title, co: api.home(p), tour: api.tourOn(p, t), pos: p.pos, id: p.emplId });
+      });
+      var col = COLUMNS.filter(function (c) { return c.key === ui.sort.key; })[0];
+      if (col) {
+        var f = col.sortKey || col.get;
+        rows = rows.map(function (p) { return { p: p, v: f(p) }; }).sort(function (a, b) {
+          var x = a.v, y = b.v, empty = (x === "" || x == null) - (y === "" || y == null);
+          if (empty) return empty; // blanks last either way
+          var c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+          return c * ui.sort.dir || a.p.name.localeCompare(b.p.name);
+        }).map(function (r) { return r.p; });
+      }
+      return rows;
+    }
+    function tilesHtml() {
+      var counts = {}, all = api.people();
+      all.forEach(function (p) { counts[p.rank] = (counts[p.rank] || 0) + 1; });
+      return '<div class="rtiles" role="group" aria-label="Filter by rank">' +
+        [["", "All", all.length]].concat(api.RANKS.filter(function (r) { return counts[r]; }).map(function (r) { return [r, r, counts[r]]; })).map(function (x) {
+          return '<button type="button" class="rtile' + (ui.rank === x[0] ? " on" : "") + '" data-crank="' + esc(x[0]) + '" aria-pressed="' + (ui.rank === x[0]) + '">' +
+            '<span class="n">' + x[2] + '</span><span class="k">' + esc(x[1]) + "</span></button>";
+        }).join("") + "</div>";
+    }
+    function rosterHtml() {
+      return '<div class="card roster-card"><h2 class="view-title">Employee cards</h2>' +
+        '<p class="hint">Admins only. Tap a rank to filter; tap a name to open their card. Members never see this screen.</p>' +
+        tilesHtml() +
+        '<form class="edit rbar" id="card-search" novalidate role="search">' +
+        '<label class="rshow">Show<select id="card-per">' + PAGE_SIZES.map(function (n) {
+          return '<option value="' + n + '"' + (n === ui.per ? " selected" : "") + ">" + (n || "All") + "</option>";
+        }).join("") + "</select></label>" +
+        '<label class="rq">Search<input type="search" id="card-q" placeholder="Name, Employee ID, company, tour or position" autocomplete="off" value="' + esc(ui.q) + '"></label>' +
+        '<button type="button" class="btn" id="card-cols-btn" aria-expanded="' + !!ui.chooser + '" aria-controls="card-cols">☰ Columns</button></form>' +
+        '<div class="rcols" id="card-cols"' + (ui.chooser ? "" : " hidden") + '><div class="rcols-head"><b>Column chooser</b>' + btn("Done", 'id="card-cols-x"') + "</div>" +
+        COLUMNS.map(function (c) {
+          return '<label class="chk"><input type="checkbox" data-ccol="' + c.key + '"' + (ui.cols.indexOf(c.key) !== -1 ? " checked" : "") + "> " + esc(c.label) + "</label>";
+        }).join("") + btn("Reset to default", 'id="card-cols-reset"') + "</div>" +
+        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>';
+    }
+    // Redraws just the counts, table and pager, so typing in the search box keeps focus.
+    function drawRoster() {
+      if (!$("card-table")) return;
+      var cols = visibleCols(), rows = rosterRows(), per = ui.per, pages = per ? Math.max(1, Math.ceil(rows.length / per)) : 1;
+      loadNeeds(cols);
+      if (ui.page >= pages) ui.page = pages - 1;
+      var shown = per ? rows.slice(ui.page * per, ui.page * per + per) : rows;
+      var t = api.today(), st = { full: 0 };
+      rows.forEach(function (p) { var c = api.statusFor(p.pos, t); st[c || "full"] = (st[c || "full"] || 0) + 1; });
+      $("card-sum").innerHTML = "<b>" + rows.length + "</b> " + (ui.rank ? esc(ui.rank) + (rows.length === 1 ? "" : "s") : rows.length === 1 ? "person" : "people") +
+        " · " + st.full + " full duty" + ["VA", "S", "D", "WE", "TR"].filter(function (c) { return st[c]; }).map(function (c) { return " · " + c + " " + st[c]; }).join("");
+      $("card-table").innerHTML = rows.length ? '<table class="list roster-t"><thead><tr>' + cols.map(function (c) {
+        var on = ui.sort.key === c.key;
+        return '<th scope="col"' + (c.key === "name" ? ' class="sticky"' : "") + (c.nosort ? "" : ' aria-sort="' + (on ? (ui.sort.dir > 0 ? "ascending" : "descending") : "none") + '"') + ">" +
+          (c.nosort ? esc(c.label) : '<button type="button" class="sort' + (on ? " on" : "") + '" data-csort="' + c.key + '">' + esc(c.label) + (on ? (ui.sort.dir > 0 ? " ▲" : " ▼") : "") + "</button>") + "</th>";
+      }).join("") + "</tr></thead><tbody>" + shown.map(function (p) {
+        return "<tr>" + cols.map(function (c) {
+          var v = c.html ? c.html(p) : esc(c.get(p) == null ? "" : c.get(p));
+          return "<td" + (c.key === "name" ? ' class="sticky"' : c.num ? ' class="num"' : "") + ">" + v + "</td>";
+        }).join("") + "</tr>";
+      }).join("") + "</tbody></table>" : '<p class="hint">Nobody matches.</p>';
+      var from = rows.length ? ui.page * (per || rows.length) + 1 : 0, to = per ? Math.min(rows.length, (ui.page + 1) * per) : rows.length;
+      $("card-pager").innerHTML = pages > 1 ? btn("‹ Prev", 'data-cpage="-1"' + (ui.page ? "" : " disabled")) + " <span>" + from + "–" + to + " of " + rows.length + "</span> " +
+        btn("Next ›", 'data-cpage="1"' + (ui.page < pages - 1 ? "" : " disabled")) : "";
+    }
+    function wireRoster() {
+      var el = $("card-detail");
+      $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
+      $("card-search").onsubmit = function (e) { e.preventDefault(); };
+      $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
+      $("card-cols-btn").onclick = function () { ui.chooser = !ui.chooser; $("card-cols").hidden = !ui.chooser; this.setAttribute("aria-expanded", ui.chooser); };
+      $("card-cols-x").onclick = function () { ui.chooser = false; $("card-cols").hidden = true; $("card-cols-btn").setAttribute("aria-expanded", "false"); };
+      $("card-cols-reset").onclick = function () { ui.cols = null; try { api.store("card-cols", ""); } catch (e) { /* storage unavailable */ } render(); };
+      el.querySelectorAll("[data-ccol]").forEach(function (x) {
+        x.onchange = function () {
+          var k = x.dataset.ccol;
+          ui.cols = COLUMNS.map(function (c) { return c.key; }).filter(function (c) { return c === k ? x.checked : ui.cols.indexOf(c) !== -1; });
+          api.store("card-cols", JSON.stringify(ui.cols));
+          drawRoster();
+        };
+      });
+      el.querySelectorAll("[data-crank]").forEach(function (x) {
+        x.onclick = function () { ui.rank = x.dataset.crank; ui.page = 0; render(); };
+      });
+      // Table clicks (the table is redrawn without re-wiring, so delegate).
+      $("card-table").onclick = function (e) {
+        var s = e.target.closest("[data-csort]"), k = e.target.closest("[data-ckey]");
+        if (s) {
+          ui.sort = { key: s.dataset.csort, dir: ui.sort.key === s.dataset.csort ? -ui.sort.dir : 1 };
+          drawRoster();
+        } else if (k) open(k.dataset.ckey);
+      };
+      $("card-table").onchange = function (e) {
+        var sel = e.target.closest("[data-cstatus]");
+        if (sel) setStatus(sel.dataset.cstatus, sel.value, el.querySelector('[data-cstatus-msg="' + sel.dataset.cstatus + '"]'));
+      };
+      $("card-pager").onclick = function (e) {
+        var b = e.target.closest("[data-cpage]");
+        if (b) { ui.page += +b.dataset.cpage; drawRoster(); }
+      };
+    }
+
     /* ---------- Render ---------- */
     function render() {
       var el = $("card-detail");
@@ -90,34 +287,16 @@
       var b = backend();
       if (!b || !b.update || !b.canAdmin()) { el.innerHTML = '<div class="empty">Only admins can open employee cards.</div>'; return; }
       var p = ui.key ? byPos()[ui.key] : null;
-      el.innerHTML = '<form class="card edit card-search" id="card-search" novalidate role="search"><h2 class="view-title">Employee cards</h2>' +
-        '<p class="hint">Admins only. Find anyone and edit their whole record in one place. Members never see this screen.</p>' +
-        '<label>Find a person<input type="search" id="card-q" placeholder="Name, Employee ID, company or position number" autocomplete="off" value="' + esc(ui.q) + '"></label>' +
-        '<ul class="card-hits" id="card-hits"></ul></form>' +
-        (p ? cardHtml(p) : '<div class="empty">Search for someone above, or tap <b>Employee card</b> on their Schedule page.</div>');
-      drawHits(false);
-      $("card-q").oninput = function () { ui.q = this.value; drawHits(true); };
-      $("card-search").onsubmit = function (e) {
-        e.preventDefault();
-        var first = $("card-hits").querySelector("[data-ckey]");
-        if (first) pick(first.dataset.ckey);
-      };
-      $("card-hits").onclick = function (e) { var h = e.target.closest("[data-ckey]"); if (h) pick(h.dataset.ckey); };
-      if (p) wire(p);
-    }
-    function pick(key) { ui.key = key; ui.edit = null; ui.q = nameOf(key); render(); }
-    function drawHits(typing) {
-      var ul = $("card-hits"), q = ui.q.trim();
-      var cur = ui.key && byPos()[ui.key];
-      if (!q || (!typing && cur && q === cur.name)) { ul.innerHTML = ""; return; }
-      var match = api.makeMatcher(q);
-      var hits = api.people().filter(function (p) {
-        return match({ name: p.name, title: p.title, co: p.company, tour: api.tourOn(p, api.today()), pos: p.pos, id: p.emplId });
-      }).slice(0, 12);
-      ul.innerHTML = hits.length ? hits.map(function (p) {
-        return '<li><button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + '</button> <span class="hint">' + esc(p.title) +
-          (p.emplId ? " · " + esc(p.emplId) : "") + "</span></li>";
-      }).join("") : '<li class="hint">Nobody matches.</li>';
+      if (!p) {
+        visibleCols();
+        el.innerHTML = rosterHtml();
+        wireRoster();
+        drawRoster();
+        return;
+      }
+      el.innerHTML = '<div class="card-back">' + btn("‹ Back to roster", 'id="card-back"') + "</div>" + cardHtml(p);
+      $("card-back").onclick = function () { ui.key = null; ui.edit = null; render(); el.scrollIntoView({ block: "start" }); };
+      wire(p);
     }
 
     function cardHtml(p) {

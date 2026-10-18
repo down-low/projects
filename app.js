@@ -1265,6 +1265,7 @@
     statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    Organization: window.Organization, store: store, recall: recall,
     show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
   });
 
