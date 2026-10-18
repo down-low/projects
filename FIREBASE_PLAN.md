@@ -54,6 +54,7 @@ These need answers before any build work:
 - **`tradeInvites/{code}`** `{kind: "trade" | "join", tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites (see `RELEASES.md`, Invites from trades). A `trade` invite is for a roster person who hasn't signed in; a `join` invite (no trade or recipient) is for someone not in the tool yet. Written and read only by functions.
 - **`corrections/{id}`** `{aboutKey, kind, details, note, byUid, byKey, state: open|applied|dismissed, reason, handledBy, handledAt, createdAt}`: members create (rules: `create` if active, no read); admins read and update.
 - **`invites/{code}`** `{key, sentBy, sentAt, usedAt, expiresAt}`: admin invite texts (see `RELEASES.md`, Invite texts from admins). Written and read only by functions.
+- **Tab preferences** on `users/{uid}`: `prefs: {tabs: [...], home}`, written only by that user; `settings/defaults` `{tabs}` written by admins sets the starting set for new members.
 - **Contact sharing** on `users/{uid}`: `shareContact` (bool, default false) and `shareChangedAt`; only the user (or an admin turning it off) changes it.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 

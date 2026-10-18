@@ -130,6 +130,14 @@ A member can download an address book of coworkers who agreed to share their num
 - **Safety:** each download is dated and logged (who, when, which group); turning sharing off drops a person from the next download; the file is built on request and never stored; the page says the list is for department use only.
 - **Not on the shared claude.ai page**, where cell numbers stay admin-only.
 
+### Choose my tabs (simpler phone view)
+Most people use the tool on a phone, where a full tab bar is a lot. Each person picks what they see.
+- **My page → Tabs and links:** switches for Schedule, Projection, Staffing, Trades, By rank and 6 of 9. Members start with **Schedule** and **Trades** on and the rest off, and can turn any back on. The bottom bar shows only what's on; **More** keeps the rest one tap away, so nothing is lost.
+- **Home tab:** the one they pick opens first (default Schedule, on their own card).
+- **By role, whatever the settings:** members never see editing links: "Not on the list? Add a person", the edit forms, Corrections, the admin employee card, Open seats, 2027 awards or Admin. Editors and admins see them and can hide them too.
+- **Follows the account:** settings sync across devices once signed in; before sign-in the choice is remembered on that device.
+- **Admin default:** an admin sets the starting tab set for new members (e.g. a "simple" preset of Schedule and Trades).
+
 ## Later
 - **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
