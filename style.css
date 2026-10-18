@@ -764,3 +764,6 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 #list-q { width: 100%; margin-bottom: 4px; }
 ul.list-rows li { padding: 7px 14px; }
 ul.list-rows li .linkish { font-weight: 600; }
+
+/* Moves (position history from notices) */
+ul.hist.moves li { display: block; }

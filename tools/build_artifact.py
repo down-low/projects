@@ -30,6 +30,7 @@ CAPABILITIES = {
         {"path": "people", "read": "view", "write": "admin"},
         {"path": "staffing", "read": "view", "write": "admin"},
         {"path": "profiles", "read": "admin", "write": "admin"},
+        {"path": "assignments", "read": "view", "write": "admin"},  # move log from assignment-change notices
         {"path": "contacts", "read": "admin", "write": "admin"},  # cell numbers from the staff list
         {"path": "members", "read": "view", "write": "admin"},
         {"path": "members/{self}", "write": "interact"},
