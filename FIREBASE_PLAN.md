@@ -54,6 +54,7 @@ These need answers before any build work:
 - **`tradeInvites/{code}`** `{kind: "trade" | "join", tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites (see `RELEASES.md`, Invites from trades). A `trade` invite is for a roster person who hasn't signed in; a `join` invite (no trade or recipient) is for someone not in the tool yet. Written and read only by functions.
 - **`corrections/{id}`** `{aboutKey, kind, details, note, byUid, byKey, state: open|applied|dismissed, reason, handledBy, handledAt, createdAt}`: members create (rules: `create` if active, no read); admins read and update.
 - **`invites/{code}`** `{key, sentBy, sentAt, usedAt, expiresAt}`: admin invite texts (see `RELEASES.md`, Invite texts from admins). Written and read only by functions.
+- **Contact sharing** on `users/{uid}`: `shareContact` (bool, default false) and `shareChangedAt`; only the user (or an admin turning it off) changes it.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
 ## Security rules (outline)
@@ -102,6 +103,7 @@ These need answers before any build work:
   - **`redeemInvite`** (callable, signed in): with the code and an Employee ID that matches the invited roster entry, links the account to that position, approves it (`approvedBy: "invite"`, `invitedBy`), sets the custom claims and marks the code used. A mismatch falls back to a normal pending claim. A `join` code stamps `invitedBy` on the user's "not on the list" `claimRequest`, which an admin approves as usual; the Admin users list shows "Invited by".
 - **`sendInvites`** (callable, admins): for chosen people, creates an `invites` code and texts the staff-list cell number through Twilio; skips anyone opted out or with an active invite. **`redeemInvite`** above also accepts these codes and pre-fills the claim with the invited seat.
 - **Nightly backup:** scheduled export of Firestore to a Cloud Storage bucket.
+- **`exportContacts`** (callable, active users who share their own number; admins any): `{scope: "battalion" | "rank" | "all", format: "vcf" | "csv"}` builds the file from opted-in users only (name, Employee ID, rank, station, tour, cell), returns it for download, and writes an `audit` entry. Nothing is stored.
 - **`calendarFeed`** (public HTTPS, `/cal/<secret>.ics`): looks up the secret in `calendarTokens` and returns that person's schedule as iCalendar, cached for an hour. `calendarLink` (callable, active users) creates or resets a person's secret.
 
 ## Changes in this repo
