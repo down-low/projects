@@ -48,6 +48,21 @@ Editors can record, per person (on the **Schedule** tab):
 - **6 of 9** (header link): tours whose start days are 3 or 10 days apart work 6 of the same 9 shifts. Pick a tour to see its four partners, the shared watches and the dates they fall on this month, plus a 31 × 31 table of shifts in common.
 - **Documents** (header menu): the 2026 and 2027 Watch Calendars, the Vacancy List (26 A-071) and the 2027 Vacancy Awards (26 A-082). Files live in `docs/` and are listed in `docs/index.json`; the server only serves listed files, to signed-in, approved users.
 
+## Employee cards (admins)
+
+A back-office screen, separate from the member-facing person page: **Employee cards** (header link on desktop, More menu on phones, or **Employee card** on a person's Schedule page). Only admins (Editor access on the shared page; the admin role on the server) see it. Find anyone by name, Employee ID, company or position number, then edit their whole record in one place:
+
+- **Identity:** name, rank and Employee ID. For a vacancy-list seat these override the files (`data/positions.json`, `data/employee-ids.json`) through one record per seat in `rosterOverrides` (everyone reads, admins write). Only what differs from the files is kept, tied to the holder it was made for (`forName`), so a new vacancy list with someone else in the seat drops it. Changing a seat's rank moves the seat to that rank on Projection and Staffing and changes who can trade with it. **Reset to vacancy list** removes the override. Added people are edited on their `people` record (name, rank, ID, apparatus, tour).
+- **Own seat and moves** (covers with `move: true`), **current assignment** (a cover with its type: acting, cover, shadow or extra), **leave and statuses** (VA, S, D, WE), and **tour changes**: the same forms as the person page, plus a "Move" option on a cover.
+- **Cell number:** the staff-list record (`contacts/staff-list`, admins only). Set or clear.
+- **"This is me" claim:** the member's `members` record; **Remove claim** offers **Undo**. On the server, the linked account with Unlink and Undo.
+- **Corrections** about them or sent by them: Apply, Dismiss, Reopen, Delete.
+- **History:** every record touching the person, newest first, each with **Edit** and **Delete**. Records from a shift trade change only through the trade.
+
+Changes write to the same records the schedule reads, so Projection, Schedule and Staffing update at once.
+
+**Roster.** With nobody open, the screen shows one tile per rank with its headcount (tap one to filter, **All** to clear) over a table of everyone. The table has search (same rules as Schedule), sorting by any column, 25 / 50 / 100 / All per page, and a **Columns** chooser (division, battalion, station, name, position, rank, H-class, tour, Employee ID, status, assignment, cell, birth and hire dates, age, years of service, claimed, open corrections) remembered per browser. The **Status** dropdown is a quick edit: VA, S, D or WE starts that status today with no end date; **Full duty** ends whatever is running today (a status that started today is removed). Dates and notes are edited on the card. To add a column later, add one entry to `COLUMNS` in `card.js`; a new stored field (email, DSW No, seniority number) also needs an admin-only page collection (one rule in `CAPABILITIES`, read in `store.js`).
+
 ## 2027 vacancy awards
 
 Editors apply the 2027 Vacancy Awards (26 A-082) from **2027 awards** (header link on desktop, More menu on phones).
@@ -176,6 +191,7 @@ API (JSON, session cookie; writes need the header `X-Requested-With: tour-schedu
 | `POST /api/me/claim` `{request: {name, rank, company, tour, note?}}` (not on the list) | pending accounts |
 | `GET /api/stats?date=` (averages only), `GET /docs/<file>.pdf`, `PUT /api/profiles/<own key>` `{birthDate, hireDate}` | approved accounts |
 | `PUT /api/staffing/<company>` `{required: n or null}`, `PUT /api/profiles/<key>`, `GET /api/admin/profiles` | admins |
+| Employee cards: `PUT /api/admin/overrides/<pos>` `{name?, rank?, emplId?}` (all empty or equal to the files removes it), `PATCH /api/admin/records/{statuses,tour-changes,covers,people}/<id>` (same checks as adding; trade records refused), `PUT /api/admin/cells/<key>` `{cell or null}` (staff-list cell; only admins get it back in `/api/contacts`), `DELETE /api/admin/corrections/<id>`, `PATCH /api/admin/corrections/<id>` `{state: open}` (reopen) | admins |
 | `GET /api/trades` (only trades you may see), `PUT /api/me/alerts` `{text, app, email, board: off/daily/each}` | approved accounts |
 | `POST /api/trades` `{date, note?, audience: {board, to: [keys]}}`, `PATCH /api/trades/<id>` `{audience}` (widen only), `POST /api/trades/<id>/replies` `{proposal: {swapDate} or {later: true}, note?}`, `POST /api/trades/<id>/pick` `{replyId}`, `POST /api/trades/<id>/cancel` | approved accounts linked to a roster position (pick and cancel: the poster; admins may cancel) |
 

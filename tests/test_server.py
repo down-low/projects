@@ -240,9 +240,15 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(m.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "applied"})[0], 403)
         _, items, _ = admin.req("GET", "/api/admin/corrections")
         self.assertEqual((len(items), items[0]["details"]["code"], items[0]["byName"]), (1, "D", "Member3"))
-        self.assertEqual(admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "open"})[0], 400)
+        self.assertEqual(admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "nope"})[0], 400)
         st, done, _ = admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "applied"})
         self.assertEqual((st, done["state"]), (200, "applied"))
+        # Reopen and delete (employee card).
+        self.assertEqual(admin.req("PATCH", f"/api/admin/corrections/{rec['id']}", {"state": "open"})[1]["state"], "open")
+        self.assertEqual(m.req("DELETE", f"/api/admin/corrections/{rec['id']}")[0], 403)
+        self.assertEqual(admin.req("DELETE", f"/api/admin/corrections/{rec['id']}")[0], 200)
+        self.assertEqual(admin.req("DELETE", f"/api/admin/corrections/{rec['id']}")[0], 404)
+        self.assertEqual(len(admin.req("GET", "/api/admin/corrections")[1]), 0)
 
     def test_covers_and_people(self):
         admin = self.client()
@@ -344,8 +350,6 @@ class ServerTest(unittest.TestCase):
         self.assertNotIn("birthDate", json.dumps(stats))
 
 
-if __name__ == "__main__":
-    unittest.main()
 
 
 class TradeTest(unittest.TestCase):
@@ -477,3 +481,102 @@ class TradeTest(unittest.TestCase):
         nday = next(d for d in days if a.tour_works(a.positions[new]["tour"], d))
         self.assertEqual(a.seat_on(lt, nday), new)  # cover ended: they work their new seat
         a.write("DELETE FROM covers WHERE id IN ('c1', 'm1')")
+
+
+class EmployeeCardTest(unittest.TestCase):
+    """Employee card (admins): roster overrides, editing records in place, staff-list cells. Its own database."""
+    setUpClass = classmethod(ServerTest.setUpClass.__func__)
+    tearDownClass = classmethod(ServerTest.tearDownClass.__func__)
+    client = ServerTest.client
+
+    def card_users(self):
+        """An admin, an approved editor and an approved member."""
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        out = [admin]
+        for email, role in (("card-editor@example.org", "editor"), ("card-member@example.org", "member")):
+            c = self.client()
+            c.google_login(email)
+            uid = next(u["id"] for u in admin.req("GET", "/api/admin/users")[1] if u["googleEmail"] == email)
+            admin.req("POST", f"/api/admin/users/{uid}", {"action": "approve"})
+            if role != "member":
+                admin.req("POST", f"/api/admin/users/{uid}", {"action": "role", "role": role})
+            out.append(c)
+        return out
+
+    def test_card_overrides(self):
+        admin, editor, member = self.card_users()
+        pos = next(p for p, e in self.app.positions.items() if e.get("name") and e.get("emplId") and e["rank"] == "Captain")
+        orig = dict(self.app.orig[pos])
+        url = f"/api/admin/overrides/{pos}"
+        for c in (member, editor):
+            self.assertEqual(c.req("PUT", url, {"emplId": "ZZ0001"})[0], 403)
+        self.assertEqual(admin.req("PUT", url, {"emplId": "Z1"})[0], 400)
+        self.assertEqual(admin.req("PUT", url, {"rank": "Admiral"})[0], 400)
+        taken = next(e["emplId"] for p, e in self.app.positions.items() if e.get("emplId") and p != pos)
+        self.assertEqual(admin.req("PUT", url, {"emplId": taken})[0], 400)
+        st, rec, _ = admin.req("PUT", url, {"emplId": "zz0001", "name": "Renamed,X", "rank": "Firefighter"})
+        self.assertEqual((st, rec["override"]["emplId"], rec["override"]["forName"]), (200, "ZZ0001", orig["name"]))
+        # Members read overrides with the records, and the server uses them.
+        ov = member.req("GET", "/api/records")[1]["rosterOverrides"]
+        self.assertEqual([(o["id"], o["name"], o["rank"]) for o in ov], [(pos, "Renamed,X", "Firefighter")])
+        self.assertEqual(self.app.rank_group(pos), "Firefighter")
+        self.assertEqual(admin.req("POST", "/api/people", {"name": "Dup,Y", "rank": "Captain", "emplId": "ZZ0001"})[0], 400)
+        # A stale override (the seat has a new holder) stops applying.
+        self.app.orig[pos]["name"] = "Someone,Else"
+        self.app.apply_overrides()
+        self.assertEqual(self.app.positions[pos]["rank"], "Captain")
+        self.app.orig[pos]["name"] = orig["name"]
+        # Setting it back to the files' values removes the override.
+        admin.req("PUT", url, {"emplId": orig["emplId"], "name": orig["name"], "rank": orig["rank"]})
+        self.assertEqual(member.req("GET", "/api/records")[1]["rosterOverrides"], [])
+        self.assertEqual(self.app.positions[pos]["name"], orig["name"])
+        self.assertEqual(admin.req("PUT", "/api/admin/overrides/99XXX99M", {"name": "No,Seat"})[0], 400)
+
+    def test_card_record_edits(self):
+        admin, editor, member = self.card_users()
+        pos = "10EOC03M"
+        st, s1, _ = admin.req("POST", "/api/statuses", {"pos": pos, "code": "VA", "start": "2026-11-01", "end": "2026-11-03"})
+        url = f"/api/admin/records/statuses/{s1['id']}"
+        for c in (member, editor):
+            self.assertEqual(c.req("PATCH", url, {"code": "S"})[0], 403)
+        self.assertEqual(admin.req("PATCH", url, {"end": "2026-10-01"})[0], 400)
+        self.assertEqual(admin.req("PATCH", url, {"code": "TR"})[0], 400)
+        st, s2, _ = admin.req("PATCH", url, {"code": "D", "end": None, "pos": "OTHER"})
+        self.assertEqual((st, s2["code"], s2["end"], s2["pos"], s2["start"]), (200, "D", None, pos, "2026-11-01"))
+        _, tc, _ = admin.req("POST", "/api/tour-changes", {"pos": pos, "tour": 5, "effective": "2027-01-01"})
+        self.assertEqual(admin.req("PATCH", f"/api/admin/records/tour-changes/{tc['id']}", {"tour": 40})[0], 400)
+        self.assertEqual(admin.req("PATCH", f"/api/admin/records/tour-changes/{tc['id']}", {"tour": 7})[1]["tour"], 7)
+        other = next(p for p, e in self.app.positions.items() if p != pos and e.get("name"))
+        _, cv, _ = admin.req("POST", "/api/covers", {"coverKey": pos, "targetPos": other, "start": "2026-11-01", "move": True})
+        self.assertEqual(cv["move"], 1)
+        st, cv2, _ = admin.req("PATCH", f"/api/admin/records/covers/{cv['id']}", {"move": False, "kind": "acting"})
+        self.assertEqual((st, cv2["move"], cv2["kind"], cv2["coverKey"]), (200, None, "acting", pos))
+        self.assertEqual(admin.req("PATCH", f"/api/admin/records/covers/{cv['id']}", {"targetPos": pos})[0], 400)
+        _, person, _ = admin.req("POST", "/api/people", {"name": "Card,P", "rank": "Captain", "emplId": "CP1234"})
+        st, p2, _ = admin.req("PATCH", f"/api/admin/records/people/{person['id']}", {"name": "Card,Q", "company": "E10", "tour": 3, "emplId": "CP1234"})
+        self.assertEqual((st, p2["name"], p2["company"], p2["tour"]), (200, "Card,Q", "E10", 3))
+        self.assertEqual(admin.req("PATCH", f"/api/admin/records/people/{person['id']}", {"company": "E10", "tour": 99})[0], 400)
+        self.assertEqual(admin.req("PATCH", f"/api/admin/records/statuses/{'0' * 32}", {"code": "S"})[0], 404)
+        # Trade records change only through the trade.
+        self.app.write("UPDATE statuses SET tradeId = 'x' WHERE id = ?", (s1["id"],))
+        self.assertEqual(admin.req("PATCH", url, {"code": "S"})[0], 409)
+
+    def test_card_cells(self):
+        admin, editor, member = self.card_users()
+        url = "/api/admin/cells/10EOC03M"
+        for c in (member, editor):
+            self.assertEqual(c.req("PUT", url, {"cell": "415-555-0100"})[0], 403)
+        self.assertEqual(admin.req("PUT", url, {"cell": "call me"})[0], 400)
+        self.assertEqual(admin.req("PUT", "/api/admin/cells/NOPE1", {"cell": "415-555-0100"})[0], 400)
+        self.assertEqual(admin.req("PUT", url, {"cell": "415-555-0100"})[1], {"key": "10EOC03M", "set": True})
+        self.assertEqual(admin.req("GET", "/api/contacts")[1]["10EOC03M"], {"phoneMobile": "415-555-0100", "shared": False, "staffList": True})
+        for c in (member, editor):
+            self.assertNotIn("10EOC03M", c.req("GET", "/api/contacts")[1])
+            self.assertNotIn("415-555-0100", json.dumps(c.req("GET", "/api/records")[1]))
+        admin.req("PUT", url, {"cell": None})
+        self.assertNotIn("10EOC03M", admin.req("GET", "/api/contacts")[1])
+
+
+if __name__ == "__main__":
+    unittest.main()

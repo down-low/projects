@@ -1,5 +1,5 @@
 /* Corrections: members tell admins what's wrong; admins apply it with the usual edit forms.
- * window.CorrectionViews(api) -> {link, open, openVerify, render, prefill, saved, count, afterClaim}. `api` comes from app.js.
+ * window.CorrectionViews(api) -> {link, open, openVerify, render, prefill, saved, count, afterClaim, summary, apply}. `api` comes from app.js.
  * - "Something wrong?" on any person page opens a short form: wrong seat, leave / working elsewhere, covering / acting /
  *   shadowing, tour, Employee ID, cell number (own page only) or other. It writes a correction; nothing changes until an
  *   admin applies it.
@@ -288,6 +288,6 @@
     }
 
     return { link: link, wireLinks: wireLinks, open: open, openVerify: openVerify, render: render, prefill: prefill, saved: saved,
-      count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest };
+      count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest, summary: summary, apply: apply };
   };
 })(typeof window !== "undefined" ? window : globalThis);

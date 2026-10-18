@@ -16,12 +16,14 @@
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * onChange also carries {members, trades, tradeReplies}.
+ * Employee card (admins): update(kind, id, patch), setOverride(pos, {emplId, name, rank} | null) (roster seats; onChange
+ * carries rosterOverrides, readable by everyone), setCell(key, cell | null), restoreMember(doc), deleteCorrection(id).
  */
 (function (root) {
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -74,13 +76,13 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: flattenFixes(records.corrections), assignments: records.assignments });
+          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
@@ -192,13 +194,43 @@
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
             return tw(db.collection("members").doc(uid).update({ verifiedAt: nowIso() }));
           },
-          // Admins: put a cell number in the staff-list contacts record.
+          // Admins: put a cell number in the staff-list contacts record (null removes it).
           setCell: function (key, cell) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
             var cells = Object.assign({}, doc ? doc.cells : {});
-            cells[key] = cell;
+            if (cell) cells[key] = cell; else delete cells[key];
             return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+          },
+          /* Employee card (admins). update merges fields into one record; a null field clears it. */
+          update: function (kind, id, patch) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection(COLLECTIONS[kind]).doc(id).update(Object.assign({}, patch, { updatedAt: nowIso(), updatedBy: uid }));
+          },
+          // A roster seat's name, rank or Employee ID over the vacancy list and employee-ids.json; all empty removes it.
+          setOverride: function (pos, o) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var ref = db.collection("rosterOverrides").doc(pos);
+            if (!o || !(o.emplId || o.name || o.rank)) return ref.delete();
+            return ref.set({ emplId: o.emplId || null, name: o.name || null, rank: o.rank || null, forName: o.forName || null, updatedAt: nowIso(), updatedBy: uid });
+          },
+          // Undo for unclaim: put the removed "this is me" record back as it was.
+          restoreMember: function (doc) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var rec = Object.assign({}, doc);
+            delete rec.id;
+            return db.collection("members").doc(doc.id).set(rec);
+          },
+          // A correction is one item in its owner's record; the record is rewritten without it.
+          deleteCorrection: function (id) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), ref = db.collection("corrections").doc(parts[0]);
+            return ref.get().then(function (s) {
+              if (!s.exists) return;
+              var d = s.data(), items = Object.assign({}, d.items);
+              delete items[parts[1]];
+              return ref.set(Object.assign({}, d, { items: items }));
+            });
           },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
@@ -275,7 +307,8 @@
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
           people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
-          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [] });
+          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [],
+          rosterOverrides: res[0].rosterOverrides || [] });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -340,6 +373,12 @@
             },
             cancelTrade: function (trade) { return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(trade.id) + "/cancel")); },
             endCover: function (id, end) { return thenRefresh(call("PATCH", "api/covers/" + encodeURIComponent(id), { end: end })); },
+            update: function (kind, id, patch) {
+              return thenRefresh(call("PATCH", "api/admin/records/" + API_PATH[kind] + "/" + encodeURIComponent(id), patch));
+            },
+            setOverride: function (pos, o) { return thenRefresh(call("PUT", "api/admin/overrides/" + encodeURIComponent(pos), o || {})); },
+            setCell: function (key, cell) { return thenRefresh(call("PUT", "api/admin/cells/" + encodeURIComponent(key), { cell: cell || null })); },
+            deleteCorrection: function (id) { return thenRefresh(call("DELETE", "api/admin/corrections/" + encodeURIComponent(id))); },
             remove: function (kind, id) {
               return thenRefresh(call("DELETE", "api/" + API_PATH[kind] + "/" + encodeURIComponent(id)));
             },
@@ -379,7 +418,7 @@
     function emit() {
       onChange({ statuses: (r.statuses || []).concat(st ? tradeLegs(st.trades, "statuses") : []), tourChanges: r.tourChanges || [],
         covers: (r.covers || []).concat(st ? tradeLegs(st.trades, "covers") : []), people: r.people || [], staffing: r.staffing || [],
-        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [], assignments: r.assignments || [] });
+        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] });
     }
     setTimeout(emit, 0);
     var adapter = Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf });
