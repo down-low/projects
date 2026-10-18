@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
 STATUS_CODES = CODES | {TRADED}
@@ -65,9 +65,10 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
     ("covers", "kind", "TEXT"),
+    ("covers", "move", "INTEGER"),  # a move to a new owned seat (2027 award or assignment, or set on the employee card)
 ]
 CORRECTION_KINDS = {"seat", "status", "cover", "tour", "id", "cell", "other"}
-CORRECTION_STATES = {"applied", "dismissed"}
+CORRECTION_STATES = {"applied", "dismissed", "open"}  # open: reopened by an admin
 COVER_KINDS = {"acting", "cover", "shadow", "extra"}  # empty: worked out from the two ranks
 # Shift trades: who can take whose shift. Ranks not listed trade with their own rank only. Mirrors RANK_GROUPS in schedule.js.
 RANK_GROUPS = {"Firefighter": "Firefighter", "FF/Paramedic": "FF/Paramedic", "Lieutenant": "Officer", "Captain": "Officer",
@@ -133,6 +134,12 @@ CREATE TABLE IF NOT EXISTS corrections (
   id TEXT PRIMARY KEY, aboutKey TEXT NOT NULL, kind TEXT NOT NULL, details TEXT, note TEXT,
   byId TEXT, byName TEXT, byKey TEXT, state TEXT NOT NULL DEFAULT 'open', reason TEXT,
   handledBy TEXT, handledAt TEXT, createdAt TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS roster_overrides (
+  pos TEXT PRIMARY KEY, emplId TEXT, name TEXT, rank TEXT, forName TEXT, updatedAt TEXT, updatedBy TEXT
+);
+CREATE TABLE IF NOT EXISTS staff_cells (
+  key TEXT PRIMARY KEY, cell TEXT NOT NULL, updatedAt TEXT, updatedBy TEXT
 );
 CREATE TABLE IF NOT EXISTS audit (
   at TEXT NOT NULL, actor_id TEXT, action TEXT NOT NULL, detail TEXT
@@ -257,6 +264,20 @@ class App:
                     self.positions[pos]["emplId"] = e["id"]
         with open(os.path.join(ROOT, "docs", "index.json")) as f:
             self.docs = {d["file"] for d in json.load(f)}
+        # The files' name, rank and ID per seat, before employee-card overrides (roster_overrides) are applied.
+        self.orig = {pos: {k: p.get(k) for k in ("name", "rank", "emplId")} for pos, p in self.positions.items()}
+        self.apply_overrides()
+
+    def apply_overrides(self):
+        """Put roster overrides over the files. An override made for one holder (forName) stops applying once a new
+        vacancy list puts someone else in the seat, as app.js applyOverrides."""
+        rows = {r["pos"]: r for r in self.all("SELECT * FROM roster_overrides")}
+        for pos, o0 in self.orig.items():
+            p, o = self.positions[pos], rows.get(pos)
+            if o and o["forName"] and o["forName"] != o0["name"]:
+                o = None
+            for k in ("name", "rank", "emplId"):
+                p[k] = (o and o[k]) or o0[k]
 
     # ---------- db helpers ----------
     def all(self, sql, params=()):
@@ -348,7 +369,7 @@ class App:
                        "board": u.get("alert_board") or "off"},
         }
 
-    def clean_person_fields(self, body):
+    def clean_person_fields(self, body, exclude=None):
         name = clean_text(body.get("name"), "name", 80)
         if len(name) < 2:
             raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
@@ -366,18 +387,19 @@ class App:
         empl = clean_text(body.get("emplId"), "emplId", 20).upper() or None
         if empl and not EMPL_ID_RE.match(empl):
             raise BadRequest("Employee ID is two letters and four digits, e.g. LE1234")
-        if empl and self.empl_id_owner(empl):
-            raise BadRequest("Employee ID " + empl + " is already on " + self.empl_id_owner(empl))
+        if empl and self.empl_id_owner(empl, exclude):
+            raise BadRequest("Employee ID " + empl + " is already on " + self.empl_id_owner(empl, exclude))
         return {"name": name, "rank": rank, "company": company, "tour": tour, "emplId": empl,
                 "note": clean_text(body.get("note"), "note")}
 
-    def empl_id_owner(self, empl):
-        """Name of the roster position or added person that already has this employee ID, or None."""
+    def empl_id_owner(self, empl, exclude=None):
+        """Name of the roster position or added person that already has this employee ID, or None.
+        exclude: a position number or person:<id> to leave out (the one being edited)."""
         for p in self.positions.values():
-            if p.get("emplId") == empl:
+            if p.get("emplId") == empl and p["pos"] != exclude:
                 return p.get("name") or p["pos"]
-        row = self.one("SELECT name FROM people WHERE emplId = ?", (empl,))
-        return row and row["name"]
+        row = self.one("SELECT id, name FROM people WHERE emplId = ?", (empl,))
+        return row and PERSON_PREFIX + row["id"] != exclude and row["name"] or None
 
     def claim(self, u, body):
         if isinstance(body.get("request"), dict):
@@ -409,8 +431,12 @@ class App:
         rows = self.all("SELECT pos, display_name, google_email, contact_email, phone_mobile, phone_other, share_contact "
                         "FROM users WHERE pos IS NOT NULL AND status = 'active'" +
                         ("" if viewer["role"] == "admin" else " AND share_contact = 1"))
-        return {r["pos"]: {"email": r["contact_email"], "phoneMobile": r["phone_mobile"], "phoneOther": r["phone_other"],
-                           "shared": bool(r["share_contact"])} for r in rows}
+        out = {}
+        if viewer["role"] == "admin":  # cell numbers from the staff list: admins only, never members
+            out = {r["key"]: {"phoneMobile": r["cell"], "shared": False, "staffList": True} for r in self.all("SELECT key, cell FROM staff_cells")}
+        out.update({r["pos"]: {"email": r["contact_email"], "phoneMobile": r["phone_mobile"], "phoneOther": r["phone_other"],
+                               "shared": bool(r["share_contact"])} for r in rows})
+        return out
 
     def roster_names(self):
         taken = {r["pos"] for r in self.all("SELECT pos FROM users WHERE pos IS NOT NULL")}
@@ -528,7 +554,8 @@ class App:
                 "tourChanges": self.all('SELECT * FROM tour_changes ORDER BY effective, createdAt'),
                 "covers": self.all('SELECT * FROM covers ORDER BY start, createdAt'),
                 "people": self.all('SELECT * FROM people ORDER BY name'),
-                "staffing": self.all('SELECT company, required FROM staffing')}
+                "staffing": self.all('SELECT company, required FROM staffing'),
+                "rosterOverrides": [dict(r, id=r["pos"]) for r in self.all("SELECT pos, emplId, name, rank, forName, updatedAt FROM roster_overrides")]}
 
     def _position(self, body):
         pos = body.get("pos")
@@ -542,51 +569,62 @@ class App:
             raise BadRequest(f"{field} must be a position number from the vacancy list or an added person")
         return key, entry.get("name") or ""
 
-    def add_status(self, body, who):
-        pos, name = self._person_or_position(body.get("pos"))
-        code = body.get("code")
-        if code not in CODES:  # TR comes only from a set trade
-            raise BadRequest("code must be VA, D, S or WE")
+    @staticmethod
+    def clean_range(body):
         start = valid_date(body.get("start"), "start")
         end = valid_date(body.get("end"), "end", required=False)
         if end and end < start:
             raise BadRequest("end must be on or after start")
-        rec = {"id": uuid.uuid4().hex, "pos": pos, "name": name, "code": code, "start": start, "end": end,
-               "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
+        return start, end
+
+    def clean_status(self, body):
+        code = body.get("code")
+        if code not in CODES:  # TR comes only from a set trade
+            raise BadRequest("code must be VA, D, S or WE")
+        start, end = self.clean_range(body)
+        return {"code": code, "start": start, "end": end, "note": clean_text(body.get("note"), "note")}
+
+    def clean_tour_change(self, body):
+        tour = body.get("tour")
+        if not isinstance(tour, int) or isinstance(tour, bool) or not 1 <= tour <= 31:
+            raise BadRequest("tour must be a whole number from 1 to 31")
+        return {"tour": tour, "effective": valid_date(body.get("effective"), "effective"), "note": clean_text(body.get("note"), "note")}
+
+    def clean_cover(self, body, key):
+        target = body.get("targetPos")
+        if target not in self.positions:
+            raise BadRequest("targetPos must be a position number from the vacancy list")
+        if target == key:
+            raise BadRequest("Someone can't cover their own position")
+        start, end = self.clean_range(body)
+        kind = body.get("kind") or None
+        if kind is not None and kind not in COVER_KINDS:
+            raise BadRequest("kind must be acting, cover, shadow or extra")
+        move = body.get("move") or None
+        if move is not None and not isinstance(move, (bool, int)):
+            raise BadRequest("move must be true or false")
+        return {"targetPos": target, "start": start, "end": end, "kind": kind, "move": 1 if move else None,
+                "note": clean_text(body.get("note"), "note")}
+
+    def add_status(self, body, who):
+        pos, name = self._person_or_position(body.get("pos"))
+        rec = dict(self.clean_status(body), id=uuid.uuid4().hex, pos=pos, name=name, createdAt=now(), createdBy=who)
         self.write('INSERT INTO statuses (id,pos,name,code,start,"end",note,createdAt,createdBy) '
                    'VALUES (:id,:pos,:name,:code,:start,:end,:note,:createdAt,:createdBy)', rec)
         return rec
 
     def add_tour_change(self, body, who):
         pos, name = self._position(body)
-        tour = body.get("tour")
-        if not isinstance(tour, int) or isinstance(tour, bool) or not 1 <= tour <= 31:
-            raise BadRequest("tour must be a whole number from 1 to 31")
-        rec = {"id": uuid.uuid4().hex, "pos": pos, "name": name, "tour": tour,
-               "effective": valid_date(body.get("effective"), "effective"),
-               "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
+        rec = dict(self.clean_tour_change(body), id=uuid.uuid4().hex, pos=pos, name=name, createdAt=now(), createdBy=who)
         self.write('INSERT INTO tour_changes (id,pos,name,tour,effective,note,createdAt,createdBy) '
                    'VALUES (:id,:pos,:name,:tour,:effective,:note,:createdAt,:createdBy)', rec)
         return rec
 
     def add_cover(self, body, who):
         key, cover_name = self._person_or_position(body.get("coverKey"), "coverKey")
-        target = body.get("targetPos")
-        if target not in self.positions:
-            raise BadRequest("targetPos must be a position number from the vacancy list")
-        if target == key:
-            raise BadRequest("Someone can't cover their own position")
-        start = valid_date(body.get("start"), "start")
-        end = valid_date(body.get("end"), "end", required=False)
-        if end and end < start:
-            raise BadRequest("end must be on or after start")
-        kind = body.get("kind") or None
-        if kind is not None and kind not in COVER_KINDS:
-            raise BadRequest("kind must be acting, cover, shadow or extra")
-        rec = {"id": uuid.uuid4().hex, "coverKey": key, "coverName": cover_name, "targetPos": target, "start": start,
-               "end": end, "kind": kind, "note": clean_text(body.get("note"), "note"), "createdAt": now(), "createdBy": who}
-        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",kind,note,createdAt,createdBy) '
-                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:kind,:note,:createdAt,:createdBy)', rec)
+        rec = dict(self.clean_cover(body, key), id=uuid.uuid4().hex, coverKey=key, coverName=cover_name, createdAt=now(), createdBy=who)
+        self.write('INSERT INTO covers (id,coverKey,coverName,targetPos,start,"end",kind,move,note,createdAt,createdBy) '
+                   'VALUES (:id,:coverKey,:coverName,:targetPos,:start,:end,:kind,:move,:note,:createdAt,:createdBy)', rec)
         return rec
 
     def end_cover(self, rec_id, body):
@@ -605,6 +643,72 @@ class App:
         self.write("INSERT INTO people (id,name,rank,company,tour,emplId,note,createdAt,createdBy) "
                    "VALUES (:id,:name,:rank,:company,:tour,:emplId,:note,:createdAt,:createdBy)", rec)
         return rec
+
+    # ---------- employee card (admins) ----------
+    def update_record(self, kind, rec_id, body, who):
+        """Edit one schedule record in place; the same checks as adding it. Trade records change only through the trade."""
+        table = KINDS[kind]  # fixed allowlist, never user text
+        row = self.one(f"SELECT * FROM {table} WHERE id = ?", (rec_id,))
+        if not row:
+            raise HttpError(404, "No such record")
+        if row.get("tradeId"):
+            raise HttpError(409, "This record comes from a shift trade. Cancel or change the trade instead.")
+        merged = dict(row)
+        merged.update({k: v for k, v in body.items() if k not in ("id", "createdAt", "createdBy", "tradeId", "pos", "coverKey")})
+        if kind == "statuses":
+            rec = self.clean_status(merged)
+        elif kind == "tour-changes":
+            rec = self.clean_tour_change(merged)
+        elif kind == "covers":
+            rec = self.clean_cover(merged, row["coverKey"])
+        else:
+            rec = self.clean_person_fields(merged, exclude=PERSON_PREFIX + rec_id)
+        cols = ", ".join(f'"{k}" = :{k}' for k in rec)  # keys come from the cleaners, never from the request
+        self.write(f"UPDATE {table} SET {cols} WHERE id = :id", dict(rec, id=rec_id))
+        return self.one(f"SELECT * FROM {table} WHERE id = ?", (rec_id,))
+
+    def set_override(self, pos, body, who):
+        if pos not in self.orig:
+            raise BadRequest("Overrides are for positions on the vacancy list; edit an added person's record instead")
+        o0 = self.orig[pos]
+        name = clean_text(body.get("name"), "name", 80) or None
+        if name and len(name) < 2:
+            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
+        rank = body.get("rank") or None
+        if rank is not None and rank not in RANKS:
+            raise BadRequest("rank must be one of: " + ", ".join(RANKS))
+        empl = clean_text(body.get("emplId"), "emplId", 20).upper() or None
+        if empl and not EMPL_ID_RE.match(empl):
+            raise BadRequest("Employee ID is two letters and four digits, e.g. LE1234")
+        if empl and self.empl_id_owner(empl, pos):
+            raise BadRequest("Employee ID " + empl + " is already on " + self.empl_id_owner(empl, pos))
+        # Keep only what differs from the files.
+        name, rank = (name if name != o0["name"] else None), (rank if rank != o0["rank"] else None)
+        empl = empl if empl != o0["emplId"] else None
+        if not (name or rank or empl):
+            self.write("DELETE FROM roster_overrides WHERE pos = ?", (pos,))
+            rec = None
+        else:
+            rec = {"pos": pos, "emplId": empl, "name": name, "rank": rank, "forName": o0["name"], "updatedAt": now(), "updatedBy": who}
+            self.write("INSERT INTO roster_overrides (pos, emplId, name, rank, forName, updatedAt, updatedBy) "
+                       "VALUES (:pos,:emplId,:name,:rank,:forName,:updatedAt,:updatedBy) ON CONFLICT(pos) DO UPDATE SET "
+                       "emplId = excluded.emplId, name = excluded.name, rank = excluded.rank, forName = excluded.forName, "
+                       "updatedAt = excluded.updatedAt, updatedBy = excluded.updatedBy", rec)
+        with self.lock:
+            self.apply_overrides()
+        return {"pos": pos, "override": rec}
+
+    def set_cell(self, key, body, who):
+        if not self.lookup(key):
+            raise BadRequest("key must be a position number or person:<id>")
+        cell = clean_phone(body.get("cell"), "Cell")
+        if not cell:
+            self.write("DELETE FROM staff_cells WHERE key = ?", (key,))
+        else:
+            self.write("INSERT INTO staff_cells (key, cell, updatedAt, updatedBy) VALUES (?,?,?,?) "
+                       "ON CONFLICT(key) DO UPDATE SET cell = excluded.cell, updatedAt = excluded.updatedAt, updatedBy = excluded.updatedBy",
+                       (key, cell, now(), who))
+        return {"key": key, "set": bool(cell)}
 
     # ---------- staffing, profiles, stats ----------
     def set_staffing(self, company, body, who):
@@ -692,7 +796,7 @@ class App:
         """The seat person `key` works on `day` (their own, or the one they cover), or None when they are off."""
         # A cover (assignment) wins over a move to a new owned seat (2027 award or assignment), as TourMath.coveringOn.
         cover = self.one('SELECT targetPos FROM covers WHERE coverKey = ? AND start <= ? AND ("end" IS NULL OR "end" >= ?) '
-                         "ORDER BY (note LIKE '2027 award%' OR note LIKE '2027 assignment%') ASC, createdAt DESC LIMIT 1", (key, day, day))
+                         "ORDER BY (COALESCE(move, 0) = 1 OR note LIKE '2027 award%' OR note LIKE '2027 assignment%') ASC, createdAt DESC LIMIT 1", (key, day, day))
         if cover:
             target = self.lookup(cover["targetPos"])
             ok = target and self.tour_works(self.effective_tour(cover["targetPos"], target, day), day)
@@ -1179,6 +1283,12 @@ def make_handler(app):
             m = re.fullmatch(r"/api/trades/([0-9a-f]{32})", self.path_only())
             if m:
                 return self.send_json(200, app.widen_trade(self.trader(), m.group(1), self.body()))
+            m = re.fullmatch(r"/api/admin/records/(statuses|tour-changes|covers|people)/([0-9a-f]{32})", self.path_only())
+            if m:
+                u = self.require("admin")
+                rec = app.update_record(m.group(1), m.group(2), self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "edit " + m.group(1), {"id": m.group(2)})
+                return self.send_json(200, rec)
             m = re.fullmatch(r"/api/admin/corrections/([0-9a-f]{32})", self.path_only())
             if m:
                 u = self.require("editor")
@@ -1213,6 +1323,18 @@ def make_handler(app):
                 rec = app.set_staffing(m.group(1), self.body(), u["display_name"] or u["google_email"])
                 app.audit(u, "staffing", rec)
                 return self.send_json(200, rec)
+            m = re.fullmatch(r"/api/admin/overrides/([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)", path)
+            if m:
+                u = self.require("admin")
+                rec = app.set_override(m.group(1), self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "roster override", rec)
+                return self.send_json(200, rec)
+            m = re.fullmatch(r"/api/admin/cells/([A-Za-z0-9:]{3,64})", path)
+            if m:
+                u = self.require("admin")
+                rec = app.set_cell(m.group(1), self.body(), u["display_name"] or u["google_email"])
+                app.audit(u, "staff cell", rec)  # the number itself stays out of the audit log
+                return self.send_json(200, rec)
             m = re.fullmatch(r"/api/profiles/([A-Za-z0-9:]{3,64})", path)
             if m:
                 u = self.require("active")
@@ -1229,6 +1351,13 @@ def make_handler(app):
 
         def _delete(self):
             self.check_csrf()
+            m = re.fullmatch(r"/api/admin/corrections/([0-9a-f]{32})", self.path_only())
+            if m:
+                u = self.require("admin")
+                if not app.write("DELETE FROM corrections WHERE id = ?", (m.group(1),)):
+                    raise HttpError(404, "No such correction")
+                app.audit(u, "delete correction", {"id": m.group(1)})
+                return self.send_json(200, {"deleted": m.group(1)})
             m = re.fullmatch(r"/api/(statuses|tour-changes|covers|people)/([0-9a-f]{32})", self.path_only())
             if not m:
                 raise HttpError(404, "Not found")

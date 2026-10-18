@@ -55,6 +55,8 @@ These need answers before any build work:
 - **`corrections/{id}`** `{aboutKey, kind, details, note, byUid, byKey, state: open|applied|dismissed, reason, handledBy, handledAt, createdAt}`: members create (rules: `create` if active, no read); admins read and update.
 - **`invites/{code}`** `{key, sentBy, sentAt, usedAt, expiresAt}`: admin invite texts (see `RELEASES.md`, Invite texts from admins). Written and read only by functions.
 - **Contact sharing** on `users/{uid}`: `shareContact` (bool, default false) and `shareChangedAt`; only the user (or an admin turning it off) changes it.
+- **`rosterOverrides/{pos}`** `{emplId, name, rank, forName, updatedAt, updatedBy}`: Employee cards (see README). Read if active; write if admin. Applied over the roster files in the page; ignored once `forName` no longer matches the seat's holder.
+- **`staffCells/{key}`** `{cell, updatedAt, updatedBy}`: staff-list cell numbers. Admins only (read and write); never in exports to members.
 - **`calendarTokens/{secret}`** `{uid, pos, createdAt}`: for the calendar feed (see `RELEASES.md`, Calendar sync). Written only by functions; resetting the link deletes the old doc.
 
 ## Security rules (outline)

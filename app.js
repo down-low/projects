@@ -79,13 +79,14 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
     $("awards-link").classList.toggle("on", v === "awards");
     $("fixes-link").classList.toggle("on", v === "fixes");
+    $("card-link").classList.toggle("on", v === "card");
     store("view", v);
     render();
   }
@@ -100,6 +101,7 @@
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
     else if (state.view === "fixes") Fix.render();
+    else if (state.view === "card") Card.render();
     else renderRank();
   }
 
@@ -468,7 +470,8 @@
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) +
+      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -492,6 +495,7 @@
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
+    if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -656,32 +660,7 @@
           '<button class="btn small" data-remove="' + esc(it.kind) + '" data-id="' + esc(it.id) + '">Remove</button></div>' : "") + "</li>";
     }).join("") + "</ul>" : '<p class="hint">No tour changes, leave or cover assignments recorded.</p>';
 
-    var t = iso(today());
-    var forms = !canEdit ? editHint() :
-      '<form class="edit" id="f-status" novalidate><h4>Add status</h4>' +
-      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option><option value="WE">WE · Working elsewhere</option></select></label>' +
-      '<label>From<input type="date" id="fs-start" value="' + t + '" required></label>' +
-      '<label>To<input type="date" id="fs-end" value="' + t + '"></label></div>' +
-      '<label class="chk"><input type="checkbox" id="fs-open"> No end date yet</label>' +
-      '<label>Note<input type="text" id="fs-note" maxlength="500" placeholder="Optional"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save status</button><span class="msg" id="fs-msg" role="status"></span></div></form>' +
-      '<form class="edit" id="f-cover" novalidate><h4>Cover another position</h4>' +
-      '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>" +
-      '<label>Position to cover<input type="text" id="fc-target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>' +
-      '<label>Type<select id="fc-kind"><option value="">Covering or acting (by rank)</option><option value="cover">Covering · same rank, in someone\'s spot</option>' +
-      '<option value="acting">Acting · temporarily promoted to the seat\'s rank</option><option value="shadow">Shadowing · day-to-day LWLP (usually VR)</option>' +
-      '<option value="extra">Also in this seat · same tour, alongside the holder (e.g. two captains)</option></select></label>' +
-      '<div class="row"><label>From<input type="date" id="fc-start" value="' + t + '" required></label>' +
-      '<label>To<input type="date" id="fc-end" disabled></label></div>' +
-      '<label class="chk"><input type="checkbox" id="fc-open" checked> No end date yet</label>' +
-      '<label>Note<input type="text" id="fc-note" maxlength="500" placeholder="Optional, e.g. Weddle injured"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save cover</button><span class="msg" id="fc-msg" role="status"></span></div></form>' +
-      (p.added ? "" :
-      '<form class="edit" id="f-tour" novalidate><h4>Change tour</h4>' +
-      '<div class="row"><label>New tour<select id="ft-tour">' + tourOptions(tourOn(p, today())) + "</select></label>" +
-      '<label>Effective<input type="date" id="ft-eff" value="' + t + '" required></label></div>' +
-      '<label>Note<input type="text" id="ft-note" maxlength="500" placeholder="Optional, e.g. bid result"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save tour change</button><span class="msg" id="ft-msg" role="status"></span></div></form>') +
+    var forms = !canEdit ? editHint() : statusForm(p) + coverForm(p) + (p.added ? "" : tourForm(p)) +
       (p.added ? '<div class="row danger-zone"><button class="btn small" data-remove="people" data-id="' + esc(p.pos.slice(7)) + '">Remove this person</button></div>' : "");
 
     return foldOpen("hist", '<details class="card fold" data-fold="hist"', ">") + "<summary><h3>Covers, leave &amp; history</h3>" +
@@ -701,7 +680,6 @@
     return '<p class="hint">Only editors can record leave, tour changes or cover assignments.</p>';
   }
   function wireEditForms(p) {
-    var fs = $("f-status"), ft = $("f-tour"), fc = $("f-cover");
     document.querySelectorAll("#person-detail [data-remove]").forEach(function (b) {
       b.onclick = function () {
         if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm remove"; b.classList.add("danger"); return; }
@@ -718,40 +696,133 @@
         backend.endCover(b.dataset.end, iso(today())).then(function () { renderAll(true); }, function (e) { b.disabled = false; b.textContent = e.message; });
       };
     });
-    if (!fs) return;
-    $("fc-open").onchange = function () { $("fc-end").disabled = this.checked; if (!this.checked && !$("fc-end").value) $("fc-end").value = $("fc-start").value; };
-    fc.onsubmit = function (e) {
-      e.preventDefault();
-      var msg = $("fc-msg"), target = slotFromInput($("fc-target").value);
-      var start = $("fc-start").value, end = $("fc-open").checked ? null : $("fc-end").value || null;
-      if (!target) return say(msg, "Pick the position to cover from the list.", true);
-      if (target === p.pos) return say(msg, "Someone can't cover their own position.", true);
-      if (!start) return say(msg, "Pick a start date.", true);
-      if (end && end < start) return say(msg, "The end date is before the start date.", true);
+    wireForms(p, "f", null, function () { Fix.saved(); });
+  }
+
+  /* ---------- Edit forms: status, cover, tour ----------
+     Shared by the person page (prefix "f": #f-status, #fs-code, #fc-target, #ft-tour …) and the employee card (other
+     prefixes). With rec the form edits that record (backend.update); without, it adds a new one. */
+  function slotOption(p) { return (p.name || "Vacant") + " · " + p.title + " · Tour " + p.tour + " (" + p.pos + ")"; }
+  function selectHtml(id, opts, sel) {
+    return '<select id="' + id + '">' + opts.map(function (o) {
+      return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(sel == null ? "" : sel) ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+    }).join("") + "</select>";
+  }
+  function datesHtml(x, r, openDefault) {
+    var t = iso(today()), open = r.id ? !r.end : openDefault;
+    return '<div class="row"><label>From<input type="date" id="' + x + 'start" value="' + esc(r.start || t) + '" required></label>' +
+      '<label>To<input type="date" id="' + x + 'end" value="' + esc(r.end || (open ? "" : t)) + '"' + (open ? " disabled" : "") + "></label></div>" +
+      '<label class="chk"><input type="checkbox" id="' + x + 'open"' + (open ? " checked" : "") + "> No end date yet</label>";
+  }
+  function formEnd(pre, x, rec, label) {
+    return '<div class="row"><button class="btn primary" type="submit">' + (rec ? "Save changes" : label) + "</button>" +
+      (rec ? ' <button class="btn" type="button" data-form-cancel>Cancel</button>' : "") +
+      '<span class="msg" id="' + x + 'msg" role="status"></span></div></form>';
+  }
+  function statusForm(p, rec, pre) {
+    pre = pre || "f";
+    var x = pre + "s-", r = rec || {};
+    return '<form class="edit" id="' + pre + '-status" novalidate><h4>' + (rec ? "Edit status" : "Add status") + "</h4>" +
+      '<div class="row"><label>Type' + selectHtml(x + "code", [["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]], r.code) + "</label></div>" +
+      datesHtml(x, r, false) +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, "Save status");
+  }
+  // opt.move: show the "own seat" checkbox (employee card); opt.moveOnly: a move form.
+  function coverForm(p, rec, pre, opt) {
+    pre = pre || "f"; opt = opt || {};
+    var x = pre + "c-", r = rec || {}, target = r.targetPos && byPos[r.targetPos] ? slotOption(byPos[r.targetPos]) : "";
+    var isMv = rec ? M.isMove(rec) : !!opt.moveOnly;
+    return '<form class="edit" id="' + pre + '-cover" novalidate><h4>' + (rec ? (isMv ? "Edit move" : "Edit cover") : opt.moveOnly ? "Move to a new own seat" : "Cover another position") + "</h4>" +
+      (rec ? "" : opt.moveOnly ? '<p class="hint">From this date the seat is ' + esc(p.name) + "'s own; their old seat is vacant unless someone moves in.</p>"
+        : '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>") +
+      '<label>' + (isMv ? "New seat" : "Position to cover") + '<input type="text" id="' + x + 'target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off" value="' + esc(target) + '"></label>' +
+      (isMv ? "" : '<label>Type' + selectHtml(x + "kind", [["", "Covering or acting (by rank)"], ["cover", "Covering · same rank, in someone's spot"],
+        ["acting", "Acting · temporarily promoted to the seat's rank"], ["shadow", "Shadowing · day-to-day LWLP (usually VR)"],
+        ["extra", "Also in this seat · same tour, alongside the holder (e.g. two captains)"]], r.kind || "") + "</label>") +
+      datesHtml(x, r, true) +
+      (opt.move && !opt.moveOnly ? '<label class="chk"><input type="checkbox" id="' + x + 'move"' + (isMv ? " checked" : "") + "> Move · this becomes their own seat</label>"
+        : '<input type="hidden" id="' + x + 'move" value="' + (isMv ? "1" : "") + '">') +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. Weddle injured" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, isMv ? "Save move" : "Save cover");
+  }
+  function tourForm(p, rec, pre) {
+    pre = pre || "f";
+    var x = pre + "t-", r = rec || {};
+    return '<form class="edit" id="' + pre + '-tour" novalidate><h4>' + (rec ? "Edit tour change" : "Change tour") + "</h4>" +
+      '<div class="row"><label>New tour<select id="' + x + 'tour">' + tourOptions(rec ? r.tour : tourOn(p, today())) + "</select></label>" +
+      '<label>Effective<input type="date" id="' + x + 'eff" value="' + esc(r.effective || iso(today())) + '" required></label></div>' +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. bid result" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, "Save tour change");
+  }
+  /* Wire whichever of the three forms with this prefix are on the page. after() runs once a save lands; onCancel for the
+     Cancel button on an edit form. */
+  function wireForms(p, pre, rec, after, onCancel) {
+    var fs = $(pre + "-status"), fc = $(pre + "-cover"), ft = $(pre + "-tour");
+    function done(x) {
+      return function () { if (after) after(); renderAll(true); say($(x + "msg"), "Saved."); };
+    }
+    function save(kind, add, patch, x) {
+      var msg = $(x + "msg");
       say(msg, "Saving…");
-      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
-        kind: $("fc-kind").value || null })
-        .then(function () { Fix.saved(); renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
-    $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
-    fs.onsubmit = function (e) {
-      e.preventDefault();
-      var start = $("fs-start").value, end = $("fs-open").checked ? null : $("fs-end").value || null, msg = $("fs-msg");
-      if (!start) return say(msg, "Pick a start date.", true);
-      if (end && end < start) return say(msg, "The end date is before the start date.", true);
-      say(msg, "Saving…");
-      backend.addStatus({ pos: p.pos, name: p.name, code: $("fs-code").value, start: start, end: end, note: $("fs-note").value.trim() })
-        .then(function () { Fix.saved(); renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
-    if (ft) ft.onsubmit = function (e) {
-      e.preventDefault();
-      var eff = $("ft-eff").value, tour = +$("ft-tour").value, msg = $("ft-msg");
-      if (!eff) return say(msg, "Pick an effective date.", true);
-      if (tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
-      say(msg, "Saving…");
-      backend.addTourChange({ pos: p.pos, name: p.name, tour: tour, effective: eff, note: $("ft-note").value.trim() })
-        .then(function () { Fix.saved(); renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
+      var p2 = rec ? backend.update(kind, rec.id, patch) : add(Object.assign({}, patch));
+      return p2.then(done(x), function (err) { say(msg, err.message, true); });
+    }
+    [fs, fc, ft].forEach(function (f) {
+      var c = f && f.querySelector("[data-form-cancel]");
+      if (c) c.onclick = function () { if (onCancel) onCancel(); };
+    });
+    function openToggle(x) {
+      var o = $(x + "open");
+      if (o) o.onchange = function () { $(x + "end").disabled = this.checked; if (!this.checked && !$(x + "end").value) $(x + "end").value = $(x + "start").value; };
+    }
+    function range(x) {
+      var start = $(x + "start").value, end = $(x + "open").checked ? null : $(x + "end").value || null;
+      if (!start) return say($(x + "msg"), "Pick a start date.", true), null;
+      if (end && end < start) return say($(x + "msg"), "The end date is before the start date.", true), null;
+      return { start: start, end: end };
+    }
+    if (fc) {
+      var xc = pre + "c-";
+      openToggle(xc);
+      fc.onsubmit = function (e) {
+        e.preventDefault();
+        var msg = $(xc + "msg"), target = slotFromInput($(xc + "target").value), mv = $(xc + "move");
+        var isMv = mv.type === "checkbox" ? mv.checked : !!mv.value;
+        if (!target) return say(msg, "Pick the position from the list.", true);
+        if (target === p.pos) return say(msg, "Someone can't cover their own position.", true);
+        var rg = range(xc);
+        if (!rg) return;
+        var rec2 = { targetPos: target, start: rg.start, end: rg.end, note: $(xc + "note").value.trim(), kind: $(xc + "kind") ? $(xc + "kind").value || null : null };
+        if (isMv) rec2.move = true; else if (rec && rec.move) rec2.move = false;
+        if (!rec) { rec2.coverKey = p.pos; rec2.coverName = p.name; }
+        save("covers", backend.addCover, rec2, xc);
+      };
+    }
+    if (fs) {
+      var xs = pre + "s-";
+      openToggle(xs);
+      fs.onsubmit = function (e) {
+        e.preventDefault();
+        var rg = range(xs);
+        if (!rg) return;
+        var rec2 = { code: $(xs + "code").value, start: rg.start, end: rg.end, note: $(xs + "note").value.trim() };
+        if (!rec) { rec2.pos = p.pos; rec2.name = p.name; }
+        save("statuses", backend.addStatus, rec2, xs);
+      };
+    }
+    if (ft) {
+      var xt = pre + "t-";
+      ft.onsubmit = function (e) {
+        e.preventDefault();
+        var eff = $(xt + "eff").value, tour = +$(xt + "tour").value, msg = $(xt + "msg");
+        if (!eff) return say(msg, "Pick an effective date.", true);
+        if (!rec && tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
+        var rec2 = { tour: tour, effective: eff, note: $(xt + "note").value.trim() };
+        if (!rec) { rec2.pos = p.pos; rec2.name = p.name; }
+        save("tourChanges", backend.addTourChange, rec2, xt);
+      };
+    }
   }
   function say(el, text, isErr) {
     if (!el) return;
@@ -852,6 +923,7 @@
   function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
   // People added by editors (not on the vacancy list) join the roster as "person:<id>" entries.
   function rebuildPeople() {
+    applyOverrides();
     Object.keys(byPos).forEach(function (k) { if (k.indexOf("person:") === 0) delete byPos[k]; });
     var added = (recs.people || []).map(function (x) {
       var e = { pos: "person:" + x.id, name: x.name, rank: x.rank, title: x.rank + (x.company ? " " + x.company : "") + " (added)",
@@ -868,6 +940,27 @@
       (byName[k] = byName[k] || []).push(p);
     });
   }
+  /* Roster overrides (employee card): a seat's name, rank or Employee ID over the vacancy list and employee-ids.json.
+     An override made for one holder (forName) stops applying once a new vacancy list puts someone else in the seat. */
+  var orig = {}; // pos -> {name, rank, emplId} from the files, before overrides
+  function overrideFor(pos) {
+    var o = (recs.rosterOverrides || []).filter(function (x) { return x.id === pos; })[0];
+    return o && orig[pos] && (!o.forName || o.forName === orig[pos].name) ? o : null;
+  }
+  function applyOverrides() {
+    var by = {};
+    (recs.rosterOverrides || []).forEach(function (o) { by[o.id] = o; });
+    data.forEach(function (p) {
+      var o0 = orig[p.pos], o = by[p.pos];
+      if (!o0) return;
+      if (o && o.forName && o.forName !== o0.name) o = null;
+      p.name = (o && o.name) || o0.name;
+      p.rank = (o && o.rank) || o0.rank;
+      p.emplId = (o && o.emplId) || o0.emplId || null;
+    });
+    var dl = $("slot-dl");
+    if (dl) dl.innerHTML = data.slice().sort(byCompany).map(function (p) { return '<option value="' + esc(slotOption(p)) + '"></option>'; }).join("");
+  }
   function slotFromInput(v) {
     var m = /\(?\b(\d{1,2}[A-Z]{2,4}\d{2,3}M)\)?\s*$/i.exec((v || "").trim());
     var pos = m && m[1].toUpperCase();
@@ -876,14 +969,14 @@
   function boot(rows) {
     data = rows;
     var ids = (emplIds && emplIds.ids) || {};
-    data.forEach(function (p) { byPos[p.pos] = p; if (ids[p.pos] && p.name) p.emplId = ids[p.pos].id; });
-    rebuildPeople();
+    data.forEach(function (p) {
+      byPos[p.pos] = p;
+      orig[p.pos] = { name: p.name, rank: p.rank, emplId: ids[p.pos] && p.name ? ids[p.pos].id : null };
+    });
     var dl = document.createElement("datalist");
     dl.id = "slot-dl";
-    dl.innerHTML = data.slice().sort(byCompany).map(function (p) {
-      return '<option value="' + esc((p.name || "Vacant") + " · " + p.title + " · Tour " + p.tour + " (" + p.pos + ")") + '"></option>';
-    }).join("");
     document.body.appendChild(dl);
+    rebuildPeople();
     var rankSel = $("ap-rank");
     if (rankSel) rankOptions(rankSel, false);
     var t = today();
@@ -955,6 +1048,7 @@
     Dash.wireDash();
     $("awards-link").onclick = function () { setView("awards"); };
     $("fixes-link").onclick = function () { setView("fixes"); };
+    $("card-link").onclick = function () { setView("card"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -1018,7 +1112,7 @@
   function renderAll(force) {
     if (!booted) return;
     var a = document.activeElement;
-    if (!force && (state.view === "person" || state.view === "me" || state.view === "trades") && a && a.closest && a.closest("form.edit, #cl-q, .trade-filters")) {
+    if (!force && (state.view === "person" || state.view === "me" || state.view === "trades" || state.view === "card") && a && a.closest && a.closest("form.edit, #cl-q, .trade-filters")) {
       var box = a.closest("form.edit, .trade-filters") || a;
       if (!deferred) { deferred = true; box.addEventListener("focusout", function once(e) {
         if (e.relatedTarget && box.contains(e.relatedTarget)) return;
@@ -1034,6 +1128,8 @@
   }
 
   /* ---------- Accounts (server mode) ---------- */
+  // The employee card: admins on the shared page (Editor access) or on the server; never viewers, members or snapshots.
+  function isCardAdmin() { return !!(backend && backend.update && backend.canAdmin && backend.canAdmin()); }
   function serverMode() { return backend && backend.mode === "server"; }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
@@ -1042,6 +1138,7 @@
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
+    if (v === "card") return isCardAdmin();
     return false;
   }
   // Open corrections, on the header link and the menu item (admins).
@@ -1057,10 +1154,11 @@
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
+    $("card-link").hidden = !tabAllowed("card");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
-    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1157,6 +1255,19 @@
     renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
+  var Card = window.CardViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    people: function () { return people; }, contacts: function () { return contacts; }, byId: function () { return byId; },
+    orig: function (pos) { return orig[pos] || null; }, overrideFor: overrideFor, makeMatcher: makeMatcher, isPhone: isPhone,
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day, coverOf: coverOf,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, statusPill: statusPill, rangeText: rangeText, slotLabel: slotLabel,
+    kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL, RANKS: RANK_ORDER, ID_RE: ID_RE, tourOptions: tourOptions,
+    statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
+    companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
+    fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
+  });
+
   var Awards = window.AwardViews({
     $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     people: function () { return people; }, data: function () { return data; }, renderAll: renderAll, RANKS: RANK_ORDER,
@@ -1174,7 +1285,7 @@
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [] };
+      corrections: r.corrections || [], rosterOverrides: r.rosterOverrides || [] };
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;

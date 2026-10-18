@@ -764,3 +764,23 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 #list-q { width: 100%; margin-bottom: 4px; }
 ul.list-rows li { padding: 7px 14px; }
 ul.list-rows li .linkish { font-weight: 600; }
+
+/* Employee card (admins) */
+#card-detail { display: grid; gap: 12px; max-width: 860px; }
+#card-detail .card { margin: 0; }
+.card-search label { display: block; }
+.card-search input[type="search"] { width: 100%; }
+.card-hits { list-style: none; margin: 6px 0 0; padding: 0; }
+.card-hits li { padding: 6px 0; border-bottom: 1px solid var(--line); }
+.card-hits li:last-child { border-bottom: 0; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.card-head h2 { margin: 0 0 2px; }
+ul.card-list li { flex-wrap: wrap; }
+ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
+.card-editform { flex-basis: 100%; border-left: 3px solid var(--accent); padding-left: 10px; }
+.card-sec form.edit { margin-top: 10px; }
+@media (max-width: 640px) {
+  #card-detail { gap: 8px; }
+  ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
+  .card-head .acts { flex-basis: 100%; }
+}

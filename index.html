@@ -24,6 +24,7 @@
         <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
         <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
         <button class="hdr-link" id="fixes-link" type="button" aria-controls="view-fixes" hidden>Corrections</button>
+        <button class="hdr-link" id="card-link" type="button" aria-controls="view-card" hidden>Employee cards</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -133,6 +134,10 @@
     <div id="fixes-detail"></div>
   </section>
 
+  <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
+    <div id="card-detail"></div>
+  </section>
+
   <section class="view" id="view-awards" role="region" aria-label="2027 vacancy awards" hidden>
     <div id="awards-detail"></div>
   </section>
@@ -167,6 +172,7 @@
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
         <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
         <li data-need="editor"><button type="button" data-go="fixes">Corrections <span class="hint" id="fixes-count"></span></button></li>
+        <li data-need="card"><button type="button" data-go="card">Employee cards</button></li>
       </ul>
       <h3 class="sheet-sec" id="sheet-docs-h" hidden>Documents</h3>
       <ul class="sheet-list" id="sheet-docs"></ul>
@@ -232,6 +238,7 @@
 <script src="trades.js"></script>
 <script src="awards.js"></script>
 <script src="corrections.js"></script>
+<script src="card.js"></script>
 <script src="app.js"></script>
 </body>
 </html>
