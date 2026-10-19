@@ -9,6 +9,25 @@ Status: **planned, not started.** This plan is for the release after MVP. Until 
 - HTTPS and a stable address come with Hosting, which is also what an installable app (PWA, see `RELEASES.md`) needs.
 - The page already reads and writes records through a storage adapter (`store.js`) that is shaped like Firestore. A Firebase adapter is mostly a translation of that adapter, and the schedule logic and screens don't change.
 
+## Two apps, one backend
+
+Decided 2026-10-19. The hosted tool is two small front ends on one Firebase project, not one big page:
+
+| | **Employee app** (`app` Hosting site) | **Admin back office** (`admin` Hosting site) |
+|---|---|---|
+| Who | Every active member | Admins (and editors) only |
+| Screens | My schedule / next shifts, Schedule (find a person), Trades, Documents, Verify my info, Something wrong? | Employee cards, Corrections, Staffing dashboard, Projection with edit forms, imports (awards, notices), records editing, user approval |
+| Device | Phone first, installable (PWA) | Desktop first |
+| Ships | No admin code at all | Everything the admin needs |
+
+- **Shared code**, one repo: `schedule.js` (watch math, cover kinds) and `store.js` (Firestore access) are used by both; a fix lands in both.
+- **The security rules are the API.** Both apps talk to the same Firestore; the rules decide who reads or writes each record. There is no custom API server. Cloud Functions handle only the trusted actions (approve users, set roles, pick a trade, send invites).
+- Hiding admin screens is not the security: a member can't read cell numbers or edit records even with a modified page, because the rules refuse it.
+- **One live database, from launch day: Firestore.** A claude.ai page can only reach its own page database, so the claude.ai main page and Firestore can't be kept in sync; running both would split the records.
+- **The admin back office moves at the same launch.** At first it is today's full page (every screen, edit form, Employee cards, Corrections) built with the Firestore adapter in `store.js` and hosted on the `admin` site with admin-only sign-in. The employee app is the new stripped-down build on the `app` site. A redesigned back office can come later.
+- **Cut-over:** (1) freeze edits on the claude.ai main page; (2) copy all its records into Firestore once; (3) check record counts match; (4) admins switch to the `admin` site; (5) the claude.ai main page goes read-only, then is retired (the view-only snapshot can stay as a demo).
+- **Optional test beta first:** testers can try the employee app on a test copy of the data (marked as not live) while admins keep editing on claude.ai; the copy is re-run on cut-over day.
+
 ## Before starting
 
 These need answers before any build work:
@@ -54,6 +73,7 @@ These need answers before any build work:
 - **`tradeInvites/{code}`** `{kind: "trade" | "join", tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy|null}`: invites (see `RELEASES.md`, Invites from trades). A `trade` invite is for a roster person who hasn't signed in; a `join` invite (no trade or recipient) is for someone not in the tool yet. Written and read only by functions.
 - **`corrections/{id}`** `{aboutKey, kind, details, note, byUid, byKey, state: open|applied|dismissed, reason, handledBy, handledAt, createdAt}`: members create (rules: `create` if active, no read); admins read and update.
 - **`invites/{code}`** `{key, sentBy, sentAt, usedAt, expiresAt}`: admin invite texts (see `RELEASES.md`, Invite texts from admins). Written and read only by functions.
+- **Tab preferences** on `users/{uid}`: `prefs: {tabs: [...], home}`, written only by that user; `settings/defaults` `{tabs}` written by admins sets the starting set for new members.
 - **Contact sharing** on `users/{uid}`: `shareContact` (bool, default false) and `shareChangedAt`; only the user (or an admin turning it off) changes it.
 - **`rosterOverrides/{pos}`** `{emplId, name, rank, forName, updatedAt, updatedBy}`: Employee cards (see README). Read if active; write if admin. Applied over the roster files in the page; ignored once `forName` no longer matches the seat's holder.
 - **`staffCells/{key}`** `{cell, updatedAt, updatedBy}`: staff-list cell numbers. Admins only (read and write); never in exports to members.

@@ -490,7 +490,7 @@
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
-      historyCard(p, datesCard(p)) + "</div></div>";
+      movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
@@ -566,10 +566,26 @@
   /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
      (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
+  // Position moves from assignment-change notices (the `assignments` log), newest first, as a closed fold.
+  function movesCard(p) {
+    var list = (recs.assignments || []).filter(function (a) { return a.key === p.pos || (p.emplId && a.emplId === p.emplId); })
+      .sort(function (a, b) { return String(b.firstReg).localeCompare(String(a.firstReg)); });
+    if (!list.length) return "";
+    function d(s) { return s ? shortDate(fromIso(s)) + " " + s.slice(0, 4) : "?"; }
+    function seat(pos, st, tour) { return esc(pos) + (st ? " " + esc(st) : "") + (tour ? " (Tour " + tour + ")" : ""); }
+    return foldOpen("moves", '<details class="card fold" data-fold="moves"', ">") + "<summary><h3>Moves</h3>" +
+      '<span class="fold-sum">' + list.length + (list.length === 1 ? " move" : " moves") + " · latest " + esc(d(list[0].firstReg)) + "</span></summary>" +
+      '<ul class="hist moves">' + list.map(function (a) {
+        return "<li><div><b>" + esc(d(a.firstReg)) + "</b> · " + seat(a.fromPos, a.fromStation) + " → " + seat(a.toPos, a.toStation, a.toTour) +
+          '<div class="hint">' + (a.lastReg ? "Last shift there " + esc(d(a.lastReg)) + " · " : "") + esc(a.rankFrom || "") +
+          (a.rankTo && a.rankTo !== a.rankFrom ? " → " + esc(a.rankTo) : "") + "</div>" +
+          '<div class="hint">' + esc(a.source || "") + (a.note ? " · " + esc(a.note) : "") + "</div></div></li>";
+      }).join("") + "</ul></details>";
+  }
   function foldOpen(key, head, tail) {
     var open = state.folds[key];
     // On phones, your own Next shifts start open when you can trade, so the Trade links show.
-    if (open == null) open = key === "edit" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
+    if (open == null) open = key === "edit" || key === "moves" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
     return head + (open ? " open" : "") + tail;
   }
   // Holiday marker (a dot) and the month's holidays listed under a calendar.
@@ -1294,7 +1310,7 @@
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [], rosterOverrides: r.rosterOverrides || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] };
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;

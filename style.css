@@ -765,6 +765,8 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 ul.list-rows li { padding: 7px 14px; }
 ul.list-rows li .linkish { font-weight: 600; }
 
+/* Moves (position history from notices) */
+ul.hist.moves li { display: block; }
 /* Employee card (admins) */
 #card-detail { display: grid; gap: 12px; }
 #card-detail .card-head, #card-detail .card-sec { max-width: 860px; width: 100%; }

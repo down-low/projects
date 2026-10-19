@@ -23,7 +23,7 @@
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", rosterOverrides: "rosterOverrides" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -76,13 +76,13 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], rosterOverrides: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: flattenFixes(records.corrections), rosterOverrides: records.rosterOverrides });
+          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
       }
       var editable = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
@@ -418,7 +418,7 @@
     function emit() {
       onChange({ statuses: (r.statuses || []).concat(st ? tradeLegs(st.trades, "statuses") : []), tourChanges: r.tourChanges || [],
         covers: (r.covers || []).concat(st ? tradeLegs(st.trades, "covers") : []), people: r.people || [], staffing: r.staffing || [],
-        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [], rosterOverrides: r.rosterOverrides || [] });
+        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] });
     }
     setTimeout(emit, 0);
     var adapter = Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf });
