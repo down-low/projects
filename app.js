@@ -1186,6 +1186,7 @@
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+    siteBanner();
   }
 
   function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
@@ -1242,10 +1243,35 @@
         ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
         ' <button class="linkish" id="sign-out">Sign out</button>';
       $("sign-out").onclick = function () { backend.signOut(); };
+      if (backend.adminUrl && backend.adminUrl()) {
+        el.insertAdjacentHTML("beforeend", ' <a class="linkish" href="' + esc(backend.adminUrl()) + '">Back office</a>');
+      }
       return;
     }
     el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
       : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  /* Firebase: a "Test copy" banner until an admin sets the copy live (CUTOVER.md). Frozen claude.ai page
+     (tools/build_artifact.py --frozen): page Editors keep Download backup in the "Moved" banner. */
+  function siteBanner() {
+    var mode = backend && backend.siteMode ? backend.siteMode() : null, el = $("site-banner");
+    if (mode === "test" && !el) {
+      document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
+        "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
+    } else if (mode !== "test" && el) el.remove();
+    var fb = $("frozen-backup");
+    if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
+      fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
+      $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        say($("card-backup-msg"), "Preparing…");
+        backend.saveBackup().then(function (r) {
+          x.disabled = false;
+          say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
+      };
+    }
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -1313,6 +1339,7 @@
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;
+    siteBanner();
     if (booted) rebuildPeople();
     renderAll();
   }

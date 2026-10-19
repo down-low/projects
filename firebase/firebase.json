@@ -1,21 +1,68 @@
 {
-  "hosting": {
-    "public": "public",
-    "ignore": ["**/.*"],
-    "headers": [
-      {
-        "source": "**/*.@(html|js|css|json)",
-        "headers": [{ "key": "Cache-Control", "value": "no-cache" }]
-      },
-      {
-        "source": "**",
-        "headers": [
-          { "key": "X-Content-Type-Options", "value": "nosniff" },
-          { "key": "Referrer-Policy", "value": "same-origin" }
-        ]
-      }
-    ]
-  },
+  "hosting": [
+    {
+      "target": "app",
+      "public": "public-app",
+      "ignore": [
+        "**/.*"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(html|js|css|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "target": "admin",
+      "public": "public-admin",
+      "ignore": [
+        "**/.*"
+      ],
+      "headers": [
+        {
+          "source": "**/*.@(html|js|css|json)",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "no-cache"
+            }
+          ]
+        },
+        {
+          "source": "**",
+          "headers": [
+            {
+              "key": "X-Content-Type-Options",
+              "value": "nosniff"
+            },
+            {
+              "key": "Referrer-Policy",
+              "value": "same-origin"
+            }
+          ]
+        }
+      ]
+    }
+  ],
   "firestore": {
     "rules": "firestore.rules",
     "indexes": "firestore.indexes.json"
@@ -28,16 +75,32 @@
       "source": "functions",
       "codebase": "default",
       "runtime": "nodejs20",
-      "ignore": ["node_modules", "*.test.js", ".env.local"]
+      "ignore": [
+        "node_modules",
+        "*.test.js",
+        ".env.local"
+      ]
     }
   ],
   "emulators": {
-    "auth": { "port": 9099 },
-    "firestore": { "port": 8080 },
-    "storage": { "port": 9199 },
-    "functions": { "port": 5001 },
-    "hosting": { "port": 5000 },
-    "ui": { "enabled": false },
+    "auth": {
+      "port": 9099
+    },
+    "firestore": {
+      "port": 8080
+    },
+    "storage": {
+      "port": 9199
+    },
+    "functions": {
+      "port": 5001
+    },
+    "hosting": {
+      "port": 5000
+    },
+    "ui": {
+      "enabled": false
+    },
     "singleProjectMode": true
   }
 }

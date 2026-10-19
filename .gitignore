@@ -1,7 +1,9 @@
 __pycache__/
 data/*.db
 data/*.db-journal
-firebase/public/
+firebase/public-app/
+firebase/public-admin/
+firebase/.firebaserc
 firebase/functions/node_modules/
 firebase/functions/.env
 firebase/tests/node_modules/
