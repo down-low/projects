@@ -17,6 +17,10 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 Two front ends on one Firebase backend: a light **employee app** (schedule, trades, documents; phone first, no admin code) and a separate **admin back office** (Employee cards, Corrections, Staffing, imports, editing). Same Firestore underneath; the security rules are the API. Firestore is the only live database from launch day: admins move to the `admin` site at the same cut-over, and the claude.ai main page is frozen, copied once, then retired. Details: `FIREBASE_PLAN.md`, "Two apps, one backend".
 
+## Demo branch
+
+`claude/demo-app` is a separate, fictional demo (2 battalions, ~200 made-up people, view-only). It holds no real data and **never merges into `main`**; don't merge `main` into it either without re-deleting the real data files.
+
 ## How we work
 
 - **Git is the only source of truth.** Every chat works on its own `claude/…` branch and merges to **`main`** with a pull request. Nobody edits code on the host.
