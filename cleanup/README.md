@@ -8,8 +8,6 @@
 
 | Priority | Category | Meaning |
 |---|---|---|
-| 1 | `id-mismatch` | The tool's Employee ID differs from the staff list by one digit (Johnston, Capurro). |
-| 1 | `january-holder` | Someone moves into this person's seat in January; where the holder goes is unknown (Faenzi, Jensen, Capurro). |
 | 2 | `vacant` | The officer list has this person in the seat; the tool shows it empty. |
 | 2 | `held` | The officer list has this person; the tool has someone else in that seat. |
 | 3 | `differs` | Company, tour or rank differ. Often an acting or detail assignment the tool doesn't record yet. |
@@ -18,6 +16,13 @@
 | 4 | `staff-name-no-match`, `staff-name-ambiguous` | The internal staff list had no match, or more than one, for this name. The user is cleaning these by hand. |
 
 Sources: the officer roster check (H40 / H30 / H20, https://claude.ai/artifact/LfUeKBV5UUh2TXNaiwJgLn), the January holder review, and the staff-list ID match.
+
+## Resolved 10/19/2026 (removed from the list)
+
+- Johnston,S: Employee ID is **JO2603** (people record `x-JO2630` updated; the record key stays).
+- Capurro,V: Employee ID is **CA5068** (`rosterOverrides/05ETL01M` and `data/employee-ids.json`). Working in 05EOL07M since 10/11; still owns 05ETL01M and stays put until moved by hand when Gebler arrives on 1/16/2027.
+- Faenzi,C: acting Captain in 48EOC05M (cover kind `acting`), Breen covering 48EOL07M.
+- Jensen,M: WE (already recorded).
 
 ## Rules for fixes
 

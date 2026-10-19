@@ -1,9 +1,4 @@
 priority,category,rank_group,name,employee_id,seat,officer_list_says,tool_shows,differs_in,suggested_check
-1,id-mismatch,H 30,"Johnston,S",JO2630,person:x-JO2630,"staff list: JO2603 (Johnston,Sean A H 20 E03)",JO2630,,Which ID is right? Fix emplId on his record.
-1,id-mismatch,H 20,"Capurro,V",CA5058,05ETL01M,"staff list: CA5068 (Capurro,Vincent R H 2 E36)",CA5058,,Which ID is right? Fix via rosterOverrides.
-1,january-holder,H 20,"Faenzi,C",,48EOL07M,,"Breen,T covers now-2027-01-15",,"Where is Faenzi now, and from 1/16?"
-1,january-holder,H 30,"Jensen,M",,26EOC25M,,"open for bid; Alvarenga,M moves in 2027-01-20",,Where does Jensen go in January?
-1,january-holder,H 20,"Capurro,V",,05ETL01M,,"Gebler,S moves in 2027-01-16",,Where does Capurro go in January?
 2,vacant,H 40,"Crean,Ryan T.",CR7635,01BN231M,H 40 B01 A31,"vacant · covered by Hoo,E",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
 2,vacant,H 40,"Pumphrey,Zachary W",PU8622,10BO229M,H 40 B10 A29,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
 2,held,H 40,"Sato,Joel H",SA3603,01BO202M,H 40 B01 A02,"Molloy,D",,List has this person; tool has someone else. Who owns the seat?
