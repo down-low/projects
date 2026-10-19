@@ -5,7 +5,8 @@
  * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
  * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
  * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
- * window.FirCompare = {LEVELS, targets(api, level, all), script(plan), parseCsv(text), compare(rows, api)}.
+ * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan),
+ * parseCsv(text), compare(rows, api)}. A list (e.g. cleanup/records-in-question.csv) can stand in for the tool's own questions.
  *
  * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
  * which the tool doesn't track); anything else with hours (VA, IDV, FH, DP, WC…) is leave. The Status column (EMPL_CLASS: DP
@@ -139,8 +140,46 @@
       "})();\n";
   }
 
-  // CSV text -> rows (objects keyed by the header). Dates (MM/DD/YY or MM/DD/YYYY) become ISO.
-  function parseCsv(text) {
+  /* A list to check, e.g. cleanup/records-in-question.csv: any CSV with an employee_id (or emplId) column; rank_group,
+     name, category and suggested_check are used when present. Returns {rows, groups}. */
+  function parseList(text) {
+    var rows = csvRows(text), head = rows.shift() || [];
+    var idCol = head.indexOf("employee_id") !== -1 ? "employee_id" : head.indexOf("emplId") !== -1 ? "emplId" : null;
+    if (!idCol) throw new Error("The list needs an employee_id column.");
+    var out = rows.filter(function (r) { return r.length > 1; }).map(function (r) {
+      var o = {};
+      head.forEach(function (h, k) { o[h] = (r[k] || "").trim(); });
+      o.id = (o[idCol] || "").toUpperCase();
+      return o;
+    });
+    var groups = [], order = ["H 40", "H 30", "H 20", "H 10", "H 3", "H 2"];
+    out.forEach(function (o) { if (o.rank_group && groups.indexOf(o.rank_group) === -1) groups.push(o.rank_group); });
+    groups.sort(function (a, b) { return ((order.indexOf(a) + 99) % 99) - ((order.indexOf(b) + 99) % 99); }); // top ranks first
+    return { rows: out, groups: groups };
+  }
+  // The people in a list (one rank group, or all) as targets: [{p, id, name, reasons}]; p is the tool's person or null.
+  function targetsFromList(list, api, group) {
+    var byId = {}, byShort = {}, seen = {}, out = [];
+    // "Last,First M" and "Last,F" both reduce to last + first initial; used only when it picks out one person.
+    var short = function (n) { var m = /^([^,]+),\s*(\S)/.exec(String(n || "")); return m ? (m[1] + "," + m[2]).toLowerCase().replace(/[^a-z,]/g, "") : ""; };
+    api.people().forEach(function (p) {
+      if (p.emplId) byId[p.emplId.toUpperCase()] = p;
+      var k = short(p.name);
+      if (k) (byShort[k] = byShort[k] || []).push(p);
+    });
+    list.rows.forEach(function (r) {
+      if (group && r.rank_group !== group) return;
+      var key = /^[A-Z]{2}\d{4}$/.test(r.id) ? r.id : "name:" + r.name;
+      var why = [r.category, r.suggested_check].filter(Boolean).join(": ");
+      if (seen[key]) { if (why && seen[key].reasons.indexOf(why) === -1) seen[key].reasons.push(why); return; }
+      var nm = byShort[short(r.name)] || [];
+      var t = seen[key] = { p: byId[r.id] || (!byId[r.id] && nm.length === 1 && !(nm[0].emplId && /^[A-Z]{2}\d{4}$/.test(r.id)) ? nm[0] : null), id: /^[A-Z]{2}\d{4}$/.test(r.id) ? r.id : "", name: r.name || r.id, reasons: why ? [why] : [] };
+      out.push(t);
+    });
+    return out;
+  }
+
+  function csvRows(text) {
     var rows = [], row = [], f = "", q = false, i, c;
     text = String(text || "").replace(/^\ufeff/, "");
     for (i = 0; i < text.length; i++) {
@@ -155,6 +194,12 @@
       } else f += c;
     }
     if (f || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+
+  // CSV text -> rows (objects keyed by the header). Dates (MM/DD/YY or MM/DD/YYYY) become ISO.
+  function parseCsv(text) {
+    var rows = csvRows(text);
     var head = rows.shift() || [];
     if (head.indexOf("emplId") === -1 || head.indexOf("trc") === -1) throw new Error("This isn't a fir-db1 pull from this tool (no emplId / trc columns).");
     return rows.filter(function (r) { return r.length > 1; }).map(function (r) {
@@ -283,5 +328,5 @@
       unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
   }
 
-  root.FirCompare = { LEVELS: LEVELS, targets: targets, script: script, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
 })(typeof window !== "undefined" ? window : globalThis);

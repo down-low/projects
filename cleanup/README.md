@@ -23,3 +23,7 @@ Sources: the officer roster check (H40 / H30 / H20, https://claude.ai/artifact/L
 
 - Seat changes go through covers (`kind`: acting / cover / shadow / extra; `move: true` changes the owned seat), statuses (VA, S, D, WE, TR) or `rosterOverrides`. Every move also gets an `assignments` row so it shows in the person's Moves log.
 - Cell numbers never go in this folder, the repo, or chat output.
+
+## Checking against fir-db1
+
+On the Employee cards screen, **Check with fir-db1 → Who: People on a list (CSV)**, choose this file and a rank group (H 40 first), then **Copy pull script** and paste it in the console of a signed-in fir-db1 tab. `fir-pull-H40.js` is that script for the 52 H 40 rows, ready to paste. Choose the CSV it downloads in the same panel to see, person by person, where fir-db1 and the tool disagree; people fir-db1 knows but the tool doesn't are listed with their fir-db1 company and position.
