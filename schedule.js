@@ -65,7 +65,7 @@
   /* Two kinds of record share the covers list:
      - a cover: an assignment (acting, detailed, mandated) that runs until someone ends it;
      - a move: a change of the seat a person owns (a 2027 award or transfer-list assignment, or `move: true`).
-     While a cover runs it wins over the person's owned seat, moved or not: Lester keeps his acting cover on E10 after his
+     While a cover runs it wins over the person's owned seat, moved or not: Ashgrove keeps his acting cover on E10 after his
      award moves his own seat to E12, and E12 shows him away until the cover is ended. */
   function isMove(c) { return !!(c && (c.move || /^2027 (award|assignment)/.test(c.note || ""))); }
   function activeAll(list, field, key, d) {

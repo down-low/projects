@@ -21,7 +21,7 @@
   function iso(d) { return M.isoDate(d); }
   function fromIso(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function addDays(s, n) { var d = fromIso(s); return iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
-  // "Pereira,Joshua M" and the roster's "Pereira,J" both become "pereira,j".
+  // "Okafor,Bianca M" and the roster's "Okafor,B" both become "pereira,j".
   function nameKey(n) {
     var parts = String(n || "").split(",");
     return parts[0].trim().toLowerCase().replace(/\s+/g, " ") + "," + (parts[1] || "").trim().charAt(0).toLowerCase();
@@ -240,7 +240,7 @@
         ui.busy = false; ui.msg = "Removed " + n + " records."; api.renderAll(true);
       }, function (e) { ui.busy = false; ui.msg = e.message; api.renderAll(true); });
     }
-    // "Pereira,Joshua M" -> "Pereira,J", the roster's style.
+    // "Okafor,Bianca M" -> "Okafor,B", the roster's style.
     function shortName(n) { var p = n.split(","); return p[0].trim() + (p[1] ? "," + p[1].trim().charAt(0) : ""); }
 
     return { render: render };

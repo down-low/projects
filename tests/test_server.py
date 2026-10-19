@@ -168,7 +168,7 @@ class ServerTest(unittest.TestCase):
         a.google_login("pereira@example.org")
         self.assertEqual(a.req("POST", "/api/me/claim", {"pos": "02BO207M"}, csrf=False)[0], 403)
         st, me, _ = a.req("POST", "/api/me/claim", {"pos": "02BO207M", "note": "BC B02"})
-        self.assertEqual((st, me["claimPos"], me["claimName"]), (200, "02BO207M", "Pereira,J"))
+        self.assertEqual((st, me["claimPos"], me["claimName"]), (200, "02BO207M", "Okafor,B"))
 
         _, users, _ = admin.req("GET", "/api/admin/users")
         uid = next(u["id"] for u in users if u["googleEmail"] == "pereira@example.org")
@@ -202,7 +202,7 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(a.req("GET", "/api/admin/users")[0], 403)
         admin.req("POST", f"/api/admin/users/{u['id']}", {"action": "role", "role": "editor"})
         st, created, _ = a.req("POST", "/api/statuses", rec)
-        self.assertEqual((st, created["createdBy"]), (201, "Pereira"))
+        self.assertEqual((st, created["createdBy"]), (201, "Okafor"))
         self.assertEqual(a.req("POST", "/api/statuses", dict(rec, code="WE", note="Admin assignment"))[0], 201)
         self.assertEqual(a.req("POST", "/api/statuses", dict(rec, code="XX"))[0], 400)
         self.assertEqual(a.req("DELETE", f"/api/statuses/{created['id']}", csrf=False)[0], 403)
@@ -266,7 +266,7 @@ class ServerTest(unittest.TestCase):
         for b in bad:
             self.assertEqual(admin.req("POST", "/api/covers", b)[0], 400, b)
         st, rec, _ = admin.req("POST", "/api/covers", cover)
-        self.assertEqual((st, rec["coverName"], rec["end"]), (201, "Lester,D", None))
+        self.assertEqual((st, rec["coverName"], rec["end"]), (201, "Ashgrove,A", None))
         st, sh, _ = admin.req("POST", "/api/covers", dict(cover, kind="shadow", start="2026-12-01"))
         self.assertEqual((st, sh["kind"], rec["kind"]), (201, "shadow", None))
         self.assertEqual(admin.req("DELETE", f"/api/covers/{sh['id']}")[0], 200)
@@ -302,21 +302,21 @@ class ServerTest(unittest.TestCase):
         n = self.client()
         n.google_login("newhire@example.org")
         self.assertEqual(n.req("GET", "/docs/2026-watch-calendar.pdf")[0], 403)
-        bad = [{"name": "Smith,J", "rank": "Lieutenant", "company": "E10", "tour": 32},
-               {"name": "Smith,J", "rank": "Lieutenant", "company": "X99", "tour": 12},
+        bad = [{"name": "Doe,J", "rank": "Lieutenant", "company": "E10", "tour": 32},
+               {"name": "Doe,J", "rank": "Lieutenant", "company": "X99", "tour": 12},
                {"name": "", "rank": "Lieutenant", "company": "E10", "tour": 12},
-               {"name": "Smith,J", "rank": "Lieutenant", "company": "E10"}]
+               {"name": "Doe,J", "rank": "Lieutenant", "company": "E10"}]
         for b in bad:
             self.assertEqual(n.req("POST", "/api/me/claim", {"request": b})[0], 400, b)
-        st, me, _ = n.req("POST", "/api/me/claim", {"request": {"name": "Smith,J", "rank": "Lieutenant", "company": "e10", "tour": 12}})
+        st, me, _ = n.req("POST", "/api/me/claim", {"request": {"name": "Doe,J", "rank": "Lieutenant", "company": "e10", "tour": 12}})
         self.assertEqual((st, me["claimRequest"]["company"], me["claimRequest"]["tour"]), (200, "E10", 12))
         _, users, _ = admin.req("GET", "/api/admin/users")
         nid = next(u["id"] for u in users if u["googleEmail"] == "newhire@example.org")
         st, u, _ = admin.req("POST", f"/api/admin/users/{nid}", {"action": "approve"})
-        self.assertEqual((st, u["status"], u["posName"]), (200, "active", "Smith,J"))
+        self.assertEqual((st, u["status"], u["posName"]), (200, "active", "Doe,J"))
         self.assertTrue(u["pos"].startswith("person:"))
         _, recs, _ = n.req("GET", "/api/records")
-        smith = next(x for x in recs["people"] if x["name"] == "Smith,J")
+        smith = next(x for x in recs["people"] if x["name"] == "Doe,J")
         self.assertEqual((smith["company"], smith["tour"]), ("E10", 12))
 
         # documents: allowlisted only, PDFs for active users

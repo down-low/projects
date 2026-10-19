@@ -5,7 +5,7 @@ const assert = require("node:assert/strict");
 const A = require("./accounts");
 
 const NOW = "2026-10-19T12:00:00.000Z";
-const roster = { "10EOC03M": { pos: "10EOC03M", name: "Lester,D", title: "Captain E10" }, "11ENL01M": { pos: "11ENL01M", name: "", title: "Lt E11" } };
+const roster = { "10EOC03M": { pos: "10EOC03M", name: "Ashgrove,A", title: "Captain E10" }, "11ENL01M": { pos: "11ENL01M", name: "", title: "Lt E11" } };
 const lookup = (k) => roster[k] || null;
 const companies = new Set(["E10", "E11", "T01"]);
 
@@ -41,7 +41,7 @@ test("claims follow the account", () => {
 test("me JSON has the server.py shape", () => {
   const j = A.meJson("u1", { email: "x@y.org", name: "X", role: "member", status: "active", pos: "10EOC03M" },
     { lookup, contact: { contactEmail: "c@y.org", share: true }, profile: { birthDate: "1980-01-01" } });
-  assert.equal(j.posName, "Lester,D");
+  assert.equal(j.posName, "Ashgrove,A");
   assert.equal(j.shareContact, true);
   assert.deepEqual(j.profile, { birthDate: "1980-01-01", hireDate: null });
   assert.equal(j.alerts.board, "off");
@@ -54,15 +54,15 @@ test("claims: roster entry must exist and be free; requests are checked", () => 
   assert.throws(() => A.planClaim("u1", pending, { pos: "11ENL01M" }, ctx), /Pick your name/); // vacant seat
   assert.throws(() => A.planClaim("u1", pending, { pos: "10EOC03M" }, Object.assign({}, ctx, { takenBy: () => "u2" })), (e) => e.code === "already-exists");
   assert.throws(() => A.planClaim("u1", { status: "active" }, { pos: "10EOC03M" }, ctx), (e) => e.code === "failed-precondition");
-  const req = A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Firefighter", company: "e10", tour: 5, emplId: "ab1234" } }, ctx);
+  const req = A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Firefighter", company: "e10", tour: 5, emplId: "ab1234" } }, ctx);
   assert.equal(req.claimRequest.company, "E10");
   assert.equal(req.claimRequest.emplId, "AB1234");
-  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Firefighter", company: "E99", tour: 5 } }, ctx), /Apparatus/);
-  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Chief", company: "E10", tour: 5 } }, ctx), /rank/);
-  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Firefighter", company: "E10", tour: 32 } }, ctx), /tour/);
-  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Firefighter", company: "E10" } }, ctx), /apparatus and tour/);
-  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Smith,J", rank: "Firefighter", company: "E10", tour: 5, emplId: "AB1234" } },
-    Object.assign({}, ctx, { emplOwner: () => "Lester,D" })), /already on Lester,D/);
+  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Firefighter", company: "E99", tour: 5 } }, ctx), /Apparatus/);
+  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Chief", company: "E10", tour: 5 } }, ctx), /rank/);
+  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Firefighter", company: "E10", tour: 32 } }, ctx), /tour/);
+  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Firefighter", company: "E10" } }, ctx), /apparatus and tour/);
+  assert.throws(() => A.planClaim("u1", pending, { request: { name: "Doe,J", rank: "Firefighter", company: "E10", tour: 5, emplId: "AB1234" } },
+    Object.assign({}, ctx, { emplOwner: () => "Ashgrove,A" })), /already on Ashgrove,A/);
 });
 
 test("roster names leave out linked positions and vacant seats", () => {

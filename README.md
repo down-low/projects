@@ -122,7 +122,7 @@ On wider screens the layout is unchanged; the editing forms on a person's page s
 
 After signing in with Google, someone who can't find their name picks **I'm not on the list** and enters their name, rank, apparatus and tour. An admin sees the request on the Admin page; **Approve and add to roster** adds them with that apparatus and tour (tagged "Added") and gives them access.
 
-Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; an employee ID (`AS9242`) matches that person; anything else matches names, titles and IDs.
+Search: a company code (`E10`, `e 10`, `RS1`) matches that company only (where people work that day, including swings and covers); `tour 10` matches a tour; a full position number (`10EOC03M`) matches that position; an employee ID (`DM0042`) matches that person; anything else matches names, titles and IDs.
 
 ## Employee IDs
 
@@ -134,7 +134,7 @@ Each person can carry an **employee ID** (two letters and four digits). IDs are 
 - **Cell numbers** from the internal staff list sit in one admin-only record on the shared page (`contacts/staff-list`, rule `read: admin`). Admins see a person's cell on their page ("Cell · staff list, admins only") with tap-to-call; Viewers and members never receive it, and it is never in the view-only link or this repository. At the server launch the same list seeds numbers for trade texts.
 - People added outside the vacancy list store the ID on their record (`emplId`). The add-person form and the "I'm not on the list" request take an optional ID; the server rejects a badly formed ID or one already in use.
 
-Vacancy-list rows showing a starred name with "Vacant" (e.g. `* Lt. SSwing E10 10ENL31M Lester,D Vacant`) are treated as the person still working the position while the spot is up for bid ("Spot open for bid"). Rows with a starred replacement name show only the replacement.
+Vacancy-list rows showing a starred name with "Vacant" (e.g. `* Lt. SSwing E10 10ENL31M Ashgrove,A Vacant`) are treated as the person still working the position while the spot is up for bid ("Spot open for bid"). Rows with a starred replacement name show only the replacement.
 
 Records are keyed by position number. There are two places they can be stored:
 

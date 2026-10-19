@@ -5,10 +5,10 @@
 ### Apply the 2027 vacancy awards (26 A-082)
 The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves about 400 people to new positions.
 
-- **Effective date:** each person's **First Reg** date from the transfer list (their first shift in the new position), with their **Last Reg** as the final shift in the old one. These are usually the first day of the new tour on or after Jan 16, 2027, but not always: on the list sent 10/15/2026, Alvarenga, Bisig, Breen and Guillen start a few days later and Skifter starts on Jan 15. Until then they stay on their current position and tour.
-- **Already loaded (10/15/2026):** the 31 moves on that list are in the shared page as cover assignments (current spot from 1/1/2026 to Last Reg, new spot from First Reg), with 9 people added. Scafani's positions 31EOA08T / 40EOA12T were matched to 31EOL08M / 40EOL12M and are marked to confirm.
+- **Effective date:** each person's **First Reg** date from the transfer list (their first shift in the new position), with their **Last Reg** as the final shift in the old one. These are usually the first day of the new tour on or after Jan 16, 2027, but not always: on the list sent 10/15/2026, Ollander, Kestrelton, Halloway and Tamsworth start a few days later and Brackenridge starts on Jan 15. Until then they stay on their current position and tour.
+- **Already loaded (10/15/2026):** the 31 moves on that list are in the shared page as cover assignments (current spot from 1/1/2026 to Last Reg, new spot from First Reg), with 9 people added. Wexley's positions 31EOA08T / 40EOA12T were matched to 31EOL08M / 40EOL12M and are marked to confirm.
 - **Source columns:** position number (the new tour is the two digits before the trailing `M`), EmplID, full name, current class and current assignment. Asterisks on position numbers carry over from the vacancy list.
-- **Matching:** awardees are matched to roster people by last name plus first initial (`Pereira,Joshua M` → `Pereira,J`), with EmplID kept for future imports. Names that don't match are created as added people.
+- **Matching:** awardees are matched to roster people by last name plus first initial (`Okafor,Bianca M` → `Okafor,B`), with EmplID kept for future imports. Names that don't match are created as added people.
 - **Review before applying:** an admin screen lists each move (from position, to position, computed effective date) with unmatched or ambiguous names flagged, then applies them as dated moves.
 - **Seats left behind** become vacant from the same date unless another award fills them.
 - **Built (10/2026):** the **2027 awards** screen (editors) does all of the above: 308 moves ready, 19 to check, 38 needing no move, against the records of 10/16/2026. A move changes the seat a person owns; covers they have elsewhere keep running until ended. It moves to Shipped once applied on the shared page.
@@ -48,8 +48,8 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
   - Twilio keys stay in function secrets, never in the repo.
 - **Email:** sent from a department Gmail / Workspace account (Gmail API from a Cloud Function, or SMTP from `server.py`), to the contact email on My page, else the sign-in email. Free at this size; the fallback for anyone without the app.
 - **The details are in the alert,** so nobody has to open the page just to decide:
-  - **A trade sent to you:** "Lester,D (Lt · E10) wants a 24-hr trade for Sat Oct 17, Watch 26, at E10. 'Daughter's recital.' You're off that day; you work the day after."
-  - **A response to your trade:** "Schnelker,R (Capt · E01) can take Sat Oct 17. Swap: you work their Mon Oct 19."
+  - **A trade sent to you:** "Ashgrove,A (Lt · E10) wants a 24-hr trade for Sat Oct 17, Watch 26, at E10. 'Daughter's recital.' You're off that day; you work the day after."
+  - **A response to your trade:** "Lindqvist,D (Capt · E01) can take Sat Oct 17. Swap: you work their Mon Oct 19."
   - **Your response was picked, or a set trade was cancelled:** the date, the other person and the terms.
   - Names and dates show on lock screens; that's the point.
 - **Answer from the alert, without signing in:**
@@ -67,7 +67,7 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
 
 #### People on the roster who haven't signed in
 - **Not on yet:** in the Trade wizard's Who list and in My trades, recipients without a linked account are marked "not on yet", with a count ("4 of 9 aren't on yet").
-- **Invite them:** a button next to each name opens the poster's Messages app (an `sms:` link, or the share sheet) with the text filled in by the tool, e.g. "Goforth (FF/PM, E05) wants to trade Christmas, Fri Dec 25, 24 hrs at E05. You're off that day. Interested? Tap to see it and answer: <host>/t/<code>".
+- **Invite them:** a button next to each name opens the poster's Messages app (an `sms:` link, or the share sheet) with the text filled in by the tool, e.g. "Thornbury (FF/PM, E05) wants to trade Christmas, Fri Dec 25, 24 hrs at E05. You're off that day. Interested? Tap to see it and answer: <host>/t/<code>".
   - **Filled in:** who's asking (rank, station), the day, date and where, "you're off that day" (plus "you work the day before/after" when true), the poster's note, and the person's own link. The recipient's number is filled in when it's in the poster's Contacts. The poster can edit the text, then taps Send.
   - **One text per person:** each link is made for one person, so it proves who's answering.
   - **Invite all** ("Invite 4 not on yet") steps through them: Messages opens for the first with everything filled in; tap Send, come back, and the next one opens, with a count (2 of 4) and Skip. Phones don't let a web app send texts on its own, so each still needs one tap on Send.
@@ -75,8 +75,8 @@ A trade can go to someone who isn't on the tool yet. That's the best way for it 
   - **The text comes from the poster's phone, not the department's Twilio number.** We have no numbers for people who haven't signed up, US texting rules (TCPA, 10DLC) require prior consent, and a colleague's text gets opened. No texting cost either.
 - **The link (`/t/<code>`):** a random code for one recipient, tied to the trade, the recipient and the inviter. It expires when the trade's day passes or after 14 days, and works once.
   - **Before sign-in it shows only** "A Lieutenant wants to trade a 24-hr shift on Sat Oct 17", with no names, and **Sign in with Google to see it**.
-  - **After Google sign-in**, the claim screen is filled in for the person it was meant for ("Are you Alvarenga,G, Capt E32?") and asks for their Employee ID.
-  - **ID matches the roster:** the account is linked and approved at once, and they land on the trade ready to respond. The Admin page shows "Joined by invite from Lester · date" with Undo (unlink and disable).
+  - **After Google sign-in**, the claim screen is filled in for the person it was meant for ("Are you Nakamura,C, Capt E32?") and asks for their Employee ID.
+  - **ID matches the roster:** the account is linked and approved at once, and they land on the trade ready to respond. The Admin page shows "Joined by invite from Ashgrove · date" with Undo (unlink and disable).
   - **No match:** the normal claim, waiting for an admin.
 - **Limits:** only people the poster actually sent the trade to can be invited; up to 20 invites per poster a day; nothing about other people shows before sign-in.
 
@@ -86,7 +86,7 @@ People who haven't signed up can still answer, two ways. The department number n
 - **Add their answer (the poster records it).** The invite text went from the poster's phone, so replies come back to the poster ("I'm in, pay me back later"). On their open trade the poster taps **Add their answer**:
   - picks the person from those who could take that day (same rank group, off, no status), members or not;
   - enters the terms: a swap day (checked as usual) or pay back later, plus a note such as "replied by text";
-  - the answer shows as "Hardy · told you by text".
+  - the answer shows as "Marchbank · told you by text".
   - **Pick** sets the trade as usual (cover and TR), so the schedule shows it. A member who's named gets the usual "your response was picked" alert with **Not me** to dispute it. The trade's record shows who entered the answer, and admins can see and cancel it, as with any trade agreed by text today.
 - **Answer from the link (no account yet).** The trade invite page (`/t/<code>`, tied to one person) has **I'm interested · pay back later** and **Suggest a swap day** (only their own work days that the poster is off) before any sign-in.
   - The answer is saved as **not verified**, and the poster can pick it. The trade then waits as **Picked · waiting for them to sign in**.
@@ -98,7 +98,7 @@ People who haven't signed up can still answer, two ways. The department number n
 - **Invite someone to the schedule:** a button on the Trades tab (and in the More menu) opens the phone's share sheet, so the member picks from their own Contacts, with a ready text: "I'm using the SFFD tour schedule to trade shifts. Join here: <host>/join/<code>".
 - **Typing a number** instead only opens the member's Messages app with that number and the text filled in (an `sms:` link). **The number is never saved:** the tool doesn't keep coworkers' phone numbers they didn't give it, and the text still comes from a colleague.
 - **The join link** is a general invite (no trade), tied to the inviter, single use, expires in 14 days; up to 10 a day per member.
-- **Signing up:** Google sign-in, then the existing **I'm not on the list** form (name, rank, apparatus, tour, Employee ID). The request shows on the Admin page as "Invited by Lester"; an admin approves it with **Approve and add to roster**, which adds them with their apparatus and tour. No automatic approval here, since there's no roster entry to check the ID against.
+- **Signing up:** Google sign-in, then the existing **I'm not on the list** form (name, rank, apparatus, tour, Employee ID). The request shows on the Admin page as "Invited by Ashgrove"; an admin approves it with **Approve and add to roster**, which adds them with their apparatus and tour. No automatic approval here, since there's no roster entry to check the ID against.
 - **Then they're in like anyone else:** eligible for trades by rank group and tour, on boards and in the Trade wizard's Who list. The Who list ends with "Can't find them? **Invite someone**", which opens the same share.
 - **Without an invite** (word of mouth, the QR poster), the claim screen tries the roster first (Employee ID match) and falls back to "I'm not on the list".
 

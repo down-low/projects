@@ -4,7 +4,7 @@
    Usage: node tools/demo_trades.js records.json [--extra YYYY-MM-DD:POS] > demo.json
 
    Picks real roster people and dates from today on, using the same schedule math as the page:
-   Lester (Lieutenant, E10) and Goforth (FF/Paramedic, E21) each post trades, colleagues in their rank groups post trades
+   Ashgrove (Lieutenant, E10) and Thornbury (FF/Paramedic, E21) each post trades, colleagues in their rank groups post trades
    they could take, and a couple of responses are waiting. Open trades already in records.json are kept. The output's
    "people" are the ones the demo lets you view as. Nothing in it is ever saved anywhere. */
 "use strict";
@@ -44,7 +44,7 @@ function reply(tradeId, p, proposal, note) {
 }
 
 const lester = byPos["10ENL31M"], goforth = byPos["21EOA15M"];
-// Lester: one on the board with two responses (a swap and pay back later), one sent to a few officers.
+// Ashgrove: one on the board with two responses (a swap and pay back later), one sent to a few officers.
 const [l1, l2] = workDays(lester, 4, 2).filter((d) => !taken(lester, d));
 const lt = post(lester, l1, "Daughter's recital", { board: true, to: [] });
 const lEl = eligible(lester, l1).filter((p) => !p.swing);
@@ -53,11 +53,11 @@ reply(lt, swapper, { swapDate: M.isoDate(workDays(swapper, 1, 3)[0]) }, "Can swa
 const later = lEl.find((p) => p !== swapper);
 reply(lt, later, { later: true }, "");
 post(lester, l2, "", { board: false, to: eligible(lester, l2).slice(0, 6).map((p) => p.pos) });
-// Goforth: one on the board, one sent to two people and the board.
+// Thornbury: one on the board, one sent to two people and the board.
 const [g1, g2] = workDays(goforth, 2, 2);
 post(goforth, g1, "Out of town", { board: true, to: [] });
 post(goforth, g2, "", { board: true, to: eligible(goforth, g2).slice(0, 2).map((p) => p.pos) });
-// Colleagues' trades that land on Lester's and Goforth's boards (days they're off).
+// Colleagues' trades that land on Ashgrove's and Thornbury's boards (days they're off).
 function colleagues(me, rank, notes) {
   let made = 0;
   for (const o of people.filter((p) => rank.includes(p.rank) && p.pos !== me.pos && !p.swing && p !== swapper && p !== later)) {
@@ -70,7 +70,7 @@ function colleagues(me, rank, notes) {
 }
 colleagues(lester, ["Captain", "Lieutenant"], ["Vacation", "Family event", ""]);
 colleagues(goforth, ["FF/Paramedic"], ["Wedding", "", "Kid's game"]);
-// Someone who could take Goforth's board post, to view the board from the other side.
+// Someone who could take Thornbury's board post, to view the board from the other side.
 const ffpm = eligible(goforth, g1).find((p) => !p.swing);
 const viewAs = [lester.pos, goforth.pos, swapper.pos, ffpm.pos];
 

@@ -83,7 +83,7 @@
         "</form>" +
         '<form class="edit claim-form" id="req-form" hidden novalidate>' +
         "<p>Tell us where you work. An admin checks it and adds you to the schedule.</p>" +
-        '<div class="row"><label>Your name<input type="text" id="rq-name" maxlength="80" placeholder="Last,First initial (e.g. Smith,J)"></label>' +
+        '<div class="row"><label>Your name<input type="text" id="rq-name" maxlength="80" placeholder="Last,First initial (e.g. Doe,J)"></label>' +
         '<label>Rank<select id="rq-rank">' + api.RANKS.map(function (r) { return "<option>" + esc(r) + "</option>"; }).join("") + "</select></label></div>" +
         '<div class="row"><label>Apparatus<input type="text" id="rq-company" maxlength="6" placeholder="e.g. E10"></label>' +
         '<label>Tour<select id="rq-tour"><option value="">Pick your tour</option>' +
@@ -107,7 +107,7 @@
       $("req-form").onsubmit = function (e) {
         e.preventDefault();
         var msg = $("rq-msg"), name = $("rq-name").value.trim(), co = $("rq-company").value.trim().toUpperCase(), tour = $("rq-tour").value;
-        if (name.length < 2) return api.say(msg, "Enter your name, e.g. Smith,J.", true);
+        if (name.length < 2) return api.say(msg, "Enter your name, e.g. Doe,J.", true);
         if (!/^[A-Z]{1,3}\d{1,2}$/.test(co)) return api.say(msg, "Enter your apparatus as a company code, like E10 or T01.", true);
         if (!tour) return api.say(msg, "Pick your tour.", true);
         var empl = $("rq-id").value.trim().toUpperCase();

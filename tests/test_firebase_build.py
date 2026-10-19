@@ -43,8 +43,8 @@ class FirebaseBuild(unittest.TestCase):
             names = {p["name"] for p in json.load(f) if p.get("name") and len(p["name"]) > 5}
         with open(os.path.join(ROOT, "data", "employee-ids.json")) as f:
             ids = {v["id"] for v in json.load(f)["ids"].values()}
-        # Hint-text and comment examples already in the app code ("e.g. Lester,D"), not roster data.
-        examples = {"Lester,D", "Smith,J", "Pereira,J"}
+        # Hint-text and comment examples already in the app code ("e.g. Ashgrove,A"), not roster data.
+        examples = {"Ashgrove,A", "Doe,J", "Okafor,B"}
         for folder in (self.app, self.admin):
             text = "".join(self.read(folder, name) for name in os.listdir(folder))
             found = [n for n in names - examples if n in text] + [i for i in ids if re.search(r"\b" + i + r"\b", text)]

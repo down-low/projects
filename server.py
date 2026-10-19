@@ -372,7 +372,7 @@ class App:
     def clean_person_fields(self, body, exclude=None):
         name = clean_text(body.get("name"), "name", 80)
         if len(name) < 2:
-            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
+            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Ashgrove,A)")
         rank = body.get("rank")
         if rank not in RANKS:
             raise BadRequest("rank must be one of: " + ", ".join(RANKS))
@@ -673,7 +673,7 @@ class App:
         o0 = self.orig[pos]
         name = clean_text(body.get("name"), "name", 80) or None
         if name and len(name) < 2:
-            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Lester,D)")
+            raise BadRequest("Enter the person's name (Last,First initial works best, e.g. Ashgrove,A)")
         rank = body.get("rank") or None
         if rank is not None and rank not in RANKS:
             raise BadRequest("rank must be one of: " + ", ".join(RANKS))

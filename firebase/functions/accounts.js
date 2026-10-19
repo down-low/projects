@@ -89,7 +89,7 @@ function cleanText(value, field, limit) {
 function cleanPersonRequest(body, { companies, emplOwner }) {
   body = body || {};
   const name = cleanText(body.name, "name", 80);
-  if (name.length < 2) throw bad("Enter the person's name (Last,First initial works best, e.g. Lester,D)");
+  if (name.length < 2) throw bad("Enter the person's name (Last,First initial works best, e.g. Ashgrove,A)");
   if (RANKS.indexOf(body.rank) === -1) throw bad("rank must be one of: " + RANKS.join(", "));
   const company = cleanText(body.company, "company", 6).toUpperCase() || null;
   if (company && (!COMPANY_RE.test(company) || !companies.has(company))) throw bad("Apparatus must be a company on the roster, like E10 or T01");

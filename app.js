@@ -759,7 +759,7 @@
       datesHtml(x, r, true) +
       (opt.move && !opt.moveOnly ? '<label class="chk"><input type="checkbox" id="' + x + 'move"' + (isMv ? " checked" : "") + "> Move · this becomes their own seat</label>"
         : '<input type="hidden" id="' + x + 'move" value="' + (isMv ? "1" : "") + '">') +
-      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. Weddle injured" value="' + esc(r.note || "") + '"></label>' +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. Brightwater injured" value="' + esc(r.note || "") + '"></label>' +
       formEnd(pre, x, rec, isMv ? "Save move" : "Save cover");
   }
   function tourForm(p, rec, pre) {
@@ -1089,7 +1089,7 @@
     $("add-person").onsubmit = function (e) {
       e.preventDefault();
       var name = $("ap-name").value.trim(), msg = $("ap-msg");
-      if (name.length < 2) return say(msg, "Enter the person's name, e.g. Lester,D.", true);
+      if (name.length < 2) return say(msg, "Enter the person's name, e.g. Ashgrove,A.", true);
       say(msg, "Saving…");
       var co = $("ap-company").value.trim().toUpperCase(), tourV = $("ap-tour").value;
       if (co && !data.some(function (p) { return p.company === co; })) return say(msg, "Apparatus must be a company on the roster, like E10.", true);

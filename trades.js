@@ -360,7 +360,7 @@
       return '<div class="card claim"><h3>Which one is you?</h3>' +
         "<p>Trades need to know who you are. Find yourself by name or Employee ID, then confirm your station and tour.</p>" +
         (p ? confirmHtml(p) :
-          '<label for="cl-q">Your name or Employee ID</label><input type="search" id="cl-q" autocomplete="off" placeholder="e.g. Lester or LE1234" value="' + esc(ui.claimQ) + '">' +
+          '<label for="cl-q">Your name or Employee ID</label><input type="search" id="cl-q" autocomplete="off" placeholder="e.g. Ashgrove or LE1234" value="' + esc(ui.claimQ) + '">' +
           (hits.length ? '<ul class="pick">' + hits.map(function (x) {
             return '<li><button type="button" data-pick-me="' + esc(x.pos) + '">' + esc(x.name) + ' <span class="hint">' + esc(x.title) +
               (x.emplId ? " · " + esc(x.emplId) : "") + "</span></button></li>";

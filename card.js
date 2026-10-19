@@ -524,7 +524,7 @@
       f.onsubmit = function (e) {
         e.preventDefault();
         var msg = $("ci-msg"), name = $("ci-name").value.trim(), rank = $("ci-rank").value, empl = $("ci-id").value.trim().toUpperCase();
-        if (name.length < 2) return api.say(msg, "Enter the name, e.g. Lester,D.", true);
+        if (name.length < 2) return api.say(msg, "Enter the name, e.g. Ashgrove,A.", true);
         if (empl && !api.ID_RE.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
         var other = empl && (api.byId()[empl] || []).filter(function (o) { return o.pos !== key; })[0];
         if (other) return api.say(msg, "Employee ID " + empl + " is already on " + other.name + " (" + other.title + ").", true);

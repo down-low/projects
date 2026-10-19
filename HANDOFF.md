@@ -1,5 +1,7 @@
 # Hand-off: start here
 
+> **Branch `claude/demo-app`: fictional demo data only.** Read `DEMO.md` first. Never merge `main` in (it brings the real roster back); cherry-pick app code instead.
+
 The SFFD tour schedule tool: who works which seat on which day, covers / acting / shadowing, leave statuses, trades, and an admin back office. Read this first in any new chat, then `README.md` (features), `RELEASES.md` (roadmap) and `FIREBASE_PLAN.md` (hosting).
 
 ## Priorities, in order
@@ -52,9 +54,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Live links
 
-- **Main page** (page database, sign-in by claude.ai access): https://claude.ai/artifact/TS7W51mXHxgy7p2uvReSgC. Records live in its database: `statuses`, `tourChanges`, `covers`, `people`, `staffing`, `assignments` (move log), `rosterOverrides`, `members`, `trades`, `tradeReplies`, `corrections`, `contacts`, `profiles`.
-- **View-only snapshot** (records baked in, trade demo): https://claude.ai/artifact/37DsLLYz74Kjysbd84cTXV.
-- **Officer roster check** (private): https://claude.ai/artifact/LfUeKBV5UUh2TXNaiwJgLn.
+This is the **demo branch**. Never publish it to the real tool's claude.ai links (main page or view-only snapshot); the demo has its own artifact. See `DEMO.md`.
 
 ## Security rules (never break these)
 
@@ -70,7 +70,4 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Open questions for the user
 
-- Johnston and Capurro: Employee ID mismatches.
-- January double covers.
-- Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
-- Items from the officer roster check.
+Kept on `main` only; this branch holds no real data.
