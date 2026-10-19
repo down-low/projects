@@ -1266,6 +1266,14 @@
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
     Organization: window.Organization, store: store, recall: recall,
+    dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },
+    // Companies to pull from fir-db1: every roster company plus the rescue captains.
+    companies: function () {
+      var seen = {};
+      data.forEach(function (p) { if (p.company) seen[p.company] = 1; });
+      ["RC1", "RC2", "RC3", "RC4"].forEach(function (c) { seen[c] = 1; });
+      return Object.keys(seen).sort(function (a, b) { return coKey(a).localeCompare(coKey(b)); });
+    },
     show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
   });
 

@@ -216,7 +216,86 @@
         COLUMNS.map(function (c) {
           return '<label class="chk"><input type="checkbox" data-ccol="' + c.key + '"' + (ui.cols.indexOf(c.key) !== -1 ? " checked" : "") + "> " + esc(c.label) + "</label>";
         }).join("") + btn("Reset to default", 'id="card-cols-reset"') + "</div>" +
-        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>';
+        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>' +
+        firHtml();
+    }
+
+    /* ---------- Compare with fir-db1 (fir.js) ----------
+       The admin runs the pull script in a signed-in fir-db1 tab, then drops the CSV here. The file is read in this browser and
+       kept in memory only. */
+    function firHtml() {
+      var F = root.FirCompare, f = ui.fir || {};
+      if (!F || !api.dayRows) return "";
+      var r = f.result;
+      return '<details class="card fold fir-card" id="fir-card"' + (f.open ? " open" : "") + "><summary><h3>Compare with fir-db1</h3>" +
+        '<span class="fold-sum">' + (r ? esc(api.shortDate(api.fromIso(r.date))) + " · " + (r.onoff.length + r.seat.length + r.firOnly.length + r.toolOnly.length) + " to check" : "who's booked vs this tool") + "</span></summary>" +
+        '<ol class="fir-steps"><li>On the city VPN, open fir-db1 and sign in (any page).</li>' +
+        "<li>" + btn("Copy pull script", 'id="fir-copy"', "primary") + " then in that tab open the console (F12 → Console; type <code>allow pasting</code> if Chrome asks), paste and press Enter. " +
+        "Pick a date and which companies (try one, e.g. E10, first). It downloads <code>fir-&lt;date&gt;.csv</code>.</li>" +
+        '<li>Choose that file here: <input type="file" id="fir-file" accept=".csv,text/csv"> <span class="msg" id="fir-msg" role="status">' + esc(f.error || "") + "</span></li></ol>" +
+        '<textarea id="fir-script" class="fir-script" readonly hidden></textarea>' +
+        '<p class="hint">The script only reads pages your fir-db1 login can already see, one company at a time. The file stays on this computer; nothing is saved to the tool.</p>' +
+        (r ? firResult(r) : "") + "</details>";
+    }
+    function firWho(it) {
+      var nm = it.p ? '<button type="button" class="linkish" data-ckey="' + esc(it.p.pos) + '">' + esc(it.p.name) + "</button>" : esc((it.fir && it.fir.name) || (it.tool && it.tool.name) || "");
+      var id = (it.fir && it.fir.emplId) || (it.tool && it.tool.emplId) || "";
+      return nm + (id ? ' <span class="hint mono">' + esc(id) + "</span>" : "");
+    }
+    function firSide(f) {
+      if (!f) return '<span class="hint">—</span>';
+      return esc([f.co || f.company, f.position, f.role, f.trc].filter(Boolean).join(" · ")) + (f.status ? " " + api.statusPill(f.status) : "");
+    }
+    function toolSide(e) {
+      if (!e) return '<span class="hint">not scheduled</span>';
+      var bits = [e.co, e.seat];
+      if (e.kind) bits.push((api.KIND[e.kind] || api.KIND.cover)[0]);
+      return esc(bits.join(" · ")) + (e.status ? " " + api.statusPill(e.status) : e.off ? ' <span class="tag tag-away">' + (e.away ? "away" : "covered") + "</span>" : "");
+    }
+    function firResult(r) {
+      var sec = function (key, title, list, open) {
+        return '<details class="fir-sec"' + (open && list.length ? " open" : "") + "><summary><b>" + esc(title) + '</b> <span class="n">' + list.length + "</span></summary>" +
+          (list.length ? '<div class="table-wrap"><table class="list fir-t"><thead><tr><th>Person</th><th>fir-db1</th><th>This tool</th><th>Note</th></tr></thead><tbody>' +
+            list.map(function (it) {
+              return "<tr><td>" + firWho(it) + "</td><td>" + firSide(it.fir) + "</td><td>" + toolSide(it.tool) + "</td><td>" + esc(it.note || "") + "</td></tr>";
+            }).join("") + "</tbody></table></div>" : '<p class="hint">None.</p>') + "</details>";
+      };
+      var flags = r.flags.filter(function (x) { return x.flag !== "empty"; });
+      return '<div class="fir-result"><p><b>' + esc(api.shortDate(api.fromIso(r.date))) + "</b> · " + r.count + " people on fir-db1 across " + r.pulled.length +
+        (r.pulled.length === 1 ? " company" : " companies") + " · " + r.ok.length + " agree</p>" +
+        (flags.length ? '<p class="hint err">Check on fir-db1: ' + esc(flags.map(function (x) { return x.company + (x.flag === "maybe-cut-off" ? " (list may be cut off: raise Rows)" : " (" + x.flag + ")"); }).join(", ")) + "</p>" : "") +
+        sec("onoff", "Working vs off differs", r.onoff, true) + sec("seat", "Different company or position", r.seat, true) +
+        sec("firOnly", "On fir-db1, not working here in the tool", r.firOnly, true) + sec("toolOnly", "Working here in the tool, not on fir-db1", r.toolOnly, true) +
+        sec("ok", "Agree", r.ok, false) + "</div>";
+    }
+    function wireFir() {
+      var F = root.FirCompare, card = $("fir-card");
+      if (!F || !card) return;
+      ui.fir = ui.fir || {};
+      card.addEventListener("toggle", function () { ui.fir.open = card.open; });
+      $("fir-copy").onclick = function () {
+        var text = F.script(api.companies()), ta = $("fir-script"), b = this;
+        ta.value = text;
+        var shown = function () { ta.hidden = false; ta.focus(); ta.select(); api.say($("fir-msg"), "Select-all and copy the script above if it didn't copy.", false); };
+        try {
+          navigator.clipboard.writeText(text).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy pull script"; }, 2000); }, shown);
+        } catch (e) { shown(); }
+      };
+      $("fir-file").onchange = function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            ui.fir.result = F.compare(F.parseCsv(rd.result), api);
+            ui.fir.error = "";
+          } catch (er) { ui.fir.result = null; ui.fir.error = er.message; }
+          ui.fir.open = true;
+          render();
+        };
+        rd.readAsText(file);
+      };
+      card.addEventListener("click", function (e) { var k = e.target.closest("[data-ckey]"); if (k) open(k.dataset.ckey); });
     }
     // Redraws just the counts, table and pager, so typing in the search box keeps focus.
     function drawRoster() {
@@ -245,6 +324,7 @@
     }
     function wireRoster() {
       var el = $("card-detail");
+      wireFir();
       $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
       $("card-search").onsubmit = function (e) { e.preventDefault(); };
       $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
