@@ -23,7 +23,10 @@ Decided 2026-10-19. The hosted tool is two small front ends on one Firebase proj
 - **Shared code**, one repo: `schedule.js` (watch math, cover kinds) and `store.js` (Firestore access) are used by both; a fix lands in both.
 - **The security rules are the API.** Both apps talk to the same Firestore; the rules decide who reads or writes each record. There is no custom API server. Cloud Functions handle only the trusted actions (approve users, set roles, pick a trade, send invites).
 - Hiding admin screens is not the security: a member can't read cell numbers or edit records even with a modified page, because the rules refuse it.
-- **Launch order:** the employee app ships first for beta testers. Until the back office moves, admins keep working on the claude.ai main page, and its records are copied into Firestore at launch.
+- **One live database, from launch day: Firestore.** A claude.ai page can only reach its own page database, so the claude.ai main page and Firestore can't be kept in sync; running both would split the records.
+- **The admin back office moves at the same launch.** At first it is today's full page (every screen, edit form, Employee cards, Corrections) built with the Firestore adapter in `store.js` and hosted on the `admin` site with admin-only sign-in. The employee app is the new stripped-down build on the `app` site. A redesigned back office can come later.
+- **Cut-over:** (1) freeze edits on the claude.ai main page; (2) copy all its records into Firestore once; (3) check record counts match; (4) admins switch to the `admin` site; (5) the claude.ai main page goes read-only, then is retired (the view-only snapshot can stay as a demo).
+- **Optional test beta first:** testers can try the employee app on a test copy of the data (marked as not live) while admins keep editing on claude.ai; the copy is re-run on cut-over day.
 
 ## Before starting
 

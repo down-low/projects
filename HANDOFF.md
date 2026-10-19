@@ -10,7 +10,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 ## Shape of the hosted tool
 
-Two front ends on one Firebase backend: a light **employee app** (schedule, trades, documents; phone first, no admin code) and a separate **admin back office** (Employee cards, Corrections, Staffing, imports, editing). Same Firestore underneath; the security rules are the API. Details: `FIREBASE_PLAN.md`, "Two apps, one backend".
+Two front ends on one Firebase backend: a light **employee app** (schedule, trades, documents; phone first, no admin code) and a separate **admin back office** (Employee cards, Corrections, Staffing, imports, editing). Same Firestore underneath; the security rules are the API. Firestore is the only live database from launch day: admins move to the `admin` site at the same cut-over, and the claude.ai main page is frozen, copied once, then retired. Details: `FIREBASE_PLAN.md`, "Two apps, one backend".
 
 ## How we work
 
