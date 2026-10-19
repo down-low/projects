@@ -4,7 +4,12 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 ## Priorities, in order
 
-1. **Firebase beta.** Get the app hosted so people can sign in and test (`FIREBASE_PLAN.md`). Branch `claude/firebase-beta`.
+1. **Firebase launch.** Built (both sites). Next:
+   - the user's setup, in their own Google account (`FIREBASE_SETUP.md`);
+   - an optional test beta on test data (`BETA.md`);
+   - cut-over (`CUTOVER.md`).
+
+   Scope: `FIREBASE_PLAN.md`. Branch `claude/firebase-beta`.
 2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`.
 3. **Data cleanup.** The open questions below.
 
@@ -15,7 +20,11 @@ Two front ends on one Firebase backend: a light **employee app** (schedule, trad
 ## How we work
 
 - **Git is the only source of truth.** Every chat works on its own `claude/…` branch and merges to **`main`** with a pull request. Nobody edits code on the host.
-- **Firebase deploys from `main`** (a GitHub Action, set up in the Firebase beta work). Until then the app runs from the claude.ai links below.
+- **Firebase deploys from `main`** (`.github/workflows/firebase.yml`): every pull request runs the tests, including the security rules tests in the emulator; a merge to `main` publishes Hosting, rules and functions, and copies `data/` and `docs/` to Cloud Storage. Both Hosting sites come from one build (`tools/build_firebase.py`): `public-app/` (no admin screens) and `public-admin/` (the full page). The deploy is skipped until the GitHub variable `FIREBASE_PROJECT_ID` is set. Claude sessions have no live access to the project (no key, no Google APIs from the container): changes go through `main`, and problems come back as tester reports, screenshots and Actions logs.
+- **Until cut-over** the claude.ai main page is the official copy, and anything on Firebase is a test copy with a banner. Records don't sync between the two.
+- **Cut-over day** (`CUTOVER.md`): Claude republishes the page with `--frozen` (and the `--capabilities --frozen` rules); the admin replaces the Firestore records from the page's backup and sets the copy live.
+- **After cut-over**, the claude.ai main page is frozen. Don't republish it with the normal build, and don't record anything there.
+- Never delete the claude.ai page without the user's word.
 - **Before publishing the claude.ai links, merge `main` into your branch.** Several chats publish to the same links; publishing from a stale branch drops other chats' work. If a publish is refused, merge the newer live version, don't overwrite it.
 - Run `python3 -m unittest discover -s tests` before pushing.
 
@@ -26,7 +35,9 @@ Two front ends on one Firebase backend: a light **employee app** (schedule, trad
 | Watch / tour math, cover kinds (`isMove`, `coversOn`, `takesSeat`, `coverKind`, `RANK_LEVEL`) | `schedule.js` |
 | Screens: Schedule (person), Projection (date), move log, corrections wiring | `app.js` |
 | Staffing dashboard and stats lists | `dashboard.js` |
-| Storage adapters (claude.ai page database, view-only snapshot; Firestore goes here) | `store.js` |
+| Storage adapters (claude.ai page database, server, Firebase, view-only snapshot) | `store.js` |
+| Firebase: rules, functions (accounts and approval), rules tests; both Hosting sites | `firebase/`, `tools/build_firebase.py` |
+| Cut-over: page backup, Admin → Cut-over (replace and count check), frozen page build | `store.js`, `admin.js`, `tools/build_artifact.py --frozen`, `CUTOVER.md` |
 | Trades, Corrections, Employee cards, awards, admin | `trades.js`, `corrections.js`, `card.js`, `awards.js`, `admin.js` |
 | Self-hosted server (SQLite, Google sign-in); kept as the fallback | `server.py`, `tests/test_server.py` |
 | Builds the claude.ai page; `--capabilities` prints the access rules | `tools/build_artifact.py` |
@@ -43,7 +54,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Security rules (never break these)
 
-- **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase). Never put them in this repo, the view-only link, a member-readable collection, or chat output.
+- **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase, rule `read, write: if isAdmin()`). Never put them in this repo, the view-only link, a member-readable collection, logs, or chat output. They move to Firebase only through the backup file the admin downloads and imports themselves; don't read `contacts` with ArtifactData.
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
 

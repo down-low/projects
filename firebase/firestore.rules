@@ -1,0 +1,131 @@
+rules_version = '2';
+// Access rules for the tour schedule on Firebase. They mirror the claude.ai page rules
+// (python3 tools/build_artifact.py --capabilities), where the page's "admin" level is Editor access, and the data
+// model in FIREBASE_PLAN.md. Roles are custom claims {active, role, pos}, set only by the functions (functions/index.js).
+// Tests: firebase/tests/rules.test.js.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function active() { return signedIn() && request.auth.token.get('active', false) == true; }
+    function role() { return active() ? request.auth.token.get('role', null) : null; }
+    function isAdmin() { return role() == 'admin'; }
+    function isEditor() { return role() == 'editor' || role() == 'admin'; }
+    function myPos() { return active() && request.auth.token.get('pos', null) is string ? request.auth.token.pos : null; }
+    function data() { return request.resource.data; }
+    function only(fields) { return data().diff(resource.data).affectedKeys().hasOnly(fields); }
+
+    function isDate(v) { return v is string && v.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$'); }
+    function optDate(m, k) { return !(k in m) || m[k] == null || isDate(m[k]); }
+    function rangeOk(m) { return isDate(m.start) && optDate(m, 'end') && (!('end' in m) || m.end == null || m.end >= m.start); }
+    function optText(m, k, n) { return !(k in m) || m[k] == null || (m[k] is string && m[k].size() <= n); }
+    function isKey(v) { return v is string && v.size() > 0 && v.size() <= 80; }
+    function ranks() { return ['Battalion Chief', 'Rescue Captain', 'Captain', 'Lieutenant', 'ISS', 'FF/Paramedic', 'Firefighter', 'Pilot', 'Marine Engineer']; }
+
+    // Field checks for editors, as server.py (admins skip them, so imported records always load).
+    function statusOk(m) { return isKey(m.pos) && m.code in ['VA', 'S', 'D', 'WE'] && rangeOk(m) && optText(m, 'note', 500); }
+    function tourOk(m) { return isKey(m.pos) && m.tour is int && m.tour >= 1 && m.tour <= 31 && isDate(m.effective) && optText(m, 'note', 500); }
+    function coverOk(m) {
+      return isKey(m.coverKey) && isKey(m.targetPos) && m.coverKey != m.targetPos && rangeOk(m) && optText(m, 'note', 500) &&
+        (!('kind' in m) || m.kind == null || m.kind in ['acting', 'cover', 'shadow', 'extra']);
+    }
+    function personOk(m) {
+      return m.name is string && m.name.size() >= 2 && m.name.size() <= 80 && m.rank in ranks() &&
+        (!('tour' in m) || m.tour == null || (m.tour is int && m.tour >= 1 && m.tour <= 31)) &&
+        (!('emplId' in m) || m.emplId == null || (m.emplId is string && m.emplId.matches('^[A-Z]{2}[0-9]{4}$')));
+    }
+    function recordWrite(ok) { return isAdmin() || (isEditor() && ok); }
+
+    // Schedule records: everyone approved reads; editors and admins write.
+    match /statuses/{id} {
+      allow read: if active();
+      allow create, update: if recordWrite(statusOk(data()));
+      allow delete: if isEditor();
+    }
+    match /tourChanges/{id} {
+      allow read: if active();
+      allow create, update: if recordWrite(tourOk(data()));
+      allow delete: if isEditor();
+    }
+    match /covers/{id} {
+      allow read: if active();
+      allow create, update: if recordWrite(coverOk(data()));
+      allow delete: if isEditor();
+    }
+    match /people/{id} {
+      allow read: if active();
+      allow create, update: if recordWrite(personOk(data()));
+      allow delete: if isEditor();
+    }
+    match /staffing/{company} {
+      allow read: if active();
+      allow write: if isEditor();
+    }
+    match /assignments/{id} {   // move log
+      allow read: if active();
+      allow write: if isEditor();
+    }
+    // Employee cards: a roster seat's name, rank or Employee ID over the files.
+    match /rosterOverrides/{pos} {
+      allow read: if active();
+      allow write: if isAdmin();
+    }
+
+    // Private: staff-list cell numbers (admins only, never members), birth and hire dates (owner and admins).
+    match /staffCells/{key} {
+      allow read, write: if isAdmin();
+    }
+    match /profiles/{key} {
+      allow read, write: if isAdmin() || (myPos() != null && key == myPos());
+    }
+    // The claude.ai page's "This is me" records, kept for reference after the import.
+    match /members/{id} {
+      allow read, write: if isAdmin();
+    }
+
+    // Contact info: the owner's own record; shared ones are readable by everyone approved.
+    match /contacts/{uid} {
+      allow read: if isAdmin() || (signedIn() && uid == request.auth.uid) || (active() && resource.data.share == true);
+      allow create, update: if (active() && uid == request.auth.uid && data().pos == myPos() && data().share is bool &&
+          optText(data(), 'contactEmail', 254) && optText(data(), 'phoneMobile', 40) && optText(data(), 'phoneOther', 40)) || isAdmin();
+      allow delete: if (signedIn() && uid == request.auth.uid) || isAdmin();
+    }
+
+    // Accounts: created and changed by the functions; a person reads their own and sets their own alerts and tabs.
+    match /users/{uid} {
+      allow read: if (signedIn() && uid == request.auth.uid) || isAdmin();
+      allow update: if signedIn() && uid == request.auth.uid && only(['alerts', 'prefs']);
+    }
+
+    // Shift trades. As on the claude.ai page, every approved member can read them; the page shows each person only
+    // what's theirs or on the board. A set trade carries its cover and TR records (legs).
+    match /trades/{id} {
+      allow read: if active();
+      allow create: if isAdmin() || (myPos() != null && data().posterKey == myPos() && data().status == 'open');
+      allow update: if isAdmin() || (myPos() != null && resource.data.posterKey == myPos() && data().posterKey == myPos() &&
+          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt']));
+      allow delete: if isAdmin();
+    }
+    match /tradeReplies/{id} {
+      allow read: if active();
+      allow create: if isAdmin() || (myPos() != null && data().takerKey == myPos());
+      allow update, delete: if isAdmin();
+    }
+
+    // Corrections: one record per member (corrections/<uid>), read and written by that member; editors and admins
+    // read and handle all of them.
+    match /corrections/{uid} {
+      allow read: if isEditor() || (active() && uid == request.auth.uid);
+      allow write: if isEditor() || (active() && uid == request.auth.uid);
+    }
+
+    // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).
+    match /settings/{doc} {
+      allow read: if active();
+      allow write: if isAdmin();
+    }
+
+    match /audit/{id} {
+      allow read: if isAdmin();
+    }
+  }
+}

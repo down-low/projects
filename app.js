@@ -1075,8 +1075,15 @@
     };
     $("ap-tour").innerHTML = '<option value="">No tour</option>' + tourOptions(0);
     if (window.DOCS) Dash.renderDocs(window.DOCS);
-    else fetch("docs/index.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; })
+    else getFile("docs/index.json").then(function (r) { return r.ok ? r.json() : null; })
       .then(Dash.renderDocs, function () { Dash.renderDocs(null); });
+    // On Firebase the PDFs are in Cloud Storage (signed-in members only), so the adapter opens them.
+    if (backend && backend.openDoc) document.addEventListener("click", function (e) {
+      var a = e.target.closest('a[href^="docs/"]');
+      if (!a) return;
+      e.preventDefault();
+      backend.openDoc(decodeURIComponent(a.getAttribute("href").slice(5))).catch(function () { /* the tab shows nothing */ });
+    });
 
     $("add-person-btn").onclick = function () { $("add-person").hidden = !$("add-person").hidden; if (!$("add-person").hidden) $("ap-name").focus(); };
     $("add-person").onsubmit = function (e) {
@@ -1179,6 +1186,7 @@
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+    siteBanner();
   }
 
   function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
@@ -1235,10 +1243,35 @@
         ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
         ' <button class="linkish" id="sign-out">Sign out</button>';
       $("sign-out").onclick = function () { backend.signOut(); };
+      if (backend.adminUrl && backend.adminUrl()) {
+        el.insertAdjacentHTML("beforeend", ' <a class="linkish" href="' + esc(backend.adminUrl()) + '">Back office</a>');
+      }
       return;
     }
     el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
       : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  /* Firebase: a "Test copy" banner until an admin sets the copy live (CUTOVER.md). Frozen claude.ai page
+     (tools/build_artifact.py --frozen): page Editors keep Download backup in the "Moved" banner. */
+  function siteBanner() {
+    var mode = backend && backend.siteMode ? backend.siteMode() : null, el = $("site-banner");
+    if (mode === "test" && !el) {
+      document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
+        "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
+    } else if (mode !== "test" && el) el.remove();
+    var fb = $("frozen-backup");
+    if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
+      fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
+      $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        say($("card-backup-msg"), "Preparing…");
+        backend.saveBackup().then(function (r) {
+          x.disabled = false;
+          say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
+      };
+    }
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -1306,9 +1339,12 @@
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;
+    siteBanner();
     if (booted) rebuildPeople();
     renderAll();
   }
+  // Roster files and the documents list: from the server or static folder, or Cloud Storage on Firebase.
+  function getFile(path) { return backend && backend.fetchData ? backend.fetchData(path) : fetch(path, { credentials: "same-origin" }); }
   function loadError(err) {
     $("date-results").innerHTML = '<div class="empty">Could not load the roster (' + esc(err.message) +
       "). Serve this folder over HTTP, for example with <code>python3 server.py</code>, then reload.</div>";
@@ -1321,13 +1357,13 @@
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
-      return fetch("data/positions.json", { credentials: "same-origin" }).then(function (r) {
+      return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
         if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
         var json = function (url) {
-          return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+          return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };
         return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
           .then(function (got) {

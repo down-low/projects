@@ -820,3 +820,11 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
   .card-head .acts { flex-basis: 100%; }
 }
+
+/* Firebase test copy (until cut-over) and the frozen claude.ai page after it */
+.site-banner, .frozen-banner {
+  margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+  background: var(--swing-soft); color: var(--fg); border: 1px solid var(--swing);
+}
+.frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.frozen-banner a { color: inherit; font-weight: 600; }

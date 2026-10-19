@@ -1,0 +1,12 @@
+{
+  "name": "tour-schedule-rules-tests",
+  "private": true,
+  "description": "Security rules tests; run inside the Firebase emulator (see .github/workflows/firebase.yml).",
+  "scripts": {
+    "test": "node --test rules.test.js"
+  },
+  "devDependencies": {
+    "@firebase/rules-unit-testing": "^3.0.4",
+    "firebase": "^10.14.1"
+  }
+}
