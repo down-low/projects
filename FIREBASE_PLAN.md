@@ -1,6 +1,23 @@
 # Plan: hosting on Firebase
 
-Status: **planned, not started.** This plan is for the release after MVP. Until then the app runs from the claude.ai links, with `server.py` kept as the self-hosted option.
+Status: **beta built** (branch `claude/firebase-beta`). Setup is in `FIREBASE_SETUP.md`, the tester checklist in `BETA.md`. The claude.ai links stay the official copy until the switch, with `server.py` kept as the self-hosted option.
+
+## What the beta has (and what waits)
+
+- **Built:**
+  - `firebaseAdapter` in `store.js`. It reports mode `"server"`, so the sign-in gate, claim screen, Admin page and My page work unchanged; records go through `onSnapshot`, as on the page.
+  - `firebase/firestore.rules` and `firebase/storage.rules`, with emulator tests in `firebase/tests/rules.test.js`.
+  - Functions `syncMe` (in place of `beforeUserCreated`: creates the account and sets the claims on each load, with no Identity Platform upgrade needed), `claim`, `rosterNames`, `adminUsers`, `adminAction` and `stats`.
+  - `tools/build_firebase.py`; the deploy workflow `.github/workflows/firebase.yml`.
+- **Import:** Admin → **Import backup** loads a file saved from the claude.ai page (Employee cards → **Download backup**) in place of `tools/import_firestore.js`, so records and cell numbers never pass through a server or CI. The roster, IDs and PDFs go to Storage from the repo on every deploy.
+- **Changes from the model below:**
+  - Corrections stay one doc per member, `corrections/{uid}` with `items`, as on the page.
+  - Users have `claimPos` / `claimNote` in place of `claim: {pos, note}`.
+  - Contact sharing is `share` on `contacts/{uid}`.
+- **Waits until after the beta:**
+  - `pickTrade` / `cancelTrade`. Trades work as on the page: the cover and TR records sit on the trade as `legs`, and every approved member can read trades.
+  - The board listing function, alerts (FCM, Twilio, Gmail), invites, answers without an account, the calendar feed, `exportContacts`, nightly backup and audit triggers. The functions write `audit` docs for sign-ups, claims and admin actions.
+  - Email-link and phone sign-in, and the service worker. The beta has a manifest and a placeholder icon.
 
 ## Why Firebase
 

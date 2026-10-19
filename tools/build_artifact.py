@@ -44,6 +44,7 @@ CAPABILITIES = {
         {"path": "rosterOverrides", "read": "view", "write": "admin"},
     ]},
     "user": {},
+    "downloads": True,  # Employee cards, Download backup (admins): the one-time move to Firebase
 }
 
 
