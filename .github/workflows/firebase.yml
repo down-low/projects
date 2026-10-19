@@ -1,6 +1,7 @@
-# Tests every pull request; deploys main to Firebase (Hosting, rules, functions, roster files and PDFs to Storage).
+# Tests every pull request; deploys main to Firebase: the employee app (<project>.web.app) and the admin back office
+# (<project>-admin.web.app, or ADMIN_SITE), rules, functions, roster files and PDFs to Storage.
 # Setup (FIREBASE_SETUP.md): secret FIREBASE_SERVICE_ACCOUNT (the deploy key), variables FIREBASE_PROJECT_ID and
-# ADMIN_EMAILS, optional ALLOWED_DOMAINS. Until FIREBASE_PROJECT_ID is set the deploy job is skipped.
+# ADMIN_EMAILS, optional ALLOWED_DOMAINS and ADMIN_SITE. Until FIREBASE_PROJECT_ID is set the deploy job is skipped.
 name: Firebase
 
 on:
@@ -50,6 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+      ADMIN_SITE: ${{ vars.ADMIN_SITE }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -62,8 +64,11 @@ jobs:
         with:
           credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
       - uses: google-github-actions/setup-gcloud@v2
-      - name: Build the Hosting folder
-        run: python3 tools/build_firebase.py
+      - name: Build the two Hosting folders
+        run: |
+          ADMIN_SITE="${ADMIN_SITE:-$PROJECT-admin}"
+          echo "ADMIN_SITE=$ADMIN_SITE" >> "$GITHUB_ENV"
+          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app"
       - name: Function settings
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
@@ -74,15 +79,22 @@ jobs:
         run: npm install --omit=dev --no-audit --no-fund
       - name: Deploy
         working-directory: firebase
-        run: npx --yes firebase-tools@13 deploy --project "$PROJECT" --only hosting,firestore,storage,functions --non-interactive --force
+        run: |
+          # The back office is a second Hosting site; create it on the first deploy (site names are global: if it's taken,
+          # set the ADMIN_SITE variable to another name).
+          npx --yes firebase-tools@13 hosting:sites:get "$ADMIN_SITE" --project "$PROJECT" > /dev/null 2>&1 ||
+            npx --yes firebase-tools@13 hosting:sites:create "$ADMIN_SITE" --project "$PROJECT" --non-interactive
+          npx --yes firebase-tools@13 target:apply hosting app "$PROJECT" --project "$PROJECT"
+          npx --yes firebase-tools@13 target:apply hosting admin "$ADMIN_SITE" --project "$PROJECT"
+          npx --yes firebase-tools@13 deploy --project "$PROJECT" --only hosting,firestore,storage,functions --non-interactive --force
       - name: Roster files and PDFs to Storage
         run: |
           BUCKET=$(gcloud storage buckets list --project "$PROJECT" --format='value(name)' | grep -E '(firebasestorage\.app|appspot\.com)$' | head -1)
           if [ -z "$BUCKET" ]; then echo "No Storage bucket found. Turn on Storage in the Firebase console (FIREBASE_SETUP.md)."; exit 1; fi
           # The page reads these files from the browser, so the bucket allows the app's own addresses.
-          printf '[{"origin":["https://%s.web.app","https://%s.firebaseapp.com"],"method":["GET"],"responseHeader":["Authorization","Content-Type"],"maxAgeSeconds":3600}]' "$PROJECT" "$PROJECT" > cors.json
+          printf '[{"origin":["https://%s.web.app","https://%s.firebaseapp.com","https://%s.web.app","https://%s.firebaseapp.com"],"method":["GET"],"responseHeader":["Authorization","Content-Type"],"maxAgeSeconds":3600}]' "$PROJECT" "$PROJECT" "$ADMIN_SITE" "$ADMIN_SITE" > cors.json
           gcloud storage buckets update "gs://$BUCKET" --cors-file=cors.json
           gcloud storage cp --cache-control=no-cache data/positions.json data/required-staffing.json data/employee-ids.json data/vacancy-awards-2027.json "gs://$BUCKET/data/"
           gcloud storage rsync docs "gs://$BUCKET/docs" --delete-unmatched-destination-objects --cache-control=no-cache
       - name: Address
-        run: echo "Deployed to https://$PROJECT.web.app"
+        run: echo "Employee app https://$PROJECT.web.app · back office https://$ADMIN_SITE.web.app"

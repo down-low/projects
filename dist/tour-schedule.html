@@ -824,6 +824,14 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
   .card-head .acts { flex-basis: 100%; }
 }
+
+/* Firebase test copy (until cut-over) and the frozen claude.ai page after it */
+.site-banner, .frozen-banner {
+  margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+  background: var(--swing-soft); color: var(--fg); border: 1px solid var(--swing);
+}
+.frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.frozen-banner a { color: inherit; font-weight: 600; }
 </style>
 
 <div class="page">
@@ -1428,7 +1436,9 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
           corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
       }
-      var editable = false, uid = null, failed = false, canWrite = null;
+      // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
+      // Editors (platformEdit) can still save the backup.
+      var editable = false, platformEdit = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
         db.collection(COLLECTIONS[kind]).onSnapshot(function (snap) {
           records[kind] = snap.docs.map(function (d) {
@@ -1441,12 +1451,12 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       });
       var ready = user
         ? Promise.all([user.canEdit(), user.id(), user.can ? user.can("data.write") : null])
-          .then(function (r) { editable = !!r[0]; uid = r[1]; canWrite = r[2]; })
+          .then(function (r) { platformEdit = !!r[0]; editable = platformEdit && !root.PAGE_FROZEN; uid = r[1]; canWrite = r[2]; })
         : Promise.resolve();
       /* Trades are written by every member (Contributor access and up), not only editors. can("data.write") null means the
          platform didn't say: keep the controls and let a refused write decide. */
       var tradeBlocked = false;
-      function tradeOk() { return !!uid && !tradeBlocked && (editable || canWrite !== false); }
+      function tradeOk() { return !!uid && !tradeBlocked && !root.PAGE_FROZEN && (editable || canWrite !== false); }
       function tradeErr(e) {
         if (e && (e.code === "invalid_argument" || e.code === "permission_denied")) tradeBlocked = true;
         return new Error(e && e.code === "quota_exceeded" ? "The page's storage is full. Ask an admin to remove old records." :
@@ -1504,8 +1514,9 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           },
           /* Admins: every collection as one file for the move to Firebase (Admin, Import backup there). It holds the
              staff-list cell numbers, so it goes only to the viewer's own device. Resolves {records, collections}. */
+          canBackup: function () { return platformEdit; },
           saveBackup: function () {
-            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            if (!platformEdit) return Promise.reject(new Error(NO_EDIT));
             var out = { format: BACKUP_FORMAT, exportedAt: nowIso(), collections: {} }, n = 0;
             Object.keys(COLLECTIONS).forEach(function (kind) { out.collections[COLLECTIONS[kind]] = records[kind]; n += records[kind].length; });
             return root.claude.use("downloads").then(function (dl) {
@@ -1749,16 +1760,23 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
      tools/build_firebase.py loads the Firebase SDK and Hosting's /__/firebase/init.js and sets FIREBASE_HOSTED. Accounts
      (sign-in gate, claim, Admin page, My page) work as on server.py, so the screens see mode "server". Roles are custom
      claims {active, role, pos} that only the functions in firebase/functions set; firebase/firestore.rules checks them.
-     Records are read with onSnapshot and written as on the claude.ai page, trades included (legs on the trade). */
+     Records are read with onSnapshot and written as on the claude.ai page, trades included (legs on the trade).
+     Two Hosting sites share it (FIREBASE_SITE): "admin", the full page for editors and admins (anyone else is sent to the
+     app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
+     not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
+     "Test copy" banner until cut-over (CUTOVER.md). */
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides"];
+  // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
+  var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
   function firebaseAdapter(onChange) {
+    var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
     var fb = root.firebase;
     if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
     var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false;
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [] };
+      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -1767,8 +1785,11 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         throw err;
       });
     }
-    function active() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
-    function role() { return active() ? claims.role : null; }
+    function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
+    function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
+    function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
+    function active() { return approved() && !wrongSite(); }
+    function role() { return !active() ? null : SITE === "app" ? "member" : claims.role; }
     function editable() { return role() === "editor" || role() === "admin"; }
     function admin() { return role() === "admin"; }
     function guard(ok) { return ok ? null : Promise.reject(new Error(NO_EDIT)); }
@@ -1784,7 +1805,11 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       return call("syncMe").then(function (j) {
         me = j;
         return user.getIdTokenResult(!!j.claimsChanged);
-      }).then(function (t) { claims = t.claims || {}; });
+      }).then(function (t) {
+        claims = t.claims || {};
+        me.wrongSite = wrongSite();
+        me.appUrl = root.FIREBASE_APP_URL || null;
+      });
     }
 
     function contactMap() {
@@ -1818,6 +1843,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
+      watch("site", fs.collection("settings").doc("site"));
     }
     // Approval, a role change or a new roster link (made by an admin) reloads the page with the new access.
     function watchAccount() {
@@ -1852,6 +1878,14 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       canEdit: editable,
       canAdmin: admin,
       editorName: function () { return me.signedIn ? me.name || me.googleEmail : null; },
+      // "test" until an admin sets the copy live at cut-over; null until the setting has loaded.
+      siteMode: function () { return records.site === null ? null : records.site[0] && records.site[0].mode === "live" ? "live" : "test"; },
+      setSiteMode: function (mode) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        return w(fs.collection("settings").doc("site").set({ mode: mode === "live" ? "live" : "test", updatedAt: nowIso(), updatedBy: user.uid }));
+      },
+      // On the employee app, editors and admins get a link to the back office (FIREBASE_ADMIN_URL, set at build).
+      adminUrl: function () { return SITE === "app" && staff() ? root.FIREBASE_ADMIN_URL || null : null; },
       needsSignIn: function () { return !me.signedIn; },
       contacts: contactMap,
       signIn: function () {
@@ -1982,39 +2016,60 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       },
       /* Admins: loads a backup file saved from the claude.ai page (its saveBackup), ids kept, so it can be run again.
          The staff-list record (contacts/staff-list) becomes one staffCells doc per person; other contacts records are
-         skipped. Only counts are reported. onProgress(done, total). Resolves {collection: count}. */
-      importBackup: function (backup, onProgress) {
+         skipped. opts.replace (cut-over): first removes every record in REPLACE_KINDS that isn't in the file, so Firestore
+         ends up holding exactly the page's records; accounts, contact info, audit and settings are left alone.
+         Only counts are reported. onProgress(text). Resolves {collection: {backup, firestore}}, read back after the write. */
+      importBackup: function (backup, opts, onProgress) {
         if (!admin()) return Promise.reject(new Error(NO_EDIT));
         if (!backup || backup.format !== BACKUP_FORMAT || !backup.collections) return Promise.reject(new Error("This isn't a backup file from the claude.ai page."));
-        var cols = backup.collections, writes = [], counts = {};
+        var cols = backup.collections, writes = [], want = {};
+        REPLACE_KINDS.forEach(function (k) { want[k] = {}; });
         IMPORT_KINDS.forEach(function (kind) {
           (cols[kind] || []).forEach(function (d) {
             var rec = Object.assign({}, d);
             delete rec.id;
-            if (d.id) writes.push([kind, String(d.id), rec]);
+            if (d.id) { writes.push([kind, String(d.id), rec]); want[kind][String(d.id)] = true; }
           });
         });
         (cols.contacts || []).forEach(function (d) {
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
-            if (d.cells[k]) writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]);
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
-        var done = 0, chain = Promise.resolve();
-        for (var i = 0; i < writes.length; i += 400) {
-          (function (part) {
-            chain = chain.then(function () {
-              var batch = fs.batch();
-              part.forEach(function (x) { batch.set(fs.collection(x[0]).doc(x[1]), x[2]); });
-              return batch.commit().then(function () {
-                part.forEach(function (x) { counts[x[0]] = (counts[x[0]] || 0) + 1; });
-                done += part.length;
-                if (onProgress) onProgress(done, writes.length);
+        var say = onProgress || function () {};
+        function inBatches(ops, apply, label) {
+          var chain = Promise.resolve(), done = 0;
+          for (var i = 0; i < ops.length; i += 400) {
+            (function (part) {
+              chain = chain.then(function () {
+                var batch = fs.batch();
+                part.forEach(function (x) { apply(batch, x); });
+                return batch.commit().then(function () { done += part.length; say(label + " " + done + " of " + ops.length + "…"); });
               });
-            });
-          })(writes.slice(i, i + 400));
+            })(ops.slice(i, i + 400));
+          }
+          return chain;
         }
-        return w(chain).then(function () { return counts; });
+        var removals = Promise.resolve([]);
+        if (opts && opts.replace) {
+          removals = Promise.all(REPLACE_KINDS.map(function (k) {
+            return fs.collection(k).get().then(function (snap) {
+              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+            });
+          })).then(function (lists) { return [].concat.apply([], lists); });
+        }
+        return w(removals.then(function (gone) {
+          return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
+        }).then(function () {
+          return inBatches(writes, function (b, x) { b.set(fs.collection(x[0]).doc(x[1]), x[2]); }, "Imported");
+        }).then(function () {
+          return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
+        }).then(function (snaps) {
+          var out = {};
+          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          return out;
+        }));
       },
     };
 
@@ -2164,6 +2219,15 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         if ($("gate-in")) $("gate-in").onclick = function () {
           api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
         };
+        return;
+      }
+
+      // The admin site, signed in without editor or admin access: point to the employee app.
+      if (me.wrongSite) {
+        el.innerHTML = '<div class="card gate-card"><h2>Admins only</h2><p>This site is the back office for admins and editors. ' +
+          (me.appUrl ? 'Open the tour schedule at <a href="' + esc(me.appUrl) + '">' + esc(me.appUrl.replace(/^https?:\/\//, "")) + "</a>." : "Open the tour schedule app instead.") +
+          '</p><p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p></div>';
+        $("gate-out").onclick = function () { api.backend().signOut(); };
         return;
       }
 
@@ -2356,7 +2420,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
           }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
-        if ($("import-form")) $("import-form").onsubmit = onImport;
+        if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
         out.addEventListener("change", onAdminChange);
@@ -2370,30 +2434,65 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       }, function (er) { api.say($("admin-msg"), er.message, true); });
     }
 
-    /* One-time move from the claude.ai page (Firebase only): the backup file saved there (Employee cards, Download backup)
-       is loaded straight from this device. Only counts are shown; the file holds cell numbers, so delete it afterwards. */
+    /* Cut-over (Firebase only, CUTOVER.md): the backup file saved on the claude.ai page (Download backup) is loaded straight
+       from this device. "Test copy" adds and updates records; "Replace everything" makes Firestore hold exactly the file's
+       records (accounts and contact info stay). Only counts are shown; the file holds cell numbers, so delete it afterwards.
+       Mode: the "Test copy" banner stays on until an admin sets the copy live. */
     function importHtml() {
-      return '<form class="card edit" id="import-form" novalidate><h3>Import backup</h3>' +
-        '<p class="hint">Loads every record from a backup file saved on the claude.ai page (Employee cards, <b>Download backup</b>). ' +
-        "Records keep their ids, so importing the same file again changes nothing. Afterwards, delete the file: it holds cell numbers.</p>" +
+      var mode = api.backend().siteMode ? api.backend().siteMode() : null;
+      return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
+        '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
+        "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn primary" type="submit">Import</button><span class="msg" id="import-msg" role="status"></span></div>' +
-        '<ul class="hist" id="import-counts" hidden></ul></form>';
+        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
+        '<span class="msg" id="import-msg" role="status"></span></div>' +
+        '<div class="table-wrap" id="import-counts" hidden></div>' +
+        '<h4>Mode</h4><div class="row"><span id="mode-now">' + modeText(mode) + "</span>" +
+        '<button class="btn small" type="button" id="mode-set">' + (mode === "live" ? "Back to test copy" : "Set live") + "</button>" +
+        '<span class="msg" id="mode-msg" role="status"></span></div></form>';
     }
-    function onImport(e) {
-      e.preventDefault();
+    function modeText(mode) {
+      return mode === "live" ? "<b>Live.</b> No banner; this is the schedule." : "<b>Test copy.</b> Everyone sees a “Test copy” banner.";
+    }
+    function wireImport() {
+      $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-replace").onclick = function () {
+        if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
+        this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
+        runImport(true);
+      };
+      $("mode-set").onclick = function () {
+        var b = api.backend(), next = b.siteMode() === "live" ? "test" : "live";
+        if (next === "live" && this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: set live"; return; }
+        this.dataset.confirm = "";
+        api.say($("mode-msg"), "Saving…");
+        b.setSiteMode(next).then(function () {
+          $("mode-now").innerHTML = modeText(next);
+          $("mode-set").textContent = next === "live" ? "Back to test copy" : "Set live";
+          api.say($("mode-msg"), "Saved.");
+        }, function (er) { api.say($("mode-msg"), er.message, true); });
+      };
+    }
+    function runImport(replace) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, function (done, total) { api.say(msg, "Imported " + done + " of " + total + "…"); });
+        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), total = keys.reduce(function (n, k) { return n + counts[k]; }, 0);
-        api.say(msg, "Imported " + total + " records.");
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
+          : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
-        $("import-counts").innerHTML = keys.map(function (k) { return "<li><div><b>" + esc(k) + "</b> " + counts[k] + "</div></li>"; }).join("");
+        $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
+          keys.map(function (k) {
+            var c = counts[k], ok = c.backup === c.firestore;
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+          }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }
 
@@ -6073,6 +6172,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+    siteBanner();
   }
 
   function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
@@ -6129,10 +6229,35 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
         ' <button class="linkish" id="sign-out">Sign out</button>';
       $("sign-out").onclick = function () { backend.signOut(); };
+      if (backend.adminUrl && backend.adminUrl()) {
+        el.insertAdjacentHTML("beforeend", ' <a class="linkish" href="' + esc(backend.adminUrl()) + '">Back office</a>');
+      }
       return;
     }
     el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
       : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  /* Firebase: a "Test copy" banner until an admin sets the copy live (CUTOVER.md). Frozen claude.ai page
+     (tools/build_artifact.py --frozen): page Editors keep Download backup in the "Moved" banner. */
+  function siteBanner() {
+    var mode = backend && backend.siteMode ? backend.siteMode() : null, el = $("site-banner");
+    if (mode === "test" && !el) {
+      document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
+        "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
+    } else if (mode !== "test" && el) el.remove();
+    var fb = $("frozen-backup");
+    if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
+      fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
+      $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        say($("card-backup-msg"), "Preparing…");
+        backend.saveBackup().then(function (r) {
+          x.disabled = false;
+          say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
+      };
+    }
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -6200,6 +6325,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;
+    siteBanner();
     if (booted) rebuildPeople();
     renderAll();
   }

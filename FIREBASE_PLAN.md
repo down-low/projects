@@ -1,23 +1,37 @@
 # Plan: hosting on Firebase
 
-Status: **beta built** (branch `claude/firebase-beta`). Setup is in `FIREBASE_SETUP.md`, the tester checklist in `BETA.md`. The claude.ai links stay the official copy until the switch, with `server.py` kept as the self-hosted option.
+Status: **built, waiting for setup and cut-over.** Setup: `FIREBASE_SETUP.md`. Optional test beta: `BETA.md`. Cut-over day: `CUTOVER.md`. Until cut-over the claude.ai main page is still where official edits happen; after it, Firestore is the only live database (see "Two apps, one backend").
 
-## What the beta has (and what waits)
+## What is built (and what waits)
 
-- **Built:**
-  - `firebaseAdapter` in `store.js`. It reports mode `"server"`, so the sign-in gate, claim screen, Admin page and My page work unchanged; records go through `onSnapshot`, as on the page.
-  - `firebase/firestore.rules` and `firebase/storage.rules`, with emulator tests in `firebase/tests/rules.test.js`.
-  - Functions `syncMe` (in place of `beforeUserCreated`: creates the account and sets the claims on each load, with no Identity Platform upgrade needed), `claim`, `rosterNames`, `adminUsers`, `adminAction` and `stats`.
-  - `tools/build_firebase.py`; the deploy workflow `.github/workflows/firebase.yml`.
-- **Import:** Admin → **Import backup** loads a file saved from the claude.ai page (Employee cards → **Download backup**) in place of `tools/import_firestore.js`, so records and cell numbers never pass through a server or CI. The roster, IDs and PDFs go to Storage from the repo on every deploy.
+- **Two Hosting sites, one Firebase project** (`firebase/firebase.json` targets, `tools/build_firebase.py`):
+  - **Employee app** (`app`, `<project>.web.app`): today's page without the admin screens. Employee cards and 2027 awards are stubs, and everyone works as a member, so there are no edit forms, Corrections list or Admin page. Editors and admins get a **Back office** link. It is installable (manifest, placeholder icon). The mock-ups redesign replaces it later.
+  - **Admin back office** (`admin`, `<project>-admin.web.app` or `ADMIN_SITE`): today's full page. Anyone without editor or admin access gets "Admins only" and a link to the app.
+- **`firebaseAdapter`** in `store.js`:
+  - It reports mode `"server"`, so the sign-in gate, claim screen, Admin page and My page work unchanged; records go through `onSnapshot`, as on the page.
+  - It is site-aware (`FIREBASE_SITE`).
+  - `settings/site` `{mode: "test" | "live"}` drives a "Test copy" banner until cut-over.
+- **Rules and tests:** `firebase/firestore.rules` and `firebase/storage.rules`, with emulator tests in `firebase/tests/rules.test.js`.
+- **Functions:**
+  - `syncMe`, in place of `beforeUserCreated`: it creates the account and sets the claims on each load, with no Identity Platform upgrade needed.
+  - `claim`, `rosterNames`, `adminUsers`, `adminAction` and `stats`.
+- **Deploy:** the workflow `.github/workflows/firebase.yml` deploys both sites from `main`.
+- **Copying the page's records:** on the claude.ai page, **Download backup** (page Editors). On the admin site, Admin → **Cut-over**:
+  - **Import as test copy** adds and updates.
+  - **Replace everything** makes Firestore hold exactly the file's records; accounts and contact info stay.
+  - A counts table compares the file with Firestore.
+  - **Set live** turns the banner off.
+  - Records and cell numbers never pass through a server or CI. The roster, IDs and PDFs go to Storage from the repo on every deploy.
+- **Freezing the claude.ai page:** `python3 tools/build_artifact.py out.html --frozen https://<admin site>`, published with the rules from `--capabilities --frozen` (every write raised to the owner). The page then shows "Moved", allows no editing or trades, and keeps **Download backup** for page Editors.
 - **Changes from the model below:**
   - Corrections stay one doc per member, `corrections/{uid}` with `items`, as on the page.
   - Users have `claimPos` / `claimNote` in place of `claim: {pos, note}`.
   - Contact sharing is `share` on `contacts/{uid}`.
-- **Waits until after the beta:**
+- **Waits until after launch:**
   - `pickTrade` / `cancelTrade`. Trades work as on the page: the cover and TR records sit on the trade as `legs`, and every approved member can read trades.
   - The board listing function, alerts (FCM, Twilio, Gmail), invites, answers without an account, the calendar feed, `exportContacts`, nightly backup and audit triggers. The functions write `audit` docs for sign-ups, claims and admin actions.
-  - Email-link and phone sign-in, and the service worker. The beta has a manifest and a placeholder icon.
+  - Email-link and phone sign-in, and the service worker.
+  - The redesigned employee app and back office.
 
 ## Why Firebase
 
@@ -42,7 +56,7 @@ Decided 2026-10-19. The hosted tool is two small front ends on one Firebase proj
 - Hiding admin screens is not the security: a member can't read cell numbers or edit records even with a modified page, because the rules refuse it.
 - **One live database, from launch day: Firestore.** A claude.ai page can only reach its own page database, so the claude.ai main page and Firestore can't be kept in sync; running both would split the records.
 - **The admin back office moves at the same launch.** At first it is today's full page (every screen, edit form, Employee cards, Corrections) built with the Firestore adapter in `store.js` and hosted on the `admin` site with admin-only sign-in. The employee app is the new stripped-down build on the `app` site. A redesigned back office can come later.
-- **Cut-over:** (1) freeze edits on the claude.ai main page; (2) copy all its records into Firestore once; (3) check record counts match; (4) admins switch to the `admin` site; (5) the claude.ai main page goes read-only, then is retired (the view-only snapshot can stay as a demo).
+- **Cut-over:** (1) freeze edits on the claude.ai main page; (2) copy all its records into Firestore once; (3) check record counts match; (4) admins switch to the `admin` site; (5) the claude.ai main page goes read-only, then is retired (the view-only snapshot can stay as a demo). Step by step: `CUTOVER.md`.
 - **Optional test beta first:** testers can try the employee app on a test copy of the data (marked as not live) while admins keep editing on claude.ai; the copy is re-run on cut-over day.
 
 ## Before starting
@@ -179,11 +193,10 @@ These need answers before any build work:
 
 ## Launch steps
 
-1. Create the Firebase project (on the account decided above), enable Google, email-link and phone sign-in (see "Sign-in without a Google account" in `RELEASES.md`), Firestore (production mode) and Storage, and choose the Blaze plan with a **budget alert** (e.g. $10/month).
-2. Deploy rules and functions. Set `ADMIN_EMAILS` and the allowed domains as function config.
-3. Run the import: records from the claude.ai page database; roster, IDs and PDFs to Storage.
-4. Deploy Hosting. Sign in as the first admin, approve a test member and a test editor, and walk through every screen on a phone and a desktop.
-5. Share the new address. Keep the claude.ai links read-only for a short overlap, then retire the view-only snapshot.
+1. **Setup** (`FIREBASE_SETUP.md`): the project, Blaze with a budget alert, Google sign-in, Firestore, Storage, the deploy key and GitHub settings. The first deploy publishes both sites. Email-link and phone sign-in (`RELEASES.md`) come later.
+2. **Optional test beta** (`BETA.md`): a test copy of the records, with the banner on, for a few testers. Admins keep editing on claude.ai.
+3. **Cut-over** (`CUTOVER.md`): freeze the claude.ai page, download the backup, **Replace everything**, check the counts, **Set live**, and send admins to the admin site and everyone else to the app.
+4. **Retire:** the frozen claude.ai page stays up read-only until the owner deletes it. The view-only snapshot can stay as a demo.
 
 ## Cost
 
