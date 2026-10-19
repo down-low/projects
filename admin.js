@@ -48,6 +48,15 @@
         return;
       }
 
+      // The admin site, signed in without editor or admin access: point to the employee app.
+      if (me.wrongSite) {
+        el.innerHTML = '<div class="card gate-card"><h2>Admins only</h2><p>This site is the back office for admins and editors. ' +
+          (me.appUrl ? 'Open the tour schedule at <a href="' + esc(me.appUrl) + '">' + esc(me.appUrl.replace(/^https?:\/\//, "")) + "</a>." : "Open the tour schedule app instead.") +
+          '</p><p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p></div>';
+        $("gate-out").onclick = function () { api.backend().signOut(); };
+        return;
+      }
+
       // Signed in but pending approval
       var req = me.claimRequest;
       var waiting = req
@@ -237,7 +246,7 @@
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
           }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
-        if ($("import-form")) $("import-form").onsubmit = onImport;
+        if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
         out.addEventListener("change", onAdminChange);
@@ -251,30 +260,65 @@
       }, function (er) { api.say($("admin-msg"), er.message, true); });
     }
 
-    /* One-time move from the claude.ai page (Firebase only): the backup file saved there (Employee cards, Download backup)
-       is loaded straight from this device. Only counts are shown; the file holds cell numbers, so delete it afterwards. */
+    /* Cut-over (Firebase only, CUTOVER.md): the backup file saved on the claude.ai page (Download backup) is loaded straight
+       from this device. "Test copy" adds and updates records; "Replace everything" makes Firestore hold exactly the file's
+       records (accounts and contact info stay). Only counts are shown; the file holds cell numbers, so delete it afterwards.
+       Mode: the "Test copy" banner stays on until an admin sets the copy live. */
     function importHtml() {
-      return '<form class="card edit" id="import-form" novalidate><h3>Import backup</h3>' +
-        '<p class="hint">Loads every record from a backup file saved on the claude.ai page (Employee cards, <b>Download backup</b>). ' +
-        "Records keep their ids, so importing the same file again changes nothing. Afterwards, delete the file: it holds cell numbers.</p>" +
+      var mode = api.backend().siteMode ? api.backend().siteMode() : null;
+      return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
+        '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
+        "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn primary" type="submit">Import</button><span class="msg" id="import-msg" role="status"></span></div>' +
-        '<ul class="hist" id="import-counts" hidden></ul></form>';
+        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
+        '<span class="msg" id="import-msg" role="status"></span></div>' +
+        '<div class="table-wrap" id="import-counts" hidden></div>' +
+        '<h4>Mode</h4><div class="row"><span id="mode-now">' + modeText(mode) + "</span>" +
+        '<button class="btn small" type="button" id="mode-set">' + (mode === "live" ? "Back to test copy" : "Set live") + "</button>" +
+        '<span class="msg" id="mode-msg" role="status"></span></div></form>';
     }
-    function onImport(e) {
-      e.preventDefault();
+    function modeText(mode) {
+      return mode === "live" ? "<b>Live.</b> No banner; this is the schedule." : "<b>Test copy.</b> Everyone sees a “Test copy” banner.";
+    }
+    function wireImport() {
+      $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-replace").onclick = function () {
+        if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
+        this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
+        runImport(true);
+      };
+      $("mode-set").onclick = function () {
+        var b = api.backend(), next = b.siteMode() === "live" ? "test" : "live";
+        if (next === "live" && this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: set live"; return; }
+        this.dataset.confirm = "";
+        api.say($("mode-msg"), "Saving…");
+        b.setSiteMode(next).then(function () {
+          $("mode-now").innerHTML = modeText(next);
+          $("mode-set").textContent = next === "live" ? "Back to test copy" : "Set live";
+          api.say($("mode-msg"), "Saved.");
+        }, function (er) { api.say($("mode-msg"), er.message, true); });
+      };
+    }
+    function runImport(replace) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, function (done, total) { api.say(msg, "Imported " + done + " of " + total + "…"); });
+        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), total = keys.reduce(function (n, k) { return n + counts[k]; }, 0);
-        api.say(msg, "Imported " + total + " records.");
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
+          : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
-        $("import-counts").innerHTML = keys.map(function (k) { return "<li><div><b>" + esc(k) + "</b> " + counts[k] + "</div></li>"; }).join("");
+        $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
+          keys.map(function (k) {
+            var c = counts[k], ok = c.backup === c.firestore;
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+          }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }
 

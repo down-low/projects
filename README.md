@@ -155,14 +155,25 @@ People sign in with Google. Viewing the schedule requires an approved account.
 
 **My page** shows the person's current tour, any upcoming tour change, their next shifts and leave on record, and lets them set a contact email (separate from their Google sign-in), a mobile and another phone number. A **Share my contact info for shift swaps** switch decides who sees it: when on, anyone signed in sees it on that person's schedule page; when off, only admins do.
 
-## Firebase hosting (beta)
+## Firebase hosting
 
-The same app runs on Firebase (`https://<project-id>.web.app`): Google sign-in, accounts and approval as on the server (Admin page, My page), records in Firestore, the roster files and PDFs in Cloud Storage for approved accounts only. Setup: `FIREBASE_SETUP.md`; testers: `BETA.md`; design and what waits: `FIREBASE_PLAN.md`.
+One Firebase project with two Hosting sites, sharing Firestore (`FIREBASE_PLAN.md`, "Two apps, one backend"):
 
-- `python3 tools/build_firebase.py` builds the public Hosting folder (`firebase/public/`, no names or data files in it).
-- `firebase/firestore.rules`, `firebase/storage.rules`: access by role (custom claims set by `firebase/functions`). Cell numbers are in `staffCells`, admins only.
-- Tests: `node --test firebase/functions/accounts.test.js`; the rules tests run in the Firebase emulator in CI (`.github/workflows/firebase.yml`, which also deploys `main`).
-- Moving the records: on the claude.ai page, **Employee cards → Download backup** (admins); in the Firebase app, **Admin → Import backup**.
+- **Employee app** (`https://<project-id>.web.app`): the schedule, trades, documents and My page for every approved member. There are no edit forms or admin screens, and it is installable on a phone.
+- **Back office** (`https://<project-id>-admin.web.app`): the full page, for admins and editors only.
+
+Both have Google sign-in and accounts and approval as on the server. The roster files and PDFs are in Cloud Storage, for approved accounts only.
+
+Setup: `FIREBASE_SETUP.md`; optional test beta: `BETA.md`; switching over from the claude.ai page: `CUTOVER.md`.
+
+- `python3 tools/build_firebase.py` builds `firebase/public-app/` and `firebase/public-admin/`. Neither has names or data files.
+- `firebase/firestore.rules`, `firebase/storage.rules`: access by role (custom claims set by `firebase/functions`). Cell numbers are in `staffCells`, admins only. The rules, not the site, decide what each account can do.
+- Tests: `node --test firebase/functions/accounts.test.js`. The rules tests run in the Firebase emulator in CI (`.github/workflows/firebase.yml`, which also deploys `main`).
+- Moving the records:
+  - on the claude.ai page, **Employee cards → Download backup** (page Editors);
+  - on the back office, **Admin → Cut-over** (**Import as test copy**, or **Replace everything** on cut-over day, with a count check);
+  - then **Set live**, which removes the "Test copy" banner.
+- `python3 tools/build_artifact.py out.html --frozen https://<admin site>` builds the frozen claude.ai page for after cut-over. Publish it with `--capabilities --frozen`.
 
 ## Running the server
 

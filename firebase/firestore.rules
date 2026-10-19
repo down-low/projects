@@ -118,6 +118,12 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
+    // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).
+    match /settings/{doc} {
+      allow read: if active();
+      allow write: if isAdmin();
+    }
+
     match /audit/{id} {
       allow read: if isAdmin();
     }

@@ -1,6 +1,11 @@
 # Firebase setup, step by step
 
-This puts the tour schedule at a web address (`https://<project-id>.web.app`), where people sign in with Google. It takes about 45 minutes. You do every step yourself in your own Google account: you keep ownership, and nobody else needs your password.
+This puts the tour schedule on two web addresses in one Firebase project, where people sign in with Google:
+
+- `https://<project-id>.web.app`: the **employee app**, for everyone;
+- `https://<project-id>-admin.web.app`: the **back office**, for admins and editors.
+
+Setup is safe to do any time: nothing replaces the claude.ai page until cut-over day (`CUTOVER.md`). It takes about 45 minutes. You do every step yourself in your own Google account: you keep ownership, and nobody else needs your password.
 
 **What you need:**
 - your Google account;
@@ -12,7 +17,7 @@ This puts the tour schedule at a web address (`https://<project-id>.web.app`), w
 **Decisions already made:**
 - the project is in your own account;
 - any Google account may sign in, but sees nothing until an admin approves it;
-- the free `.web.app` address;
+- the free `.web.app` addresses;
 - a placeholder icon.
 
 ---
@@ -45,7 +50,7 @@ This puts the tour schedule at a web address (`https://<project-id>.web.app`), w
 
 1. In the left menu, open **Build → Authentication**, then **Get started**.
 2. On the **Sign-in method** tab, click **Google**, switch it to **Enable**, pick your email as the **support email**, and click **Save**.
-3. Optional check: on the **Settings** tab, **Authorized domains** should already list `<project-id>.web.app` and `<project-id>.firebaseapp.com`.
+3. On the **Settings** tab, open **Authorized domains**. `<project-id>.web.app` and `<project-id>.firebaseapp.com` are already there. Click **Add domain**, enter `<project-id>-admin.web.app` and click **Add**. Without it, Google sign-in on the back office is refused.
 
 ## 5. Turn on Firestore (the database)
 
@@ -91,6 +96,7 @@ On GitHub, open the repository **down-low/projects**, then **Settings → Secret
    - `FIREBASE_PROJECT_ID`: your project ID from step 1 (for example `sffd-tours`).
    - `ADMIN_EMAILS`: the Google addresses of the first admins, separated by commas (for example `you@gmail.com`). These people are active admins the moment they sign in.
    - Leave `ALLOWED_DOMAINS` out. That means any Google account can sign in and wait for approval. To limit sign-in to one domain later, add it with a value such as `sfgov.org`.
+   - Leave `ADMIN_SITE` out too. The first deploy creates the back office site as `<project-id>-admin`. Site names are shared across all of Firebase, so if that name is taken the deploy says so: add `ADMIN_SITE` with another name (for example `sffd-tours-office`), and add that address to Authorized domains as in step 4.
 
 ## 9. Publish
 
@@ -99,21 +105,19 @@ On GitHub, open the repository **down-low/projects**, then **Settings → Secret
 3. Wait for both jobs to turn green (5–10 minutes the first time). After this, every merge to `main` publishes on its own.
    - If a step turns red, open it and copy the last 20 or so lines of the error into a chat. They don't contain secrets.
 
-## 10. Sign in and import the records
+## 10. Sign in, and load a test copy
 
-1. Open `https://<project-id>.web.app` and click **Sign in with Google** with an `ADMIN_EMAILS` address. You land in the app as an admin.
-2. **Save the backup from the claude.ai page.**
-   - Open the claude.ai page: https://claude.ai/artifact/TS7W51mXHxgy7p2uvReSgC.
-   - Open **Employee cards** (header link, or **More** on a phone).
-   - Click **Download backup** and accept the save.
-   - The file holds the cell numbers, so keep it on your own computer only.
-3. **Load it into the new app.**
-   - In the new app, open **Admin** (header link, or **More**) and scroll to **Import backup**.
-   - Choose the file and click **Import**. It shows a count per collection when it's done.
-4. **Check it against the claude.ai page.** Open **Staffing** on both, on the same date (for example **10/15/2026**). The totals should match (263 on duty and 54 open as of the last check).
-5. **Delete the backup file**, and empty the trash.
+1. Open the back office at `https://<project-id>-admin.web.app` and click **Sign in with Google** with an `ADMIN_EMAILS` address. You're in as an admin.
+   - The yellow **Test copy** banner is expected. It stays on until cut-over day.
+2. Optional, for the test beta: load a test copy of today's records.
+   - **Save the backup.** On the claude.ai page (https://claude.ai/artifact/TS7W51mXHxgy7p2uvReSgC), open **Employee cards** (header link, or **More** on a phone). Click **Download backup** and accept the save. The file holds the cell numbers, so keep it on your own computer.
+   - **Load it.** In the back office, open **Admin** and scroll to **Cut-over**. Choose the file and click **Import as test copy**. The table shows each collection's count in the file and on the site; they should match.
+   - **Delete the backup file**, and empty the trash.
+3. Open the employee app at `https://<project-id>.web.app` on your phone and sign in. As an admin you get the member view, plus a **Back office** link.
 
-Next: invite the testers with [`BETA.md`](BETA.md).
+Keep making official changes on the claude.ai page until cut-over: changes made here are replaced that day.
+
+Next: test with a few people using [`BETA.md`](BETA.md) (optional), then switch over with [`CUTOVER.md`](CUTOVER.md).
 
 ---
 
@@ -122,8 +126,10 @@ Next: invite the testers with [`BETA.md`](BETA.md).
 | What you see | What to do |
 |---|---|
 | Sign-in popup closes and nothing happens | Allow pop-ups for the site, or try again; on some phones it switches to a full-page sign-in. |
+| "This domain is not authorized" on the back office | Step 4: add `<project-id>-admin.web.app` to Authorized domains. |
+| "Admins only" on the back office | That account isn't an admin or editor. Members use the employee app. |
 | "Waiting for approval" after signing in as an admin | The address isn't in `ADMIN_EMAILS` exactly as Google spells it. Fix the variable, run the workflow again, sign out and in. |
 | The schedule is empty after sign-in | The deploy's "Roster files and PDFs to Storage" step didn't run. Check the Actions run. |
 | Charges | **https://console.cloud.google.com/billing** shows the spend; the budget alert emails you at $5, $9 and $10. |
 
-To **turn the beta off** at any point, open Firebase console → **Hosting** → the `…` menu on the site → **Disable**. No data is deleted.
+Before cut-over you can **turn the sites off** at any point: Firebase console → **Hosting** → the `…` menu on a site → **Disable**. No data is deleted.

@@ -144,6 +144,13 @@ test("corrections: each member their own; editors and admins all", async () => {
   await assertSucceeds(db(EDITOR).collection("corrections").get());
 });
 
+test("site mode: everyone approved reads it, only admins set it", async () => {
+  await assertSucceeds(db(MEMBER).doc("settings/site").get());
+  await assertFails(db(PENDING).doc("settings/site").get());
+  await assertFails(db(EDITOR).doc("settings/site").set({ mode: "live" }));
+  await assertSucceeds(db(ADMIN).doc("settings/site").set({ mode: "live" }));
+});
+
 test("audit is admin-read, never written from a page", async () => {
   await assertFails(db(MEMBER).doc("audit/a1").get());
   await assertSucceeds(db(ADMIN).doc("audit/a1").get());
