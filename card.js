@@ -267,7 +267,7 @@
     function firCell(f) {
       if (!f) return '<span class="hint">—</span>';
       var st = root.FirCompare.firState(f);
-      return esc([f.co || (f.mode === "co" ? f.query : ""), f.position, f.role, f.trc].filter(Boolean).join(" · ")) + (f.status ? " " + api.statusPill(f.status) : "") +
+      return esc([f.co || (f.mode === "co" ? f.query : ""), f.position, f.role, f.trc].filter(Boolean).join(" · ")) + (f.status && f.status !== f.trc ? " " + api.statusPill(f.status) : "") +
         (st.kind === "off" ? ' <span class="hint">off</span>' : "");
     }
     function toolCell(e) {
@@ -283,7 +283,7 @@
       var row = function (x) {
         return '<details class="fir-person"><summary><button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button> " +
           '<span class="hint mono">' + esc(x.emplId || "") + "</span> · " + x.issues.length + " of " + x.days + " days differ" +
-          '<div class="hint">' + esc(firstNotes(x.issues)) + "</div></summary>" +
+          '<div class="hint">' + esc(firstNotes(x.issues)) + "</div>" + (x.notes.length ? '<div class="hint">' + esc(x.notes.join(" · ")) + "</div>" : "") + "</summary>" +
           '<div class="table-wrap"><table class="list fir-t"><thead><tr><th>Date</th><th>fir-db1</th><th>This tool</th><th>Note</th></tr></thead><tbody>' +
           x.issues.map(function (it) {
             return "<tr><td>" + esc(api.shortDate(api.fromIso(it.date))) + "</td><td>" + firCell(it.fir) + "</td><td>" + toolCell(it.tool) + "</td><td>" + esc(it.note) + "</td></tr>";
@@ -301,8 +301,8 @@
           r.toolOnly.map(function (t) {
             return "<li><div>" + (t.p ? '<button type="button" class="linkish" data-ckey="' + esc(t.key) + '">' + esc(t.p.name) + "</button>" : esc(t.key)) + " · " + esc(api.shortDate(api.fromIso(t.date))) + " · " + toolCell(t.tool) + "</div></li>";
           }).join("") + "</ul></details>" : "") +
-        (same.length ? '<details class="fir-sec"><summary><b>Agree on every day</b> <span class="n">' + same.length + "</span></summary><p>" +
-          same.map(function (x) { return '<button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button>"; }).join(", ") + "</p></details>" : "") + "</div>";
+        (same.length ? '<details class="fir-sec" open><summary><b>Agree on every day</b> <span class="n">' + same.length + "</span></summary><p>" +
+          same.map(function (x) { return '<button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button>" + (x.notes.length ? ' <span class="hint">(' + esc(x.notes.join(" · ")) + ")</span>" : ""); }).join("<br>") + "</p></details>" : "") + "</div>";
     }
     function firstNotes(issues) {
       var seen = {}, out = [];

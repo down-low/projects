@@ -7,8 +7,10 @@
  * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
  * window.FirCompare = {LEVELS, targets(api, level, all), script(plan), parseCsv(text), compare(rows, api)}.
  *
- * TRC (time reporting code): REG = working; H = off that day (not their shift); anything else with hours (IDV, VAC, SICK…) is
- * leave. The Status column (EMPL_CLASS, e.g. DP) marks someone off their seat (DP: disability) even on a REG row.
+ * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
+ * which the tool doesn't track); anything else with hours (VA, IDV, FH, DP, WC…) is leave. The Status column (EMPL_CLASS: DP
+ * disability, WC workers' comp) is the person's class, shown on every row; on a scheduled day it means off their seat, even
+ * where a future day still reads REG.
  */
 (function (root) {
   "use strict";
@@ -112,7 +114,7 @@
       "      const rows = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(date)));\n" +
       "      if (!rows) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' });\n" +
       "      else if (!rows.length) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' });\n" +
-      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: r.name || p.name })));\n" +
+      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name })));\n" +
       "      await wait();\n" +
       "    }\n" +
       "    for (const co of PLAN.companies) {\n" +
@@ -168,19 +170,22 @@
     if (!m) return /^\d{4}-\d{2}-\d{2}$/.test(s || "") ? s : "";
     return (m[3].length === 2 ? "20" + m[3] : m[3]) + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2);
   }
+  function shortIso(iso) { return +iso.slice(5, 7) + "/" + +iso.slice(8, 10); }
   function nameKey(n) { return String(n || "").toLowerCase().replace(/[^a-z,]/g, ""); }
 
   // fir-db1's side of one row: working (REG, no Status), off (H: not their day) or leave (another TRC, or a Status like DP).
   function firState(f) {
     var trc = (f.trc || "").toUpperCase();
-    if (f.status) return { kind: "leave", code: f.status };
     if (trc === "H" || (!trc && !f.position)) return { kind: "off" };
+    if (f.status) return { kind: "leave", code: f.status };
     if (trc === "REG") return { kind: "work" };
+    if (trc === "WDO") return { kind: "extra" };
     return { kind: "leave", code: trc };
   }
 
   /* Compare pulled rows with the tool, day by day. api: {dayRows(d), people(), fromIso, apparatus(co)}.
-     Returns {dates, flags, people: [{key, p, name, emplId, days, issues: [{date, fir, tool, note}]}], toolOnly, unknown}. */
+     Returns {dates, flags, people: [{key, p, name, emplId, days, issues: [{date, fir, tool, note}], notes: [text]}], toolOnly,
+     unknown}. Notes are things that agree but are worth knowing (a different leave code, an extra shift, working elsewhere). */
   function compare(rows, api) {
     var app = api.apparatus, flags = rows.filter(function (r) { return r.flag; });
     var data = rows.filter(function (r) { return !r.flag && r.date && (r.emplId || r.name); });
@@ -202,7 +207,8 @@
       });
       return (dayCache[iso] = byKey);
     }
-    var byPerson = {}, unknown = {}, pulledCo = {};
+    var byPerson = {}, unknown = {}, pulledCo = {}, known = null;
+    if (api.companies) { known = {}; api.companies().forEach(function (c) { known[app(c)] = 1; }); }
     // A person's own employee page wins over a company page for the same day.
     var hasEmpl = {};
     data.forEach(function (f) { if (f.mode === "empl") hasEmpl[f.emplId + "|" + f.date] = 1; });
@@ -212,10 +218,26 @@
       var p = (f.emplId && peopleById[f.emplId]) || null, how = "id";
       if (!p) { var nm = peopleByName[nameKey(f.name)] || []; if (nm.length === 1 && !nm[0].emplId) { p = nm[0]; how = "name"; } }
       if (!p) { var u = unknown[f.emplId || f.name] = unknown[f.emplId || f.name] || { emplId: f.emplId, name: f.name, rows: [] }; u.rows.push(f); return; }
-      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [] };
+      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [], notes: [] };
       var fs = firState(f), t = toolDay(f.date)[p.pos] || null, note = "";
       var toolKind = !t ? "off" : t.off ? "leave" : "work";
       var firCo = app(f.co || (f.mode === "co" ? f.query : ""));
+      var addNote = function (n) { if (rec.notes.indexOf(n) === -1) rec.notes.push(n); };
+      var offRoster = firCo && known && !known[firCo];
+      // Status from the records too: someone on WE with no seat (it moved to someone else) has no row in the day.
+      var toolSt = (t && t.status) || (api.statusFor ? api.statusFor(p.pos, api.fromIso(f.date)) : null);
+      if (fs.kind === "extra") {
+        rec.days++;
+        if (!(toolKind === "work" && (!f.position || f.position === t.seat))) addNote("Extra shift (WDO) " + shortIso(f.date) + " at " + [firCo, f.position].filter(Boolean).join(" ") + " (overtime; the tool doesn't track it)");
+        return;
+      }
+      // Someone the tool has as WE (working elsewhere) who fir-db1 shows working at a non-roster unit (CD3, DTA…) agrees.
+      if (toolSt === "WE" && toolKind !== "work" && (fs.kind !== "work" || offRoster)) {
+        rec.days++;
+        if (offRoster) addNote("Works at " + firCo + "; WE in the tool");
+        return;
+      }
+      if (fs.kind === "leave" && toolKind === "leave" && toolSt && toolSt !== fs.code) addNote("fir-db1 codes it " + fs.code + "; the tool has " + toolSt);
       if (fs.kind === "work" && toolKind === "work") {
         if (firCo && firCo !== t.co) note = "Different company";
         else if (f.position && f.position !== t.seat) note = "Different position";
