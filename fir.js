@@ -67,7 +67,7 @@
       "  const COLS = " + JSON.stringify(COLS) + ";\n" +
       "  const m = /[?&]p=(\\d+):\\d+:(\\d+)/.exec(location.href);\n" +
       "  if (!m) return alert('Open a fir-db1 page first (signed in), then run this again.');\n" +
-      "  const app = m[1], session = m[2];\n" +
+      "  const app = '1022', session = m[2]; // Time Entry is app 1022, page 2; the session is shared with the 1021 menu\n" +
       "  let date = PLAN.date;\n" +
       "  if (!date) { const t = new Date(); date = (prompt('Date to pull (MM/DD/YYYY)', (t.getMonth() + 1) + '/' + t.getDate() + '/' + t.getFullYear()) || '').trim(); }\n" +
       "  if (!/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(date)) return alert('Use a date like 10/20/2026.');\n" +
