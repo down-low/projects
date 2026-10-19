@@ -4608,7 +4608,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var p = (f.emplId && peopleById[f.emplId]) || null, how = "id";
       if (!p) { var nm = peopleByName[nameKey(f.name)] || []; if (nm.length === 1 && !nm[0].emplId) { p = nm[0]; how = "name"; } }
       if (!p) { var u = unknown[f.emplId || f.name] = unknown[f.emplId || f.name] || { emplId: f.emplId, name: f.name, rows: [] }; u.rows.push(f); return; }
-      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [], notes: [] };
+      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [], notes: [], dateFix: {} };
       var fs = firState(f), t = toolDay(f.date)[p.pos] || null, note = "";
       var toolKind = !t ? "off" : t.off ? "leave" : "work";
       var firCo = app(f.co || (f.mode === "co" ? f.query : ""));
@@ -4628,6 +4628,17 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         return;
       }
       if (fs.kind === "leave" && toolKind === "leave" && toolSt && toolSt !== fs.code) addNote("fir-db1 codes it " + fs.code + "; the tool has " + toolSt);
+      // Status first, dates later: fir-db1 leave before the tool's matching record starts is a start date to update, not a difference.
+      if (fs.kind === "leave") {
+        var later = (api.recs ? api.recs().statuses || [] : []).filter(function (x) { return x.pos === p.pos && !x.tradeId && x.start > f.date; })
+          .sort(function (a, b) { return a.start.localeCompare(b.start); })[0];
+        if (later) {
+          var fx = rec.dateFix[later.id] = rec.dateFix[later.id] || { rec: later, from: f.date, code: fs.code };
+          if (f.date < fx.from) fx.from = f.date;
+          rec.days++;
+          return;
+        }
+      }
       if (fs.kind === "work" && toolKind === "work") {
         if (firCo && firCo !== t.co) note = "Different company";
         else if (f.position && f.position !== t.seat) note = "Different position";
@@ -4646,6 +4657,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       Object.keys(day).forEach(function (pos) {
         var e = day[pos];
         if (!e.off && e.co === co && !listed[pos]) toolOnly.push({ date: iso, co: co, p: api.byPos ? api.byPos()[pos] : null, key: pos, tool: e });
+      });
+    });
+    Object.keys(byPerson).forEach(function (k) {
+      var r = byPerson[k];
+      Object.keys(r.dateFix).forEach(function (id) {
+        var fx = r.dateFix[id];
+        r.notes.unshift("Start date to update: " + fx.rec.code + " starts " + shortIso(fx.rec.start) + " in the tool; fir-db1 shows " + fx.code + " from " + shortIso(fx.from) + " or earlier");
       });
     });
     var dates = {};
