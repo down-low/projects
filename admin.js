@@ -29,7 +29,9 @@
       var errHtml = err ? '<p class="msg err" role="alert">' + esc(AUTH_ERRORS[err] || "Sign-in failed. Try again.") + "</p>" : "";
 
       if (!me.signedIn) {
-        var how = me.google
+        var how = me.google && api.backend().signIn
+          ? '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'
+          : me.google
           ? '<a class="btn primary big" href="auth/login">Sign in with Google</a>'
           : '<p class="hint">' + esc(AUTH_ERRORS.not_configured) + "</p>";
         var dev = me.devLogin
@@ -40,6 +42,9 @@
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members. ' +
           "Sign in with your Google account to see who's working, your own tour, and to share contact info for shift swaps.</p>" +
           errHtml + how + dev + "</div>";
+        if ($("gate-in")) $("gate-in").onclick = function () {
+          api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
+        };
         return;
       }
 
@@ -231,7 +236,8 @@
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>";
+          }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
+        if ($("import-form")) $("import-form").onsubmit = onImport;
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
         out.addEventListener("change", onAdminChange);
@@ -243,6 +249,33 @@
         drawPending();
         drawUsers();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
+    }
+
+    /* One-time move from the claude.ai page (Firebase only): the backup file saved there (Employee cards, Download backup)
+       is loaded straight from this device. Only counts are shown; the file holds cell numbers, so delete it afterwards. */
+    function importHtml() {
+      return '<form class="card edit" id="import-form" novalidate><h3>Import backup</h3>' +
+        '<p class="hint">Loads every record from a backup file saved on the claude.ai page (Employee cards, <b>Download backup</b>). ' +
+        "Records keep their ids, so importing the same file again changes nothing. Afterwards, delete the file: it holds cell numbers.</p>" +
+        '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Import</button><span class="msg" id="import-msg" role="status"></span></div>' +
+        '<ul class="hist" id="import-counts" hidden></ul></form>';
+    }
+    function onImport(e) {
+      e.preventDefault();
+      var file = $("import-file").files[0], msg = $("import-msg");
+      if (!file) return api.say(msg, "Choose the backup file first.", true);
+      api.say(msg, "Reading…");
+      file.text().then(function (text) {
+        var data;
+        try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
+        return api.backend().importBackup(data, function (done, total) { api.say(msg, "Imported " + done + " of " + total + "…"); });
+      }).then(function (counts) {
+        var keys = Object.keys(counts).sort(), total = keys.reduce(function (n, k) { return n + counts[k]; }, 0);
+        api.say(msg, "Imported " + total + " records.");
+        $("import-counts").hidden = false;
+        $("import-counts").innerHTML = keys.map(function (k) { return "<li><div><b>" + esc(k) + "</b> " + counts[k] + "</div></li>"; }).join("");
+      }, function (er) { api.say(msg, er.message, true); });
     }
 
     function posLabel(pos) {

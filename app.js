@@ -1075,8 +1075,15 @@
     };
     $("ap-tour").innerHTML = '<option value="">No tour</option>' + tourOptions(0);
     if (window.DOCS) Dash.renderDocs(window.DOCS);
-    else fetch("docs/index.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; })
+    else getFile("docs/index.json").then(function (r) { return r.ok ? r.json() : null; })
       .then(Dash.renderDocs, function () { Dash.renderDocs(null); });
+    // On Firebase the PDFs are in Cloud Storage (signed-in members only), so the adapter opens them.
+    if (backend && backend.openDoc) document.addEventListener("click", function (e) {
+      var a = e.target.closest('a[href^="docs/"]');
+      if (!a) return;
+      e.preventDefault();
+      backend.openDoc(decodeURIComponent(a.getAttribute("href").slice(5))).catch(function () { /* the tab shows nothing */ });
+    });
 
     $("add-person-btn").onclick = function () { $("add-person").hidden = !$("add-person").hidden; if (!$("add-person").hidden) $("ap-name").focus(); };
     $("add-person").onsubmit = function (e) {
@@ -1317,6 +1324,8 @@
     if (booted) rebuildPeople();
     renderAll();
   }
+  // Roster files and the documents list: from the server or static folder, or Cloud Storage on Firebase.
+  function getFile(path) { return backend && backend.fetchData ? backend.fetchData(path) : fetch(path, { credentials: "same-origin" }); }
   function loadError(err) {
     $("date-results").innerHTML = '<div class="empty">Could not load the roster (' + esc(err.message) +
       "). Serve this folder over HTTP, for example with <code>python3 server.py</code>, then reload.</div>";
@@ -1329,13 +1338,13 @@
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
-      return fetch("data/positions.json", { credentials: "same-origin" }).then(function (r) {
+      return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
         if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
         var json = function (url) {
-          return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+          return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };
         return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
           .then(function (got) {

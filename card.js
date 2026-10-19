@@ -205,6 +205,8 @@
     function rosterHtml() {
       return '<div class="card roster-card"><h2 class="view-title">Employee cards</h2>' +
         '<p class="hint">Admins only. Tap a rank to filter; tap a name to open their card. Members never see this screen.</p>' +
+        (backend().saveBackup ? '<p class="row backup">' + btn("Download backup", 'id="card-backup"') + msgEl("card-backup-msg") +
+          '<span class="hint">Every record, cell numbers included, as one file for the move to Firebase. Keep it private.</span></p>' : "") +
         tilesHtml() +
         '<form class="edit rbar" id="card-search" novalidate role="search">' +
         '<label class="rshow">Show<select id="card-per">' + PAGE_SIZES.map(function (n) {
@@ -328,6 +330,15 @@
       $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
       $("card-search").onsubmit = function (e) { e.preventDefault(); };
       $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
+      if ($("card-backup")) $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        api.say($("card-backup-msg"), "Preparing…");
+        backend().saveBackup().then(function (r) {
+          x.disabled = false;
+          api.say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; api.say($("card-backup-msg"), er.message, true); });
+      };
       $("card-cols-btn").onclick = function () { ui.chooser = !ui.chooser; $("card-cols").hidden = !ui.chooser; this.setAttribute("aria-expanded", ui.chooser); };
       $("card-cols-x").onclick = function () { ui.chooser = false; $("card-cols").hidden = true; $("card-cols-btn").setAttribute("aria-expanded", "false"); };
       $("card-cols-reset").onclick = function () { ui.cols = null; try { api.store("card-cols", ""); } catch (e) { /* storage unavailable */ } render(); };

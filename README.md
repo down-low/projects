@@ -155,6 +155,15 @@ People sign in with Google. Viewing the schedule requires an approved account.
 
 **My page** shows the person's current tour, any upcoming tour change, their next shifts and leave on record, and lets them set a contact email (separate from their Google sign-in), a mobile and another phone number. A **Share my contact info for shift swaps** switch decides who sees it: when on, anyone signed in sees it on that person's schedule page; when off, only admins do.
 
+## Firebase hosting (beta)
+
+The same app runs on Firebase (`https://<project-id>.web.app`): Google sign-in, accounts and approval as on the server (Admin page, My page), records in Firestore, the roster files and PDFs in Cloud Storage for approved accounts only. Setup: `FIREBASE_SETUP.md`; testers: `BETA.md`; design and what waits: `FIREBASE_PLAN.md`.
+
+- `python3 tools/build_firebase.py` builds the public Hosting folder (`firebase/public/`, no names or data files in it).
+- `firebase/firestore.rules`, `firebase/storage.rules`: access by role (custom claims set by `firebase/functions`). Cell numbers are in `staffCells`, admins only.
+- Tests: `node --test firebase/functions/accounts.test.js`; the rules tests run in the Firebase emulator in CI (`.github/workflows/firebase.yml`, which also deploys `main`).
+- Moving the records: on the claude.ai page, **Employee cards → Download backup** (admins); in the Firebase app, **Admin → Import backup**.
+
 ## Running the server
 
 1. In [Google Cloud Console](https://console.cloud.google.com/apis/credentials), create an **OAuth client ID** of type **Web application**. Add the authorized redirect URI `https://YOUR-HOST/auth/callback`. (Configure the OAuth consent screen first if asked; the app only requests your name and email.)
