@@ -5,7 +5,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 ## Priorities, in order
 
 1. **Firebase beta.** Get the app hosted so people can sign in and test (`FIREBASE_PLAN.md`). Branch `claude/firebase-beta`.
-2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`.
+2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`. Audit, mock-up links and the recommendation: `docs/ui-simplification.md`.
 3. **Data cleanup.** The open questions below.
 
 ## How we work
