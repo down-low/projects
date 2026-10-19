@@ -15,7 +15,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = "10.14.1"  # Firebase JS SDK (compat) served by Hosting
 APP_FILES = ["index.html", "style.css", "schedule.js", "organization.js", "store.js", "admin.js", "dashboard.js",
-             "trades.js", "awards.js", "corrections.js", "card.js", "app.js"]
+             "trades.js", "awards.js", "corrections.js", "fir.js", "card.js", "app.js"]
 ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#b3261e"/>
 <text x="32" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">TS</text></svg>
 """  # placeholder until there is a department-approved icon
