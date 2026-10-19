@@ -5,8 +5,9 @@ Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule
        python3 tools/build_artifact.py --capabilities   (the page-database rules to publish with)
        python3 tools/build_artifact.py out.html --frozen https://ADMIN-SITE   (cut-over, CUTOVER.md: read-only page that
          points to the Firebase sites; publish it with `--capabilities --frozen`, every write raised to the owner)
-       python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json]
-         (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js)
+       python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json] [--banner TEXT]
+         (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js;
+         --banner shows TEXT in a strip across the top, e.g. "Demo · fictional data", see DEMO.md)
 """
 import json
 import os
@@ -101,6 +102,11 @@ def main():
         del args[i:i + 2]
         if snapshot is None:
             sys.exit("--demo needs --snapshot")
+    note = None
+    if "--banner" in args:
+        i = args.index("--banner")
+        note = args[i + 1]
+        del args[i:i + 2]
     out = args[0] if args else os.path.join(ROOT, "dist", "tour-schedule.html")
     index = read("index.html")
     body = re.search(r"<!-- app:start -->(.*)<!-- app:end -->", index, re.S).group(1)
@@ -111,6 +117,8 @@ def main():
     ids = json.dumps(json.load(open(os.path.join(ROOT, "data", "employee-ids.json"))), separators=(",", ":")).replace("</", "<\\/")
     awards = json.dumps(json.load(open(os.path.join(ROOT, "data", "vacancy-awards-2027.json"))), separators=(",", ":")).replace("</", "<\\/")
     docs = json.dumps(json.load(open(os.path.join(ROOT, "docs", "index.json"))), separators=(",", ":")).replace("</", "<\\/")
+    org = os.path.join(ROOT, "data", "organization.json")  # demo branch: its own divisions (organization.js ORG_DIVISIONS)
+    orgjs = "window.ORG_DIVISIONS=" + json.dumps(json.load(open(org)), separators=(",", ":")) + ";" if os.path.exists(org) else ""
     snap = ""
     title = "SFFD Tour Schedule (view only)" if snapshot is not None else "SFFD Tour Schedule"
     if snapshot is not None:
@@ -118,6 +126,11 @@ def main():
     if demo is not None:
         snap += "window.TRADE_DEMO=" + json.dumps(demo, separators=(",", ":")).replace("</", "<\\/") + ";"
     banner = ""
+    if note is not None:
+        import html as htmlmod
+        title = "SFFD Tour Schedule (demo)"
+        banner = (f'<div class="frozen-banner" role="status" style="width:calc(100% - 32px);max-width:1148px;margin:12px auto 0;box-sizing:border-box">'
+                  f'<span><b>{htmlmod.escape(note)}</b> Every name, ID and record here is made up. View only; nothing is saved.</span></div>\n')
     if frozen is not None:
         import html as htmlmod
         addr = htmlmod.escape(frozen)
@@ -133,6 +146,7 @@ def main():
         f"{banner}{body}\n"
         f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};{snap}</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
+        f"<script>{orgjs}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"
         f"<script>\n{read('store.js')}</script>\n"
         f"<script>\n{read('admin.js')}</script>\n"

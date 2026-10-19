@@ -3,7 +3,7 @@
  */
 (function (root) {
   "use strict";
-  var DIVISIONS = [
+  var DIVISIONS = root.ORG_DIVISIONS || [ // ORG_DIVISIONS: the demo branch's own structure (data/organization.json)
     { id: "DV02", name: "Division 2", battalions: [
       { id: "BT01", name: "Batt 1", apparatus: ["B01", "E02", "E13", "E28", "E41", "RC1", "T02", "T13"] },
       { id: "BT04", name: "Batt 4", apparatus: ["B04", "E03", "E16", "E38", "E51", "T03", "T16"] },

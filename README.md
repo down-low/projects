@@ -1,5 +1,7 @@
 # SFFD Tour Schedule
 
+> **Demo branch:** every name, ID and record here is fictional. See `DEMO.md`.
+
 Look up who is working on any date, when a given person works, or a month roster for a rank.
 
 - **Projection**: pick a date and see the watch number, the 9 tours working, and everyone on duty grouped by rank. Swing positions show the company they cover.

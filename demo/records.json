@@ -1,0 +1,261 @@
+{
+ "asOf": "2026-10-19",
+ "records": {
+  "statuses": [
+   {
+    "id": "st001",
+    "pos": "03EOD21M",
+    "code": "VA",
+    "start": "2026-10-12",
+    "end": "2026-10-25",
+    "note": "Vacation",
+    "createdAt": "2026-10-12T15:01:00.000Z"
+   },
+   {
+    "id": "st002",
+    "pos": "04EOE01M",
+    "code": "VA",
+    "start": "2026-11-02",
+    "end": "2026-11-15",
+    "note": "",
+    "createdAt": "2026-11-02T15:02:00.000Z"
+   },
+   {
+    "id": "st003",
+    "pos": "02EOL06M",
+    "code": "VA",
+    "start": "2026-12-20",
+    "end": "2027-01-05",
+    "note": "Holidays",
+    "createdAt": "2026-12-20T15:03:00.000Z"
+   },
+   {
+    "id": "st004",
+    "pos": "03TOT29M",
+    "code": "S",
+    "start": "2026-10-18",
+    "end": "2026-10-22",
+    "note": "",
+    "createdAt": "2026-10-18T15:04:00.000Z"
+   },
+   {
+    "id": "st005",
+    "pos": "07EOA26M",
+    "code": "S",
+    "start": "2026-11-05",
+    "end": "2026-11-08",
+    "note": "",
+    "createdAt": "2026-11-05T15:05:00.000Z"
+   },
+   {
+    "id": "st006",
+    "pos": "04EOC10M",
+    "code": "D",
+    "start": "2026-09-01",
+    "end": null,
+    "note": "Shoulder injury",
+    "createdAt": "2026-09-01T15:06:00.000Z"
+   },
+   {
+    "id": "st007",
+    "pos": "03TOD12M",
+    "code": "D",
+    "start": "2026-10-01",
+    "end": "2026-12-31",
+    "note": "",
+    "createdAt": "2026-10-01T15:07:00.000Z"
+   },
+   {
+    "id": "st008",
+    "pos": "03EOL12M",
+    "code": "WE",
+    "start": "2026-08-01",
+    "end": null,
+    "note": "Training division",
+    "createdAt": "2026-08-01T15:08:00.000Z"
+   },
+   {
+    "id": "st009",
+    "pos": "07EOE12M",
+    "code": "WE",
+    "start": "2026-10-15",
+    "end": "2027-02-28",
+    "note": "Fire prevention detail",
+    "createdAt": "2026-10-15T15:09:00.000Z"
+   }
+  ],
+  "tourChanges": [
+   {
+    "id": "tc010",
+    "pos": "08TOE02M",
+    "tour": 13,
+    "effective": "2026-11-01",
+    "note": "Mutual swap",
+    "createdAt": "2026-10-10T15:10:00.000Z"
+   }
+  ],
+  "covers": [
+   {
+    "id": "cv011",
+    "coverKey": "09EOL27M",
+    "coverName": "Elsworth,G",
+    "targetPos": "04EOC10M",
+    "start": "2026-09-01",
+    "end": null,
+    "kind": "acting",
+    "move": false,
+    "note": "Acting Captain while Wintermere,L is off",
+    "createdAt": "2026-09-01T15:11:00.000Z"
+   },
+   {
+    "id": "cv012",
+    "coverKey": "09EOL29M",
+    "coverName": "Tidewell,K",
+    "targetPos": "03EOL12M",
+    "start": "2026-08-01",
+    "end": null,
+    "kind": "cover",
+    "move": false,
+    "note": "Draycott,D working elsewhere",
+    "createdAt": "2026-08-01T15:12:00.000Z"
+   },
+   {
+    "id": "cv013",
+    "coverKey": "03EOD19M",
+    "coverName": "Redfern,T",
+    "targetPos": "03TOL10M",
+    "start": "2026-10-01",
+    "end": null,
+    "kind": "shadow",
+    "move": false,
+    "note": "VR20 relief",
+    "createdAt": "2026-10-01T15:13:00.000Z"
+   },
+   {
+    "id": "cv014",
+    "coverKey": "08EOC22M",
+    "coverName": "Saltonstall,J",
+    "targetPos": "03EOC07M",
+    "start": "2026-10-05",
+    "end": "2026-12-31",
+    "kind": "extra",
+    "move": false,
+    "note": "Second captain, training",
+    "createdAt": "2026-10-05T15:14:00.000Z"
+   },
+   {
+    "id": "cv015",
+    "coverKey": "person:p001",
+    "coverName": "Redfern,W",
+    "targetPos": "08TOT17M",
+    "start": "2026-09-15",
+    "end": null,
+    "kind": "cover",
+    "move": false,
+    "note": "Relief, long-term",
+    "createdAt": "2026-09-15T15:15:00.000Z"
+   },
+   {
+    "id": "cv016",
+    "coverKey": "02EOE28M",
+    "coverName": "Emberton,N",
+    "targetPos": "01EOE27M",
+    "start": "2026-06-16",
+    "end": null,
+    "kind": "cover",
+    "move": true,
+    "note": "Assignment change (demo notice 26 A-050)",
+    "createdAt": "2026-06-16T15:16:00.000Z"
+   },
+   {
+    "id": "cv018",
+    "coverKey": "01EOA08M",
+    "coverName": "Ainsley,T",
+    "targetPos": "03EOA17M",
+    "start": "2026-08-07",
+    "end": null,
+    "kind": "cover",
+    "move": true,
+    "note": "Assignment change (demo notice 26 A-051)",
+    "createdAt": "2026-08-07T15:18:00.000Z"
+   },
+   {
+    "id": "cv020",
+    "coverKey": "03TOE22M",
+    "coverName": "Blackmere,S",
+    "targetPos": "03TOF25M",
+    "start": "2027-01-17",
+    "end": null,
+    "kind": "cover",
+    "move": true,
+    "note": "2027 award (demo)",
+    "createdAt": "2027-01-17T15:20:00.000Z"
+   },
+   {
+    "id": "cv021",
+    "coverKey": "10EOE20M",
+    "coverName": "Eastbrook,E",
+    "targetPos": "05EOE04M",
+    "start": "2027-01-16",
+    "end": null,
+    "kind": "cover",
+    "move": true,
+    "note": "2027 award (demo)",
+    "createdAt": "2027-01-16T15:21:00.000Z"
+   }
+  ],
+  "people": [
+   {
+    "id": "p001",
+    "name": "Redfern,W",
+    "rank": "Firefighter",
+    "company": null,
+    "tour": null,
+    "emplId": "DM0900",
+    "note": "Relief",
+    "createdAt": "2026-09-15T15:14:00.000Z"
+   }
+  ],
+  "staffing": [],
+  "assignments": [
+   {
+    "id": "as017",
+    "key": "02EOE28M",
+    "emplId": "DM0024",
+    "name": "Emberton,N",
+    "firstReg": "2026-06-16",
+    "lastReg": "2026-06-12",
+    "fromPos": "02EOE28M",
+    "fromStation": "E02",
+    "toPos": "01EOE27M",
+    "toStation": "E01",
+    "toTour": 27,
+    "rankFrom": "Firefighter",
+    "rankTo": "Firefighter",
+    "source": "Assignment change notice 26 A-050 (demo)",
+    "note": "",
+    "recordId": "cv016",
+    "createdAt": "2026-06-16T15:17:00.000Z"
+   },
+   {
+    "id": "as019",
+    "key": "01EOA08M",
+    "emplId": "DM0004",
+    "name": "Ainsley,T",
+    "firstReg": "2026-08-07",
+    "lastReg": "2026-07-30",
+    "fromPos": "01EOA08M",
+    "fromStation": "E01",
+    "toPos": "03EOA17M",
+    "toStation": "E03",
+    "toTour": 17,
+    "rankFrom": "FF/Paramedic",
+    "rankTo": "FF/Paramedic",
+    "source": "Assignment change notice 26 A-051 (demo)",
+    "note": "",
+    "recordId": "cv018",
+    "createdAt": "2026-08-07T15:19:00.000Z"
+   }
+  ]
+ }
+}

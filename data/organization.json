@@ -1,0 +1,37 @@
+[
+ {
+  "id": "DV01",
+  "name": "Division 1",
+  "battalions": [
+   {
+    "id": "BT01",
+    "name": "Batt 1",
+    "apparatus": [
+     "B01",
+     "E01",
+     "E02",
+     "E03",
+     "E04",
+     "E05",
+     "RC1",
+     "RS1",
+     "T03"
+    ]
+   },
+   {
+    "id": "BT02",
+    "name": "Batt 2",
+    "apparatus": [
+     "B02",
+     "E06",
+     "E07",
+     "E08",
+     "E09",
+     "E10",
+     "MA1",
+     "T08"
+    ]
+   }
+  ]
+ }
+]

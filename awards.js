@@ -21,7 +21,7 @@
   function iso(d) { return M.isoDate(d); }
   function fromIso(s) { var p = s.split("-"); return new Date(+p[0], +p[1] - 1, +p[2]); }
   function addDays(s, n) { var d = fromIso(s); return iso(new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)); }
-  // "Okafor,Bianca M" and the roster's "Okafor,B" both become "pereira,j".
+  // "Okafor,Bianca M" and the roster's "Okafor,B" both become "okafor,b".
   function nameKey(n) {
     var parts = String(n || "").split(",");
     return parts[0].trim().toLowerCase().replace(/\s+/g, " ") + "," + (parts[1] || "").trim().charAt(0).toLowerCase();

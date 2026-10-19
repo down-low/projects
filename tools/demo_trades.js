@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 /* Sample trades for the view-only demo page (tools/build_artifact.py --snapshot records.json --demo demo.json).
 
-   Usage: node tools/demo_trades.js records.json [--extra YYYY-MM-DD:POS] > demo.json
+   Usage: node tools/demo_trades.js records.json [--posters LT_POS,FFPM_POS] [--extra YYYY-MM-DD:POS] > demo.json
 
-   Picks real roster people and dates from today on, using the same schedule math as the page:
-   Ashgrove (Lieutenant, E10) and Thornbury (FF/Paramedic, E21) each post trades, colleagues in their rank groups post trades
+   Picks roster people (data/positions.json) and dates from today on, using the same schedule math as the page:
+   a Lieutenant and an FF/Paramedic (--posters) each post trades, colleagues in their rank groups post trades
    they could take, and a couple of responses are waiting. Open trades already in records.json are kept. The output's
    "people" are the ones the demo lets you view as. Nothing in it is ever saved anywhere. */
 "use strict";
@@ -43,20 +43,26 @@ function reply(tradeId, p, proposal, note) {
     createdAt: new Date(Date.now() - (10 - n) * 36e5).toISOString() });
 }
 
-const lester = byPos["10ENL31M"], goforth = byPos["21EOA15M"];
+// --posters LT_POS,FFPM_POS picks the two posters; by default the first named Lieutenant and FF/Paramedic in their own
+// seat (not a swing, no leave or cover on record).
+const busy = new Set([].concat((rec.statuses || []).map((s) => s.pos), (rec.covers || []).map((c) => c.coverKey), (rec.covers || []).map((c) => c.targetPos)));
+const firstOf = (rank) => people.find((p) => p.rank === rank && !p.swing && !p.open && !busy.has(p.pos));
+const pi = process.argv.indexOf("--posters");
+const [lp, gp] = pi !== -1 ? (process.argv[pi + 1] || "").split(",") : [];
+const officer = (lp && byPos[lp]) || firstOf("Lieutenant"), medic = (gp && byPos[gp]) || firstOf("FF/Paramedic");
 // Ashgrove: one on the board with two responses (a swap and pay back later), one sent to a few officers.
-const [l1, l2] = workDays(lester, 4, 2).filter((d) => !taken(lester, d));
-const lt = post(lester, l1, "Daughter's recital", { board: true, to: [] });
-const lEl = eligible(lester, l1).filter((p) => !p.swing);
-const swapper = lEl.find((p) => { const s = workDays(p, 1, 3)[0]; return s && !works(lester, s); });
+const [l1, l2] = workDays(officer, 4, 2).filter((d) => !taken(officer, d));
+const lt = post(officer, l1, "Daughter's recital", { board: true, to: [] });
+const lEl = eligible(officer, l1).filter((p) => !p.swing);
+const swapper = lEl.find((p) => { const s = workDays(p, 1, 3)[0]; return s && !works(officer, s); });
 reply(lt, swapper, { swapDate: M.isoDate(workDays(swapper, 1, 3)[0]) }, "Can swap");
 const later = lEl.find((p) => p !== swapper);
 reply(lt, later, { later: true }, "");
-post(lester, l2, "", { board: false, to: eligible(lester, l2).slice(0, 6).map((p) => p.pos) });
+post(officer, l2, "", { board: false, to: eligible(officer, l2).slice(0, 6).map((p) => p.pos) });
 // Thornbury: one on the board, one sent to two people and the board.
-const [g1, g2] = workDays(goforth, 2, 2);
-post(goforth, g1, "Out of town", { board: true, to: [] });
-post(goforth, g2, "", { board: true, to: eligible(goforth, g2).slice(0, 2).map((p) => p.pos) });
+const [g1, g2] = workDays(medic, 2, 2);
+post(medic, g1, "Out of town", { board: true, to: [] });
+post(medic, g2, "", { board: true, to: eligible(medic, g2).slice(0, 2).map((p) => p.pos) });
 // Colleagues' trades that land on Ashgrove's and Thornbury's boards (days they're off).
 function colleagues(me, rank, notes) {
   let made = 0;
@@ -68,11 +74,11 @@ function colleagues(me, rank, notes) {
     made++;
   }
 }
-colleagues(lester, ["Captain", "Lieutenant"], ["Vacation", "Family event", ""]);
-colleagues(goforth, ["FF/Paramedic"], ["Wedding", "", "Kid's game"]);
+colleagues(officer, ["Captain", "Lieutenant"], ["Vacation", "Family event", ""]);
+colleagues(medic, ["FF/Paramedic"], ["Wedding", "", "Kid's game"]);
 // Someone who could take Thornbury's board post, to view the board from the other side.
-const ffpm = eligible(goforth, g1).find((p) => !p.swing);
-const viewAs = [lester.pos, goforth.pos, swapper.pos, ffpm.pos];
+const ffpm = eligible(medic, g1).find((p) => !p.swing);
+const viewAs = [officer.pos, medic.pos, swapper.pos, ffpm.pos];
 
 /* --extra YYYY-MM-DD:POS adds two people to "Viewing as" who could take POS's shift that day (one who isn't working the
    day before or after, one who works the day after), so a trade on that day can be posted, answered and picked in the
