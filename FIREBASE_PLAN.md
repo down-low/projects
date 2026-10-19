@@ -9,6 +9,22 @@ Status: **planned, not started.** This plan is for the release after MVP. Until 
 - HTTPS and a stable address come with Hosting, which is also what an installable app (PWA, see `RELEASES.md`) needs.
 - The page already reads and writes records through a storage adapter (`store.js`) that is shaped like Firestore. A Firebase adapter is mostly a translation of that adapter, and the schedule logic and screens don't change.
 
+## Two apps, one backend
+
+Decided 2026-10-19. The hosted tool is two small front ends on one Firebase project, not one big page:
+
+| | **Employee app** (`app` Hosting site) | **Admin back office** (`admin` Hosting site) |
+|---|---|---|
+| Who | Every active member | Admins (and editors) only |
+| Screens | My schedule / next shifts, Schedule (find a person), Trades, Documents, Verify my info, Something wrong? | Employee cards, Corrections, Staffing dashboard, Projection with edit forms, imports (awards, notices), records editing, user approval |
+| Device | Phone first, installable (PWA) | Desktop first |
+| Ships | No admin code at all | Everything the admin needs |
+
+- **Shared code**, one repo: `schedule.js` (watch math, cover kinds) and `store.js` (Firestore access) are used by both; a fix lands in both.
+- **The security rules are the API.** Both apps talk to the same Firestore; the rules decide who reads or writes each record. There is no custom API server. Cloud Functions handle only the trusted actions (approve users, set roles, pick a trade, send invites).
+- Hiding admin screens is not the security: a member can't read cell numbers or edit records even with a modified page, because the rules refuse it.
+- **Launch order:** the employee app ships first for beta testers. Until the back office moves, admins keep working on the claude.ai main page, and its records are copied into Firestore at launch.
+
 ## Before starting
 
 These need answers before any build work:

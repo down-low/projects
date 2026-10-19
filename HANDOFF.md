@@ -8,6 +8,10 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`.
 3. **Data cleanup.** The open questions below.
 
+## Shape of the hosted tool
+
+Two front ends on one Firebase backend: a light **employee app** (schedule, trades, documents; phone first, no admin code) and a separate **admin back office** (Employee cards, Corrections, Staffing, imports, editing). Same Firestore underneath; the security rules are the API. Details: `FIREBASE_PLAN.md`, "Two apps, one backend".
+
 ## How we work
 
 - **Git is the only source of truth.** Every chat works on its own `claude/…` branch and merges to **`main`** with a pull request. Nobody edits code on the host.
