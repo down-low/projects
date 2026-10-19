@@ -128,6 +128,9 @@ Next: test with a few people using [`BETA.md`](BETA.md) (optional), then switch 
 | Sign-in popup closes and nothing happens | Allow pop-ups for the site, or try again; on some phones it switches to a full-page sign-in. |
 | "This domain is not authorized" on the back office | Step 4: add `<project-id>-admin.web.app` to Authorized domains. |
 | "Admins only" on the back office | That account isn't an admin or editor. Members use the employee app. |
+| Deploy error "database '(default)' does not exist" | Step 5: create the Firestore database (Standard edition, ID `(default)`), then run the workflow again. |
+| Deploy error "Cloud Billing API has not been used … or it is disabled" | Open the link in the error (or Google Cloud → APIs → **Cloud Billing API**), click **Enable**, wait 2 minutes, run the workflow again. |
+| "Google sign-in could not be completed" right after signing in | The account step on the server failed. Firebase console → **Functions** → `syncMe` → **Logs**: send Claude the red lines. |
 | "Waiting for approval" after signing in as an admin | The address isn't in `ADMIN_EMAILS` exactly as Google spells it. Fix the variable, run the workflow again, sign out and in. |
 | The schedule is empty after sign-in | The deploy's "Roster files and PDFs to Storage" step didn't run. Check the Actions run. |
 | Charges | **https://console.cloud.google.com/billing** shows the spend; the budget alert emails you at $5, $9 and $10. |

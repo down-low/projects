@@ -45,9 +45,14 @@ async function storageJson(path) {
   const [buf] = await admin.storage().bucket().file(path).download();
   return JSON.parse(buf.toString("utf8"));
 }
+// Missing files (before the first copy to Storage) give an empty roster rather than failing sign-in for everyone.
 async function roster() {
   if (!rosterCache.rows || Date.now() - rosterCache.at > 600000) {
-    const [rows, ids] = await Promise.all([storageJson("data/positions.json"), storageJson("data/employee-ids.json").catch(() => ({ ids: {} }))]);
+    const [rows, ids] = await Promise.all([
+      storageJson("data/positions.json").catch((e) => { console.warn("roster file missing: " + e.message); return null; }),
+      storageJson("data/employee-ids.json").catch(() => ({ ids: {} })),
+    ]);
+    if (!rows) return { rows: [], ids: {} };
     rosterCache = { at: Date.now(), rows, ids: ids.ids || {} };
   }
   return rosterCache;
