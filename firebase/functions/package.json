@@ -1,0 +1,12 @@
+{
+  "name": "tour-schedule-functions",
+  "private": true,
+  "description": "Cloud Functions for the SFFD tour schedule (accounts and approval).",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "scripts": { "test": "node --test accounts.test.js" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  }
+}

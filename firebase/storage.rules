@@ -1,0 +1,13 @@
+rules_version = '2';
+// Roster files (data/) and PDFs (docs/) hold names and Employee IDs: approved accounts read them; nobody writes from
+// the page. The deploy workflow uploads them from the repo.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /data/{file} {
+      allow read: if request.auth != null && request.auth.token.get('active', false) == true;
+    }
+    match /docs/{file} {
+      allow read: if request.auth != null && request.auth.token.get('active', false) == true;
+    }
+  }
+}

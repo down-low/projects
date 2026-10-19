@@ -1,0 +1,161 @@
+/* Security rules tests (firestore.rules, storage.rules), ported from tests/test_server.py and FIREBASE_PLAN.md "Testing".
+ * Run inside the emulator, from firebase/:
+ *   npx firebase-tools emulators:exec --only firestore,storage --project demo-tour-schedule "node --test tests/rules.test.js"
+ * Phone numbers below are made up.
+ */
+"use strict";
+const test = require("node:test");
+const fs = require("node:fs");
+const path = require("node:path");
+const { initializeTestEnvironment, assertFails, assertSucceeds } = require("@firebase/rules-unit-testing");
+
+const ROOT = path.join(__dirname, "..");
+let env;
+
+const ADMIN = { uid: "admin1", claims: { active: true, role: "admin", pos: null } };
+const EDITOR = { uid: "ed1", claims: { active: true, role: "editor", pos: "20EOC01M" } };
+const MEMBER = { uid: "mem1", claims: { active: true, role: "member", pos: "10EOC03M" } };
+const OTHER = { uid: "mem2", claims: { active: true, role: "member", pos: "11ENL01M" } };
+const PENDING = { uid: "pend1", claims: { active: false, role: "member", pos: null } };
+const NOCLAIMS = { uid: "new1", claims: {} };
+
+const as = (who) => env.authenticatedContext(who.uid, who.claims);
+const db = (who) => (who ? as(who) : env.unauthenticatedContext()).firestore();
+const status = (extra) => Object.assign({ pos: "10EOC03M", code: "VA", start: "2026-11-01", end: "2026-11-03", note: "" }, extra);
+
+test.before(async () => {
+  env = await initializeTestEnvironment({
+    projectId: "demo-tour-schedule",
+    firestore: { rules: fs.readFileSync(path.join(ROOT, "firestore.rules"), "utf8") },
+    storage: { rules: fs.readFileSync(path.join(ROOT, "storage.rules"), "utf8") },
+  });
+});
+test.after(async () => { if (env) await env.cleanup(); });
+test.beforeEach(async () => {
+  await env.clearFirestore();
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc("statuses/s1").set(status());
+    await d.doc("staffCells/10EOC03M").set({ cell: "415-555-0100" });
+    await d.doc("profiles/10EOC03M").set({ birthDate: "1980-01-01", hireDate: "2005-01-01" });
+    await d.doc("profiles/11ENL01M").set({ birthDate: "1981-01-01" });
+    await d.doc("contacts/mem1").set({ pos: "10EOC03M", phoneMobile: "415-555-0101", share: false });
+    await d.doc("contacts/mem2").set({ pos: "11ENL01M", phoneMobile: "415-555-0102", share: true });
+    await d.doc("users/mem1").set({ email: "m@x.org", status: "active", role: "member", pos: "10EOC03M" });
+    await d.doc("trades/t1").set({ posterKey: "10EOC03M", date: "2026-11-05", status: "open", audience: { board: true, to: [] } });
+    await d.doc("corrections/mem1").set({ items: { a: { state: "open" } } });
+    await d.doc("audit/a1").set({ action: "x" });
+  });
+});
+
+test("signed-out, pending and claim-less accounts see nothing", async () => {
+  for (const who of [null, PENDING, NOCLAIMS]) {
+    await assertFails(db(who).doc("statuses/s1").get());
+    await assertFails(db(who).collection("statuses").get());
+    await assertFails(db(who).doc("trades/t1").get());
+    await assertFails(db(who).collection("contacts").where("share", "==", true).get());
+  }
+});
+
+test("members read records but can't edit them", async () => {
+  await assertSucceeds(db(MEMBER).collection("statuses").get());
+  await assertFails(db(MEMBER).collection("statuses").add(status()));
+  await assertFails(db(MEMBER).doc("statuses/s1").update({ end: "2026-11-09" }));
+  await assertFails(db(MEMBER).doc("statuses/s1").delete());
+  await assertFails(db(MEMBER).doc("rosterOverrides/10EOC03M").set({ name: "X" }));
+});
+
+test("editors write records with valid fields only; admins skip the checks", async () => {
+  await assertSucceeds(db(EDITOR).collection("statuses").add(status()));
+  await assertFails(db(EDITOR).collection("statuses").add(status({ code: "XX" })));
+  await assertFails(db(EDITOR).collection("statuses").add(status({ code: "TR" }))); // TR comes only from a trade
+  await assertFails(db(EDITOR).collection("statuses").add(status({ start: "11/01/2026" })));
+  await assertFails(db(EDITOR).collection("statuses").add(status({ end: "2026-10-01" })));
+  await assertSucceeds(db(EDITOR).collection("tourChanges").add({ pos: "10EOC03M", tour: 12, effective: "2026-12-01" }));
+  await assertFails(db(EDITOR).collection("tourChanges").add({ pos: "10EOC03M", tour: 32, effective: "2026-12-01" }));
+  await assertFails(db(EDITOR).collection("covers").add({ coverKey: "a", targetPos: "a", start: "2026-11-01" }));
+  await assertFails(db(EDITOR).collection("covers").add({ coverKey: "a", targetPos: "b", start: "2026-11-01", kind: "boss" }));
+  await assertSucceeds(db(EDITOR).collection("covers").add({ coverKey: "a", targetPos: "b", start: "2026-11-01", kind: "acting" }));
+  await assertFails(db(EDITOR).collection("people").add({ name: "New,A", rank: "Firefighter", emplId: "bad" }));
+  await assertSucceeds(db(EDITOR).collection("people").add({ name: "New,A", rank: "Firefighter", emplId: "AB1234", tour: 5 }));
+  await assertSucceeds(db(ADMIN).collection("statuses").add(status({ code: "TR" })));
+  await assertFails(db(EDITOR).doc("rosterOverrides/10EOC03M").set({ name: "X" }));
+  await assertSucceeds(db(ADMIN).doc("rosterOverrides/10EOC03M").set({ name: "X" }));
+});
+
+test("cell numbers are admin-only", async () => {
+  for (const who of [MEMBER, EDITOR, PENDING]) {
+    await assertFails(db(who).doc("staffCells/10EOC03M").get());
+    await assertFails(db(who).collection("staffCells").get());
+    await assertFails(db(who).doc("staffCells/10EOC03M").set({ cell: "415-555-0199" }));
+  }
+  await assertSucceeds(db(ADMIN).collection("staffCells").get());
+  await assertSucceeds(db(ADMIN).doc("staffCells/11ENL01M").set({ cell: "415-555-0103" }));
+});
+
+test("profiles are private to their owner and admins", async () => {
+  await assertSucceeds(db(MEMBER).doc("profiles/10EOC03M").get());
+  await assertSucceeds(db(MEMBER).doc("profiles/10EOC03M").set({ birthDate: "1980-02-02", hireDate: null }));
+  await assertFails(db(MEMBER).doc("profiles/11ENL01M").get());
+  await assertFails(db(MEMBER).collection("profiles").get());
+  await assertFails(db(EDITOR).doc("profiles/10EOC03M").get());
+  await assertSucceeds(db(ADMIN).collection("profiles").get());
+});
+
+test("contact info: own, shared, or admin", async () => {
+  await assertSucceeds(db(MEMBER).doc("contacts/mem1").get());
+  await assertSucceeds(db(MEMBER).doc("contacts/mem2").get()); // shared
+  await assertFails(db(OTHER).doc("contacts/mem1").get()); // not shared
+  await assertSucceeds(db(OTHER).collection("contacts").where("share", "==", true).get());
+  await assertFails(db(OTHER).collection("contacts").get());
+  await assertSucceeds(db(ADMIN).collection("contacts").get());
+  await assertSucceeds(db(MEMBER).doc("contacts/mem1").set({ pos: "10EOC03M", phoneMobile: "415-555-0104", share: true }));
+  await assertFails(db(MEMBER).doc("contacts/mem1").set({ pos: "11ENL01M", share: true })); // someone else's seat
+  await assertFails(db(MEMBER).doc("contacts/mem2").set({ pos: "10EOC03M", share: true }));
+});
+
+test("accounts: read your own, change only alerts and tabs", async () => {
+  await assertSucceeds(db(MEMBER).doc("users/mem1").get());
+  await assertFails(db(OTHER).doc("users/mem1").get());
+  await assertFails(db(MEMBER).collection("users").get());
+  await assertSucceeds(db(MEMBER).doc("users/mem1").update({ alerts: { text: true, app: false, email: false, board: "off" } }));
+  await assertFails(db(MEMBER).doc("users/mem1").update({ role: "admin" }));
+  await assertFails(db(MEMBER).doc("users/mem1").update({ status: "active", pos: "11ENL01M" }));
+  await assertFails(db(PENDING).doc("users/pend1").set({ status: "active", role: "admin" }));
+});
+
+test("trades: post as yourself, reply as yourself, only the poster sets or cancels", async () => {
+  await assertSucceeds(db(MEMBER).collection("trades").add({ posterKey: "10EOC03M", date: "2026-11-09", status: "open", audience: { board: true, to: [] } }));
+  await assertFails(db(MEMBER).collection("trades").add({ posterKey: "11ENL01M", date: "2026-11-09", status: "open" }));
+  await assertFails(db(PENDING).collection("trades").add({ posterKey: "10EOC03M", status: "open" }));
+  await assertSucceeds(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL01M", proposal: { later: true } }));
+  await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "10EOC03M", proposal: { later: true } }));
+  await assertFails(db(OTHER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M" }));
+  await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M", replyId: "r1", setAt: "x", legs: [] }));
+  await assertFails(db(MEMBER).doc("trades/t1").update({ posterKey: "11ENL01M" }));
+  await assertFails(db(MEMBER).doc("trades/t1").update({ date: "2026-12-01" }));
+});
+
+test("corrections: each member their own; editors and admins all", async () => {
+  await assertSucceeds(db(MEMBER).doc("corrections/mem1").get());
+  await assertSucceeds(db(MEMBER).doc("corrections/mem1").set({ items: { b: { state: "open" } } }, { merge: true }));
+  await assertFails(db(OTHER).doc("corrections/mem1").get());
+  await assertFails(db(OTHER).collection("corrections").get());
+  await assertSucceeds(db(EDITOR).collection("corrections").get());
+});
+
+test("audit is admin-read, never written from a page", async () => {
+  await assertFails(db(MEMBER).doc("audit/a1").get());
+  await assertSucceeds(db(ADMIN).doc("audit/a1").get());
+  await assertFails(db(ADMIN).collection("audit").add({ action: "y" }));
+});
+
+test("storage: roster files and PDFs for approved accounts only", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    await ctx.storage().ref("data/positions.json").put(Buffer.from("[]"), { contentType: "application/json" });
+  });
+  await assertSucceeds(as(MEMBER).storage().ref("data/positions.json").getMetadata());
+  await assertFails(as(PENDING).storage().ref("data/positions.json").getMetadata());
+  await assertFails(env.unauthenticatedContext().storage().ref("data/positions.json").getMetadata());
+  await assertFails(as(ADMIN).storage().ref("data/positions.json").put(Buffer.from("[]")));
+});
