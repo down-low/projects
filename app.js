@@ -1289,6 +1289,7 @@
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
     Organization: window.Organization, store: store, recall: recall,
+    byName: function (n) { return byName[nameKey(n)] || []; },
     dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },
     // Companies to pull from fir-db1: every roster company plus the rescue captains.
     companies: function () {

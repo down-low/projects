@@ -831,3 +831,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .fir-sec > summary { cursor: pointer; padding: 6px 0; }
 .fir-sec .n { font-family: var(--font-data); color: var(--muted); }
 table.fir-t td { white-space: normal; vertical-align: top; }
+.fir-form { border-top: 0; padding-top: 0; margin-top: 0; }
+.fir-who > summary, .fir-person > summary { cursor: pointer; padding: 6px 0; }
+.fir-list { max-height: 50vh; overflow: auto; }
+.fir-person { border-top: 1px solid var(--line); }

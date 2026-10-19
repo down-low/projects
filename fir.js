@@ -1,68 +1,131 @@
 /* Compare with fir-db1 (admins, Employee cards screen).
- * fir-db1 is the department's time system (Oracle APEX, city VPN only). Its "Search Co Time" page lists everyone booked at a
- * company on a date. Nothing here talks to fir-db1: the admin copies a pull script, runs it in the browser console on a fir-db1
- * tab they are signed in to, and gets one CSV for a date. Dropping that CSV here compares it with the tool's own Projection
- * for the same date (app.js dayRows). The CSV stays in this browser; nothing is saved.
- * window.FirCompare = {script(companies), parseCsv(text), compare(rows, api)}.
+ * fir-db1 is the department's time system (Oracle APEX, city VPN only). Page 2 shows time entries either for one employee
+ * (P2_WHICH=Empl: a run of days from a date) or for a company on a date (P2_WHICH=Co: everyone assigned there, with TRC "H" for
+ * those off that day). Nothing here talks to fir-db1. The admin picks a rank level; the tool lists the people it has questions
+ * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
+ * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
+ * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
+ * window.FirCompare = {LEVELS, targets(api, level, all), script(plan), parseCsv(text), compare(rows, api)}.
+ *
+ * TRC (time reporting code): REG = working; H = off that day (not their shift); anything else with hours (IDV, VAC, SICK…) is
+ * leave. The Status column (EMPL_CLASS, e.g. DP) marks someone off their seat (DP: disability) even on a REG row.
  */
 (function (root) {
   "use strict";
 
-  var COLS = ["date", "company", "emplId", "name", "co", "trc", "position", "role", "surf", "start", "startTime", "end", "endTime", "hours", "status", "flag"];
+  var COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag"];
+  // Rank levels, worked top-down (fewer people at the top). Ranks are the tool's names (schedule.js RANK_LEVEL).
+  var LEVELS = [
+    { id: "H40", label: "H40 · Battalion Chief", ranks: ["Battalion Chief"] },
+    { id: "H30", label: "H30 · Captain, Rescue Captain", ranks: ["Captain", "Rescue Captain"] },
+    { id: "H20", label: "H20 · Lieutenant", ranks: ["Lieutenant"] },
+    { id: "H3", label: "H3 · FF/Paramedic", ranks: ["FF/Paramedic"] },
+    { id: "H2", label: "H2 · Firefighter", ranks: ["Firefighter"] },
+    { id: "other", label: "Other · ISS, Pilot, Marine Engineer", ranks: ["ISS", "Pilot", "Marine Engineer"] },
+  ];
+  var UNSURE = /not known|unknown|assumed|confirm|may vary|unofficial|not set|\?/i;
 
-  /* The console script. It reads the APEX session from the tab's address, opens the company page (page 2, P2_WHICH=Co) for
-     each company one at a time, reads the Time Entry table by its column headings, and downloads fir-<date>.csv.
-     Flags: "empty" (company pulled, nobody listed), "maybe-cut-off" (as many rows as the Rows setting, or a next-page link). */
-  function script(companies) {
-    return "/* Tour schedule: pull who's booked per company from fir-db1. Paste in the console on a signed-in fir-db1 tab. */\n" +
+  /* The people at one rank level the tool has questions about, each with reasons. all: everyone at the level.
+     api: {people(), recs(), byPos(), byName(key), today(), iso(d), coverOf(pos, d), statusFor(pos, d), home(p), kindWord(c)}.
+     Returns [{p, reasons: [text]}], people with questions first. */
+  function targets(api, levelId, all) {
+    var lv = LEVELS.filter(function (l) { return l.id === levelId; })[0];
+    if (!lv) return [];
+    var t = api.today(), ti = api.iso(t), recs = api.recs(), M = root.TourMath;
+    var fixes = recs.corrections || [];
+    return api.people().filter(function (p) { return lv.ranks.indexOf(p.rank) !== -1; }).map(function (p) {
+      var why = [], moved = M.movedTo(p.pos, t, recs.covers || []);
+      if (!p.emplId) why.push("No Employee ID (checked by company)");
+      if (p.added && !moved) why.push(p.company ? "Added, not on the vacancy list" : "Added, no seat or company");
+      if (p.open && !moved) why.push("Own seat is open for bid");
+      (recs.covers || []).forEach(function (c) {
+        if (c.tradeId || (c.end && c.end < ti)) return;
+        var mine = c.coverKey === p.pos, onSeat = c.targetPos === p.pos;
+        if (!mine && !onSeat) return;
+        var isMove = M.isMove(c), seat = api.byPos()[c.targetPos];
+        if (mine && !isMove && c.start <= ti) why.push(api.kindWord(c) + " " + (seat ? seat.title : c.targetPos) + (UNSURE.test(c.note || "") ? " (note: " + shortNote(c.note) + ")" : ""));
+        else if (mine && isMove && UNSURE.test(c.note || "")) why.push("Own seat " + c.targetPos + " (note: " + shortNote(c.note) + ")");
+        else if (onSeat && !isMove && c.start <= ti && !mine) why.push("Someone else is in their seat (" + (c.coverName || c.coverKey) + ")");
+      });
+      var st = api.statusFor(p.pos, t);
+      if (st === "D" || st === "WE") why.push(st === "D" ? "On disability" : "Working elsewhere");
+      if (fixes.some(function (x) { return x.aboutKey === p.pos && x.state === "open"; })) why.push("Open correction");
+      if ((api.byName(p.name) || []).length > 1) why.push("Same name as someone else");
+      return { p: p, reasons: why };
+    }).filter(function (x) { return all || x.reasons.length; }).sort(function (a, b) {
+      return (b.reasons.length ? 1 : 0) - (a.reasons.length ? 1 : 0) || a.p.name.localeCompare(b.p.name);
+    });
+  }
+  function shortNote(n) { n = String(n || ""); return n.length > 60 ? n.slice(0, 57) + "…" : n; }
+
+  /* The console script for a plan: {date: "MM/DD/YYYY" or "", people: [{id, name, co}], companies: [codes], label}.
+     Employee pages for people with IDs (14 days from the date); company pages (100 rows) for the companies listed. */
+  function script(plan) {
+    return "/* Tour schedule: fir-db1 pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(async () => {\n" +
-      "  const COMPANIES = " + JSON.stringify(companies) + ";\n" +
+      "  const PLAN = " + JSON.stringify({ date: plan.date || "", people: plan.people || [], companies: plan.companies || [] }) + ";\n" +
       "  const COLS = " + JSON.stringify(COLS) + ";\n" +
       "  const m = /[?&]p=(\\d+):\\d+:(\\d+)/.exec(location.href);\n" +
       "  if (!m) return alert('Open a fir-db1 page first (signed in), then run this again.');\n" +
       "  const app = m[1], session = m[2];\n" +
-      "  const t = new Date(), dflt = (t.getMonth() + 1) + '/' + t.getDate() + '/' + t.getFullYear();\n" +
-      "  const date = (prompt('Date to pull (MM/DD/YYYY)', dflt) || '').trim();\n" +
+      "  let date = PLAN.date;\n" +
+      "  if (!date) { const t = new Date(); date = (prompt('Date to pull (MM/DD/YYYY)', (t.getMonth() + 1) + '/' + t.getDate() + '/' + t.getFullYear()) || '').trim(); }\n" +
       "  if (!/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(date)) return alert('Use a date like 10/20/2026.');\n" +
-      "  const pick = (prompt('Companies to pull (blank = all ' + COMPANIES.length + '), e.g. E10 T10', '') || '').trim();\n" +
-      "  const list = pick ? pick.toUpperCase().split(/[\\s,]+/) : COMPANIES;\n" +
-      "  const out = [], val = (td) => {\n" +
+      "  const base = location.origin + location.pathname + '?p=' + app + ':2:' + session + ':::RP,2:';\n" +
+      "  const enc = (v) => encodeURIComponent(v || '');\n" +
+      "  const val = (td) => {\n" +
       "    if (!td) return '';\n" +
-      "    const box = td.querySelector('input[type=checkbox]');\n" +
+      "    const c = td.cloneNode(true);\n" +
+      "    c.querySelectorAll('script, noscript, label, .u-VisuallyHidden').forEach((x) => x.remove());\n" +
+      "    const box = c.querySelector('input[type=checkbox]');\n" +
       "    if (box) return box.hasAttribute('checked') ? 'Y' : '';\n" +
-      "    const f = td.querySelector('input:not([type=hidden]), select, textarea');\n" +
-      "    if (f && f.tagName === 'SELECT') { const o = f.querySelector('option[selected]') || f.querySelector('option'); return o ? o.textContent.trim() : ''; }\n" +
-      "    if (f) return (f.getAttribute('value') || f.textContent || '').trim();\n" +
-      "    return td.textContent.replace(/\\s+/g, ' ').trim();\n" +
+      "    const f = c.querySelector('input:not([type=hidden]), select, textarea');\n" +
+      "    if (f && f.tagName === 'SELECT') { const o = f.querySelector('option[selected]'); return o ? o.textContent.trim() : ''; }\n" +
+      "    if (f) return (f.getAttribute('value') || '').trim();\n" +
+      "    return c.textContent.replace(/\\s+/g, ' ').trim();\n" +
       "  };\n" +
-      "  for (let i = 0; i < list.length; i++) {\n" +
-      "    const co = list[i];\n" +
-      "    console.log('fir pull ' + (i + 1) + '/' + list.length + ': ' + co);\n" +
-      "    const url = location.origin + location.pathname + '?p=' + app + ':2:' + session + ':::RP:P2_COMPANY,P2_SCHD_DT,P2_WHICH:' + co + ',' + encodeURIComponent(date) + ',Co';\n" +
-      "    const html = await (await fetch(url, { credentials: 'same-origin' })).text();\n" +
+      "  // Read the Time Entry table by column id (td headers=...), falling back to the heading text.\n" +
+      "  const read = (html) => {\n" +
       "    const doc = new DOMParser().parseFromString(html, 'text/html');\n" +
-      "    const table = [...doc.querySelectorAll('table')].find((tb) => { const h = tb.textContent; return /Empl/.test(h) && /Position/.test(h) && tb.querySelector('th'); });\n" +
-      "    if (!table) {\n" +
-      "      if (/password|sign in|log in/i.test(html)) { alert('fir-db1 signed you out at ' + co + '. Sign in again and rerun; ' + out.length + ' rows so far were not saved.'); return; }\n" +
-      "      out.push({ date, company: co, flag: 'no-table' }); continue;\n" +
+      "    const table = doc.querySelector('table[aria-label=\"Time Entry\"], table.t-Report-report') ||\n" +
+      "      [...doc.querySelectorAll('table')].find((tb) => /TRC/.test(tb.textContent) && /Position/.test(tb.textContent) && tb.querySelector('th'));\n" +
+      "    if (!table) return null;\n" +
+      "    const label = {};\n" +
+      "    table.querySelectorAll('th').forEach((th) => { if (th.id) label[th.id] = th.textContent.replace(/\\s+/g, ' ').trim(); });\n" +
+      "    const pick = (o, ids, labels) => { for (const k of ids) if (o.id[k] != null) return o.id[k]; for (const l of labels) if (o.lb[l] != null) return o.lb[l]; return ''; };\n" +
+      "    return [...table.querySelectorAll('tr')].map((tr) => {\n" +
+      "      const o = { id: {}, lb: {} };\n" +
+      "      [...tr.querySelectorAll('td')].forEach((td) => { const h = td.getAttribute('headers'); if (!h) return; const v = val(td); o.id[h] = v; if (label[h] && o.lb[label[h]] == null) o.lb[label[h]] = v; });\n" +
+      "      return { emplId: pick(o, ['ORDER_BY', 'EMPLID'], ['Empl']), name: pick(o, ['DATE_NAME', 'NAME'], ['Name']), date: pick(o, ['SCHD_DATE', 'SCHD_DT'], ['Date']),\n" +
+      "        day: pick(o, [], ['Day']), co: pick(o, ['SCHD_COMPANY'], ['Co']), trc: pick(o, ['TIME_RPTG_CD'], ['TRC']), position: pick(o, ['POSITION_NBR'], ['Position']),\n" +
+      "        role: pick(o, ['SCHD_ROLE_CD'], ['Role']), hours: pick(o, ['HOURS'], []), status: pick(o, ['EMPL_CLASS'], ['Status']) };\n" +
+      "    }).filter((r) => r.trc || r.position || /^[A-Z]{2}\\d{4}$/.test(r.emplId));\n" +
+      "  };\n" +
+      "  const out = [], wait = () => new Promise((r) => setTimeout(r, 400));\n" +
+      "  const get = async (url) => { const h = await (await fetch(url, { credentials: 'same-origin' })).text();\n" +
+      "    if (!/Time Entry/.test(h) && /type=\"password\"/i.test(h)) throw new Error('signed-out'); return h; };\n" +
+      "  const total = PLAN.people.length + PLAN.companies.length;\n" +
+      "  let n = 0;\n" +
+      "  try {\n" +
+      "    for (const p of PLAN.people) {\n" +
+      "      console.log('fir pull ' + (++n) + '/' + total + ': ' + p.name + ' ' + p.id);\n" +
+      "      const rows = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(date)));\n" +
+      "      if (!rows) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' });\n" +
+      "      else if (!rows.length) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' });\n" +
+      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: r.name || p.name })));\n" +
+      "      await wait();\n" +
       "    }\n" +
-      "    const heads = [...table.querySelectorAll('tr')].find((r) => r.querySelector('th'));\n" +
-      "    const names = [...heads.children].map((th) => th.textContent.replace(/\\s+/g, ' ').trim());\n" +
-      "    const idx = (label, nth) => { let k = -1, seen = 0; names.forEach((n, j) => { if (k < 0 && n === label && seen++ === (nth || 0)) k = j; }); return k; };\n" +
-      "    const at = { emplId: idx('Empl'), name: idx('Name'), co: idx('Co'), trc: idx('TRC'), position: idx('Position'), role: idx('Role'), surf: idx('Surf?'),\n" +
-      "      start: idx('Start Dt'), startTime: idx('Time'), end: idx('End Dt'), endTime: idx('Time', 1), status: idx('Status') };\n" +
-      "    at.hours = at.endTime >= 0 ? at.endTime + 1 : -1;\n" +
-      "    const rows = [...table.querySelectorAll('tr')].filter((r) => r !== heads && r.querySelectorAll('td').length > 3);\n" +
-      "    rows.forEach((r) => {\n" +
-      "      const tds = r.children, rec = { date, company: co };\n" +
-      "      Object.keys(at).forEach((k) => { rec[k] = at[k] >= 0 ? val(tds[at[k]]) : ''; });\n" +
-      "      if (rec.emplId || rec.name) out.push(rec);\n" +
-      "    });\n" +
-      "    const sel = doc.querySelector('select[id*=ROWS]'), per = sel ? +(sel.querySelector('option[selected]') || {}).value || 0 : 0;\n" +
-      "    const more = doc.querySelector('.t-Report-paginationLink--next, a[class*=pagination][class*=next]');\n" +
-      "    if (!rows.length) out.push({ date, company: co, flag: 'empty' });\n" +
-      "    else if (more || (per && rows.length >= per)) out[out.length - 1].flag = 'maybe-cut-off';\n" +
-      "    await new Promise((r) => setTimeout(r, 400));\n" +
+      "    for (const co of PLAN.companies) {\n" +
+      "      console.log('fir pull ' + (++n) + '/' + total + ': company ' + co);\n" +
+      "      let rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH,P2_NUM_ROWS:' + enc(co) + ',' + enc(date) + ',Co,100'));\n" +
+      "      if (!rows) rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH:' + enc(co) + ',' + enc(date) + ',Co'));\n" +
+      "      if (!rows) out.push({ mode: 'co', pulledFor: date, query: co, flag: 'no-table' });\n" +
+      "      else if (!rows.length) out.push({ mode: 'co', pulledFor: date, query: co, flag: 'empty' });\n" +
+      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'co', pulledFor: date, query: co, date: date })));\n" +
+      "      await wait();\n" +
+      "    }\n" +
+      "  } catch (e) {\n" +
+      "    if (e.message === 'signed-out') alert('fir-db1 signed you out. Sign in again and rerun; the rows so far are in the file.'); else console.error(e);\n" +
       "  }\n" +
       "  const q = (v) => { v = v == null ? '' : String(v); return /[\",\\n]/.test(v) ? '\"' + v.replace(/\"/g, '\"\"') + '\"' : v; };\n" +
       "  const csv = [COLS.join(',')].concat(out.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\\n');\n" +
@@ -70,11 +133,11 @@
       "  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));\n" +
       "  a.download = 'fir-' + date.replace(/\\//g, '-') + '.csv';\n" +
       "  document.body.appendChild(a); a.click(); a.remove();\n" +
-      "  console.log('fir pull done: ' + out.filter((r) => r.emplId || r.name).length + ' people from ' + list.length + ' companies.');\n" +
+      "  console.log('fir pull done: ' + out.length + ' rows.');\n" +
       "})();\n";
   }
 
-  // CSV text -> [{date (ISO), company, emplId, name, ...}]. Handles quoted fields.
+  // CSV text -> rows (objects keyed by the header). Dates (MM/DD/YY or MM/DD/YYYY) become ISO.
   function parseCsv(text) {
     var rows = [], row = [], f = "", q = false, i, c;
     text = String(text || "").replace(/^\ufeff/, "");
@@ -91,80 +154,94 @@
     }
     if (f || row.length) { row.push(f); rows.push(row); }
     var head = rows.shift() || [];
-    if (head.indexOf("emplId") === -1 || head.indexOf("company") === -1) throw new Error("This isn't a fir-db1 pull (no emplId / company columns).");
+    if (head.indexOf("emplId") === -1 || head.indexOf("trc") === -1) throw new Error("This isn't a fir-db1 pull from this tool (no emplId / trc columns).");
     return rows.filter(function (r) { return r.length > 1; }).map(function (r) {
       var o = {};
       head.forEach(function (h, k) { o[h] = (r[k] || "").trim(); });
-      var m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(o.date || "");
-      o.date = m ? m[3] + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2) : o.date;
+      o.date = isoOf(o.date) || isoOf(o.pulledFor);
       o.emplId = (o.emplId || "").toUpperCase();
       return o;
     });
   }
-
+  function isoOf(s) {
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s || "");
+    if (!m) return /^\d{4}-\d{2}-\d{2}$/.test(s || "") ? s : "";
+    return (m[3].length === 2 ? "20" + m[3] : m[3]) + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2);
+  }
   function nameKey(n) { return String(n || "").toLowerCase().replace(/[^a-z,]/g, ""); }
 
-  /* Compare fir rows (one date) with the tool's day. api: {dayRows(d), people(), fromIso, apparatus(co)}.
-     Returns {date, pulled: [companies], flags: [rows with a flag], ok, seat, onoff, firOnly, toolOnly} where each list item is
-     {fir, tool, p, note}. fir "off" = a Status code on the row (e.g. DP); tool "off" = leave, away or covered. */
-  function compare(rows, api) {
-    var dates = {};
-    rows.forEach(function (r) { if (r.date) dates[r.date] = 1; });
-    var dlist = Object.keys(dates);
-    if (dlist.length !== 1) throw new Error(dlist.length ? "The file has more than one date (" + dlist.join(", ") + "). Pull one date at a time." : "The file has no date.");
-    var date = dlist[0], d = api.fromIso(date), app = api.apparatus;
-    var pulled = {}, flags = [];
-    rows.forEach(function (r) { pulled[app(r.company)] = 1; if (r.flag) flags.push(r); });
-    var fir = rows.filter(function (r) { return r.emplId || r.name; });
+  // fir-db1's side of one row: working (REG, no Status), off (H: not their day) or leave (another TRC, or a Status like DP).
+  function firState(f) {
+    var trc = (f.trc || "").toUpperCase();
+    if (f.status) return { kind: "leave", code: f.status };
+    if (trc === "H" || (!trc && !f.position)) return { kind: "off" };
+    if (trc === "REG") return { kind: "work" };
+    return { kind: "leave", code: trc };
+  }
 
-    // The tool's day: one entry per person, preferring the row where they work.
-    var tool = {}, toolByName = {};
-    api.dayRows(d).forEach(function (r) {
-      if (!r.name) return;
-      var p = r.who, key = p ? p.pos : "name:" + r.name;
-      var e = { p: p, name: r.name, emplId: p && p.emplId ? p.emplId.toUpperCase() : "", co: app(r.co), seat: r.slot.pos,
-        status: r.status || null, off: !!r.off, away: r.away, kind: r.kind || null };
-      var old = tool[key];
-      if (!old || (old.off && !e.off)) tool[key] = e;
-    });
-    var byId = {};
-    Object.keys(tool).forEach(function (k) {
-      var e = tool[k];
-      if (e.emplId) byId[e.emplId] = e;
-      (toolByName[nameKey(e.name)] = toolByName[nameKey(e.name)] || []).push(e);
-    });
+  /* Compare pulled rows with the tool, day by day. api: {dayRows(d), people(), fromIso, apparatus(co)}.
+     Returns {dates, flags, people: [{key, p, name, emplId, days, issues: [{date, fir, tool, note}]}], toolOnly, unknown}. */
+  function compare(rows, api) {
+    var app = api.apparatus, flags = rows.filter(function (r) { return r.flag; });
+    var data = rows.filter(function (r) { return !r.flag && r.date && (r.emplId || r.name); });
+    if (!data.length) throw new Error(flags.length ? "The file only has flags (" + flags.map(function (f) { return f.query + " " + f.flag; }).join(", ") + ")." : "The file has no rows.");
     var peopleById = {}, peopleByName = {};
     api.people().forEach(function (p) {
       if (p.emplId) peopleById[p.emplId.toUpperCase()] = p;
       (peopleByName[nameKey(p.name)] = peopleByName[nameKey(p.name)] || []).push(p);
     });
-
-    var out = { date: date, pulled: Object.keys(pulled), flags: flags, ok: [], seat: [], onoff: [], firOnly: [], toolOnly: [], count: fir.length };
-    var used = {};
-    fir.forEach(function (f) {
-      var e = (f.emplId && byId[f.emplId]) || null, how = "id";
-      if (!e) { var nm = toolByName[nameKey(f.name)] || []; if (nm.length === 1 && !nm[0].emplId) { e = nm[0]; how = "name"; } }
-      var firOff = !!f.status;
-      if (!e) {
-        var p = (f.emplId && peopleById[f.emplId]) || ((peopleByName[nameKey(f.name)] || []).length === 1 ? peopleByName[nameKey(f.name)][0] : null);
-        out.firOnly.push({ fir: f, p: p, note: p ? "In the tool but not scheduled this day" : "Not in the tool" + (f.emplId ? " (ID " + f.emplId + ")" : "") });
-        return;
-      }
-      used[e.p ? e.p.pos : "name:" + e.name] = 1;
-      var item = { fir: f, tool: e, p: e.p, note: how === "name" ? "Matched by name (no ID in the tool)" : "" };
-      var co = app(f.co || f.company);
-      if (firOff !== e.off) { item.note = (firOff ? "fir-db1 has them off (" + f.status + "), the tool has them working" : "fir-db1 has them working, the tool has them off") + (item.note ? " · " + item.note : ""); out.onoff.push(item); }
-      else if (!firOff && (co !== e.co || (f.position && f.position !== e.seat))) { item.note = (co !== e.co ? "Different company" : "Different position") + (item.note ? " · " + item.note : ""); out.seat.push(item); }
-      else out.ok.push(item);
+    var dayCache = {};
+    function toolDay(iso) {
+      if (dayCache[iso]) return dayCache[iso];
+      var byKey = {};
+      api.dayRows(api.fromIso(iso)).forEach(function (r) {
+        if (!r.name || !r.who) return;
+        var e = { co: app(r.co), seat: r.slot.pos, status: r.status || null, off: !!r.off, away: !!r.away, kind: r.kind || null };
+        var old = byKey[r.who.pos];
+        if (!old || (old.off && !e.off)) byKey[r.who.pos] = e;
+      });
+      return (dayCache[iso] = byKey);
+    }
+    var byPerson = {}, unknown = {}, pulledCo = {};
+    // A person's own employee page wins over a company page for the same day.
+    var hasEmpl = {};
+    data.forEach(function (f) { if (f.mode === "empl") hasEmpl[f.emplId + "|" + f.date] = 1; });
+    data.forEach(function (f) {
+      if (f.mode === "co") pulledCo[f.date + "|" + app(f.query)] = 1;
+      if (f.mode === "co" && f.emplId && hasEmpl[f.emplId + "|" + f.date]) return;
+      var p = (f.emplId && peopleById[f.emplId]) || null, how = "id";
+      if (!p) { var nm = peopleByName[nameKey(f.name)] || []; if (nm.length === 1 && !nm[0].emplId) { p = nm[0]; how = "name"; } }
+      if (!p) { var u = unknown[f.emplId || f.name] = unknown[f.emplId || f.name] || { emplId: f.emplId, name: f.name, rows: [] }; u.rows.push(f); return; }
+      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [] };
+      var fs = firState(f), t = toolDay(f.date)[p.pos] || null, note = "";
+      var toolKind = !t ? "off" : t.off ? "leave" : "work";
+      var firCo = app(f.co || (f.mode === "co" ? f.query : ""));
+      if (fs.kind === "work" && toolKind === "work") {
+        if (firCo && firCo !== t.co) note = "Different company";
+        else if (f.position && f.position !== t.seat) note = "Different position";
+      } else if (fs.kind === "work") note = toolKind === "off" ? "fir-db1 has them working; the tool has them off that day (tour?)" : "fir-db1 has them working; the tool has them " + (t.status || (t.away ? "away" : "covered"));
+      else if (toolKind === "work") note = fs.kind === "off" ? "The tool has them working; fir-db1 has them off that day (tour?)" : "fir-db1 has them on " + fs.code + "; the tool has them working";
+      else if (fs.kind === "leave" && toolKind === "off") note = "fir-db1 has them on " + fs.code + " on a day the tool has them off";
+      rec.days++;
+      if (note) rec.issues.push({ date: f.date, fir: f, tool: t, note: note + (how === "name" ? " · matched by name" : "") });
     });
-    // Working in the tool at a pulled company but not on fir-db1's list for that company.
-    Object.keys(tool).forEach(function (k) {
-      var e = tool[k];
-      if (used[k] || e.off || !pulled[e.co]) return;
-      out.toolOnly.push({ tool: e, p: e.p, note: "Not on fir-db1's list for " + e.co });
+    // Company pulls: people the tool has working at that company who aren't on fir-db1's list.
+    var toolOnly = [];
+    Object.keys(pulledCo).forEach(function (k) {
+      var iso = k.split("|")[0], co = k.split("|")[1], day = toolDay(iso);
+      var listed = {};
+      data.forEach(function (f) { if (f.date === iso && f.mode === "co") { var p = (f.emplId && peopleById[f.emplId]) || null; if (p) listed[p.pos] = 1; } });
+      Object.keys(day).forEach(function (pos) {
+        var e = day[pos];
+        if (!e.off && e.co === co && !listed[pos]) toolOnly.push({ date: iso, co: co, p: api.byPos ? api.byPos()[pos] : null, key: pos, tool: e });
+      });
     });
-    return out;
+    var dates = {};
+    data.forEach(function (f) { dates[f.date] = 1; });
+    var people = Object.keys(byPerson).map(function (k) { return byPerson[k]; }).sort(function (a, b) { return b.issues.length - a.issues.length || a.name.localeCompare(b.name); });
+    return { dates: Object.keys(dates).sort(), flags: flags, people: people, toolOnly: toolOnly,
+      unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
   }
 
-  root.FirCompare = { script: script, parseCsv: parseCsv, compare: compare, COLS: COLS };
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, script: script, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
 })(typeof window !== "undefined" ? window : globalThis);
