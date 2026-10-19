@@ -61,12 +61,13 @@
   }
   function shortNote(n) { n = String(n || ""); return n.length > 60 ? n.slice(0, 57) + "…" : n; }
 
-  /* The console script for a plan: {date: "MM/DD/YYYY" or "", people: [{id, name, co}], companies: [codes], label}.
+  /* The console script for a plan: {date: "MM/DD/YYYY" or "", to: "MM/DD/YYYY" (optional range end), people: [{id, name, co}],
+     companies: [codes], label}.
      Employee pages for people with IDs (14 days from the date); company pages (100 rows) for the companies listed. */
   function script(plan) {
     return "/* Tour schedule: fir-db1 pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(async () => {\n" +
-      "  const PLAN = " + JSON.stringify({ date: plan.date || "", people: plan.people || [], companies: plan.companies || [] }) + ";\n" +
+      "  const PLAN = " + JSON.stringify({ date: plan.date || "", to: plan.to || "", people: plan.people || [], companies: plan.companies || [] }) + ";\n" +
       "  const COLS = " + JSON.stringify(COLS) + ";\n" +
       "  const m = /[?&]p=(\\d+):\\d+:(\\d+)/.exec(location.href);\n" +
       "  if (!m) return alert('Open a fir-db1 page first (signed in), then run this again.');\n" +
@@ -75,6 +76,14 @@
       "  if (!date) { const t = new Date(); date = (prompt('Date to pull (MM/DD/YYYY)', (t.getMonth() + 1) + '/' + t.getDate() + '/' + t.getFullYear()) || '').trim(); }\n" +
       "  if (!/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(date)) return alert('Use a date like 10/20/2026.');\n" +
       "  const base = location.origin + location.pathname + '?p=' + app + ':2:' + session + ':::RP,2:';\n" +
+      "  // A range (PLAN.to): an employee page shows about 14 days, from 9 days before its date to 4 after, so ask at\n" +
+      "  // several dates and keep each day once. Without PLAN.to: one page at the date.\n" +
+      "  const md = (d) => (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();\n" +
+      "  const dt = (s) => { const x = s.split('/'); return new Date(+(x[2].length === 2 ? '20' + x[2] : x[2]), x[0] - 1, +x[1]); };\n" +
+      "  const add = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);\n" +
+      "  const anchors = [];\n" +
+      "  if (PLAN.to) { const end = dt(PLAN.to); for (let a = add(dt(date), 9); ; a = add(a, 14)) { anchors.push(md(a)); if (add(a, 4) >= end) break; } } else anchors.push(date);\n" +
+      "  const inRange = (s) => !PLAN.to || (s && dt(s) >= dt(date) && dt(s) <= dt(PLAN.to));\n" +
       "  const enc = (v) => encodeURIComponent(v || '');\n" +
       "  const val = (td) => {\n" +
       "    if (!td) return '';\n" +
@@ -112,7 +121,14 @@
       "  try {\n" +
       "    for (const p of PLAN.people) {\n" +
       "      console.log('fir pull ' + (++n) + '/' + total + ': ' + p.name + ' ' + p.id);\n" +
-      "      const rows = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(date)));\n" +
+      "      let rows = null; const seen = {};\n" +
+      "      for (const a of anchors) {\n" +
+      "        const got = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(a)));\n" +
+      "        if (!got) continue;\n" +
+      "        rows = rows || [];\n" +
+      "        got.forEach((r) => { const k = r.date || JSON.stringify(r); if (!seen[k] && inRange(r.date)) { seen[k] = 1; rows.push(r); } });\n" +
+      "        if (anchors.length > 1) await wait();\n" +
+      "      }\n" +
       "      if (!rows) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' });\n" +
       "      else if (!rows.length) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' });\n" +
       "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name })));\n" +
@@ -134,7 +150,7 @@
       "  const csv = [COLS.join(',')].concat(out.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\\n');\n" +
       "  const a = document.createElement('a');\n" +
       "  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));\n" +
-      "  a.download = 'fir-' + date.replace(/\\//g, '-') + '.csv';\n" +
+      "  a.download = 'fir-' + date.replace(/\\//g, '-') + (PLAN.to ? '_to_' + PLAN.to.replace(/\\//g, '-') : '') + '.csv';\n" +
       "  document.body.appendChild(a); a.click(); a.remove();\n" +
       "  console.log('fir pull done: ' + out.length + ' rows.');\n" +
       "})();\n";

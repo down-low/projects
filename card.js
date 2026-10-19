@@ -228,20 +228,21 @@
        file is read in this browser and kept in memory only. */
     function firPlan() {
       var F = root.FirCompare, f = ui.fir, d = f.date ? api.fromIso(f.date) : api.today();
-      var date = (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
+      var md = function (x) { return (x.getMonth() + 1) + "/" + x.getDate() + "/" + x.getFullYear(); };
+      var date = md(d), to = f.to && f.to > (f.date || "") ? md(api.fromIso(f.to)) : "";
       if (f.source === "list" && f.list) {
         // A loaded list: people by the list's Employee IDs; rows without one can't be pulled.
         var lt = F.targetsFromList(f.list, api, f.group);
         return { list: lt, label: f.list.name + (f.group ? ", " + f.group : ""), skipped: lt.filter(function (x) { return !x.id; }).length,
           people: lt.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.p ? x.p.name : x.name, co: x.p ? api.home(x.p) || "" : "" }; }),
-          companies: [], date: date };
+          companies: [], date: date, to: to };
       }
       var list = F.targets(api, f.level, f.all).map(function (x) { return { p: x.p, id: x.p.emplId || "", name: x.p.name, reasons: x.reasons }; });
       var people = list.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.name, co: api.home(x.p) || "" }; });
       var cos = {};
       list.forEach(function (x) { if (!x.id && api.home(x.p)) cos[api.home(x.p)] = 1; });
       var lv = F.LEVELS.filter(function (l) { return l.id === f.level; })[0];
-      return { list: list, label: lv.label + (f.all ? ", everyone" : ", questions only"), people: people, companies: Object.keys(cos), date: date };
+      return { list: list, label: lv.label + (f.all ? ", everyone" : ", questions only"), people: people, companies: Object.keys(cos), date: date, to: to };
     }
     function firHtml() {
       var F = root.FirCompare;
@@ -254,7 +255,8 @@
         '<form class="edit fir-form" id="fir-form" novalidate><div class="row">' +
         '<label>Who<select id="fir-source"><option value="tool"' + (f.source !== "list" ? " selected" : "") + ">People this tool has questions about</option>" +
         '<option value="list"' + (f.source === "list" ? " selected" : "") + ">People on a list (CSV)</option></select></label>" +
-        '<label>From date<input type="date" id="fir-date" value="' + esc(f.date) + '"></label></div>' +
+        '<label>From date<input type="date" id="fir-date" value="' + esc(f.date) + '"></label>' +
+        '<label>To date (optional)<input type="date" id="fir-to" value="' + esc(f.to || "") + '"></label></div>' +
         (f.source === "list"
           ? '<div class="row"><label>List<input type="file" id="fir-list" accept=".csv,text/csv"></label>' +
             (f.list && f.list.groups.length ? '<label>Rank group<select id="fir-group"><option value="">All groups</option>' + f.list.groups.map(function (g) {
@@ -350,6 +352,7 @@
         rd.readAsText(file);
       };
       $("fir-date").onchange = function () { if (this.value) { ui.fir.date = this.value; render(); } };
+      $("fir-to").onchange = function () { ui.fir.to = this.value; render(); };
       $("fir-form").onsubmit = function (e) { e.preventDefault(); };
       $("fir-copy").onclick = function () {
         var text = F.script(firPlan()), ta = $("fir-script"), b = this;
