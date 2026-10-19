@@ -48,6 +48,7 @@ MEDIC = [("MOA", "FF/Paramedic", "FF/PM", "H3", 3)]
 
 B01 = ["E01", "E02", "E03", "E04", "E05"]
 B02 = ["E06", "E07", "E08", "E09", "E10"]
+ALIASES = {"Rescue Captain 1": "RC1"}  # organization.js ALIASES
 ORGANIZATION = [{"id": "DV01", "name": "Division 1", "battalions": [
     {"id": "BT01", "name": "Batt 1", "apparatus": ["B01"] + B01 + ["RC1", "RS1", "T03"]},
     {"id": "BT02", "name": "Batt 2", "apparatus": ["B02"] + B02 + ["MA1", "T08"]},
@@ -73,9 +74,59 @@ def watches(tour):
     return sorted((tour - 1 + o) % 31 + 1 for o in OFFSETS)
 
 
+def on_duty(seats, recs, day):
+    """People working at each apparatus on `day` (ISO date), by the Staffing screen's rules (app.js dayRows,
+    dashboard.js summarize): seat by seat, the owner unless off, plus whoever covers the seat."""
+    by = {s["pos"]: s for s in seats}
+    d = dt.date.fromisoformat(day)
+    def active(c):
+        return c["start"] <= day and (not c["end"] or c["end"] >= day)
+    covers = sorted((c for c in recs["covers"] if active(c)), key=lambda c: c["createdAt"], reverse=True)
+    def acting(key):
+        return next((c for c in covers if c["coverKey"] == key and not c["move"]), None)
+    def moved(key):
+        return next((c for c in covers if c["coverKey"] == key and c["move"]), None)
+    def status(key):
+        hits = [s for s in recs["statuses"] if s["pos"] == key and s["start"] <= day and (not s["end"] or s["end"] >= day)]
+        return max(hits, key=lambda s: s["createdAt"])["code"] if hits else None
+    def tour(p):
+        ch = [c for c in recs["tourChanges"] if c["pos"] == p["pos"] and c["effective"] <= day]
+        return max(ch, key=lambda c: (c["effective"], c["createdAt"]))["tour"] if ch else p["tour"]
+    count = {}
+    for p in seats:
+        t = tour(p)
+        if not works(t, d):
+            continue
+        co = p["company"] or ALIASES.get(p["title"], p["title"])
+        if p.get("swing") and t == p["tour"]:
+            co = next((s["co"] for s in p["swing"] if s["watch"] == watch(d)), co)
+        mv = next((c for c in covers if c["move"] and c["targetPos"] == p["pos"]), None)
+        out = moved(p["pos"]) if p["name"] else None
+        owner = mv["coverKey"] if mv else p["pos"] if p["name"] and not (out and out["targetPos"] != p["pos"]) else None
+        covs = [c for c in covers if c["targetPos"] == p["pos"] and not c["move"] and acting(c["coverKey"]) is c]
+        away = acting(owner) if owner else None
+        st = status(owner) if owner else None
+        cov = next((c for c in covs if c["kind"] not in ("shadow", "extra")), None) or ((st or away or not owner) and covs[0] if covs else None)
+        n = 1 if owner and not (st or away or cov) else 0
+        n += sum(1 for c in covs if not status(c["coverKey"]))
+        count[co] = count.get(co, 0) + n
+    return count
+
+
 def spread(n, start):
     """n distinct tours spread evenly over 1..31, starting at `start`."""
     return [(start + round(i * 31 / n)) % 31 + 1 for i in range(n)]
+
+
+def rotation(tour, cos, roles):
+    return [{"co": cos[i % len(cos)], "role": roles[i % len(roles)], "watch": w} for i, w in enumerate(watches(tour))]
+
+
+def retour(s, tour):
+    """Move seat s to another tour: its position number and swing rotation follow."""
+    s["tour"], s["pos"] = tour, f"{s['_code'][0]}{s['_code'][1]}{tour:02d}M"
+    if s.get("_rot"):
+        s["swing"] = rotation(tour, *s["_rot"])
 
 
 def build_seats():
@@ -86,12 +137,13 @@ def build_seats():
         rows = [(t, r, ti, h, None, None) for t, r, ti, h, n in spec for _ in range(n)] + (swing or [])
         for (typ, rank, title, hcl, role, cos), tour in zip(rows, spread(len(rows), start)):
             s = {"pos": f"{station}{typ}{tour:02d}M", "title": f"{title} {co}", "hclass": hcl, "rank": rank, "company": co,
-                 "swingType": None, "tour": tour, "name": None, "status": "Owned"}
+                 "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": (station, typ)}
             if role:
                 s["title"] = f"{title} Swing {co}" if "SSwing" not in title else f"{title.replace(' SSwing', '')} SSwing {co}"
                 s["swingType"] = "SSwing" if "SSwing" in title else "Swing"
                 roles = role if isinstance(role, list) else [role]
-                s["swing"] = [{"co": cos[i % len(cos)], "role": roles[i % len(roles)], "watch": w} for i, w in enumerate(watches(tour))]
+                s["_rot"] = (cos, roles)
+                s["swing"] = rotation(tour, cos, roles)
             seats.append(s)
 
     ff_roles = ["EMT", "DR", "FF"]
@@ -113,19 +165,136 @@ def build_seats():
     # Battalion chiefs, ISS and rescue captains: one seat a tour on a few tours.
     for tour in (1, 2, 3):
         seats.append({"pos": f"01BO2{tour:02d}M", "title": "BC B01", "hclass": "H40", "rank": "Battalion Chief", "company": "B01",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned"})
+                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "BO2")})
         seats.append({"pos": f"01BO0{tour:02d}M", "title": "ISS B01", "hclass": "H10", "rank": "ISS", "company": "B01",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned"})
+                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "BO0")})
     for tour in (5, 6):
         seats.append({"pos": f"06BO2{tour:02d}M", "title": "BC B02", "hclass": "H40", "rank": "Battalion Chief", "company": "B02",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned"})
+                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("06", "BO2")})
     seats.append({"pos": "06BT204M", "title": "BC Swing B02", "hclass": "H40", "rank": "Battalion Chief", "company": "B02",
                   "swingType": "Swing", "tour": 4, "name": None, "status": "Owned",
                   "swing": [{"co": "B02" if i % 2 == 0 else "B01", "role": "BC", "watch": w} for i, w in enumerate(watches(4))]})
     for tour in (1, 2):
         seats.append({"pos": f"01ROR{tour:02d}M", "title": "Rescue Captain 1", "hclass": "H33", "rank": "Rescue Captain", "company": None,
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned"})
+                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "ROR")})
     return seats
+
+
+# Required staffing: short by SHORT_MIN..SHORT_MAX of Required on every day from AS_OF to FIT_END, as the Staffing
+# screen counts it (Open = sum over apparatus of required minus working, where short).
+SHORT_MIN, SHORT_MAX, FIT_END = 0.10, 0.15, "2027-06-30"
+REQUIRED_RANGE = {"E": (3, 5), "T": (4, 6), "RS1": (3, 5), "MA1": (1, 1), "B01": (2, 2), "B02": (1, 1), "RC1": (1, 1)}
+
+
+def fit_staffing(seats, recs, rng):
+    """Spread the tours of seats no record mentions so each day's staffing is about as short as the next, and pick each
+    apparatus's required number; returns {apparatus: required}. Seats named in records keep their tours (and numbers)."""
+    days = []
+    d = dt.date.fromisoformat(AS_OF)
+    while d.isoformat() <= FIT_END:
+        days.append(d.isoformat())
+        d += dt.timedelta(days=1)
+    text = json.dumps(recs)
+    frozen = [s for s in seats if s["pos"] in text or not s.get("_code") or (s.get("swing") and not s.get("_rot"))]
+    free = [s for s in seats if s not in frozen and s["name"]]
+    base = {day: on_duty(frozen, recs, day) for day in days}  # frozen seats with every record applied
+    wk = {day: watch(dt.date.fromisoformat(day)) for day in days}
+    cos = [co for dv in ORGANIZATION for bt in dv["battalions"] for co in bt["apparatus"]]
+    def rng_of(co):
+        return REQUIRED_RANGE.get(co) or REQUIRED_RANGE[co[0]]
+    def contrib(s, sign, table):  # a free seat adds 1 at its company on each watch its tour works
+        for w in watches(s["tour"]):
+            co = next((x["co"] for x in s.get("swing") or [] if x["watch"] == w), s["company"])
+            table[w][co] = table[w].get(co, 0) + sign
+    free_w = {w: {} for w in range(1, 32)}
+    for s in free:
+        contrib(s, 1, free_w)
+    def score(req):
+        total, out = sum(req.values()), 0.0
+        for day in days:
+            b, f = base[day], free_w[wk[day]]
+            short = sum(max(0, req[co] - b.get(co, 0) - f.get(co, 0)) for co in cos) / total
+            out += (short - (SHORT_MIN + SHORT_MAX) / 2) ** 2 + (1 if short < SHORT_MIN or short > SHORT_MAX else 0)
+        return out
+    # Pass 1: even out the head count per watch, overall and per apparatus (frozen seats averaged per watch).
+    fixed = {w: {} for w in range(1, 32)}
+    nday = {w: 0 for w in range(1, 32)}
+    for day in days:
+        nday[wk[day]] += 1
+        for co, k in base[day].items():
+            fixed[wk[day]][co] = fixed[wk[day]].get(co, 0) + k
+    fixed = {w: {co: k / max(1, nday[w]) for co, k in v.items()} for w, v in fixed.items()}
+    def lumpy():
+        per = [{co: fixed[w].get(co, 0) + free_w[w].get(co, 0) for co in cos} for w in range(1, 32)]
+        tot = [sum(x.values()) for x in per]
+        out = 3 * sum((x - sum(tot) / 31) ** 2 for x in tot)
+        for co in cos:
+            col = [x[co] for x in per]
+            out += 0.5 * sum((x - sum(col) / 31) ** 2 for x in col)
+        return out
+    used = {s["pos"] for s in seats}
+    def try_tour(s, tour, judge, cur):
+        """Move s to `tour` if that scores no worse than cur + allowance; returns the new score or None."""
+        if f"{s['_code'][0]}{s['_code'][1]}{tour:02d}M" in used:
+            return None
+        old = s["tour"]
+        contrib(s, -1, free_w)
+        used.discard(s["pos"])
+        retour(s, tour)
+        contrib(s, 1, free_w)
+        new = judge()
+        if new <= cur:
+            used.add(s["pos"])
+            return new
+        contrib(s, -1, free_w)
+        retour(s, old)
+        contrib(s, 1, free_w)
+        used.add(s["pos"])
+        return None
+    cur = lumpy()
+    for _ in range(15000):
+        got = try_tour(rng.choice(free), rng.randint(1, 31), lumpy, cur)
+        if got is not None:
+            cur = got
+    # Pass 2: required per apparatus and finer tour moves, scored day by day with the records applied.
+    req = {co: max(rng_of(co)[0], min(rng_of(co)[1], round(sum(base[day].get(co, 0) + free_w[wk[day]].get(co, 0) for day in days) / len(days))))
+           for co in cos}
+    best = score(req)
+    steps = 100000
+    for step in range(steps):
+        slack = 1 * max(0.0, 1 - 1.5 * step / steps)  # accept a slightly worse layout early on, to get out of dead ends
+        if rng.random() < 0.15:
+            co = rng.choice(cos)
+            lo, hi = rng_of(co)
+            old = req[co]
+            req[co] = min(hi, max(lo, old + rng.choice((-1, 1))))
+            new = score(req)
+            if new <= best + slack * rng.random():
+                best = new
+            else:
+                req[co] = old
+            continue
+        # Swap the tours of two seats: the head count per watch stays as even as pass 1 left it.
+        s1, s2 = rng.sample(free, 2)
+        t1, t2 = s1["tour"], s2["tour"]
+        c1, c2 = f"{s1['_code'][0]}{s1['_code'][1]}{t2:02d}M", f"{s2['_code'][0]}{s2['_code'][1]}{t1:02d}M"
+        if t1 == t2 or c1 in used or c2 in used:
+            continue
+        for s, tour in ((s1, t2), (s2, t1)):
+            contrib(s, -1, free_w); used.discard(s["pos"]); retour(s, tour); used.add(s["pos"]); contrib(s, 1, free_w)
+        new = score(req)
+        if new <= best + slack * rng.random():
+            best = new
+        else:
+            for s, tour in ((s1, t1), (s2, t2)):
+                contrib(s, -1, free_w); used.discard(s["pos"]); retour(s, tour); used.add(s["pos"]); contrib(s, 1, free_w)
+    shorts = []
+    for day in days:
+        n = on_duty(seats, recs, day)
+        shorts.append(sum(max(0, req[co] - n.get(co, 0)) for co in cos) / sum(req.values()))
+    print(f"required {sum(req.values())}; short {min(shorts):.1%} to {max(shorts):.1%} (mean {sum(shorts) / len(shorts):.1%}) "
+          f"over {days[0]}..{days[-1]}")
+    return req
 
 
 def main():
@@ -150,7 +319,8 @@ def main():
 
     ids = {}
     for n, s in enumerate((s for s in seats if s["name"]), 1):
-        ids[s["pos"]] = {"id": f"DM{n:04d}", "name": s["name"], "source": "Demo (fictional)"}
+        s["_id"] = f"DM{n:04d}"
+        ids[s["pos"]] = {"id": s["_id"], "name": s["name"], "source": "Demo (fictional)"}
 
     by = {s["pos"]: s for s in seats}
     named = [s for s in seats if s["name"] and not s.get("swing") and not s.get("open")]
@@ -229,11 +399,11 @@ def main():
 
     snapshot = {"asOf": AS_OF, "records": {"statuses": statuses, "tourChanges": tour_changes, "covers": covers, "people": people,
                                            "staffing": [], "assignments": assignments}}
-    required = {}
-    for co in B01 + B02:
-        required[co] = 4
-    required.update({"T03": 5, "T08": 5, "RS1": 4, "MA1": 1, "B01": 2, "B02": 1, "RC1": 1})
-    staffing = {"asOf": AS_OF, "source": "Demo (fictional)", "overtimeHires": 7,
+    required = fit_staffing(seats, snapshot["records"], rng)
+    ids = {s["pos"]: {"id": s["_id"], "name": s["name"], "source": "Demo (fictional)"} for s in seats if s["name"]}
+    # The report's day: its overtime hires make up the difference, so "Working but not in the tool" comes out at 0.
+    overtime = max(0, sum(required.values()) - sum(on_duty(seats, snapshot["records"], AS_OF).values()))
+    staffing = {"asOf": AS_OF, "source": "Demo (fictional)", "overtimeHires": overtime,
                 "apparatus": {k: {"reportWorking": v, "required": v} for k, v in sorted(required.items())}}
 
     def write(rel, obj):
@@ -244,6 +414,9 @@ def main():
             f.write("\n")
         print("wrote", rel)
     seats.sort(key=lambda s: s["pos"])
+    for s in seats:
+        for k in [k for k in s if k.startswith("_")]:
+            del s[k]
     write("data/positions.json", seats)
     write("data/employee-ids.json", {"source": "Demo (fictional IDs)", "ids": dict(sorted(ids.items()))})
     write("data/required-staffing.json", staffing)

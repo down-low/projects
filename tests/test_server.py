@@ -19,6 +19,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import server  # noqa: E402
 
 CLIENT_ID = "test-client.apps.googleusercontent.com"
+
+# Seats the tests use, taken from the roster file (the demo branch's roster is generated, so numbers aren't fixed).
+with open(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "positions.json")) as _f:
+    _seats = [p for p in json.load(_f) if p.get("name") and not p.get("swing") and not p.get("open")]
+LT, LT_NAME = next((p["pos"], p["name"]) for p in _seats if p["rank"] == "Lieutenant")
+CAPT = next(p["pos"] for p in _seats if p["rank"] == "Captain")
+OTHER = [p["pos"] for p in _seats if p["rank"] == "Captain"][1]
+BC, BC_NAME = next((p["pos"], p["name"]) for p in _seats if p["rank"] == "Battalion Chief")
 NEXT_CLAIMS = {}  # claims the stub token endpoint returns next
 
 
@@ -166,23 +174,23 @@ class ServerTest(unittest.TestCase):
 
         a = self.client()
         a.google_login("okafor@example.org")
-        self.assertEqual(a.req("POST", "/api/me/claim", {"pos": "06BO205M"}, csrf=False)[0], 403)
-        st, me, _ = a.req("POST", "/api/me/claim", {"pos": "06BO205M", "note": "BC B02"})
-        self.assertEqual((st, me["claimPos"], me["claimName"]), (200, "06BO205M", "Lindqvist,H"))
+        self.assertEqual(a.req("POST", "/api/me/claim", {"pos": BC}, csrf=False)[0], 403)
+        st, me, _ = a.req("POST", "/api/me/claim", {"pos": BC, "note": "BC B02"})
+        self.assertEqual((st, me["claimPos"], me["claimName"]), (200, BC, BC_NAME))
 
         _, users, _ = admin.req("GET", "/api/admin/users")
         uid = next(u["id"] for u in users if u["googleEmail"] == "okafor@example.org")
         st, u, _ = admin.req("POST", f"/api/admin/users/{uid}", {"action": "approve"})
-        self.assertEqual((st, u["status"], u["pos"]), (200, "active", "06BO205M"))
+        self.assertEqual((st, u["status"], u["pos"]), (200, "active", BC))
         self.assertEqual(a.req("GET", "/data/positions.json")[0], 200)
 
         # someone else can't claim or be linked to a taken position
         b = self.client()
         b.google_login("other@example.org")
-        self.assertEqual(b.req("POST", "/api/me/claim", {"pos": "06BO205M"})[0], 409)
+        self.assertEqual(b.req("POST", "/api/me/claim", {"pos": BC})[0], 409)
         _, users, _ = admin.req("GET", "/api/admin/users")
         bid = next(u["id"] for u in users if u["googleEmail"] == "other@example.org")
-        self.assertEqual(admin.req("POST", f"/api/admin/users/{bid}", {"action": "link", "pos": "06BO205M"})[0], 409)
+        self.assertEqual(admin.req("POST", f"/api/admin/users/{bid}", {"action": "link", "pos": BC})[0], 409)
         admin.req("POST", f"/api/admin/users/{bid}", {"action": "approve"})
 
         # contact info and sharing
@@ -191,13 +199,13 @@ class ServerTest(unittest.TestCase):
         st, me, _ = a.req("PUT", "/api/me/contact", {"contactEmail": "jp@example.org", "phoneMobile": "(415) 555-0100",
                                                      "phoneOther": "415.555.0101 x12", "shareContact": False})
         self.assertEqual((st, me["contactEmail"], me["shareContact"]), (200, "jp@example.org", False))
-        self.assertNotIn("06BO205M", b.req("GET", "/api/contacts")[1])
-        self.assertIn("06BO205M", admin.req("GET", "/api/contacts")[1])
+        self.assertNotIn(BC, b.req("GET", "/api/contacts")[1])
+        self.assertIn(BC, admin.req("GET", "/api/contacts")[1])
         a.req("PUT", "/api/me/contact", {"contactEmail": "jp2@example.org", "phoneMobile": "(415) 555-0100", "phoneOther": "", "shareContact": True})
-        self.assertEqual(b.req("GET", "/api/contacts")[1]["06BO205M"]["email"], "jp2@example.org")
+        self.assertEqual(b.req("GET", "/api/contacts")[1][BC]["email"], "jp2@example.org")
 
         # members can't write schedule records or use admin routes
-        rec = {"pos": "06BO205M", "code": "VA", "start": "2026-10-14"}
+        rec = {"pos": BC, "code": "VA", "start": "2026-10-14"}
         self.assertEqual(a.req("POST", "/api/statuses", rec)[0], 403)
         self.assertEqual(a.req("GET", "/api/admin/users")[0], 403)
         admin.req("POST", f"/api/admin/users/{u['id']}", {"action": "role", "role": "editor"})
@@ -231,7 +239,7 @@ class ServerTest(unittest.TestCase):
         mid = next(u["id"] for u in users if u["googleEmail"] == "member3@example.org")
         admin.req("POST", f"/api/admin/users/{mid}", {"action": "approve"})
 
-        fix = {"aboutKey": "02EOC04M", "kind": "status", "details": {"code": "D", "start": "2026-10-01"}, "note": "Hurt on duty"}
+        fix = {"aboutKey": CAPT, "kind": "status", "details": {"code": "D", "start": "2026-10-01"}, "note": "Hurt on duty"}
         for bad in [dict(fix, kind="nope"), dict(fix, aboutKey="NOPE"), dict(fix, details="x")]:
             self.assertEqual(m.req("POST", "/api/corrections", bad)[0], 400, bad)
         st, rec, _ = m.req("POST", "/api/corrections", fix)
@@ -259,14 +267,14 @@ class ServerTest(unittest.TestCase):
         mid = next(u["id"] for u in users if u["googleEmail"] == "member2@example.org")
         admin.req("POST", f"/api/admin/users/{mid}", {"action": "approve"})
 
-        cover = {"coverKey": "02EOL06M", "targetPos": "02EOC04M", "start": "2026-10-14"}
+        cover = {"coverKey": LT, "targetPos": CAPT, "start": "2026-10-14"}
         self.assertEqual(m.req("POST", "/api/covers", cover)[0], 403)
-        bad = [dict(cover, targetPos="02EOL06M"), dict(cover, targetPos="NOPE"), dict(cover, coverKey="person:abc"),
+        bad = [dict(cover, targetPos=LT), dict(cover, targetPos="NOPE"), dict(cover, coverKey="person:abc"),
                dict(cover, end="2026-10-01"), dict(cover, start="2026-13-01"), dict(cover, kind="promoted")]
         for b in bad:
             self.assertEqual(admin.req("POST", "/api/covers", b)[0], 400, b)
         st, rec, _ = admin.req("POST", "/api/covers", cover)
-        self.assertEqual((st, rec["coverName"], rec["end"]), (201, "Stonebridge,D", None))
+        self.assertEqual((st, rec["coverName"], rec["end"]), (201, LT_NAME, None))
         st, sh, _ = admin.req("POST", "/api/covers", dict(cover, kind="shadow", start="2026-12-01"))
         self.assertEqual((st, sh["kind"], rec["kind"]), (201, "shadow", None))
         self.assertEqual(admin.req("DELETE", f"/api/covers/{sh['id']}")[0], 200)
@@ -276,14 +284,14 @@ class ServerTest(unittest.TestCase):
 
         self.assertEqual(admin.req("POST", "/api/people", {"name": "X", "rank": "Captain"})[0], 400)
         self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Chief"})[0], 400)
-        taken = json.load(open(os.path.join(server.ROOT, "data", "employee-ids.json")))["ids"]["03EOC07M"]["id"]
+        taken = json.load(open(os.path.join(server.ROOT, "data", "employee-ids.json")))["ids"][OTHER]["id"]
         for empl in ("LE123", "1234LE", taken):  # bad format, or already on a roster position
             self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant", "emplId": empl})[0], 400, empl)
         st, person, _ = admin.req("POST", "/api/people", {"name": "Relief,A", "rank": "Lieutenant", "emplId": "zz9999"})
         self.assertEqual((st, person["emplId"]), (201, "ZZ9999"))
         self.assertEqual(admin.req("POST", "/api/people", {"name": "Relief,B", "rank": "Lieutenant", "emplId": "ZZ9999"})[0], 400)
         key = "person:" + person["id"]
-        st, pc, _ = admin.req("POST", "/api/covers", {"coverKey": key, "targetPos": "02EOL06M", "start": "2026-10-14"})
+        st, pc, _ = admin.req("POST", "/api/covers", {"coverKey": key, "targetPos": LT, "start": "2026-10-14"})
         self.assertEqual((st, pc["coverName"]), (201, "Relief,A"))
         self.assertEqual(admin.req("POST", "/api/statuses", {"pos": key, "code": "S", "start": "2026-10-20"})[0], 201)
         _, recs, _ = m.req("GET", "/api/records")
@@ -292,7 +300,7 @@ class ServerTest(unittest.TestCase):
         self.assertIn(key, [r["pos"] for r in m.req("GET", "/api/roster-names")[1]])
         self.assertEqual(admin.req("DELETE", f"/api/people/{person['id']}")[0], 200)
         _, recs, _ = m.req("GET", "/api/records")
-        self.assertEqual([c["coverKey"] for c in recs["covers"]], ["02EOL06M"])
+        self.assertEqual([c["coverKey"] for c in recs["covers"]], [LT])
         self.assertFalse([x for x in recs["statuses"] if x["pos"] == key])
 
 
@@ -335,12 +343,12 @@ class ServerTest(unittest.TestCase):
 
         # profiles: self or admin, validated, private; stats are averages only
         key = u["pos"]
-        self.assertEqual(n.req("PUT", "/api/profiles/02EOC04M", {"birthDate": "1980-01-01"})[0], 403)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{CAPT}", {"birthDate": "1980-01-01"})[0], 403)
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "2020-01-01"})[0], 400)
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "1980-01-01", "hireDate": "1979-01-01"})[0], 400)
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"hireDate": "2999-01-01"})[0], 400)
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "1980-01-01", "hireDate": "2005-01-01"})[0], 200)
-        self.assertEqual(admin.req("PUT", "/api/profiles/02EOC04M", {"birthDate": "1970-01-01", "hireDate": "1995-01-01"})[0], 200)
+        self.assertEqual(admin.req("PUT", f"/api/profiles/{CAPT}", {"birthDate": "1970-01-01", "hireDate": "1995-01-01"})[0], 200)
         self.assertEqual(n.req("GET", "/api/admin/profiles")[0], 403)
         self.assertEqual(len(admin.req("GET", "/api/admin/profiles")[1]), 2)
         self.assertEqual(n.req("GET", "/api/me")[1]["profile"]["hireDate"], "2005-01-01")
@@ -535,7 +543,7 @@ class EmployeeCardTest(unittest.TestCase):
 
     def test_card_record_edits(self):
         admin, editor, member = self.card_users()
-        pos = "02EOC04M"
+        pos = CAPT
         st, s1, _ = admin.req("POST", "/api/statuses", {"pos": pos, "code": "VA", "start": "2026-11-01", "end": "2026-11-03"})
         url = f"/api/admin/records/statuses/{s1['id']}"
         for c in (member, editor):
@@ -564,18 +572,18 @@ class EmployeeCardTest(unittest.TestCase):
 
     def test_card_cells(self):
         admin, editor, member = self.card_users()
-        url = "/api/admin/cells/02EOC04M"
+        url = f"/api/admin/cells/{CAPT}"
         for c in (member, editor):
             self.assertEqual(c.req("PUT", url, {"cell": "415-555-0100"})[0], 403)
         self.assertEqual(admin.req("PUT", url, {"cell": "call me"})[0], 400)
         self.assertEqual(admin.req("PUT", "/api/admin/cells/NOPE1", {"cell": "415-555-0100"})[0], 400)
-        self.assertEqual(admin.req("PUT", url, {"cell": "415-555-0100"})[1], {"key": "02EOC04M", "set": True})
-        self.assertEqual(admin.req("GET", "/api/contacts")[1]["02EOC04M"], {"phoneMobile": "415-555-0100", "shared": False, "staffList": True})
+        self.assertEqual(admin.req("PUT", url, {"cell": "415-555-0100"})[1], {"key": CAPT, "set": True})
+        self.assertEqual(admin.req("GET", "/api/contacts")[1][CAPT], {"phoneMobile": "415-555-0100", "shared": False, "staffList": True})
         for c in (member, editor):
-            self.assertNotIn("02EOC04M", c.req("GET", "/api/contacts")[1])
+            self.assertNotIn(CAPT, c.req("GET", "/api/contacts")[1])
             self.assertNotIn("415-555-0100", json.dumps(c.req("GET", "/api/records")[1]))
         admin.req("PUT", url, {"cell": None})
-        self.assertNotIn("02EOC04M", admin.req("GET", "/api/contacts")[1])
+        self.assertNotIn(CAPT, admin.req("GET", "/api/contacts")[1])
 
 
 if __name__ == "__main__":

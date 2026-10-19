@@ -1,16 +1,5 @@
 [
  {
-  "pos": "01BO001M",
-  "title": "ISS B01",
-  "hclass": "H10",
-  "rank": "ISS",
-  "company": "B01",
-  "swingType": null,
-  "tour": 1,
-  "name": "Merriweather,F",
-  "status": "Owned"
- },
- {
   "pos": "01BO002M",
   "title": "ISS B01",
   "hclass": "H10",
@@ -18,18 +7,29 @@
   "company": "B01",
   "swingType": null,
   "tour": 2,
-  "name": "Amberly,V",
+  "name": "Merriweather,F",
   "status": "Owned"
  },
  {
-  "pos": "01BO003M",
+  "pos": "01BO023M",
   "title": "ISS B01",
   "hclass": "H10",
   "rank": "ISS",
   "company": "B01",
   "swingType": null,
-  "tour": 3,
+  "tour": 23,
   "name": "Kilbride,L",
+  "status": "Owned"
+ },
+ {
+  "pos": "01BO028M",
+  "title": "ISS B01",
+  "hclass": "H10",
+  "rank": "ISS",
+  "company": "B01",
+  "swingType": null,
+  "tour": 28,
+  "name": "Amberly,V",
   "status": "Owned"
  },
  {
@@ -40,29 +40,29 @@
   "company": "B01",
   "swingType": null,
   "tour": 1,
-  "name": "Kestrelton,A",
+  "name": "Emberton,L",
   "status": "Owned"
  },
  {
-  "pos": "01BO202M",
+  "pos": "01BO216M",
   "title": "BC B01",
   "hclass": "H40",
   "rank": "Battalion Chief",
   "company": "B01",
   "swingType": null,
-  "tour": 2,
+  "tour": 16,
   "name": "Brackenridge,G",
   "status": "Owned"
  },
  {
-  "pos": "01BO203M",
+  "pos": "01BO224M",
   "title": "BC B01",
   "hclass": "H40",
   "rank": "Battalion Chief",
   "company": "B01",
   "swingType": null,
-  "tour": 3,
-  "name": "Emberton,L",
+  "tour": 24,
+  "name": "Kestrelton,A",
   "status": "Owned"
  },
  {
@@ -77,91 +77,80 @@
   "status": "Owned"
  },
  {
-  "pos": "01EOA11M",
+  "pos": "01EOA28M",
   "title": "FF/PM E01",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E01",
   "swingType": null,
-  "tour": 11,
+  "tour": 28,
   "name": "Glenrock,V",
   "status": "Owned"
  },
  {
-  "pos": "01EOC01M",
+  "pos": "01EOC16M",
   "title": "Captain E01",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E01",
   "swingType": null,
-  "tour": 1,
+  "tour": 16,
   "name": "Jessamy,H",
   "status": "Owned"
  },
  {
-  "pos": "01EOD13M",
+  "pos": "01EOD19M",
   "title": "FF/Driver E01",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E01",
   "swingType": null,
-  "tour": 13,
-  "name": "Kilbride,H",
-  "status": "Owned"
- },
- {
-  "pos": "01EOD15M",
-  "title": "FF/Driver E01",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E01",
-  "swingType": null,
-  "tour": 15,
+  "tour": 19,
   "name": "Halloway,C",
   "status": "Owned"
  },
  {
-  "pos": "01EOD18M",
+  "pos": "01EOD20M",
   "title": "FF/Driver E01",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E01",
-  "swingType": null,
-  "tour": 18,
-  "name": "Coldwell,L",
-  "status": "Owned"
- },
- {
-  "pos": "01EOE20M",
-  "title": "FF/EMT E01",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E01",
   "swingType": null,
   "tour": 20,
-  "name": "Stonebridge,V",
+  "name": "Coldwell,L",
   "status": "Owned"
  },
  {
-  "pos": "01EOE22M",
+  "pos": "01EOD24M",
+  "title": "FF/Driver E01",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E01",
+  "swingType": null,
+  "tour": 24,
+  "name": "Kilbride,H",
+  "status": "Owned"
+ },
+ {
+  "pos": "01EOE15M",
   "title": "FF/EMT E01",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E01",
   "swingType": null,
-  "tour": 22,
+  "tour": 15,
   "name": "Bramblecote,P",
   "status": "Owned"
  },
  {
-  "pos": "01EOE25M",
+  "pos": "01EOE17M",
   "title": "FF/EMT E01",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E01",
   "swingType": null,
-  "tour": 25,
-  "name": "Merriweather,J",
+  "tour": 17,
+  "name": "Stonebridge,V",
   "status": "Owned"
  },
  {
@@ -176,24 +165,35 @@
   "status": "Vacant"
  },
  {
-  "pos": "01EOL03M",
+  "pos": "01EOE29M",
+  "title": "FF/EMT E01",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E01",
+  "swingType": null,
+  "tour": 29,
+  "name": "Merriweather,J",
+  "status": "Owned"
+ },
+ {
+  "pos": "01EOL11M",
   "title": "Lt. E01",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E01",
   "swingType": null,
-  "tour": 3,
+  "tour": 11,
   "name": "Glenrock,B",
   "status": "Owned"
  },
  {
-  "pos": "01EOL06M",
+  "pos": "01EOL25M",
   "title": "Lt. E01",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E01",
   "swingType": null,
-  "tour": 6,
+  "tour": 25,
   "name": "Amberly,N",
   "status": "Owned"
  },
@@ -256,91 +256,91 @@
   ]
  },
  {
-  "pos": "01ROR01M",
+  "pos": "01ROR10M",
   "title": "Rescue Captain 1",
   "hclass": "H33",
   "rank": "Rescue Captain",
   "company": null,
   "swingType": null,
-  "tour": 1,
-  "name": "Umberfield,S",
-  "status": "Owned"
- },
- {
-  "pos": "01ROR02M",
-  "title": "Rescue Captain 1",
-  "hclass": "H33",
-  "rank": "Rescue Captain",
-  "company": null,
-  "swingType": null,
-  "tour": 2,
+  "tour": 10,
   "name": "Abernathy,P",
   "status": "Owned"
  },
  {
-  "pos": "01SOC10M",
+  "pos": "01ROR20M",
+  "title": "Rescue Captain 1",
+  "hclass": "H33",
+  "rank": "Rescue Captain",
+  "company": null,
+  "swingType": null,
+  "tour": 20,
+  "name": "Umberfield,S",
+  "status": "Owned"
+ },
+ {
+  "pos": "01SOC03M",
   "title": "Captain RS1",
   "hclass": "H30",
   "rank": "Captain",
   "company": "RS1",
   "swingType": null,
-  "tour": 10,
+  "tour": 3,
   "name": "Coldwell,J",
   "status": "Owned"
  },
  {
-  "pos": "01SOD17M",
+  "pos": "01SOD01M",
   "title": "FF/Driver RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": null,
-  "tour": 17,
-  "name": "Lowenthal,K",
-  "status": "Owned"
- },
- {
-  "pos": "01SOD19M",
-  "title": "FF/Driver RS1",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "RS1",
-  "swingType": null,
-  "tour": 19,
-  "name": "Inglewood,K",
-  "status": "Owned"
- },
- {
-  "pos": "01SOD21M",
-  "title": "FF/Driver RS1",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "RS1",
-  "swingType": null,
-  "tour": 21,
+  "tour": 1,
   "name": "Merriweather,S",
   "status": "Owned"
  },
  {
-  "pos": "01SOE23M",
+  "pos": "01SOD02M",
+  "title": "FF/Driver RS1",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "RS1",
+  "swingType": null,
+  "tour": 2,
+  "name": "Inglewood,K",
+  "status": "Owned"
+ },
+ {
+  "pos": "01SOD04M",
+  "title": "FF/Driver RS1",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "RS1",
+  "swingType": null,
+  "tour": 4,
+  "name": "Lowenthal,K",
+  "status": "Owned"
+ },
+ {
+  "pos": "01SOE16M",
   "title": "FF/EMT RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": null,
-  "tour": 23,
+  "tour": 16,
   "name": "Tamsworth,T",
   "status": "Owned"
  },
  {
-  "pos": "01SOE26M",
+  "pos": "01SOE27M",
   "title": "FF/EMT RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": null,
-  "tour": 26,
-  "name": "Fairbanks,K",
+  "tour": 27,
+  "name": "Kingsbury,A",
   "status": "Owned"
  },
  {
@@ -351,83 +351,83 @@
   "company": "RS1",
   "swingType": null,
   "tour": 28,
-  "name": "Kingsbury,A",
+  "name": "Fairbanks,K",
   "status": "Owned"
  },
  {
-  "pos": "01SOF01M",
+  "pos": "01SOF02M",
   "title": "Firefighter RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": null,
-  "tour": 1,
-  "name": "Fenwick,F",
-  "status": "Owned"
- },
- {
-  "pos": "01SOF03M",
-  "title": "Firefighter RS1",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "RS1",
-  "swingType": null,
-  "tour": 3,
-  "name": "Thistlewood,N",
-  "status": "Owned"
- },
- {
-  "pos": "01SOF06M",
-  "title": "Firefighter RS1",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "RS1",
-  "swingType": null,
-  "tour": 6,
+  "tour": 2,
   "name": "Brightwater,N",
   "status": "Owned"
  },
  {
-  "pos": "01SOF30M",
+  "pos": "01SOF15M",
   "title": "Firefighter RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": null,
-  "tour": 30,
+  "tour": 15,
+  "name": "Fenwick,F",
+  "status": "Owned"
+ },
+ {
+  "pos": "01SOF17M",
+  "title": "Firefighter RS1",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "RS1",
+  "swingType": null,
+  "tour": 17,
   "name": "Galloway,P",
   "status": "Owned"
  },
  {
-  "pos": "01SOL12M",
+  "pos": "01SOF31M",
+  "title": "Firefighter RS1",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "RS1",
+  "swingType": null,
+  "tour": 31,
+  "name": "Thistlewood,N",
+  "status": "Owned"
+ },
+ {
+  "pos": "01SOL18M",
   "title": "Lt. RS1",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "RS1",
   "swingType": null,
-  "tour": 12,
+  "tour": 18,
   "name": "Thistlewood,P",
   "status": "Owned"
  },
  {
-  "pos": "01SOL14M",
+  "pos": "01SOL29M",
   "title": "Lt. RS1",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "RS1",
   "swingType": null,
-  "tour": 14,
+  "tour": 29,
   "name": "Copperfield,T",
   "status": "Owned"
  },
  {
-  "pos": "01STX08M",
+  "pos": "01STX03M",
   "title": "FF Swing RS1",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "RS1",
   "swingType": "Swing",
-  "tour": 8,
+  "tour": 3,
   "name": "Ravensworth,M",
   "status": "Owned",
   "swing": [
@@ -439,121 +439,132 @@
    {
     "co": "RS1",
     "role": "DR",
-    "watch": 8
+    "watch": 6
    },
    {
     "co": "RS1",
     "role": "FF",
-    "watch": 11
+    "watch": 9
    },
    {
     "co": "RS1",
     "role": "EMT",
-    "watch": 14
+    "watch": 13
    },
    {
     "co": "RS1",
     "role": "DR",
-    "watch": 18
+    "watch": 16
    },
    {
     "co": "RS1",
     "role": "FF",
-    "watch": 21
+    "watch": 19
    },
    {
     "co": "RS1",
     "role": "EMT",
-    "watch": 24
+    "watch": 23
    },
    {
     "co": "RS1",
     "role": "DR",
-    "watch": 28
+    "watch": 26
    },
    {
     "co": "RS1",
     "role": "FF",
-    "watch": 31
+    "watch": 29
    }
   ]
  },
  {
-  "pos": "02EOA11M",
+  "pos": "02EOA08M",
   "title": "FF/PM E02",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E02",
   "swingType": null,
-  "tour": 11,
+  "tour": 8,
   "name": "Wolcott,G",
   "status": "Owned"
  },
  {
-  "pos": "02EOA13M",
+  "pos": "02EOA17M",
   "title": "FF/PM E02",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E02",
   "swingType": null,
-  "tour": 13,
+  "tour": 17,
   "name": "Wintermere,P",
   "status": "Owned"
  },
  {
-  "pos": "02EOC04M",
+  "pos": "02EOC08M",
   "title": "Captain E02",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E02",
   "swingType": null,
-  "tour": 4,
+  "tour": 8,
   "name": "Thornbury,V",
   "status": "Owned"
  },
  {
-  "pos": "02EOD15M",
+  "pos": "02EOD07M",
   "title": "FF/Driver E02",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E02",
   "swingType": null,
-  "tour": 15,
-  "name": "Vandermeer,N",
-  "status": "Owned"
- },
- {
-  "pos": "02EOD17M",
-  "title": "FF/Driver E02",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E02",
-  "swingType": null,
-  "tour": 17,
+  "tour": 7,
   "name": "Blackmere,E",
   "status": "Owned"
  },
  {
-  "pos": "02EOD20M",
+  "pos": "02EOD21M",
   "title": "FF/Driver E02",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E02",
   "swingType": null,
-  "tour": 20,
+  "tour": 21,
+  "name": "Vandermeer,N",
+  "status": "Owned"
+ },
+ {
+  "pos": "02EOD26M",
+  "title": "FF/Driver E02",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E02",
+  "swingType": null,
+  "tour": 26,
   "name": "Hartwell,S",
   "status": "Vacant",
   "open": true
  },
  {
-  "pos": "02EOE22M",
+  "pos": "02EOE09M",
   "title": "FF/EMT E02",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E02",
   "swingType": null,
-  "tour": 22,
-  "name": "Prestwick,L",
+  "tour": 9,
+  "name": "Thistlewood,T",
+  "status": "Owned"
+ },
+ {
+  "pos": "02EOE16M",
+  "title": "FF/EMT E02",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E02",
+  "swingType": null,
+  "tour": 16,
+  "name": "Tidewell,C",
   "status": "Owned"
  },
  {
@@ -564,18 +575,7 @@
   "company": "E02",
   "swingType": null,
   "tour": 24,
-  "name": "Thistlewood,T",
-  "status": "Owned"
- },
- {
-  "pos": "02EOE26M",
-  "title": "FF/EMT E02",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E02",
-  "swingType": null,
-  "tour": 26,
-  "name": "Tidewell,C",
+  "name": "Prestwick,L",
   "status": "Owned"
  },
  {
@@ -601,109 +601,109 @@
   "status": "Owned"
  },
  {
-  "pos": "02EOL08M",
+  "pos": "02EOL25M",
   "title": "Lt. E02",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E02",
   "swingType": null,
-  "tour": 8,
+  "tour": 25,
   "name": "Stonebridge,B",
   "status": "Owned"
  },
  {
-  "pos": "02ETL02M",
+  "pos": "02ETL18M",
   "title": "Lt. Swing E02",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E02",
   "swingType": "Swing",
-  "tour": 2,
+  "tour": 18,
   "name": "Lowenthal,B",
   "status": "Owned",
   "swing": [
    {
     "co": "E01",
     "role": "OFF",
-    "watch": 2
+    "watch": 3
    },
    {
     "co": "E02",
     "role": "OFF",
-    "watch": 5
+    "watch": 7
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 8
+    "watch": 10
    },
    {
     "co": "E01",
     "role": "OFF",
-    "watch": 12
+    "watch": 13
    },
    {
     "co": "E02",
-    "role": "OFF",
-    "watch": 15
-   },
-   {
-    "co": "E03",
     "role": "OFF",
     "watch": 18
    },
    {
+    "co": "E03",
+    "role": "OFF",
+    "watch": 21
+   },
+   {
     "co": "E01",
     "role": "OFF",
-    "watch": 22
+    "watch": 24
    },
    {
     "co": "E02",
     "role": "OFF",
-    "watch": 25
+    "watch": 28
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 28
+    "watch": 31
    }
   ]
  },
  {
-  "pos": "02ETX31M",
+  "pos": "02ETX20M",
   "title": "FF Swing E02",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E02",
   "swingType": "Swing",
-  "tour": 31,
+  "tour": 20,
   "name": "Coldwell,V",
   "status": "Owned",
   "swing": [
    {
     "co": "E02",
     "role": "EMT",
-    "watch": 3
+    "watch": 2
    },
    {
     "co": "E02",
     "role": "DR",
-    "watch": 6
+    "watch": 5
    },
    {
     "co": "E02",
     "role": "FF",
-    "watch": 10
+    "watch": 9
    },
    {
     "co": "E02",
     "role": "EMT",
-    "watch": 13
+    "watch": 12
    },
    {
     "co": "E02",
     "role": "DR",
-    "watch": 16
+    "watch": 15
    },
    {
     "co": "E02",
@@ -723,20 +723,9 @@
    {
     "co": "E02",
     "role": "FF",
-    "watch": 31
+    "watch": 30
    }
   ]
- },
- {
-  "pos": "03EOA14M",
-  "title": "FF/PM E03",
-  "hclass": "H3",
-  "rank": "FF/Paramedic",
-  "company": "E03",
-  "swingType": null,
-  "tour": 14,
-  "name": "Valemont,D",
-  "status": "Owned"
  },
  {
   "pos": "03EOA17M",
@@ -750,6 +739,17 @@
   "status": "Vacant"
  },
  {
+  "pos": "03EOA31M",
+  "title": "FF/PM E03",
+  "hclass": "H3",
+  "rank": "FF/Paramedic",
+  "company": "E03",
+  "swingType": null,
+  "tour": 31,
+  "name": "Valemont,D",
+  "status": "Owned"
+ },
+ {
   "pos": "03EOC07M",
   "title": "Captain E03",
   "hclass": "H30",
@@ -758,6 +758,17 @@
   "swingType": null,
   "tour": 7,
   "name": "Amberly,A",
+  "status": "Owned"
+ },
+ {
+  "pos": "03EOD16M",
+  "title": "FF/Driver E03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E03",
+  "swingType": null,
+  "tour": 16,
+  "name": "Ashgrove,G",
   "status": "Owned"
  },
  {
@@ -783,17 +794,6 @@
   "status": "Owned"
  },
  {
-  "pos": "03EOD24M",
-  "title": "FF/Driver E03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E03",
-  "swingType": null,
-  "tour": 24,
-  "name": "Ashgrove,G",
-  "status": "Owned"
- },
- {
   "pos": "03EOE02M",
   "title": "FF/EMT E03",
   "hclass": "H2",
@@ -801,51 +801,40 @@
   "company": "E03",
   "swingType": null,
   "tour": 2,
-  "name": "Kilbride,D",
-  "status": "Owned"
- },
- {
-  "pos": "03EOE26M",
-  "title": "FF/EMT E03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E03",
-  "swingType": null,
-  "tour": 26,
-  "name": "Ormsby,E",
-  "status": "Owned"
- },
- {
-  "pos": "03EOE28M",
-  "title": "FF/EMT E03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E03",
-  "swingType": null,
-  "tour": 28,
-  "name": "Brightwater,C",
-  "status": "Owned"
- },
- {
-  "pos": "03EOE31M",
-  "title": "FF/EMT E03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E03",
-  "swingType": null,
-  "tour": 31,
   "name": "Lowenthal,J",
   "status": "Owned"
  },
  {
-  "pos": "03EOL09M",
-  "title": "Lt. E03",
-  "hclass": "H20",
-  "rank": "Lieutenant",
+  "pos": "03EOE06M",
+  "title": "FF/EMT E03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E03",
+  "swingType": null,
+  "tour": 6,
+  "name": "Brightwater,C",
+  "status": "Owned"
+ },
+ {
+  "pos": "03EOE09M",
+  "title": "FF/EMT E03",
+  "hclass": "H2",
+  "rank": "Firefighter",
   "company": "E03",
   "swingType": null,
   "tour": 9,
-  "name": "Coldwell,R",
+  "name": "Kilbride,D",
+  "status": "Owned"
+ },
+ {
+  "pos": "03EOE12M",
+  "title": "FF/EMT E03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E03",
+  "swingType": null,
+  "tour": 12,
+  "name": "Ormsby,E",
   "status": "Owned"
  },
  {
@@ -860,20 +849,31 @@
   "status": "Owned"
  },
  {
-  "pos": "03ETX05M",
+  "pos": "03EOL19M",
+  "title": "Lt. E03",
+  "hclass": "H20",
+  "rank": "Lieutenant",
+  "company": "E03",
+  "swingType": null,
+  "tour": 19,
+  "name": "Coldwell,R",
+  "status": "Owned"
+ },
+ {
+  "pos": "03ETX08M",
   "title": "FF Swing E03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E03",
   "swingType": "Swing",
-  "tour": 5,
+  "tour": 8,
   "name": "Galloway,D",
   "status": "Owned",
   "swing": [
    {
     "co": "E03",
     "role": "EMT",
-    "watch": 5
+    "watch": 3
    },
    {
     "co": "E03",
@@ -888,7 +888,7 @@
    {
     "co": "E03",
     "role": "EMT",
-    "watch": 15
+    "watch": 14
    },
    {
     "co": "E03",
@@ -903,7 +903,7 @@
    {
     "co": "E03",
     "role": "EMT",
-    "watch": 25
+    "watch": 24
    },
    {
     "co": "E03",
@@ -918,14 +918,25 @@
   ]
  },
  {
-  "pos": "03TOC06M",
+  "pos": "03TOC09M",
   "title": "Captain T03",
   "hclass": "H30",
   "rank": "Captain",
   "company": "T03",
   "swingType": null,
-  "tour": 6,
+  "tour": 9,
   "name": "Thornbury,A",
+  "status": "Owned"
+ },
+ {
+  "pos": "03TOD05M",
+  "title": "FF/Driver T03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T03",
+  "swingType": null,
+  "tour": 5,
+  "name": "Larkmoor,T",
   "status": "Owned"
  },
  {
@@ -940,46 +951,24 @@
   "status": "Owned"
  },
  {
-  "pos": "03TOD14M",
+  "pos": "03TOD21M",
   "title": "FF/Driver T03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T03",
   "swingType": null,
-  "tour": 14,
+  "tour": 21,
   "name": "Ivesdale,E",
   "status": "Owned"
  },
  {
-  "pos": "03TOD16M",
-  "title": "FF/Driver T03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T03",
-  "swingType": null,
-  "tour": 16,
-  "name": "Larkmoor,T",
-  "status": "Owned"
- },
- {
-  "pos": "03TOE18M",
+  "pos": "03TOE02M",
   "title": "FF/EMT T03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T03",
   "swingType": null,
-  "tour": 18,
-  "name": "Juniper,R",
-  "status": "Owned"
- },
- {
-  "pos": "03TOE20M",
-  "title": "FF/EMT T03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T03",
-  "swingType": null,
-  "tour": 20,
+  "tour": 2,
   "name": "Juniper,F",
   "status": "Owned"
  },
@@ -995,14 +984,36 @@
   "status": "Owned"
  },
  {
-  "pos": "03TOF23M",
+  "pos": "03TOE28M",
+  "title": "FF/EMT T03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T03",
+  "swingType": null,
+  "tour": 28,
+  "name": "Juniper,R",
+  "status": "Owned"
+ },
+ {
+  "pos": "03TOF15M",
   "title": "Firefighter T03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T03",
   "swingType": null,
-  "tour": 23,
+  "tour": 15,
   "name": "Birchfield,N",
+  "status": "Owned"
+ },
+ {
+  "pos": "03TOF22M",
+  "title": "Firefighter T03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T03",
+  "swingType": null,
+  "tour": 22,
+  "name": "Merriweather,T",
   "status": "Owned"
  },
  {
@@ -1017,24 +1028,13 @@
   "status": "Vacant"
  },
  {
-  "pos": "03TOF27M",
-  "title": "Firefighter T03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T03",
-  "swingType": null,
-  "tour": 27,
-  "name": "Merriweather,T",
-  "status": "Owned"
- },
- {
-  "pos": "03TOL08M",
+  "pos": "03TOL07M",
   "title": "Lt. T03",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "T03",
   "swingType": null,
-  "tour": 8,
+  "tour": 7,
   "name": "Yarrowby,R",
   "status": "Owned"
  },
@@ -1050,13 +1050,24 @@
   "status": "Owned"
  },
  {
-  "pos": "03TOT02M",
+  "pos": "03TOT13M",
   "title": "FF/Tiller T03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T03",
   "swingType": null,
-  "tour": 2,
+  "tour": 13,
+  "name": "Fairbanks,N",
+  "status": "Owned"
+ },
+ {
+  "pos": "03TOT14M",
+  "title": "FF/Tiller T03",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T03",
+  "swingType": null,
+  "tour": 14,
   "name": "Calloway,K",
   "status": "Owned"
  },
@@ -1072,93 +1083,82 @@
   "status": "Owned"
  },
  {
-  "pos": "03TOT31M",
-  "title": "FF/Tiller T03",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T03",
-  "swingType": null,
-  "tour": 31,
-  "name": "Fairbanks,N",
-  "status": "Owned"
- },
- {
-  "pos": "03TTX04M",
+  "pos": "03TTX01M",
   "title": "FF Swing T03",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T03",
   "swingType": "Swing",
-  "tour": 4,
+  "tour": 1,
   "name": "Galloway,R",
   "status": "Owned",
   "swing": [
    {
     "co": "T03",
     "role": "DR",
+    "watch": 1
+   },
+   {
+    "co": "T03",
+    "role": "EMT",
     "watch": 4
    },
    {
     "co": "T03",
-    "role": "EMT",
+    "role": "FF",
     "watch": 7
    },
    {
     "co": "T03",
-    "role": "FF",
-    "watch": 10
+    "role": "TLR",
+    "watch": 11
    },
    {
     "co": "T03",
-    "role": "TLR",
+    "role": "DR",
     "watch": 14
    },
    {
     "co": "T03",
-    "role": "DR",
+    "role": "EMT",
     "watch": 17
    },
    {
     "co": "T03",
-    "role": "EMT",
-    "watch": 20
-   },
-   {
-    "co": "T03",
     "role": "FF",
-    "watch": 24
+    "watch": 21
    },
    {
     "co": "T03",
     "role": "TLR",
-    "watch": 27
+    "watch": 24
    },
    {
     "co": "T03",
     "role": "DR",
-    "watch": 30
+    "watch": 27
    }
   ]
  },
  {
-  "pos": "04EOA17M",
+  "pos": "04EOA11M",
   "title": "FF/PM E04",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E04",
   "swingType": null,
-  "tour": 17,
+  "tour": 11,
   "name": "Galloway,A",
   "status": "Owned"
  },
  {
-  "pos": "04EOA19M",
+  "pos": "04EOA16M",
   "title": "FF/PM E04",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E04",
   "swingType": null,
-  "tour": 19,
+  "tour": 16,
   "name": "Marlowe,J",
   "status": "Owned"
  },
@@ -1174,36 +1174,36 @@
   "status": "Owned"
  },
  {
-  "pos": "04EOD21M",
+  "pos": "04EOD03M",
   "title": "FF/Driver E04",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E04",
   "swingType": null,
-  "tour": 21,
-  "name": "Marchbank,A",
+  "tour": 3,
+  "name": "Dewhurst,V",
   "status": "Owned"
  },
  {
-  "pos": "04EOD23M",
+  "pos": "04EOD22M",
   "title": "FF/Driver E04",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E04",
   "swingType": null,
-  "tour": 23,
+  "tour": 22,
   "name": "Valemont,G",
   "status": "Owned"
  },
  {
-  "pos": "04EOD26M",
+  "pos": "04EOD30M",
   "title": "FF/Driver E04",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E04",
   "swingType": null,
-  "tour": 26,
-  "name": "Dewhurst,V",
+  "tour": 30,
+  "name": "Marchbank,A",
   "status": "Owned"
  },
  {
@@ -1218,126 +1218,126 @@
   "status": "Owned"
  },
  {
-  "pos": "04EOE03M",
+  "pos": "04EOE06M",
   "title": "FF/EMT E04",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E04",
   "swingType": null,
-  "tour": 3,
-  "name": "Ollander,F",
-  "status": "Owned"
- },
- {
-  "pos": "04EOE28M",
-  "title": "FF/EMT E04",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E04",
-  "swingType": null,
-  "tour": 28,
-  "name": "Juniper,J",
-  "status": "Owned"
- },
- {
-  "pos": "04EOE30M",
-  "title": "FF/EMT E04",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E04",
-  "swingType": null,
-  "tour": 30,
+  "tour": 6,
   "name": "Tamsworth,W",
   "status": "Owned"
  },
  {
-  "pos": "04EOL12M",
-  "title": "Lt. E04",
-  "hclass": "H20",
-  "rank": "Lieutenant",
+  "pos": "04EOE08M",
+  "title": "FF/EMT E04",
+  "hclass": "H2",
+  "rank": "Firefighter",
   "company": "E04",
   "swingType": null,
-  "tour": 12,
-  "name": "Hartwell,E",
+  "tour": 8,
+  "name": "Ollander,F",
   "status": "Owned"
  },
  {
-  "pos": "04EOL14M",
+  "pos": "04EOE11M",
+  "title": "FF/EMT E04",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E04",
+  "swingType": null,
+  "tour": 11,
+  "name": "Juniper,J",
+  "status": "Owned"
+ },
+ {
+  "pos": "04EOL04M",
   "title": "Lt. E04",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E04",
   "swingType": null,
-  "tour": 14,
+  "tour": 4,
   "name": "Stonebridge,T",
   "status": "Owned"
  },
  {
-  "pos": "04ETL08M",
+  "pos": "04EOL28M",
+  "title": "Lt. E04",
+  "hclass": "H20",
+  "rank": "Lieutenant",
+  "company": "E04",
+  "swingType": null,
+  "tour": 28,
+  "name": "Hartwell,E",
+  "status": "Owned"
+ },
+ {
+  "pos": "04ETL13M",
   "title": "Lt. Swing E04",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E04",
   "swingType": "Swing",
-  "tour": 8,
+  "tour": 13,
   "name": "Thornbury,R",
   "status": "Owned",
   "swing": [
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 3
+    "watch": 2
    },
    {
     "co": "E04",
+    "role": "OFF",
+    "watch": 5
+   },
+   {
+    "co": "E05",
     "role": "OFF",
     "watch": 8
    },
    {
-    "co": "E05",
-    "role": "OFF",
-    "watch": 11
-   },
-   {
     "co": "E03",
     "role": "OFF",
-    "watch": 14
+    "watch": 13
    },
    {
     "co": "E04",
     "role": "OFF",
-    "watch": 18
+    "watch": 16
    },
    {
     "co": "E05",
     "role": "OFF",
-    "watch": 21
+    "watch": 19
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 24
+    "watch": 23
    },
    {
     "co": "E04",
     "role": "OFF",
-    "watch": 28
+    "watch": 26
    },
    {
     "co": "E05",
     "role": "OFF",
-    "watch": 31
+    "watch": 29
    }
   ]
  },
  {
-  "pos": "04ETX06M",
+  "pos": "04ETX29M",
   "title": "FF Swing E04",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E04",
   "swingType": "Swing",
-  "tour": 6,
+  "tour": 29,
   "name": "Quillfeather,W",
   "status": "Owned",
   "swing": [
@@ -1349,37 +1349,37 @@
    {
     "co": "E04",
     "role": "DR",
-    "watch": 6
+    "watch": 4
    },
    {
     "co": "E04",
     "role": "FF",
-    "watch": 9
+    "watch": 8
    },
    {
     "co": "E04",
     "role": "EMT",
-    "watch": 12
+    "watch": 11
    },
    {
     "co": "E04",
     "role": "DR",
-    "watch": 16
+    "watch": 14
    },
    {
     "co": "E04",
     "role": "FF",
-    "watch": 19
+    "watch": 18
    },
    {
     "co": "E04",
     "role": "EMT",
-    "watch": 22
+    "watch": 21
    },
    {
     "co": "E04",
     "role": "DR",
-    "watch": 26
+    "watch": 24
    },
    {
     "co": "E04",
@@ -1389,80 +1389,69 @@
   ]
  },
  {
-  "pos": "05EOA20M",
+  "pos": "05EOA05M",
   "title": "FF/PM E05",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E05",
   "swingType": null,
-  "tour": 20,
-  "name": "Emberton,G",
-  "status": "Owned"
- },
- {
-  "pos": "05EOA22M",
-  "title": "FF/PM E05",
-  "hclass": "H3",
-  "rank": "FF/Paramedic",
-  "company": "E05",
-  "swingType": null,
-  "tour": 22,
+  "tour": 5,
   "name": "Calloway,L",
   "status": "Owned"
  },
  {
-  "pos": "05EOC13M",
+  "pos": "05EOA14M",
+  "title": "FF/PM E05",
+  "hclass": "H3",
+  "rank": "FF/Paramedic",
+  "company": "E05",
+  "swingType": null,
+  "tour": 14,
+  "name": "Emberton,G",
+  "status": "Owned"
+ },
+ {
+  "pos": "05EOC27M",
   "title": "Captain E05",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E05",
   "swingType": null,
-  "tour": 13,
+  "tour": 27,
   "name": "Marchbank,E",
   "status": "Owned"
  },
  {
-  "pos": "05EOD24M",
+  "pos": "05EOD15M",
   "title": "FF/Driver E05",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E05",
   "swingType": null,
-  "tour": 24,
+  "tour": 15,
   "name": "Northcote,P",
   "status": "Owned"
  },
  {
-  "pos": "05EOD26M",
+  "pos": "05EOD19M",
   "title": "FF/Driver E05",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E05",
   "swingType": null,
-  "tour": 26,
-  "name": "Okafor,S",
-  "status": "Owned"
- },
- {
-  "pos": "05EOD29M",
-  "title": "FF/Driver E05",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E05",
-  "swingType": null,
-  "tour": 29,
+  "tour": 19,
   "name": "Lindqvist,S",
   "status": "Owned"
  },
  {
-  "pos": "05EOE02M",
-  "title": "FF/EMT E05",
+  "pos": "05EOD23M",
+  "title": "FF/Driver E05",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E05",
   "swingType": null,
-  "tour": 2,
-  "name": "Brackenridge,M",
+  "tour": 23,
+  "name": "Okafor,S",
   "status": "Owned"
  },
  {
@@ -1477,14 +1466,25 @@
   "status": "Vacant"
  },
  {
-  "pos": "05EOE06M",
+  "pos": "05EOE14M",
   "title": "FF/EMT E05",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E05",
   "swingType": null,
-  "tour": 6,
+  "tour": 14,
   "name": "Mossbank,C",
+  "status": "Owned"
+ },
+ {
+  "pos": "05EOE17M",
+  "title": "FF/EMT E05",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E05",
+  "swingType": null,
+  "tour": 17,
+  "name": "Hartwell,F",
   "status": "Owned"
  },
  {
@@ -1495,97 +1495,97 @@
   "company": "E05",
   "swingType": null,
   "tour": 31,
-  "name": "Hartwell,F",
+  "name": "Brackenridge,M",
   "status": "Owned"
  },
  {
-  "pos": "05EOL15M",
+  "pos": "05EOL16M",
   "title": "Lt. E05",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E05",
   "swingType": null,
-  "tour": 15,
+  "tour": 16,
   "name": "Pennywhistle,W",
   "status": "Owned"
  },
  {
-  "pos": "05EOL17M",
+  "pos": "05EOL28M",
   "title": "Lt. E05",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E05",
   "swingType": null,
-  "tour": 17,
+  "tour": 28,
   "name": "Blackmere,N",
   "status": "Owned"
  },
  {
-  "pos": "05ETL11M",
+  "pos": "05ETL20M",
   "title": "Lt. Swing E05",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E05",
   "swingType": "Swing",
-  "tour": 11,
+  "tour": 20,
   "name": "Halloway,J",
   "status": "Owned",
   "swing": [
    {
     "co": "E05",
     "role": "OFF",
-    "watch": 3
+    "watch": 2
    },
    {
     "co": "E01",
     "role": "OFF",
-    "watch": 6
+    "watch": 5
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 11
+    "watch": 9
    },
    {
     "co": "E05",
     "role": "OFF",
-    "watch": 14
+    "watch": 12
    },
    {
     "co": "E01",
     "role": "OFF",
-    "watch": 17
+    "watch": 15
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 21
+    "watch": 20
    },
    {
     "co": "E05",
     "role": "OFF",
-    "watch": 24
+    "watch": 23
    },
    {
     "co": "E01",
     "role": "OFF",
-    "watch": 27
+    "watch": 26
    },
    {
     "co": "E03",
     "role": "OFF",
-    "watch": 31
+    "watch": 30
    }
   ]
  },
  {
-  "pos": "05ETX09M",
+  "pos": "05ETX01M",
   "title": "FF Swing E05",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E05",
   "swingType": "Swing",
-  "tour": 9,
+  "tour": 1,
   "name": "Thistlewood,L",
   "status": "Owned",
   "swing": [
@@ -1602,39 +1602,50 @@
    {
     "co": "E05",
     "role": "FF",
-    "watch": 9
+    "watch": 7
    },
    {
     "co": "E05",
     "role": "EMT",
-    "watch": 12
+    "watch": 11
    },
    {
     "co": "E05",
     "role": "DR",
-    "watch": 15
+    "watch": 14
    },
    {
     "co": "E05",
     "role": "FF",
-    "watch": 19
+    "watch": 17
    },
    {
     "co": "E05",
     "role": "EMT",
-    "watch": 22
+    "watch": 21
    },
    {
     "co": "E05",
     "role": "DR",
-    "watch": 25
+    "watch": 24
    },
    {
     "co": "E05",
     "role": "FF",
-    "watch": 29
+    "watch": 27
    }
   ]
+ },
+ {
+  "pos": "06BO202M",
+  "title": "BC B02",
+  "hclass": "H40",
+  "rank": "Battalion Chief",
+  "company": "B02",
+  "swingType": null,
+  "tour": 2,
+  "name": "Blackmere,D",
+  "status": "Owned"
  },
  {
   "pos": "06BO205M",
@@ -1645,17 +1656,6 @@
   "swingType": null,
   "tour": 5,
   "name": "Lindqvist,H",
-  "status": "Owned"
- },
- {
-  "pos": "06BO206M",
-  "title": "BC B02",
-  "hclass": "H40",
-  "rank": "Battalion Chief",
-  "company": "B02",
-  "swingType": null,
-  "tour": 6,
-  "name": "Blackmere,D",
   "status": "Owned"
  },
  {
@@ -1717,91 +1717,69 @@
   ]
  },
  {
-  "pos": "06EOA23M",
+  "pos": "06EOA01M",
   "title": "FF/PM E06",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E06",
   "swingType": null,
-  "tour": 23,
-  "name": "Nakamura,B",
-  "status": "Owned"
- },
- {
-  "pos": "06EOA25M",
-  "title": "FF/PM E06",
-  "hclass": "H3",
-  "rank": "FF/Paramedic",
-  "company": "E06",
-  "swingType": null,
-  "tour": 25,
+  "tour": 1,
   "name": "Kestrelton,V",
   "status": "Owned"
  },
  {
-  "pos": "06EOC16M",
+  "pos": "06EOA14M",
+  "title": "FF/PM E06",
+  "hclass": "H3",
+  "rank": "FF/Paramedic",
+  "company": "E06",
+  "swingType": null,
+  "tour": 14,
+  "name": "Nakamura,B",
+  "status": "Owned"
+ },
+ {
+  "pos": "06EOC25M",
   "title": "Captain E06",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E06",
   "swingType": null,
-  "tour": 16,
+  "tour": 25,
   "name": "Fairbanks,T",
   "status": "Owned"
  },
  {
-  "pos": "06EOD01M",
+  "pos": "06EOD03M",
   "title": "FF/Driver E06",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E06",
-  "swingType": null,
-  "tour": 1,
-  "name": "Ivesdale,K",
-  "status": "Owned"
- },
- {
-  "pos": "06EOD27M",
-  "title": "FF/Driver E06",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E06",
-  "swingType": null,
-  "tour": 27,
-  "name": "Lindqvist,G",
-  "status": "Owned"
- },
- {
-  "pos": "06EOD29M",
-  "title": "FF/Driver E06",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E06",
-  "swingType": null,
-  "tour": 29,
-  "name": "Wintermere,W",
-  "status": "Owned"
- },
- {
-  "pos": "06EOE03M",
-  "title": "FF/EMT E06",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E06",
   "swingType": null,
   "tour": 3,
-  "name": "Marchbank,G",
+  "name": "Wintermere,W",
   "status": "Owned"
  },
  {
-  "pos": "06EOE05M",
-  "title": "FF/EMT E06",
+  "pos": "06EOD21M",
+  "title": "FF/Driver E06",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E06",
   "swingType": null,
-  "tour": 5,
-  "name": "Prestwick,B",
+  "tour": 21,
+  "name": "Lindqvist,G",
+  "status": "Owned"
+ },
+ {
+  "pos": "06EOD30M",
+  "title": "FF/Driver E06",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E06",
+  "swingType": null,
+  "tour": 30,
+  "name": "Ivesdale,K",
   "status": "Owned"
  },
  {
@@ -1816,63 +1794,85 @@
   "status": "Vacant"
  },
  {
-  "pos": "06EOE09M",
+  "pos": "06EOE12M",
   "title": "FF/EMT E06",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E06",
   "swingType": null,
-  "tour": 9,
+  "tour": 12,
+  "name": "Prestwick,B",
+  "status": "Owned"
+ },
+ {
+  "pos": "06EOE13M",
+  "title": "FF/EMT E06",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E06",
+  "swingType": null,
+  "tour": 13,
   "name": "Dunmore,E",
   "status": "Owned"
  },
  {
-  "pos": "06EOL18M",
-  "title": "Lt. E06",
-  "hclass": "H20",
-  "rank": "Lieutenant",
+  "pos": "06EOE26M",
+  "title": "FF/EMT E06",
+  "hclass": "H2",
+  "rank": "Firefighter",
   "company": "E06",
   "swingType": null,
-  "tour": 18,
-  "name": "Kestrelton,B",
+  "tour": 26,
+  "name": "Marchbank,G",
   "status": "Owned"
  },
  {
-  "pos": "06EOL20M",
+  "pos": "06EOL11M",
   "title": "Lt. E06",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E06",
   "swingType": null,
-  "tour": 20,
+  "tour": 11,
   "name": "Galloway,M",
   "status": "Owned"
  },
  {
-  "pos": "06ETA14M",
+  "pos": "06EOL30M",
+  "title": "Lt. E06",
+  "hclass": "H20",
+  "rank": "Lieutenant",
+  "company": "E06",
+  "swingType": null,
+  "tour": 30,
+  "name": "Kestrelton,B",
+  "status": "Owned"
+ },
+ {
+  "pos": "06ETA25M",
   "title": "FF/PM Swing E06",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E06",
   "swingType": "Swing",
-  "tour": 14,
+  "tour": 25,
   "name": "Ivesdale,F",
   "status": "Owned",
   "swing": [
    {
     "co": "E06",
     "role": "EMTP",
-    "watch": 3
+    "watch": 4
    },
    {
     "co": "E07",
     "role": "EMTP",
-    "watch": 6
+    "watch": 7
    },
    {
     "co": "E08",
     "role": "EMTP",
-    "watch": 9
+    "watch": 10
    },
    {
     "co": "E09",
@@ -1892,77 +1892,88 @@
    {
     "co": "E07",
     "role": "EMTP",
-    "watch": 24
+    "watch": 25
    },
    {
     "co": "E08",
     "role": "EMTP",
-    "watch": 27
+    "watch": 28
    },
    {
     "co": "E09",
     "role": "EMTP",
-    "watch": 30
+    "watch": 31
    }
   ]
  },
  {
-  "pos": "06ETX12M",
+  "pos": "06ETX10M",
   "title": "FF Swing E06",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E06",
   "swingType": "Swing",
-  "tour": 12,
+  "tour": 10,
   "name": "Marchbank,M",
   "status": "Owned",
   "swing": [
    {
     "co": "E06",
     "role": "EMT",
-    "watch": 1
+    "watch": 2
    },
    {
     "co": "E06",
     "role": "DR",
-    "watch": 4
+    "watch": 5
    },
    {
     "co": "E06",
     "role": "FF",
-    "watch": 7
+    "watch": 10
    },
    {
     "co": "E06",
     "role": "EMT",
-    "watch": 12
+    "watch": 13
    },
    {
     "co": "E06",
     "role": "DR",
-    "watch": 15
+    "watch": 16
    },
    {
     "co": "E06",
     "role": "FF",
-    "watch": 18
+    "watch": 20
    },
    {
     "co": "E06",
     "role": "EMT",
-    "watch": 22
+    "watch": 23
    },
    {
     "co": "E06",
     "role": "DR",
-    "watch": 25
+    "watch": 26
    },
    {
     "co": "E06",
     "role": "FF",
-    "watch": 28
+    "watch": 30
    }
   ]
+ },
+ {
+  "pos": "07EOA23M",
+  "title": "FF/PM E07",
+  "hclass": "H3",
+  "rank": "FF/Paramedic",
+  "company": "E07",
+  "swingType": null,
+  "tour": 23,
+  "name": "Zelinski,D",
+  "status": "Owned"
  },
  {
   "pos": "07EOA26M",
@@ -1976,36 +1987,14 @@
   "status": "Owned"
  },
  {
-  "pos": "07EOA28M",
-  "title": "FF/PM E07",
-  "hclass": "H3",
-  "rank": "FF/Paramedic",
-  "company": "E07",
-  "swingType": null,
-  "tour": 28,
-  "name": "Zelinski,D",
-  "status": "Owned"
- },
- {
-  "pos": "07EOC19M",
+  "pos": "07EOC14M",
   "title": "Captain E07",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E07",
   "swingType": null,
-  "tour": 19,
+  "tour": 14,
   "name": "Okafor,G",
-  "status": "Owned"
- },
- {
-  "pos": "07EOD01M",
-  "title": "FF/Driver E07",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E07",
-  "swingType": null,
-  "tour": 1,
-  "name": "Dunmore,R",
   "status": "Owned"
  },
  {
@@ -2020,36 +2009,36 @@
   "status": "Vacant"
  },
  {
-  "pos": "07EOD30M",
+  "pos": "07EOD22M",
   "title": "FF/Driver E07",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E07",
   "swingType": null,
-  "tour": 30,
+  "tour": 22,
   "name": "Ivesdale,A",
   "status": "Owned"
  },
  {
-  "pos": "07EOE06M",
-  "title": "FF/EMT E07",
+  "pos": "07EOD26M",
+  "title": "FF/Driver E07",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E07",
   "swingType": null,
-  "tour": 6,
-  "name": "Glenrock,F",
+  "tour": 26,
+  "name": "Dunmore,R",
   "status": "Owned"
  },
  {
-  "pos": "07EOE08M",
+  "pos": "07EOE09M",
   "title": "FF/EMT E07",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E07",
   "swingType": null,
-  "tour": 8,
-  "name": "Brightwater,A",
+  "tour": 9,
+  "name": "Glenrock,F",
   "status": "Owned"
  },
  {
@@ -2075,42 +2064,53 @@
   "status": "Owned"
  },
  {
-  "pos": "07EOL21M",
-  "title": "Lt. E07",
-  "hclass": "H20",
-  "rank": "Lieutenant",
+  "pos": "07EOE14M",
+  "title": "FF/EMT E07",
+  "hclass": "H2",
+  "rank": "Firefighter",
   "company": "E07",
   "swingType": null,
-  "tour": 21,
-  "name": "Tamsworth,J",
+  "tour": 14,
+  "name": "Brightwater,A",
   "status": "Owned"
  },
  {
-  "pos": "07EOL23M",
+  "pos": "07EOL18M",
   "title": "Lt. E07",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E07",
   "swingType": null,
-  "tour": 23,
+  "tour": 18,
   "name": "Eastbrook,M",
   "status": "Owned"
  },
  {
-  "pos": "07ETL17M",
+  "pos": "07EOL30M",
+  "title": "Lt. E07",
+  "hclass": "H20",
+  "rank": "Lieutenant",
+  "company": "E07",
+  "swingType": null,
+  "tour": 30,
+  "name": "Tamsworth,J",
+  "status": "Owned"
+ },
+ {
+  "pos": "07ETL03M",
   "title": "Lt. Swing E07",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E07",
   "swingType": "Swing",
-  "tour": 17,
+  "tour": 3,
   "name": "Prestwick,M",
   "status": "Owned",
   "swing": [
    {
     "co": "E06",
     "role": "OFF",
-    "watch": 2
+    "watch": 3
    },
    {
     "co": "E07",
@@ -2125,17 +2125,17 @@
    {
     "co": "E06",
     "role": "OFF",
-    "watch": 12
+    "watch": 13
    },
    {
     "co": "E07",
     "role": "OFF",
-    "watch": 17
+    "watch": 16
    },
    {
     "co": "E08",
     "role": "OFF",
-    "watch": 20
+    "watch": 19
    },
    {
     "co": "E06",
@@ -2145,23 +2145,23 @@
    {
     "co": "E07",
     "role": "OFF",
-    "watch": 27
+    "watch": 26
    },
    {
     "co": "E08",
     "role": "OFF",
-    "watch": 30
+    "watch": 29
    }
   ]
  },
  {
-  "pos": "07ETX15M",
+  "pos": "07ETX25M",
   "title": "FF Swing E07",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E07",
   "swingType": "Swing",
-  "tour": 15,
+  "tour": 25,
   "name": "Nakamura,L",
   "status": "Owned",
   "swing": [
@@ -2183,17 +2183,17 @@
    {
     "co": "E07",
     "role": "EMT",
-    "watch": 15
+    "watch": 14
    },
    {
     "co": "E07",
     "role": "DR",
-    "watch": 18
+    "watch": 17
    },
    {
     "co": "E07",
     "role": "FF",
-    "watch": 21
+    "watch": 20
    },
    {
     "co": "E07",
@@ -2213,25 +2213,25 @@
   ]
  },
  {
-  "pos": "08EOA01M",
+  "pos": "08EOA04M",
   "title": "FF/PM E08",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E08",
   "swingType": null,
-  "tour": 1,
-  "name": "Hartwell,T",
+  "tour": 4,
+  "name": "Zelinski,E",
   "status": "Owned"
  },
  {
-  "pos": "08EOA29M",
+  "pos": "08EOA19M",
   "title": "FF/PM E08",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E08",
   "swingType": null,
-  "tour": 29,
-  "name": "Zelinski,E",
+  "tour": 19,
+  "name": "Hartwell,T",
   "status": "Owned"
  },
  {
@@ -2246,25 +2246,14 @@
   "status": "Owned"
  },
  {
-  "pos": "08EOD03M",
+  "pos": "08EOD01M",
   "title": "FF/Driver E08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E08",
   "swingType": null,
-  "tour": 3,
-  "name": "Dunmore,S",
-  "status": "Owned"
- },
- {
-  "pos": "08EOD05M",
-  "title": "FF/Driver E08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E08",
-  "swingType": null,
-  "tour": 5,
-  "name": "Ormsby,R",
+  "tour": 1,
+  "name": "Lowenthal,D",
   "status": "Owned"
  },
  {
@@ -2275,100 +2264,111 @@
   "company": "E08",
   "swingType": null,
   "tour": 8,
-  "name": "Lowenthal,D",
+  "name": "Ormsby,R",
   "status": "Owned"
  },
  {
-  "pos": "08EOE10M",
-  "title": "FF/EMT E08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E08",
-  "swingType": null,
-  "tour": 10,
-  "name": "Brightwater,K",
-  "status": "Owned"
- },
- {
-  "pos": "08EOE12M",
-  "title": "FF/EMT E08",
+  "pos": "08EOD12M",
+  "title": "FF/Driver E08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E08",
   "swingType": null,
   "tour": 12,
-  "name": "Yarrowby,J",
+  "name": "Dunmore,S",
   "status": "Owned"
  },
  {
-  "pos": "08EOE15M",
+  "pos": "08EOE03M",
   "title": "FF/EMT E08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E08",
   "swingType": null,
-  "tour": 15,
+  "tour": 3,
   "name": "Dewhurst,J",
   "status": "Owned"
  },
  {
-  "pos": "08EOE17M",
+  "pos": "08EOE16M",
   "title": "FF/EMT E08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E08",
   "swingType": null,
-  "tour": 17,
+  "tour": 16,
   "name": "Nakamura,M",
   "status": "Owned"
  },
  {
-  "pos": "08EOL24M",
-  "title": "Lt. E08",
-  "hclass": "H20",
-  "rank": "Lieutenant",
+  "pos": "08EOE21M",
+  "title": "FF/EMT E08",
+  "hclass": "H2",
+  "rank": "Firefighter",
   "company": "E08",
   "swingType": null,
-  "tour": 24,
-  "name": "Brackenridge,E",
+  "tour": 21,
+  "name": "Brightwater,K",
   "status": "Owned"
  },
  {
-  "pos": "08EOL27M",
+  "pos": "08EOE31M",
+  "title": "FF/EMT E08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E08",
+  "swingType": null,
+  "tour": 31,
+  "name": "Yarrowby,J",
+  "status": "Owned"
+ },
+ {
+  "pos": "08EOL21M",
   "title": "Lt. E08",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E08",
   "swingType": null,
-  "tour": 27,
+  "tour": 21,
   "name": "Kingsbury,L",
   "status": "Owned"
  },
  {
-  "pos": "08ETX20M",
+  "pos": "08EOL30M",
+  "title": "Lt. E08",
+  "hclass": "H20",
+  "rank": "Lieutenant",
+  "company": "E08",
+  "swingType": null,
+  "tour": 30,
+  "name": "Brackenridge,E",
+  "status": "Owned"
+ },
+ {
+  "pos": "08ETX12M",
   "title": "FF Swing E08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E08",
   "swingType": "Swing",
-  "tour": 20,
+  "tour": 12,
   "name": "Coldwell,E",
   "status": "Owned",
   "swing": [
    {
     "co": "E08",
     "role": "EMT",
-    "watch": 2
+    "watch": 1
    },
    {
     "co": "E08",
     "role": "DR",
-    "watch": 5
+    "watch": 4
    },
    {
     "co": "E08",
     "role": "FF",
-    "watch": 9
+    "watch": 7
    },
    {
     "co": "E08",
@@ -2383,34 +2383,56 @@
    {
     "co": "E08",
     "role": "FF",
-    "watch": 20
+    "watch": 18
    },
    {
     "co": "E08",
     "role": "EMT",
-    "watch": 23
+    "watch": 22
    },
    {
     "co": "E08",
     "role": "DR",
-    "watch": 26
+    "watch": 25
    },
    {
     "co": "E08",
     "role": "FF",
-    "watch": 30
+    "watch": 28
    }
   ]
  },
  {
-  "pos": "08TOC21M",
+  "pos": "08TOC30M",
   "title": "Captain T08",
   "hclass": "H30",
   "rank": "Captain",
   "company": "T08",
   "swingType": null,
-  "tour": 21,
+  "tour": 30,
   "name": "Lindqvist,W",
+  "status": "Owned"
+ },
+ {
+  "pos": "08TOD18M",
+  "title": "FF/Driver T08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T08",
+  "swingType": null,
+  "tour": 18,
+  "name": "Blackmere,M",
+  "status": "Owned"
+ },
+ {
+  "pos": "08TOD26M",
+  "title": "FF/Driver T08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T08",
+  "swingType": null,
+  "tour": 26,
+  "name": "Halloway,P",
   "status": "Owned"
  },
  {
@@ -2421,28 +2443,6 @@
   "company": "T08",
   "swingType": null,
   "tour": 27,
-  "name": "Halloway,P",
-  "status": "Owned"
- },
- {
-  "pos": "08TOD29M",
-  "title": "FF/Driver T08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T08",
-  "swingType": null,
-  "tour": 29,
-  "name": "Blackmere,M",
-  "status": "Owned"
- },
- {
-  "pos": "08TOD31M",
-  "title": "FF/Driver T08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T08",
-  "swingType": null,
-  "tour": 31,
   "name": "Pemberly,V",
   "status": "Owned"
  },
@@ -2458,102 +2458,80 @@
   "status": "Owned"
  },
  {
-  "pos": "08TOE04M",
+  "pos": "08TOE03M",
   "title": "FF/EMT T08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T08",
   "swingType": null,
-  "tour": 4,
+  "tour": 3,
   "name": "Ollander,C",
   "status": "Owned"
  },
  {
-  "pos": "08TOE06M",
+  "pos": "08TOE18M",
   "title": "FF/EMT T08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T08",
   "swingType": null,
-  "tour": 6,
+  "tour": 18,
   "name": "Ashgrove,B",
   "status": "Owned"
  },
  {
-  "pos": "08TOF07M",
+  "pos": "08TOF17M",
   "title": "Firefighter T08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T08",
   "swingType": null,
-  "tour": 7,
-  "name": "Okafor,P",
-  "status": "Owned"
- },
- {
-  "pos": "08TOF09M",
-  "title": "Firefighter T08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T08",
-  "swingType": null,
-  "tour": 9,
+  "tour": 17,
   "name": "Calloway,T",
   "status": "Owned"
  },
  {
-  "pos": "08TOF11M",
+  "pos": "08TOF20M",
   "title": "Firefighter T08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T08",
   "swingType": null,
-  "tour": 11,
+  "tour": 20,
+  "name": "Okafor,P",
+  "status": "Owned"
+ },
+ {
+  "pos": "08TOF21M",
+  "title": "Firefighter T08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T08",
+  "swingType": null,
+  "tour": 21,
   "name": "Bramblecote,K",
   "status": "Owned"
  },
  {
-  "pos": "08TOL23M",
+  "pos": "08TOL15M",
   "title": "Lt. T08",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "T08",
   "swingType": null,
-  "tour": 23,
+  "tour": 15,
   "name": "Elsworth,W",
   "status": "Owned"
  },
  {
-  "pos": "08TOL25M",
+  "pos": "08TOL19M",
   "title": "Lt. T08",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "T08",
   "swingType": null,
-  "tour": 25,
+  "tour": 19,
   "name": "Ivesdale,P",
-  "status": "Owned"
- },
- {
-  "pos": "08TOT13M",
-  "title": "FF/Tiller T08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T08",
-  "swingType": null,
-  "tour": 13,
-  "name": "Kilbride,E",
-  "status": "Owned"
- },
- {
-  "pos": "08TOT15M",
-  "title": "FF/Tiller T08",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "T08",
-  "swingType": null,
-  "tour": 15,
-  "name": "Inglewood,L",
   "status": "Owned"
  },
  {
@@ -2568,105 +2546,127 @@
   "status": "Vacant"
  },
  {
-  "pos": "08TTX19M",
+  "pos": "08TOT19M",
+  "title": "FF/Tiller T08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T08",
+  "swingType": null,
+  "tour": 19,
+  "name": "Kilbride,E",
+  "status": "Owned"
+ },
+ {
+  "pos": "08TOT26M",
+  "title": "FF/Tiller T08",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "T08",
+  "swingType": null,
+  "tour": 26,
+  "name": "Inglewood,L",
+  "status": "Owned"
+ },
+ {
+  "pos": "08TTX05M",
   "title": "FF Swing T08",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "T08",
   "swingType": "Swing",
-  "tour": 19,
+  "tour": 5,
   "name": "Prestwick,S",
   "status": "Owned",
   "swing": [
    {
     "co": "T08",
     "role": "DR",
-    "watch": 1
+    "watch": 5
    },
    {
     "co": "T08",
     "role": "EMT",
-    "watch": 4
-   },
-   {
-    "co": "T08",
-    "role": "FF",
     "watch": 8
    },
    {
     "co": "T08",
-    "role": "TLR",
+    "role": "FF",
     "watch": 11
    },
    {
     "co": "T08",
+    "role": "TLR",
+    "watch": 15
+   },
+   {
+    "co": "T08",
     "role": "DR",
-    "watch": 14
+    "watch": 18
    },
    {
     "co": "T08",
     "role": "EMT",
-    "watch": 19
+    "watch": 21
    },
    {
     "co": "T08",
     "role": "FF",
-    "watch": 22
-   },
-   {
-    "co": "T08",
-    "role": "TLR",
     "watch": 25
    },
    {
     "co": "T08",
+    "role": "TLR",
+    "watch": 28
+   },
+   {
+    "co": "T08",
     "role": "DR",
-    "watch": 29
+    "watch": 31
    }
   ]
  },
  {
-  "pos": "09EOA01M",
+  "pos": "09EOA04M",
   "title": "FF/PM E09",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E09",
   "swingType": null,
-  "tour": 1,
+  "tour": 4,
   "name": "Dunmore,M",
   "status": "Owned"
  },
  {
-  "pos": "09EOA03M",
+  "pos": "09EOA29M",
   "title": "FF/PM E09",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E09",
   "swingType": null,
-  "tour": 3,
+  "tour": 29,
   "name": "Quillfeather,P",
   "status": "Owned"
  },
  {
-  "pos": "09EOC25M",
+  "pos": "09EOC24M",
   "title": "Captain E09",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E09",
   "swingType": null,
-  "tour": 25,
+  "tour": 24,
   "name": "Kilbride,N",
   "status": "Owned"
  },
  {
-  "pos": "09EOD05M",
+  "pos": "09EOD03M",
   "title": "FF/Driver E09",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E09",
   "swingType": null,
-  "tour": 5,
-  "name": "Prestwick,R",
+  "tour": 3,
+  "name": "Oakhurst,C",
   "status": "Owned"
  },
  {
@@ -2677,51 +2677,29 @@
   "company": "E09",
   "swingType": null,
   "tour": 7,
-  "name": "Oakhurst,C",
+  "name": "Ivesdale,R",
   "status": "Owned"
  },
  {
-  "pos": "09EOD10M",
+  "pos": "09EOD15M",
   "title": "FF/Driver E09",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E09",
   "swingType": null,
-  "tour": 10,
-  "name": "Ivesdale,R",
+  "tour": 15,
+  "name": "Prestwick,R",
   "status": "Owned"
  },
  {
-  "pos": "09EOE12M",
+  "pos": "09EOE09M",
   "title": "FF/EMT E09",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E09",
   "swingType": null,
-  "tour": 12,
+  "tour": 9,
   "name": "Ollander,M",
-  "status": "Owned"
- },
- {
-  "pos": "09EOE14M",
-  "title": "FF/EMT E09",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E09",
-  "swingType": null,
-  "tour": 14,
-  "name": "Fairbanks,W",
-  "status": "Owned"
- },
- {
-  "pos": "09EOE16M",
-  "title": "FF/EMT E09",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E09",
-  "swingType": null,
-  "tour": 16,
-  "name": "Lowenthal,R",
   "status": "Owned"
  },
  {
@@ -2734,6 +2712,28 @@
   "tour": 18,
   "name": null,
   "status": "Vacant"
+ },
+ {
+  "pos": "09EOE21M",
+  "title": "FF/EMT E09",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E09",
+  "swingType": null,
+  "tour": 21,
+  "name": "Fairbanks,W",
+  "status": "Owned"
+ },
+ {
+  "pos": "09EOE26M",
+  "title": "FF/EMT E09",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E09",
+  "swingType": null,
+  "tour": 26,
+  "name": "Lowenthal,R",
+  "status": "Owned"
  },
  {
   "pos": "09EOL27M",
@@ -2816,13 +2816,13 @@
   ]
  },
  {
-  "pos": "09ETX21M",
+  "pos": "09ETX08M",
   "title": "FF Swing E09",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E09",
   "swingType": "Swing",
-  "tour": 21,
+  "tour": 8,
   "name": "Wintermere,F",
   "status": "Owned",
   "swing": [
@@ -2834,22 +2834,22 @@
    {
     "co": "E09",
     "role": "DR",
-    "watch": 6
+    "watch": 8
    },
    {
     "co": "E09",
     "role": "FF",
-    "watch": 10
+    "watch": 11
    },
    {
     "co": "E09",
     "role": "EMT",
-    "watch": 13
+    "watch": 14
    },
    {
     "co": "E09",
     "role": "DR",
-    "watch": 16
+    "watch": 18
    },
    {
     "co": "E09",
@@ -2864,7 +2864,7 @@
    {
     "co": "E09",
     "role": "DR",
-    "watch": 27
+    "watch": 28
    },
    {
     "co": "E09",
@@ -2874,25 +2874,14 @@
   ]
  },
  {
-  "pos": "09MOA03M",
+  "pos": "09MOA06M",
   "title": "FF/PM MA1",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "MA1",
   "swingType": null,
-  "tour": 3,
-  "name": "Brightwater,R",
-  "status": "Owned"
- },
- {
-  "pos": "09MOA13M",
-  "title": "FF/PM MA1",
-  "hclass": "H3",
-  "rank": "FF/Paramedic",
-  "company": "MA1",
-  "swingType": null,
-  "tour": 13,
-  "name": "Zelinski,B",
+  "tour": 6,
+  "name": "Farrowby,S",
   "status": "Owned"
  },
  {
@@ -2903,17 +2892,28 @@
   "company": "MA1",
   "swingType": null,
   "tour": 23,
-  "name": "Farrowby,S",
+  "name": "Brightwater,R",
   "status": "Owned"
  },
  {
-  "pos": "10ENX26M",
+  "pos": "09MOA25M",
+  "title": "FF/PM MA1",
+  "hclass": "H3",
+  "rank": "FF/Paramedic",
+  "company": "MA1",
+  "swingType": null,
+  "tour": 25,
+  "name": "Zelinski,B",
+  "status": "Owned"
+ },
+ {
+  "pos": "10ENX06M",
   "title": "FF SSwing E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": "SSwing",
-  "tour": 26,
+  "tour": 6,
   "name": "Underhill,F",
   "status": "Owned",
   "swing": [
@@ -2925,32 +2925,32 @@
    {
     "co": "E07",
     "role": "DR",
-    "watch": 5
+    "watch": 6
    },
    {
     "co": "E08",
     "role": "FF",
-    "watch": 8
+    "watch": 9
    },
    {
     "co": "E09",
     "role": "EMT",
-    "watch": 11
+    "watch": 12
    },
    {
     "co": "E10",
     "role": "DR",
-    "watch": 15
+    "watch": 16
    },
    {
     "co": "E06",
     "role": "FF",
-    "watch": 18
+    "watch": 19
    },
    {
     "co": "E07",
     "role": "EMT",
-    "watch": 21
+    "watch": 22
    },
    {
     "co": "E08",
@@ -2965,47 +2965,47 @@
   ]
  },
  {
-  "pos": "10EOA03M",
+  "pos": "10EOA13M",
   "title": "FF/PM E10",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E10",
   "swingType": null,
-  "tour": 3,
+  "tour": 13,
   "name": "Jessamy,T",
   "status": "Owned"
  },
  {
-  "pos": "10EOA05M",
+  "pos": "10EOA17M",
   "title": "FF/PM E10",
   "hclass": "H3",
   "rank": "FF/Paramedic",
   "company": "E10",
   "swingType": null,
-  "tour": 5,
+  "tour": 17,
   "name": "Merriweather,E",
   "status": "Owned"
  },
  {
-  "pos": "10EOC28M",
+  "pos": "10EOC10M",
   "title": "Captain E10",
   "hclass": "H30",
   "rank": "Captain",
   "company": "E10",
   "swingType": null,
-  "tour": 28,
+  "tour": 10,
   "name": "Glenrock,D",
   "status": "Owned"
  },
  {
-  "pos": "10EOD07M",
+  "pos": "10EOD04M",
   "title": "FF/Driver E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": null,
-  "tour": 7,
-  "name": "Pemberly,K",
+  "tour": 4,
+  "name": "Draycott,S",
   "status": "Owned"
  },
  {
@@ -3020,46 +3020,35 @@
   "status": "Vacant"
  },
  {
-  "pos": "10EOD11M",
+  "pos": "10EOD24M",
   "title": "FF/Driver E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": null,
-  "tour": 11,
-  "name": "Draycott,S",
+  "tour": 24,
+  "name": "Pemberly,K",
   "status": "Owned"
  },
  {
-  "pos": "10EOE14M",
+  "pos": "10EOE08M",
   "title": "FF/EMT E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": null,
-  "tour": 14,
-  "name": "Amberly,G",
-  "status": "Owned"
- },
- {
-  "pos": "10EOE16M",
-  "title": "FF/EMT E10",
-  "hclass": "H2",
-  "rank": "Firefighter",
-  "company": "E10",
-  "swingType": null,
-  "tour": 16,
+  "tour": 8,
   "name": "Pemberly,R",
   "status": "Owned"
  },
  {
-  "pos": "10EOE18M",
+  "pos": "10EOE12M",
   "title": "FF/EMT E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": null,
-  "tour": 18,
+  "tour": 12,
   "name": "Fairbanks,C",
   "status": "Vacant",
   "open": true
@@ -3076,35 +3065,46 @@
   "status": "Owned"
  },
  {
-  "pos": "10EOL01M",
+  "pos": "10EOE28M",
+  "title": "FF/EMT E10",
+  "hclass": "H2",
+  "rank": "Firefighter",
+  "company": "E10",
+  "swingType": null,
+  "tour": 28,
+  "name": "Amberly,G",
+  "status": "Owned"
+ },
+ {
+  "pos": "10EOL05M",
   "title": "Lt. E10",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E10",
   "swingType": null,
-  "tour": 1,
+  "tour": 5,
   "name": "Fenwick,J",
   "status": "Owned"
  },
  {
-  "pos": "10EOL30M",
+  "pos": "10EOL19M",
   "title": "Lt. E10",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E10",
   "swingType": null,
-  "tour": 30,
+  "tour": 19,
   "name": "Glenrock,A",
   "status": "Owned"
  },
  {
-  "pos": "10ETL24M",
+  "pos": "10ETL11M",
   "title": "Lt. Swing E10",
   "hclass": "H20",
   "rank": "Lieutenant",
   "company": "E10",
   "swingType": "Swing",
-  "tour": 24,
+  "tour": 11,
   "name": "Wexley,A",
   "status": "Owned",
   "swing": [
@@ -3121,22 +3121,22 @@
    {
     "co": "E08",
     "role": "OFF",
-    "watch": 9
+    "watch": 11
    },
    {
     "co": "E10",
     "role": "OFF",
-    "watch": 13
+    "watch": 14
    },
    {
     "co": "E06",
     "role": "OFF",
-    "watch": 16
+    "watch": 17
    },
    {
     "co": "E08",
     "role": "OFF",
-    "watch": 19
+    "watch": 21
    },
    {
     "co": "E10",
@@ -3151,50 +3151,50 @@
    {
     "co": "E08",
     "role": "OFF",
-    "watch": 30
+    "watch": 31
    }
   ]
  },
  {
-  "pos": "10ETX22M",
+  "pos": "10ETX27M",
   "title": "FF Swing E10",
   "hclass": "H2",
   "rank": "Firefighter",
   "company": "E10",
   "swingType": "Swing",
-  "tour": 22,
+  "tour": 27,
   "name": "Oakhurst,T",
   "status": "Owned",
   "swing": [
    {
     "co": "E10",
     "role": "EMT",
-    "watch": 1
+    "watch": 2
    },
    {
     "co": "E10",
     "role": "DR",
-    "watch": 4
+    "watch": 6
    },
    {
     "co": "E10",
     "role": "FF",
-    "watch": 7
+    "watch": 9
    },
    {
     "co": "E10",
     "role": "EMT",
-    "watch": 11
+    "watch": 12
    },
    {
     "co": "E10",
     "role": "DR",
-    "watch": 14
+    "watch": 16
    },
    {
     "co": "E10",
     "role": "FF",
-    "watch": 17
+    "watch": 19
    },
    {
     "co": "E10",
@@ -3204,12 +3204,12 @@
    {
     "co": "E10",
     "role": "DR",
-    "watch": 25
+    "watch": 27
    },
    {
     "co": "E10",
     "role": "FF",
-    "watch": 28
+    "watch": 30
    }
   ]
  }
