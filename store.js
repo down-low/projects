@@ -540,7 +540,14 @@
     }
     function write(kind, rec) { return guard(editable()) || w(addRec(COLLECTIONS[kind], rec)); }
     // Files that hold names (roster, IDs, PDFs) are in Cloud Storage, readable by active accounts only (storage.rules).
+    var early = {}; // path -> download started during sign-in (prefetch), handed out once
     function fetchData(path) {
+      if (early[path]) {
+        var p = early[path];
+        delete early[path];
+        // If it was refused (access changed since the last visit), ask again with the fresh sign-in.
+        return p.then(function (r) { return r.ok ? r : fetchData(path); }, function () { return fetchData(path); });
+      }
       var bucket = fb.app().options.storageBucket;
       return user.getIdToken().then(function (t) {
         return fetch("https://firebasestorage.googleapis.com/v0/b/" + encodeURIComponent(bucket) + "/o/" + encodeURIComponent(path) + "?alt=media",
@@ -596,7 +603,8 @@
           throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
         });
       },
-      claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+      // With the Employee ID on file for that position, the account is approved at once (functions: claim).
+      claim: function (pos, note, emplId) { return call("claim", { pos: pos, note: note, emplId: emplId || null }).then(function (j) { me = j; return j; }); },
       claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
       rosterNames: function () { return call("rosterNames"); },
       /* Launch invites (admins, Admin → Invite people): the staff-list cells (contacts()), who's on the tool (onTool),
@@ -771,7 +779,8 @@
         (cols.contacts || []).forEach(function (d) {
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
-            if (d.cells[k]) { writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+            // Standardized to +14155550100 when the text holds a number; kept as written otherwise (Invite people lists those).
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
         var say = onProgress || function () {};
@@ -815,6 +824,13 @@
     }).then(function (u) {
       if (!u) return adapter;
       user = u;
+      // Already approved (from the last visit's token): start the roster downloads now, alongside the account check.
+      u.getIdTokenResult().then(function (r) {
+        if (r.claims.active !== true) return;
+        ["data/positions.json", "data/required-staffing.json", "data/employee-ids.json", "data/vacancy-awards-2027.json"].forEach(function (path) {
+          if (!early[path]) early[path] = fetchData(path);
+        });
+      }, function () {});
       return syncMe().then(function () {
         watchAccount();
         listen();

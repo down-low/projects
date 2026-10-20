@@ -59,7 +59,13 @@ function signIn(existing, { email, phone, name, isAdmin, allowed, now }) {
 /* A cell-number sign-in links itself when the number is on the staff list for exactly one seat that no other account
    has. cells: Map key -> cell from staffCells; takenBy(key) -> uid or null. Returns the account fields to set, or null
    (no match, more than one, or the seat is taken): then the person uses the normal claim screen. */
-const cellKey = (n) => String(n || "").replace(/\D/g, "").slice(-10);
+/* Cell numbers as typed on the staff list ("(415) 555-0100", "1-415-555-0100", "cell 415.555.0100 / home …") become
+   +14155550100: the first US number in the text, or null when there isn't one. Same as TourMath.normCell on the page. */
+function normCell(s) {
+  const m = /(?:\+?1[\s.\-]*)?\(?(\d{3})\)?[\s.\-]*(\d{3})[\s.\-]*(\d{4})(?!\d)/.exec(String(s || ""));
+  return m ? "+1" + m[1] + m[2] + m[3] : null;
+}
+const cellKey = (n) => { const c = normCell(n); return c ? c.slice(2) : ""; };
 function planCellMatch(uid, u, phone, cells, takenBy, now) {
   if (!u || u.status !== "pending" || !phone) return null;
   const want = cellKey(phone);
@@ -123,9 +129,10 @@ function cleanPersonRequest(body, { companies, emplOwner }) {
   return { name, rank: body.rank, company, tour, emplId, note: cleanText(body.note, "note") };
 }
 
-/* A pending account picks a roster entry ({pos, note}) or asks to be added ({request}). takenBy(pos) -> the uid
-   linked to that position, or null. Returns the fields to write. */
-function planClaim(uid, u, body, { lookup, takenBy, companies, emplOwner }) {
+/* A pending account picks a roster entry ({pos, note, emplId}) or asks to be added ({request}). takenBy(pos) -> the
+   uid linked to that position, or null; expectedEmplId: the Employee ID on file for pos, or null. A matching
+   Employee ID links and approves the account at once; otherwise the claim waits for an admin. Returns the fields to write. */
+function planClaim(uid, u, body, { lookup, takenBy, companies, emplOwner, expectedEmplId }) {
   if (u.status !== "pending") throw new AccountError("failed-precondition", "Only accounts waiting for approval can send a claim.");
   if (body && body.request && typeof body.request === "object") {
     const req = cleanPersonRequest(body.request, { companies, emplOwner });
@@ -137,6 +144,11 @@ function planClaim(uid, u, body, { lookup, takenBy, companies, emplOwner }) {
   if (!entry || !entry.name) throw bad("Pick your name from the roster");
   const other = takenBy(pos);
   if (other && other !== uid) throw new AccountError("already-exists", "That roster entry is already linked to another account. Ask an admin for help.");
+  // The Employee ID on file for that seat (expectedEmplId) proves it's them: linked and approved at once, no admin wait.
+  const id = cleanText(body.emplId, "emplId", 20).toUpperCase();
+  if (id && expectedEmplId && id === String(expectedEmplId).toUpperCase()) {
+    return { pos, status: "active", claimPos: null, claimNote: null, claimRequest: null, approvedBy: "emplId" };
+  }
   return { claimPos: pos, claimNote: cleanText(body.note, "Note", 300) || null, claimRequest: null };
 }
 
@@ -271,7 +283,7 @@ function launchTargets(keys, cells, onTool, sent) {
     if (onTool(k)) skipped.onTool++;
     else if (!cells.get(k) || cellKey(cells.get(k)).length !== 10) skipped.noCell++;
     else if (sent(k)) skipped.sent++;
-    else out.push({ key: k, cell: cells.get(k) });
+    else out.push({ key: k, cell: normCell(cells.get(k)) });
   });
   return { send: out, skipped };
 }
@@ -279,5 +291,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  cellKey, planCellMatch, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, planCellMatch, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

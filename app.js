@@ -46,7 +46,8 @@
     }
     if ((m = /^(?:tour|t\.)\s*(\d{1,2})$/.exec(q))) return function (f) { return f.tour === +m[1]; };
     if (/^\d{1,2}[a-z]{2,4}\d{2,3}m$/.test(q)) return function (f) { return (f.pos || "").toLowerCase() === q; };
-    return function (f) { return [f.name, f.title, f.id, f.extra].join(" ").toLowerCase().indexOf(q) !== -1; };
+    // Names: words in any order, first or last ("david lester", "lester d").
+    return function (f) { return M.wordsMatch(q, [f.name, f.title, f.id, f.extra].join(" ")); };
   }
   function statusPill(code) {
     return code ? '<span class="st st-' + esc(code) + '" title="' + esc(STATUS_LABEL[code] || code) + '">' + esc(code) + "</span>" : "";
@@ -338,9 +339,11 @@
     items[suggestIdx].scrollIntoView({ block: "nearest" });
     $("person-input").setAttribute("aria-activedescendant", items[suggestIdx].id);
   }
+  var pickedThisVisit = false;
   function choosePerson(pos) {
     var p = byPos[pos];
     if (!p) return;
+    pickedThisVisit = true;
     state.personPos = pos;
     state.personMonth = new Date(state.date.getFullYear(), state.date.getMonth(), 1);
     $("person-input").value = p.name || "";
@@ -851,6 +854,7 @@
     var bits = [];
     if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
     [[c.staffList ? "" : "Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+      if (ph[1] && M.normCell(ph[1])) ph[1] = M.showCell(ph[1]); // shown as (415) 555-0100
       if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
     });
     return '<div class="kv contact-kv"><span class="k">' + (c.staffList ? "Cell · staff list, admins only" : "Contact for swaps" + (c.shared ? "" : " · not shared, admins only")) + '</span><span class="v contact-v">' +
@@ -1112,7 +1116,8 @@
       }, function (err) { say(msg, err.message, true); });
     };
 
-    var savedPerson = recall("person");
+    // The Schedule tab opens on you when your account is linked to the roster, else on the last person searched.
+    var savedPerson = myPos() || recall("person");
     if (savedPerson && byPos[savedPerson] && byPos[savedPerson].name) {
       state.personPos = savedPerson;
       $("person-input").value = byPos[savedPerson].name;
@@ -1155,6 +1160,12 @@
   // The employee card: admins on the shared page (Editor access) or on the server; never viewers, members or snapshots.
   function isCardAdmin() { return !!(backend && backend.update && backend.canAdmin && backend.canAdmin()); }
   function serverMode() { return backend && backend.mode === "server"; }
+  // The roster position this account is linked to (Firebase, server, or "This is me" on the shared page), or null.
+  function myPos() {
+    if (!backend || backend.mode === "snapshot" || !backend.myKey) return null; // the demo's "viewing as" isn't you
+    var k = backend.myKey();
+    return k && byPos[k] ? k : null;
+  }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
     if (v === "me") return serverMode() && backend.isActive();
@@ -1353,11 +1364,22 @@
   if (window.POSITIONS) {
     // Single-file build: show the schedule at once, then light up editing when the page database answers.
     boot(window.POSITIONS);
-    window.ScheduleStore.connect(onRecords).then(function (b) { backend = b; applyAccountUi(); renderAll(true); });
+    window.ScheduleStore.connect(onRecords).then(function (b) {
+      backend = b;
+      // Linked with "This is me": open on yourself, unless someone was already picked this visit.
+      if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
+      applyAccountUi();
+      renderAll(true);
+    });
   } else {
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
+      // The roster and the three smaller files download together (Firebase may have started them during sign-in).
+      var json = function (url) {
+        return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+      };
+      var others = Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")]);
       return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
@@ -1373,16 +1395,12 @@
           sessionStorage.removeItem("tradeInvite");
           if (inviteCode && backend.redeemInvite) backend.redeemInvite(decodeURIComponent(inviteCode), "").catch(function () {});
         } catch (e) { /* storage unavailable */ }
-        var json = function (url) {
-          return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
-        };
-        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
-          .then(function (got) {
-            requiredData = got[0]; emplIds = got[1]; recsVersion++;
-            window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
-            window.AWARDS_2027 = window.AWARDS_2027 || got[2];
-            boot(rows);
-          });
+        return others.then(function (got) {
+          requiredData = got[0]; emplIds = got[1]; recsVersion++;
+          window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
+          window.AWARDS_2027 = window.AWARDS_2027 || got[2];
+          boot(rows);
+        });
       });
     }).catch(loadError);
   }
