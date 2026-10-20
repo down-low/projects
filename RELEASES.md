@@ -60,7 +60,8 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
 ### Invites from trades
-**Built now** (shared page and server): Invite, Invite all, Copy the text and Add their answer, with the page link in the text. Still to come with Firebase: the personal `/t/<code>` link, answering from it, and Employee ID verification.
+**Built now** (shared page and server): Invite, Invite all, Copy the text and Add their answer, with the page link in the text.
+**Built on Firebase (Oct 2026):** a personal link per person (`<app>/?t=<code>`, functions `createInvite`, `inviteInfo`, `answerFromInvite`, `redeemInvite`), Messages addressed to their staff-list cell when one is on file (audited), **Group text** (all their cells, the general link), answering from the link before signing up, and Employee ID confirmation that links and approves the account. A pick on an unconfirmed link answer waits as **Picked** until they confirm. Still to come: the 48-hour lapse of an unconfirmed pick (needs a scheduled function), and the trade-less **Invite someone** join link.
 
 A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know. There are two kinds of "not on yet":
 

@@ -1361,7 +1361,8 @@
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
-        if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
+        if (/[?&](auth_error|t)=/.test(location.search)) history.replaceState(null, "", location.pathname);
+        try { sessionStorage.removeItem("tradeInvite"); } catch (e) { /* a trade invite link opened by someone already approved */ }
         var json = function (url) {
           return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };

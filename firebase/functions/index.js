@@ -9,6 +9,7 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 const A = require("./accounts");
 
 admin.initializeApp();
@@ -151,6 +152,138 @@ exports.onToolKeys = wrap(async (req) => {
   if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
   const snap = await db.collection("users").where("pos", "!=", null).get();
   return snap.docs.map((d) => d.data()).filter((u) => u.status === "active").map((u) => u.pos);
+});
+
+/* ---------- Trade invites: a personal link per person, texted from the poster's own phone ----------
+   createInvite (poster), inviteInfo and answerFromInvite (no sign-in: the link is the key), redeemInvite (signed in, with
+   the invited person's Employee ID). tradeInvites and link answers are written only here (firestore.rules). */
+const activePositions = async () => new Set((await db.collection("users").where("pos", "!=", null).get()).docs
+  .map((d) => d.data()).filter((u) => u.status === "active").map((u) => u.pos));
+const today = () => now().slice(0, 10);
+async function inviteDoc(code) {
+  if (typeof code !== "string" || !/^[A-Za-z0-9_-]{16,40}$/.test(code)) return { ref: null, inv: null };
+  const ref = db.doc("tradeInvites/" + code);
+  const snap = await ref.get();
+  return { ref, inv: snap.exists ? snap.data() : null };
+}
+// The invited person's Employee ID: an Employee card override, an added person's record, or the staff-list file.
+async function expectedEmplId(key) {
+  const o = await db.doc("rosterOverrides/" + key).get();
+  if (o.exists && o.data().emplId) return o.data().emplId;
+  if (key.startsWith(A.PERSON_PREFIX)) {
+    const p = await db.doc("people/" + key.slice(A.PERSON_PREFIX.length)).get();
+    return p.exists ? p.data().emplId || null : null;
+  }
+  const { ids } = await roster();
+  return (ids[key] && ids[key].id) || null;
+}
+
+/* {tradeId, keys}: one personal code per person (reused while it's valid), with the staff-list cell so Messages opens
+   addressed to them (the page also uses the cells for a group text with the general link). Each cell handed out is
+   audited. Past the daily limit a person gets code null (the page falls back to the general link).
+   Returns [{key, code, cell}]. */
+exports.createInvite = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true || !auth.token.pos) throw new HttpsError("permission-denied", "Link your account to your roster entry first.");
+  const body = req.data || {};
+  const keys = Array.isArray(body.keys) ? body.keys.filter((k) => typeof k === "string").slice(0, 40) : [];
+  if (typeof body.tradeId !== "string" || !keys.length) throw new HttpsError("invalid-argument", "tradeId and keys are required");
+  const tsnap = await db.doc("trades/" + body.tradeId).get();
+  const trade = tsnap.exists ? tsnap.data() : null;
+  const onTool = await activePositions();
+  const ctx = { callerPos: auth.token.pos, today: today(), onTool: (k) => onTool.has(k) };
+  keys.forEach((k) => { const why = A.inviteProblem(trade, k, ctx); if (why) throw new HttpsError("failed-precondition", why); });
+  const cells = await Promise.all(keys.map((k) => db.doc("staffCells/" + k).get().then((d) => (d.exists && d.data().cell) || null)));
+  const out = [];
+  {
+    const mine = await db.collection("tradeInvites").where("inviterKey", "==", auth.token.pos).get();
+    const made = mine.docs.filter((d) => d.data().createdAt >= today());
+    let fresh = made.length;
+    for (let i = 0; i < keys.length; i++) {
+      const old = mine.docs.find((d) => d.data().tradeId === body.tradeId && d.data().recipientKey === keys[i] && !A.inviteState(d.data(), now()));
+      let code = old && old.id;
+      if (!code) {
+        const prior = await db.collection("tradeInvites").where("tradeId", "==", body.tradeId).where("recipientKey", "==", keys[i]).get();
+        const live = prior.docs.find((d) => !A.inviteState(d.data(), now()));
+        code = live && live.id;
+      }
+      if (!code) {
+        if (fresh >= A.INVITES_PER_DAY) { out.push({ key: keys[i], code: null, cell: cells[i] }); continue; }
+        code = crypto.randomBytes(18).toString("base64url");
+        await db.doc("tradeInvites/" + code).set({ tradeId: body.tradeId, recipientKey: keys[i], inviterKey: auth.token.pos,
+          createdAt: now(), expiresAt: A.inviteExpiry(trade.date, now()), usedBy: null, usedAt: null, answers: 0 });
+        fresh++;
+      }
+      out.push({ key: keys[i], code, cell: cells[i] });
+    }
+  }
+  const handed = out.filter((x) => x.cell).map((x) => x.key);
+  if (handed.length) await audit(auth.uid, "inviteCell", { trade: body.tradeId, by: auth.token.pos, for: handed });
+  return out;
+});
+
+// What the link shows before sign-in: who's asking, the day and where; or that it has expired.
+exports.inviteInfo = wrap(async (req) => {
+  const { inv } = await inviteDoc(req.data && req.data.code);
+  const why = A.inviteState(inv, now());
+  if (why) return { error: why };
+  const [tsnap, { lookup }] = await Promise.all([db.doc("trades/" + inv.tradeId).get(), lookups()]);
+  const t = tsnap.exists ? tsnap.data() : null;
+  if (!t) return { error: "That trade is gone" };
+  const poster = lookup(t.posterKey) || {}, seat = lookup(t.seatPos) || {}, me = lookup(inv.recipientKey) || {};
+  const reply = await db.doc("tradeReplies/link_" + req.data.code).get();
+  return { date: t.date, open: t.status === "open" && t.date >= today(), posterName: poster.name || t.posterName || "",
+    posterRank: poster.rank || "", station: seat.company || "", note: t.note || "", forName: me.name || "",
+    answer: reply.exists ? reply.data().proposal : null, used: !!inv.usedBy };
+});
+
+// An answer from the link, before sign-in. It's saved unverified; the poster can pick it, and it's confirmed when the
+// person signs in with their Employee ID.
+exports.answerFromInvite = wrap(async (req) => {
+  const body = req.data || {};
+  const { ref, inv } = await inviteDoc(body.code);
+  const why = A.inviteState(inv, now());
+  if (why) throw new HttpsError("failed-precondition", why);
+  if ((inv.answers || 0) >= A.ANSWERS_PER_INVITE) throw new HttpsError("resource-exhausted", "Too many answers from this link. Sign in to answer.");
+  const tsnap = await db.doc("trades/" + inv.tradeId).get();
+  const t = tsnap.exists ? tsnap.data() : null;
+  if (!t || t.status !== "open" || t.date < today()) throw new HttpsError("failed-precondition", "This trade is no longer open");
+  const { proposal, note } = A.cleanInviteAnswer(body, t.date, today());
+  const { lookup } = await lookups();
+  const me = lookup(inv.recipientKey) || {};
+  await db.doc("tradeReplies/link_" + body.code).set({ tradeId: inv.tradeId, takerKey: inv.recipientKey, takerName: me.name || null,
+    proposal, swapSeatPos: null, note, via: "link", verified: !!inv.usedBy, createdAt: now(), createdBy: "invite:" + inv.inviterKey });
+  await ref.update({ answers: admin.firestore.FieldValue.increment(1) });
+  return { ok: true };
+});
+
+/* Signing in from the link with the invited person's Employee ID: links and approves the account, confirms their link
+   answer, and if the poster already picked it (status "pending"), sets the trade. */
+exports.redeemInvite = wrap(async (req) => {
+  const auth = signedIn(req);
+  const body = req.data || {};
+  const { ref, inv } = await inviteDoc(body.code);
+  if (!inv) throw new HttpsError("not-found", "That link isn't valid");
+  const expected = await expectedEmplId(inv.recipientKey);
+  const uref = db.doc("users/" + auth.uid);
+  const user = await db.runTransaction(async (t) => {
+    const [usnap, linked] = await Promise.all([t.get(uref), t.get(db.collection("users").where("pos", "==", inv.recipientKey))]);
+    const u = usnap.exists ? usnap.data() : null;
+    const takenBy = linked.empty ? null : linked.docs[0].id;
+    const patch = A.planRedeem(auth.uid, u, inv, body.emplId, { expected, takenBy, nowIso: now() });
+    const rref = db.doc("tradeReplies/link_" + body.code), tref = db.doc("trades/" + inv.tradeId);
+    const [rsnap, tsnap] = await Promise.all([t.get(rref), t.get(tref)]);
+    t.update(uref, patch);
+    t.update(ref, { usedBy: auth.uid, usedAt: now() });
+    if (rsnap.exists) t.update(rref, { verified: true });
+    const tr = tsnap.exists ? tsnap.data() : null;
+    if (tr && tr.status === "pending" && tr.replyId === "link_" + body.code) t.update(tref, { status: "set", setAt: now() });
+    return Object.assign({}, u, patch);
+  });
+  await syncClaims(auth.uid, user, auth.token);
+  await audit(auth.uid, "invite", { pos: inv.recipientKey, by: inv.inviterKey, trade: inv.tradeId });
+  const { lookup } = await lookups();
+  return Object.assign(await meFor(auth.uid, user, lookup), { claimsChanged: true });
 });
 
 exports.adminUsers = wrap(async (req) => {

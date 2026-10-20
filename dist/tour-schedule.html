@@ -645,6 +645,7 @@ s.held + .st { margin-left: 2px; }
 .cal .d.off.st-TR { border-color: var(--tr); background: repeating-linear-gradient(135deg, var(--tr-soft) 0 6px, var(--surface) 6px 12px); }
 .cal .d.off.st-TR .w { color: var(--tr); }
 .tag-st-open { background: var(--accent-soft); color: var(--accent); }
+.tag-st-pending { background: var(--swing-soft); color: var(--swing); }
 .tag-st-cancelled, .tag-st-expired { background: var(--line); color: var(--muted); font-weight: 500; }
 .trade-link { font-family: var(--font-body); font-size: 0.8rem; color: var(--accent); margin-left: 6px; }
 
@@ -1372,6 +1373,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
+ * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
+ * answerInvite(code, proposal, note), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
  * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
  * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
@@ -1919,6 +1922,11 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
       claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
       rosterNames: function () { return call("rosterNames"); },
+      // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
+      createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
+      inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
+      answerInvite: function (code, proposal, note) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "" }); },
+      redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
           phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
@@ -1966,8 +1974,9 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       },
       widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })); },
       replyTrade: function (rec) { return w(addRec("tradeReplies", rec)); },
+      // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
       pickReply: function (trade, reply, writes) {
-        return w(fs.collection("trades").doc(trade.id).update({ status: "set", replyId: reply.id, takerKey: reply.takerKey,
+        return w(fs.collection("trades").doc(trade.id).update({ status: reply.via === "link" && !reply.verified ? "pending" : "set", replyId: reply.id, takerKey: reply.takerKey,
           proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }));
       },
       cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })); },
@@ -2214,11 +2223,97 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     var $ = api.$, esc = api.esc;
     var roster = null, claimPick = null, adminFilter = "", adminUsersCache = [];
 
+    /* ---------- Trade invite links (?t=<code>, Firebase) ----------
+       Before sign-in: the trade and an answer form (answerInvite). Signed in and not yet approved: the Employee ID that
+       proves it's the invited person (redeemInvite), which links and approves the account. The code survives sign-in. */
+    function inviteCode() {
+      try {
+        var c = new URLSearchParams(location.search).get("t");
+        if (c) sessionStorage.setItem("tradeInvite", c);
+        return c || sessionStorage.getItem("tradeInvite");
+      } catch (e) { return null; }
+    }
+    function dropInvite() {
+      try { sessionStorage.removeItem("tradeInvite"); history.replaceState(null, "", location.pathname); } catch (e) { /* old browser */ }
+    }
+    function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
+    function signInButton() { return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'; }
+    function wireSignIn(el) {
+      if ($("gate-in")) $("gate-in").onclick = function () {
+        api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
+      };
+    }
+    function renderInviteAnswer(el, code) {
+      el.innerHTML = '<div class="card gate-card"><h2>Shift trade</h2><p class="hint" id="inv-body">Loading…</p></div>';
+      api.backend().inviteInfo(code).then(function (info) {
+        var card = el.querySelector(".gate-card");
+        if (info.error) {
+          card.innerHTML = "<h2>Shift trade</h2><p>" + esc(info.error) + ". Sign in to see the trade board.</p>" + signInButton();
+          dropInvite();
+          return wireSignIn(el);
+        }
+        var said = info.answer ? (info.answer.later ? "pay back later" : "they work your " + niceDate(info.answer.swapDate)) : "";
+        card.innerHTML = "<h2>Shift trade</h2>" +
+          "<p><b>" + esc(info.posterName) + "</b>" + (info.posterRank ? " (" + esc(info.posterRank) + ")" : "") + " wants to trade <b>" +
+          esc(niceDate(info.date)) + "</b>, a 24-hr shift" + (info.station ? " at " + esc(info.station) : "") + ".</p>" +
+          (info.note ? '<p class="trade-note">' + esc(info.note) + "</p>" : "") +
+          (info.forName ? '<p class="hint">This link is for ' + esc(info.forName) + ".</p>" : "") +
+          (said ? "<p>You answered: <b>" + esc(said) + "</b>. You can change it below.</p>" : "") +
+          (info.open
+            ? '<form class="edit" id="inv-form" novalidate><fieldset class="choice"><legend>I\'m interested</legend>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="later" checked> Pay me back later</label>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="swap"> Swap: they work one of my shifts</label>' +
+              '<label class="indent">My day they\'d work<input type="date" id="inv-swap" disabled></label></fieldset>' +
+              '<label>Note (optional)<input type="text" id="inv-note" maxlength="300"></label>' +
+              '<div class="row"><button class="btn primary" type="submit">Send my answer</button><span class="msg" id="inv-msg" role="status"></span></div></form>'
+            : "<p>This trade is no longer open.</p>") +
+          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. If they pick you, sign in with Google and your Employee ID to confirm it's you.") + "</p>" +
+          signInButton();
+        wireSignIn(el);
+        var f = $("inv-form");
+        if (!f) return;
+        var swap = $("inv-swap");
+        f.querySelectorAll("[name=inv-kind]").forEach(function (r) { r.onchange = function () { swap.disabled = f.querySelector("[name=inv-kind]:checked").value !== "swap"; }; });
+        f.onsubmit = function (e) {
+          e.preventDefault();
+          var msg = $("inv-msg"), later = f.querySelector("[name=inv-kind]:checked").value === "later";
+          if (!later && !swap.value) return api.say(msg, "Pick the day they'd work for you.", true);
+          api.say(msg, "Sending…");
+          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim())
+            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it; you'll confirm it's you if they pick you."); },
+              function (er) { api.say(msg, er.message, true); });
+        };
+      }, function (er) {
+        el.querySelector(".gate-card").innerHTML = "<h2>Shift trade</h2><p class=\"msg err\">" + esc(er.message) + "</p>" + signInButton();
+        wireSignIn(el);
+      });
+    }
+    function renderInviteRedeem(el, code, me) {
+      el.innerHTML = '<div class="card gate-card"><h2>Confirm it\'s you</h2>' +
+        '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
+        "<p>Enter your Employee ID. If it matches the person this trade invite was sent to, your account is set up right away.</p>" +
+        '<form class="edit claim-form" id="inv-redeem" novalidate><label>Employee ID<input type="text" id="inv-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Confirm</button><span class="msg" id="inv-rmsg" role="status"></span></div></form>' +
+        '<p><button class="linkish" type="button" id="inv-skip">Not you? Find yourself on the roster instead</button></p></div>';
+      $("gate-out").onclick = function () { api.backend().signOut(); };
+      $("inv-skip").onclick = function () { dropInvite(); renderGate(); };
+      $("inv-redeem").onsubmit = function (e) {
+        e.preventDefault();
+        var id = $("inv-id").value.trim().toUpperCase(), msg = $("inv-rmsg");
+        if (!/^[A-Z]{2}\d{4}$/.test(id)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        api.say(msg, "Checking…");
+        api.backend().redeemInvite(code, id).then(function () { dropInvite(); location.reload(); }, function (er) { api.say(msg, er.message, true); });
+      };
+    }
+
     /* ---------- Sign-in and claim screen ---------- */
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
       api.gate(true);
+      var code = api.backend().inviteInfo ? inviteCode() : null;
+      if (code && !me.signedIn) return renderInviteAnswer(el, code);
+      if (code && !me.wrongSite && me.status === "pending") return renderInviteRedeem(el, code, me);
       var err = null;
       try { err = new URLSearchParams(location.search).get("auth_error"); } catch (e) { /* old browser */ }
       var errHtml = err ? '<p class="msg err" role="alert">' + esc(AUTH_ERRORS[err] || "Sign-in failed. Try again.") + "</p>" : "";
@@ -3282,7 +3377,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -3356,7 +3451,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
     // My open or set trade for that day, or null.
     function tradeFor(pos, dIso) {
-      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set" || x.status === "pending"); })[0] || null;
     }
     function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
@@ -3478,9 +3573,13 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     function ownCard(t) {
       var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] };
       var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + '</span><span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
       var body = "";
-      if (st === "set") {
+      if (st === "pending") {
+        body = '<p class="trade-terms">You picked ' + esc(nameOf(t.takerKey)) + ". " + esc(terms(t.proposal, true)) + ".</p>" +
+          '<p class="hint">Waiting for them to sign in from their link with their Employee ID; then the trade is set.</p>' +
+          '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
+      } else if (st === "set") {
         body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + " works your shift. " + esc(terms(t.proposal, true)) + ".</p>" +
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
@@ -3489,6 +3588,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + (r.via === "poster" ? ' <span class="tag">Added by you</span>' : "") +
+              (r.via === "link" ? ' <span class="tag">' + (r.verified ? "From their link" : "From their link · not verified") + "</span>" : "") +
               '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
               '<button class="btn small primary" data-pick="' + esc(r.id) + '" data-trade="' + esc(t.id) + '">Pick</button></li>';
           }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') + inviteHtml(t) +
@@ -3508,15 +3608,35 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    function inviteText(t) {
-      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos], link = pageLink();
+    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    function inviteText(t, k) {
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
+      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
       return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
-    // iPhones and Macs take "sms:&body=", Android "sms:?body=".
-    function smsHref(body) {
-      return "sms:" + (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?") + "body=" + encodeURIComponent(body);
+    /* A Messages link, addressed to `cells` (staff-list numbers from createInvite) when there are any. iPhones and Macs
+       take "sms:<n>&body=" and "sms:/open?addresses=<a>,<b>&body=" for a group; Android "sms:<a>,<b>?body=". */
+    function smsHref(body, cells) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = (cells || []).map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    /* Personal links (Firebase): createInvite makes one code per person not on the tool, with their staff-list cell.
+       Fetched once per trade; until then (or elsewhere) the general link and no number. */
+    function inviteFor(t, k) { var l = ui.links[t.id]; return l && l.byKey ? l.byKey[k] || null : null; }
+    function loadLinks(t, keys) {
+      var b = backend();
+      if (!b.createInvite || ui.links[t.id]) return;
+      ui.links[t.id] = { loading: true };
+      b.createInvite(t.id, keys).then(function (rows) {
+        var by = {};
+        (rows || []).forEach(function (r) { by[r.key] = r; });
+        ui.links[t.id] = { byKey: by };
+        renderTrades();
+      }, function (er) { ui.links[t.id] = { error: er.message }; renderTrades(); });
     }
     function notOnTool(t) {
       var b = backend();
@@ -3524,7 +3644,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
     function smsLink(t, k, label, cls, run) {
-      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
+      var mine = inviteFor(t, k);
+      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
         esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
     }
     // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
@@ -3545,8 +3666,13 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
       }
-      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      loadLinks(t, keys);
+      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
+      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
+        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
+        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -3559,8 +3685,10 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
             smsLink(t, k, "Invite") + "</li>";
         }).join("") + "</ul>" +
-          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
+          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
+            '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
@@ -6515,7 +6643,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
-        if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
+        if (/[?&](auth_error|t)=/.test(location.search)) history.replaceState(null, "", location.pathname);
+        try { sessionStorage.removeItem("tradeInvite"); } catch (e) { /* a trade invite link opened by someone already approved */ }
         var json = function (url) {
           return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };

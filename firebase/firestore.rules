@@ -70,7 +70,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Private: staff-list cell numbers (admins only, never members), birth and hire dates (owner and admins).
+    // Private: staff-list cell numbers (admins only; a trade's poster gets their invitees' cells through createInvite,
+    // audited), birth and hire dates (owner and admins).
     match /staffCells/{key} {
       allow read, write: if isAdmin();
     }
@@ -108,9 +109,16 @@ service cloud.firestore {
     match /tradeReplies/{id} {
       allow read: if active();
       // Your own answer, or (via "poster") an answer the poster got by text and records for someone on their trade.
-      allow create: if isAdmin() || (myPos() != null && (data().takerKey == myPos() ||
+      // Answers from an invite link (via "link", verified) are written only by the functions.
+      allow create: if isAdmin() || (myPos() != null && !('verified' in data()) && data().get('via', null) != 'link' &&
+          (data().takerKey == myPos() ||
           (data().via == 'poster' && get(/databases/$(database)/documents/trades/$(data().tradeId)).data.posterKey == myPos())));
       allow update, delete: if isAdmin();
+    }
+
+    // Trade invites (personal links): made and read only by the functions (createInvite, inviteInfo, redeemInvite).
+    match /tradeInvites/{code} {
+      allow read, write: if false;
     }
 
     // Corrections: one record per member (corrections/<uid>), read and written by that member; editors and admins
