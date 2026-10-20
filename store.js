@@ -435,7 +435,7 @@
     var fb = root.firebase;
     if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
-    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false;
+    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
       corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
 
@@ -505,6 +505,10 @@
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
       watch("site", fs.collection("settings").doc("site"));
+      // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
+      var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
+      loadOnTool();
+      setInterval(function () { if (!document.hidden) loadOnTool(); }, 600000);
     }
     // Approval, a role change or a new roster link (made by an admin) reloads the page with the new access.
     function watchAccount() {
@@ -598,7 +602,7 @@
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
       myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
-      onTool: function () { return null; },
+      onTool: function (key) { return onTool ? onTool.indexOf(key) !== -1 : null; },
       setAlerts: function (a) {
         var alerts = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" };
         return w(fs.collection("users").doc(user.uid).update({ alerts: alerts })).then(function () { me.alerts = alerts; return me; });

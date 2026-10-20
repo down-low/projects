@@ -144,6 +144,15 @@ exports.rosterNames = wrap(async (req) => {
   return A.rosterNames(ctx.rows, ctx.people, new Set(taken.keys()));
 });
 
+// Who's on the tool: positions with an active linked account. A trade's poster gets Invite for the people they sent it
+// to who aren't (a text from their own phone).
+exports.onToolKeys = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
+  const snap = await db.collection("users").where("pos", "!=", null).get();
+  return snap.docs.map((d) => d.data()).filter((u) => u.status === "active").map((u) => u.pos);
+});
+
 exports.adminUsers = wrap(async (req) => {
   requireAdmin(req);
   const [{ lookup }, snap] = await Promise.all([lookups(), db.collection("users").get()]);
