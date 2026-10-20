@@ -129,55 +129,167 @@ def retour(s, tour):
         s["swing"] = rotation(tour, *s["_rot"])
 
 
+OFFICERS = ("Captain", "Lieutenant")
+CHIEFS = ("Battalion Chief", "ISS", "Rescue Captain")
+GAP_OFFSETS = (9, 19, 29, 30)  # watches tours t, t+1, t+2 all have off (no two of them ever share a watch)
+
+
+def gap_watches(start):
+    return {(start - 1 + g) % 31 + 1 for g in GAP_OFFSETS}
+
+
+def fit_swings(starts, swing_tours):
+    """Match each swing's watches to a company whose own officers are off that watch, each company-watch used once.
+    starts: {company: first of its 3 officer tours}. Returns ({(swing index, watch): company}, matched count)."""
+    slots = {}
+    for co, st in starts.items():
+        for w in sorted(gap_watches(st)):
+            slots.setdefault(w, []).append(co)
+    owner = {}
+    def place(key, w, seen):
+        for co in slots.get(w, []):
+            if (co, w) in seen:
+                continue
+            seen.add((co, w))
+            if (co, w) not in owner or place(owner[(co, w)], w, seen):
+                owner[(co, w)] = key
+                return True
+        return False
+    n = sum(1 for k, tour in enumerate(swing_tours) for w in watches(tour) if place((k, w), w, set()))
+    return {key: co for (co, w), key in owner.items()}, n
+
+
+def plan_officers(cos, n_swings):
+    """Officer tours for each company (3 consecutive) and Lt swing tours, so every swing watch lands on a company whose
+    officers are off: one officer per company per day. Deterministic search."""
+    rng = random.Random(SEED)
+    starts = {co: rng.randint(1, 31) for co in cos}
+    sw = [rng.randint(1, 31) for _ in range(n_swings)]
+    best = fit_swings(starts, sw)[1]
+    while best < 9 * n_swings:
+        if rng.random() < 0.5:
+            co = rng.choice(cos)
+            old, starts[co] = starts[co], rng.randint(1, 31)
+            got = fit_swings(starts, sw)[1]
+            if got >= best:
+                best = got
+            else:
+                starts[co] = old
+        else:
+            k = rng.randrange(n_swings)
+            old, sw[k] = sw[k], rng.randint(1, 31)
+            got = fit_swings(starts, sw)[1]
+            if got >= best:
+                best = got
+            else:
+                sw[k] = old
+    return starts, sw, fit_swings(starts, sw)[0]
+
+
+def run(start, n):
+    return [(start - 1 + k) % 31 + 1 for k in range(n)]
+
+
+def free_bc(w, b02):
+    """Battalions with no chief of their own on watch w (B01 chiefs on tours 1-3)."""
+    return [co for co, tours in (("B02", b02), ("B01", (1, 2, 3))) if not any((w - x) % 31 in OFFSETS for x in tours)]
+
+
+def plan_chiefs():
+    """ISS tours, B02 chief tours, BC swing tour and rescue captain tours, chosen so the days some chief post is empty are
+    spread out rather than stacked on the same watches. Exhaustive over a small space, so deterministic."""
+    best = None
+    for i in range(1, 32):
+        for b in range(1, 32):
+            b02 = run(b, 2)
+            bts = [x for x in range(1, 32) if x not in b02 and all(free_bc(w, b02) for w in watches(x))]
+            for bt in bts:
+                for r in range(1, 32):
+                    miss = []
+                    for w in range(1, 32):
+                        on = lambda tours: any((w - x) % 31 in OFFSETS for x in tours)
+                        sw = w in watches(bt)
+                        b01 = on((1, 2, 3)) or (sw and free_bc(w, b02)[0] == "B01")
+                        b2 = on(b02) or (sw and free_bc(w, b02)[0] == "B02")
+                        miss.append((not b01) + (not on(run(i, 3))) + (not b2) + (not on(run(r, 2))))
+                    key = (max(miss), sum(x * x for x in miss), i, b, bt, r)
+                    if best is None or key < best:
+                        best = key
+    _, _, i, b, bt, r = best
+    return run(i, 3), run(b, 2), bt, run(r, 2)
+
+
+def seat(station, typ, tour, title, hclass, rank, company, **more):
+    return dict({"pos": f"{station}{typ}{tour:02d}M", "title": title, "hclass": hclass, "rank": rank, "company": company,
+                 "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": (station, typ)}, **more)
+
+
 def build_seats():
     seats = []
+    ff_roles = ["EMT", "DR", "FF"]
+    companies = [(co, co[1:], ENGINE) for co in B01 + B02] + [("T03", "03", TRUCK), ("T08", "08", TRUCK), ("RS1", "01", SQUAD)]
+    starts, lt_tours, lt_at = plan_officers([c[0] for c in companies], 5)
 
-    def apparatus(co, station, spec, swing=None, start=0):
-        """swing: list of (type, rank, title, hclass, role, companies) seats that rotate; they take tours too."""
-        rows = [(t, r, ti, h, None, None) for t, r, ti, h, n in spec for _ in range(n)] + (swing or [])
-        for (typ, rank, title, hcl, role, cos), tour in zip(rows, spread(len(rows), start)):
-            s = {"pos": f"{station}{typ}{tour:02d}M", "title": f"{title} {co}", "hclass": hcl, "rank": rank, "company": co,
-                 "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": (station, typ)}
-            if role:
+    def apparatus(co, station, spec, swing=(), start=0):
+        """Officers on tours start, start+1, start+2; everyone else and the FF swings spread over the other tours.
+        swing: (type, rank, title, hclass, roles, companies) seats that rotate."""
+        officer_tours = [(start - 1 + k) % 31 + 1 for k in range(3)] if start else []
+        rest = [x for x in range(1, 32) if x not in officer_tours]
+        rows = [(t, r, ti, h, None, None) for t, r, ti, h, n in spec for _ in range(n)] + list(swing)
+        others = [r for r in rows if r[1] not in OFFICERS]
+        picks = [rest[round(i * len(rest) / len(others))] for i in range(len(others))]
+        tours = iter(officer_tours)
+        others_t = iter(picks)
+        for typ, rank, title, hcl, roles, cos in rows:
+            tour = next(tours) if rank in OFFICERS else next(others_t)
+            s = seat(station, typ, tour, f"{title} {co}", hcl, rank, co)
+            if roles:
                 s["title"] = f"{title} Swing {co}" if "SSwing" not in title else f"{title.replace(' SSwing', '')} SSwing {co}"
                 s["swingType"] = "SSwing" if "SSwing" in title else "Swing"
-                roles = role if isinstance(role, list) else [role]
                 s["_rot"] = (cos, roles)
                 s["swing"] = rotation(tour, cos, roles)
             seats.append(s)
 
-    ff_roles = ["EMT", "DR", "FF"]
-    lt_swing = {"E02": B01[:3], "E04": B01[2:], "E05": ["E05", "E01", "E03"], "E07": B02[:3], "E09": B02[2:], "E10": ["E10", "E06", "E08"]}
-    for i, co in enumerate(B01 + B02):
-        st = co[1:]
-        sw = [("ETX", "Firefighter", "FF", "H2", ff_roles, [co])]
-        if co in lt_swing:
-            sw.append(("ETL", "Lieutenant", "Lt.", "H20", "OFF", lt_swing[co]))
+    for co, st, spec in companies:
+        sw = []
+        if spec is ENGINE:
+            sw.append(("ETX", "Firefighter", "FF", "H2", ff_roles, [co]))
         if co == "E06":
-            sw.append(("ETA", "FF/Paramedic", "FF/PM", "H3", "EMTP", B02))
+            sw.append(("ETA", "FF/Paramedic", "FF/PM", "H3", ["EMTP"], B02))
         if co == "E10":
             sw.append(("ENX", "Firefighter", "FF SSwing", "H2", ff_roles, B02))
-        apparatus(co, st, ENGINE, sw, start=i * 3)
-    apparatus("T03", "03", TRUCK, [("TTX", "Firefighter", "FF", "H2", ["DR", "EMT", "FF", "TLR"], ["T03"])], start=5)
-    apparatus("T08", "08", TRUCK, [("TTX", "Firefighter", "FF", "H2", ["DR", "EMT", "FF", "TLR"], ["T08"])], start=20)
-    apparatus("RS1", "01", SQUAD, [("STX", "Firefighter", "FF", "H2", ff_roles, ["RS1"])], start=9)
-    apparatus("MA1", "09", MEDIC, start=12)
-    # Battalion chiefs, ISS and rescue captains: one seat a tour on a few tours.
-    for tour in (1, 2, 3):
-        seats.append({"pos": f"01BO2{tour:02d}M", "title": "BC B01", "hclass": "H40", "rank": "Battalion Chief", "company": "B01",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "BO2")})
-        seats.append({"pos": f"01BO0{tour:02d}M", "title": "ISS B01", "hclass": "H10", "rank": "ISS", "company": "B01",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "BO0")})
-    for tour in (5, 6):
-        seats.append({"pos": f"06BO2{tour:02d}M", "title": "BC B02", "hclass": "H40", "rank": "Battalion Chief", "company": "B02",
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("06", "BO2")})
-    seats.append({"pos": "06BT204M", "title": "BC Swing B02", "hclass": "H40", "rank": "Battalion Chief", "company": "B02",
-                  "swingType": "Swing", "tour": 4, "name": None, "status": "Owned",
-                  "swing": [{"co": "B02" if i % 2 == 0 else "B01", "role": "BC", "watch": w} for i, w in enumerate(watches(4))]})
-    for tour in (1, 2):
-        seats.append({"pos": f"01ROR{tour:02d}M", "title": "Rescue Captain 1", "hclass": "H33", "rank": "Rescue Captain", "company": None,
-                      "swingType": None, "tour": tour, "name": None, "status": "Owned", "_code": ("01", "ROR")})
+        if spec is TRUCK:
+            sw.append(("TTX", "Firefighter", "FF", "H2", ["DR", "EMT", "FF", "TLR"], [co]))
+        if spec is SQUAD:
+            sw.append(("STX", "Firefighter", "FF", "H2", ff_roles, ["RS1"]))
+        apparatus(co, st, spec, sw, start=starts[co])
+    apparatus("MA1", "09", MEDIC)
+    # Lieutenant swings: on each of their watches they cover a company whose own officers are off.
+    for k, tour in enumerate(lt_tours):
+        rot = [{"co": lt_at[(k, w)], "role": "OFF", "watch": w} for w in watches(tour)]
+        home = max(sorted({r["co"] for r in rot}), key=lambda c: sum(r["co"] == c for r in rot))
+        station = home[1:] if home[0] in "ET" else "01"
+        seats.append(seat(station, "ETL" if home[0] == "E" else "TTL" if home[0] == "T" else "STL", tour, f"Lt. Swing {home}",
+                          "H20", "Lieutenant", home, swingType="Swing", swing=rot))
+    # Battalion chiefs, ISS and rescue captains on consecutive tours (never two on one post on one day); the BC swing
+    # fills days with no chief. Their days off are staggered (plan_chiefs).
+    iss, b02, bt, rc = plan_chiefs()
+    for k in range(3):
+        seats.append(seat("01", "BO2", 1 + k, "BC B01", "H40", "Battalion Chief", "B01"))
+        seats.append(seat("01", "BO0", iss[k], "ISS B01", "H10", "ISS", "B01"))
+    for tour in b02:
+        seats.append(seat("06", "BO2", tour, "BC B02", "H40", "Battalion Chief", "B02"))
+    seats.append(seat("06", "BT2", bt, "BC Swing B02", "H40", "Battalion Chief", "B02", swingType="Swing",
+                      swing=[{"co": free_bc(w, b02)[0], "role": "BC", "watch": w} for w in watches(bt)]))
+    for tour in rc:
+        seats.append(seat("01", "ROR", tour, "Rescue Captain 1", "H33", "Rescue Captain", None))
     return seats
+
+
+def most_per_post(seats, recs, day):
+    """The most officers (per company) or chiefs (per battalion, ISS, rescue captain) working one post on `day`."""
+    groups = [[s for s in seats if s["rank"] in OFFICERS]] + [[s for s in seats if s["rank"] == r] for r in CHIEFS]
+    return max(max(on_duty(g, recs, day).values(), default=0) for g in groups)
 
 
 # Required staffing: short by SHORT_MIN..SHORT_MAX of Required on every day from AS_OF to FIT_END, as the Staffing
@@ -186,17 +298,24 @@ SHORT_MIN, SHORT_MAX, FIT_END = 0.10, 0.15, "2027-06-30"
 REQUIRED_RANGE = {"E": (3, 5), "T": (4, 6), "RS1": (3, 5), "MA1": (1, 1), "B01": (2, 2), "B02": (1, 1), "RC1": (1, 1)}
 
 
-def fit_staffing(seats, recs, rng):
-    """Spread the tours of seats no record mentions so each day's staffing is about as short as the next, and pick each
-    apparatus's required number; returns {apparatus: required}. Seats named in records keep their tours (and numbers)."""
-    days = []
-    d = dt.date.fromisoformat(AS_OF)
+def fit_days():
+    days, d = [], dt.date.fromisoformat(AS_OF)
     while d.isoformat() <= FIT_END:
         days.append(d.isoformat())
         d += dt.timedelta(days=1)
+    return days
+
+
+def fit_staffing(seats, recs, rng):
+    """Spread the tours of seats no record mentions so each day's staffing is about as short as the next, and pick each
+    apparatus's required number; returns {apparatus: required}. Seats named in records keep their tours (and numbers)."""
+    days = fit_days()
     text = json.dumps(recs)
-    frozen = [s for s in seats if s["pos"] in text or not s.get("_code") or (s.get("swing") and not s.get("_rot"))]
-    free = [s for s in seats if s not in frozen and s["name"]]
+    # Seats that keep their tours: named in a record, swings with a fixed rotation, and officers and chiefs (one per
+    # post per day, see plan_officers / plan_chiefs). Only unrecorded, named FF and FF/PM seats move.
+    free = [s for s in seats if s["pos"] not in text and s["name"] and s.get("_code") and s["rank"] not in OFFICERS + CHIEFS
+            and (not s.get("swing") or s.get("_rot"))]
+    frozen = [s for s in seats if s not in free]
     base = {day: on_duty(frozen, recs, day) for day in days}  # frozen seats with every record applied
     wk = {day: watch(dt.date.fromisoformat(day)) for day in days}
     cos = [co for dv in ORGANIZATION for bt in dv["battalions"] for co in bt["apparatus"]]
@@ -367,9 +486,10 @@ def main():
     lt_cov = pick("Lieutenant")[0]
     cover(lt_cov["pos"], lt_cov["name"], lt_we, "2026-08-01", None, "cover", f"{lt_we['name']} working elsewhere")
     ff_sh = pick("Firefighter")[0]
-    cover(ff_sh["pos"], ff_sh["name"], pick("Lieutenant")[0], "2026-10-01", None, "shadow", "VR20 relief")
-    capt_x = pick("Captain", 2)
-    cover(capt_x[0]["pos"], capt_x[0]["name"], capt_x[1], "2026-10-05", "2026-12-31", "extra", "Second captain, training")
+    # The shadow fills the seat of the lieutenant acting as captain, so no post has two officers.
+    cover(ff_sh["pos"], ff_sh["name"], lt_act, "2026-10-01", None, "shadow", "VR20 relief")
+    ff_x = pick("Firefighter", 2)
+    cover(ff_x[0]["pos"], ff_x[0]["name"], ff_x[1], "2026-10-05", "2026-12-31", "extra", "Second firefighter, training")
 
     # An added person (relief, not on the vacancy list) covering a vacant seat.
     open_seats = list(vacant)
@@ -400,6 +520,9 @@ def main():
     snapshot = {"asOf": AS_OF, "records": {"statuses": statuses, "tourChanges": tour_changes, "covers": covers, "people": people,
                                            "staffing": [], "assignments": assignments}}
     required = fit_staffing(seats, snapshot["records"], rng)
+    most = max(most_per_post(seats, snapshot["records"], day) for day in fit_days())
+    print("most officers or chiefs on one post on one day:", most)
+    assert most <= 1, "two officers or chiefs on one post on the same day"
     ids = {s["pos"]: {"id": s["_id"], "name": s["name"], "source": "Demo (fictional)"} for s in seats if s["name"]}
     # The report's day: its overtime hires make up the difference, so "Working but not in the tool" comes out at 0.
     overtime = max(0, sum(required.values()) - sum(on_duty(seats, snapshot["records"], AS_OF).values()))

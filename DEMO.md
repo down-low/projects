@@ -1,10 +1,17 @@
 # Demo branch (`claude/demo-app`)
 
 A slimmed-down, view-only demo of the tour schedule tool with **entirely fictional data**: one division, 2 battalions
-(B01, B02), 10 engines, 2 trucks, a rescue squad, a medic unit and a rescue captain; 198 seats and about 190 made-up people
-at the real tool's rank mix (FF 118, Lt 32, FF/PM 24, Capt 13, BC 6, ISS 3, RC 2; 22 swing seats). It works like the
+(B01, B02), 10 engines, 2 trucks, a rescue squad, a medic unit and a rescue captain; 197 seats and about 190 made-up people
+at the real tool's rank mix (FF 118, Lt 31, FF/PM 24, Capt 13, BC 6, ISS 3, RC 2; 21 swing seats). It works like the
 view-only snapshot link: records baked in, no sign-in, a trade demo where nothing is saved, and a "Demo · fictional data"
-banner. The Documents menu is hidden (`docs/index.json` is empty).
+banner. The Documents menu is hidden (`docs/index.json` is empty), and tour numbers are hidden everywhere
+(`demo-hide-tours.js`, added by `--hide-tours`; it edits the rendered page, so the app's screens stay as on `main`).
+
+**One officer or chief per post per day.** Each company's Captain and two Lieutenants are on three consecutive tours,
+which never share a watch; the five Lieutenant swings cover, on each of their watches, a company whose officers are off
+(`plan_officers`). Battalion chiefs, ISS and rescue captains are on consecutive tours too (`plan_chiefs`). A sixth Lt
+swing wouldn't fit (13 companies leave 52 officer gaps a cycle; six swings need 54), hence 31 Lieutenants. The run
+checks every day and fails if any post has two.
 
 **Never merge this branch into `main`, and never merge `main` into it** (that brings the real roster back). Never publish
 it to the real tool's claude.ai links; the demo has its own artifact.

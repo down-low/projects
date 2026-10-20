@@ -7,7 +7,8 @@ Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule
          points to the Firebase sites; publish it with `--capabilities --frozen`, every write raised to the owner)
        python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json] [--banner TEXT]
          (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js;
-         --banner shows TEXT in a strip across the top, e.g. "Demo · fictional data", see DEMO.md)
+         --banner shows TEXT in a strip across the top, e.g. "Demo · fictional data"; --hide-tours hides tour numbers
+         with demo-hide-tours.js; see DEMO.md)
 """
 import json
 import os
@@ -102,6 +103,9 @@ def main():
         del args[i:i + 2]
         if snapshot is None:
             sys.exit("--demo needs --snapshot")
+    hide_tours = "--hide-tours" in args
+    if hide_tours:
+        args.remove("--hide-tours")
     note = None
     if "--banner" in args:
         i = args.index("--banner")
@@ -156,6 +160,7 @@ def main():
         f"<script>\n{read('corrections.js')}</script>\n"
         f"<script>\n{read('card.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
+        + (f"<script>\n{read('demo-hide-tours.js')}</script>\n" if hide_tours else "")
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as f:
