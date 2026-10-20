@@ -5016,7 +5016,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<ol class="fir-steps"><li>On the city VPN, open fir-db1 and sign in (any page).</li>' +
         "<li>" + btn("Copy pull script", 'id="fir-copy"' + (plan.people.length + plan.companies.length ? "" : " disabled"), "primary") +
         " then in that tab open the console (F12 → Console; type <code>allow pasting</code> if Chrome asks), paste and press Enter. " +
-        "It opens each person's time page (14 days from the date) and downloads <code>fir-&lt;date&gt;.csv</code>.</li>" +
+        "It opens each person's time page (" + (plan.to ? "every day from " + esc(plan.date) + " to " + esc(plan.to) : "14 days around the date") + ") and downloads <code>fir-&lt;date&gt;" + (plan.to ? "_to_&lt;date&gt;" : "") + ".csv</code>.</li>" +
         '<li>Choose that file here: <input type="file" id="fir-file" accept=".csv,text/csv"> <span class="msg" id="fir-msg" role="status">' + esc(f.error || "") + "</span></li></ol>" +
         '<textarea id="fir-script" class="fir-script" readonly hidden></textarea>' +
         '<p class="hint">The script only reads pages your fir-db1 login can already see, one at a time. The file stays on this computer; nothing is saved to the tool.</p>' +
