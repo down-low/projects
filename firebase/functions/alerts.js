@@ -185,8 +185,10 @@ function parseSms(body, today) {
   return { kind: "swap", date: iso(y) >= today ? iso(y) : iso(y + 1) };
 }
 // Phone numbers compared by their last 10 digits.
-const phoneKey = (n) => String(n || "").replace(/\D/g, "").slice(-10);
-function e164(n) { const d = String(n || "").replace(/\D/g, ""); return d.length === 10 ? "+1" + d : d.length === 11 && d[0] === "1" ? "+" + d : null; }
+// Phone numbers as typed become +1XXXXXXXXXX (the first US number in the text), compared by their 10 digits.
+const { normCell } = require("./accounts");
+const e164 = (n) => normCell(n);
+const phoneKey = (n) => { const c = normCell(n); return c ? c.slice(2) : ""; };
 // Twilio's request signature: HMAC-SHA1 over the full URL plus the sorted POST parameters.
 function twilioSignature(url, params, token) {
   const data = Object.keys(params).sort().reduce((s, k) => s + k + params[k], url);

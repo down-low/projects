@@ -141,21 +141,29 @@ exports.syncMe = wrap(async (req) => {
 exports.claim = wrap(async (req) => {
   const auth = signedIn(req);
   const ctx = await lookups();
+  const body = req.data || {};
   const ref = db.doc("users/" + auth.uid);
+  // With an Employee ID, the one on file for that seat (expectedEmplId, below) decides: a match is in at once.
+  const expected = typeof body.pos === "string" && body.emplId ? await expectedEmplId(body.pos) : null;
   const user = await db.runTransaction(async (t) => {
     const snap = await t.get(ref);
     if (!snap.exists) throw new HttpsError("failed-precondition", "Reload the page and try again.");
     const u = snap.data();
     let takenBy = () => null;
-    if (req.data && typeof req.data.pos === "string") {
-      const q = await t.get(db.collection("users").where("pos", "==", req.data.pos));
+    if (typeof body.pos === "string") {
+      const q = await t.get(db.collection("users").where("pos", "==", body.pos));
       takenBy = () => (q.empty ? null : q.docs[0].id);
     }
-    const patch = A.planClaim(auth.uid, u, req.data || {}, Object.assign({}, ctx, { takenBy }));
+    const patch = A.planClaim(auth.uid, u, body, Object.assign({}, ctx, { takenBy, expectedEmplId: expected }));
     t.update(ref, patch);
     return Object.assign({}, u, patch);
   });
-  await audit(auth.uid, req.data && req.data.request ? "request" : "claim", { pos: user.claimPos || null });
+  if (user.approvedBy === "emplId" && user.status === "active") {
+    await syncClaims(auth.uid, user, auth.token);
+    await audit(auth.uid, "emplIdLink", { pos: user.pos });
+    return Object.assign(await meFor(auth.uid, user, ctx.lookup), { claimsChanged: true });
+  }
+  await audit(auth.uid, body.request ? "request" : "claim", { pos: user.claimPos || null, emplIdTried: !!body.emplId });
   return meFor(auth.uid, user, ctx.lookup);
 });
 
@@ -214,7 +222,7 @@ exports.createInvite = wrap(async (req) => {
   const onTool = await activePositions();
   const ctx = { callerPos: auth.token.pos, today: today(), onTool: (k) => onTool.has(k) };
   keys.forEach((k) => { const why = A.inviteProblem(trade, k, ctx); if (why) throw new HttpsError("failed-precondition", why); });
-  const cells = await Promise.all(keys.map((k) => db.doc("staffCells/" + k).get().then((d) => (d.exists && d.data().cell) || null)));
+  const cells = await Promise.all(keys.map((k) => db.doc("staffCells/" + k).get().then((d) => (d.exists && A.normCell(d.data().cell)) || null)));
   const out = [];
   {
     const mine = await db.collection("tradeInvites").where("inviterKey", "==", auth.token.pos).get();

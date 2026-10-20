@@ -254,7 +254,30 @@
     return writes;
   }
 
+  /* Cell numbers as typed on the staff list ("(415) 555-0100", "1-415-555-0100", "cell 415.555.0100 / home …") become
+     +14155550100: the first US number in the text, or null. Same as normCell in firebase/functions/accounts.js. */
+  function normCell(s) {
+    var m = /(?:\+?1[\s.\-]*)?\(?(\d{3})\)?[\s.\-]*(\d{3})[\s.\-]*(\d{4})(?!\d)/.exec(String(s || ""));
+    return m ? "+1" + m[1] + m[2] + m[3] : null;
+  }
+  // +14155550100 -> (415) 555-0100, for showing.
+  function showCell(c) { var n = normCell(c); return n ? "(" + n.slice(2, 5) + ") " + n.slice(5, 8) + "-" + n.slice(8) : c || ""; }
+  /* Search that takes words in any order: "david lester", "lester d", "dave lester" and "Lester,D" all match
+     "Lester,D". Each word of q must start a word of text (or, from 3 letters, appear inside one, for position numbers),
+     or be a first name whose initial is a one-letter word there ("david" -> "D"); and at least one word must match
+     more than an initial, so "lester" alone doesn't find everyone with the initial L. */
+  function wordsMatch(q, text) {
+    var words = String(q || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
+    var tokens = String(text || "").toLowerCase().split(/[\s,.()·]+/).filter(Boolean);
+    var full = function (w) { return tokens.some(function (t) { return t.indexOf(w) === 0 || (w.length >= 3 && t.indexOf(w) !== -1); }); };
+    // A first name stands for an initial only next to a real last-name match ("david lester", not "lester d" -> Diaz,L).
+    var lastName = words.some(function (w) { return w.length >= 2 && tokens[0] && tokens[0].indexOf(w) === 0; });
+    var initial = function (w) { return lastName && w.length > 1 && tokens.some(function (t) { return t.length === 1 && w[0] === t; }); };
+    return words.length > 0 && words.every(function (w) { return full(w) || initial(w); }) && words.some(full);
+  }
+
   var api = {
+    normCell: normCell, showCell: showCell, wordsMatch: wordsMatch,
     seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,

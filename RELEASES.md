@@ -30,6 +30,7 @@ Offer these alongside Google sign-in (all built into Firebase Auth), so members 
   - **Apple sign-in**, which needs a $99/year Apple developer account;
   - **email and password**, only if members ask for it.
 - **Same claim flow for everyone:** after any sign-in, find yourself by name or Empl ID and confirm your station and tour; an admin approves or undoes the claim. One person can link more than one sign-in method to the same account.
+- **Built on Firebase (Oct 2026, first user feedback):** on the claim screen, names match in any order ("dave lester"), one match is picked for you, and the Employee ID on file for that position approves the account at once (`approvedBy: "emplId"`, audited); without it an admin approves. The app opens on your own schedule once you're linked, shows "Loading the schedule…" while it starts, and downloads the roster files together (during sign-in for returning users). Staff-list cells are standardized to +1XXXXXXXXXX (`normCell`) on save and import and when read.
 
 ### Installable app (PWA)
 Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.

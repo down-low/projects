@@ -16,7 +16,7 @@
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
 
   root.AccountViews = function (api) {
-    var $ = api.$, esc = api.esc;
+    var $ = api.$, esc = api.esc, M = root.TourMath;
     var roster = null, claimPick = null, adminFilter = "", adminUsersCache = [];
 
     /* ---------- Trade invite links (?t=<code>, Firebase) ----------
@@ -191,13 +191,17 @@
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
-        "<p>Find yourself on the roster so the schedule knows which position is yours. An admin approves each request.</p>" +
+        "<p>Find yourself on the roster so the schedule knows which position is yours.</p>" +
         '<label for="claim-q">Your name or position number</label>' +
-        '<input type="search" id="claim-q" autocomplete="off" placeholder="Start typing your last name">' +
+        '<input type="search" id="claim-q" autocomplete="off" placeholder="First and last name, e.g. Dave Lester">' +
         '<ul class="pick" id="claim-list"></ul>' +
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
+        (api.backend().hosted === "firebase"
+          ? '<div id="claim-id-row" hidden><label for="claim-id">Your Employee ID</label><input type="text" id="claim-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters" autocomplete="off">' +
+            '<p class="hint">If it matches the one on file, you\'re in right away. Otherwise an admin approves your request.</p></div>'
+          : "") +
         '<label for="claim-note">Note for the admin (optional)</label><input type="text" id="claim-note" maxlength="300" placeholder="e.g. Captain E33, Tour 12">' +
-        '<div class="row"><button class="btn primary" type="submit">Send request</button><span class="msg" id="claim-msg" role="status"></span></div>' +
+        '<div class="row"><button class="btn primary" type="submit" id="claim-go">Continue</button><span class="msg" id="claim-msg" role="status"></span></div>' +
         '<p><button class="linkish" type="button" id="not-listed">I\'m not on the list</button></p>' +
         "</form>" +
         '<form class="edit claim-form" id="req-form" hidden novalidate>' +
@@ -236,32 +240,52 @@
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
+      // Names in any order ("dave lester", "lester d"); when only one name matches, it's picked for you.
       function showMatches() {
-        var q = $("claim-q").value.trim().toLowerCase();
+        var q = $("claim-q").value.trim();
         if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
-        var hits = roster.filter(function (r) {
-          return r.name.toLowerCase().indexOf(q) !== -1 || r.pos.toLowerCase().indexOf(q) !== -1;
-        }).slice(0, 12);
+        var hits = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + r.title + " " + r.pos); }).slice(0, 12);
+        if (hits.length === 1) return pick(hits[0]);
+        if (claimPick) unpick();
         listEl.innerHTML = hits.length ? hits.map(function (r) {
           return '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '"><b>' + esc(r.name) + "</b> " +
             '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span></button></li>";
         }).join("") : '<li class="hint">No unclaimed roster entry matches. Check the spelling or ask an admin.</li>';
       }
+      function pick(r) {
+        claimPick = r.pos;
+        $("claim-chosen").hidden = false;
+        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
+          ' <button class="linkish" type="button" id="claim-not-me">Not me</button>';
+        $("claim-not-me").onclick = function () { $("claim-q").value = ""; unpick(); $("claim-q").focus(); };
+        listEl.innerHTML = "";
+        if ($("claim-id-row")) { $("claim-id-row").hidden = false; $("claim-id").focus(); }
+      }
+      function unpick() {
+        claimPick = null;
+        $("claim-chosen").hidden = true;
+        if ($("claim-id-row")) $("claim-id-row").hidden = true;
+      }
       $("claim-q").oninput = showMatches;
       listEl.onclick = function (e) {
         var b = e.target.closest("button[data-pos]");
         if (!b) return;
-        claimPick = b.dataset.pos;
-        var r = roster.filter(function (x) { return x.pos === claimPick; })[0];
-        $("claim-chosen").hidden = false;
-        $("claim-chosen").innerHTML = "Selected: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos);
-        listEl.innerHTML = "";
+        pick(roster.filter(function (x) { return x.pos === b.dataset.pos; })[0]);
       };
       $("claim-form").onsubmit = function (e) {
         e.preventDefault();
-        if (!claimPick) return api.say($("claim-msg"), "Pick your name from the list first.", true);
-        api.say($("claim-msg"), "Sending…");
-        api.backend().claim(claimPick, $("claim-note").value.trim()).then(renderGate, function (er) { api.say($("claim-msg"), er.message, true); });
+        var msg = $("claim-msg");
+        if (!claimPick) return api.say(msg, "Pick your name from the list first.", true);
+        var empl = $("claim-id") ? $("claim-id").value.trim().toUpperCase() : "";
+        if (empl && !/^[A-Z]{2}\d{4}$/.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        api.say(msg, empl ? "Checking…" : "Sending…");
+        api.backend().claim(claimPick, $("claim-note").value.trim(), empl || null).then(function (me) {
+          // A matching Employee ID approves the account: reload into the schedule.
+          if (me && me.status === "active") { location.reload(); return; }
+          renderGate();
+          var wait = document.querySelector("#gate .claim-wait");
+          if (empl && wait) wait.insertAdjacentHTML("afterbegin", '<p class="msg err" role="status">That Employee ID didn\'t match the one on file for that position.</p>');
+        }, function (er) { api.say(msg, er.message, true); });
       };
       if (!roster) api.backend().rosterNames().then(function (r) {
         roster = r.sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -411,7 +435,8 @@
         return true;
       }).map(function (p) {
         var c = cells[p.pos];
-        return { p: p, cell: c && c.staffList ? c.phoneMobile : null, on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
+        var raw = c && c.staffList ? c.phoneMobile : null;
+        return { p: p, cell: M.normCell(raw), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
       }).filter(function (x) { return !(launch.notOn && x.on); })
         .sort(function (a, c) { return Organization.order(a.p.company || a.p.title) - Organization.order(c.p.company || c.p.title) || a.p.name.localeCompare(c.p.name); });
     }
@@ -433,6 +458,8 @@
       }).map(function (p) { return p.company; }))).sort(function (a, c) { return Organization.order(a) - Organization.order(c); });
       var grps = Array.from(new Set(api.people().map(function (p) { return root.TourMath.rankGroup(p.rank); }))).sort();
       var noCell = all.filter(function (x) { return !x.cell; }).length, sentN = all.filter(function (x) { return x.sent; }).length;
+      // Cells on file that aren't a phone number (fix them on the person's Employee card).
+      var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
       el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
         '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
@@ -443,6 +470,8 @@
         '<label class="chk"><input type="checkbox" data-l="notOn"' + (launch.notOn ? " checked" : "") + "> Only people not on the tool yet</label>" +
         '<label class="chk"><input type="checkbox" data-l="hideSent"' + (launch.hideSent ? " checked" : "") + "> Hide people already texted</label>" +
         '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
+        (bad.length ? '<p class="msg err">' + bad.length + (bad.length === 1 ? " cell on file isn't" : " cells on file aren't") + " a phone number: " +
+          esc(bad.slice(0, 8).map(function (x) { return x.p.name; }).join(", ")) + (bad.length > 8 ? "…" : "") + ". Fix them on their Employee cards.</p>" : "") +
         '<label>Message<textarea id="launch-msg" rows="3" maxlength="600">' + esc(launchMsg()) + "</textarea></label>" +
         (run
           ? (run.i < run.list.length
@@ -627,7 +656,7 @@
       var rows = adminUsersCache.filter(function (u) {
         if (!adminFilter) return true;
         var p = u.pos && api.byPos()[u.pos];
-        return [u.name, u.googleEmail, u.pos, p && p.name, u.role, u.status].join(" ").toLowerCase().indexOf(adminFilter) !== -1;
+        return M.wordsMatch(adminFilter, [u.name, u.googleEmail, u.pos, p && p.name, u.role, u.status].join(" "));
       });
       $("admin-users").innerHTML = rows.length ? rows.map(function (u) {
         var self = u.id === meId;

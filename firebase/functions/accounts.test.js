@@ -173,6 +173,24 @@ test("a personal invite link opened with the invited person's cell needs no Empl
 test("launch texts skip people on the tool, without a cell, or already texted", () => {
   const cells = new Map([["a", "4155550101"], ["b", "4155550102"], ["c", ""], ["d", "4155550104"], ["e", "123"]]);
   const r = A.launchTargets(["a", "b", "c", "d", "e", "a"], cells, (k) => k === "b", (k) => k === "d");
-  assert.deepEqual(r.send, [{ key: "a", cell: "4155550101" }]);
+  assert.deepEqual(r.send, [{ key: "a", cell: "+14155550101" }]);
   assert.deepEqual(r.skipped, { onTool: 1, noCell: 2, sent: 1 });
+});
+
+test("picking your name with the Employee ID on file gets you in at once; otherwise an admin approves", () => {
+  const ctx = { lookup, takenBy: () => null, companies, emplOwner: () => null, expectedEmplId: "LE1234" };
+  const pending = { status: "pending", role: "member", pos: null };
+  const p = A.planClaim("u1", pending, { pos: "10EOC03M", emplId: " le1234 " }, ctx);
+  assert.deepEqual([p.pos, p.status, p.approvedBy], ["10EOC03M", "active", "emplId"]);
+  assert.deepEqual(A.planClaim("u1", pending, { pos: "10EOC03M", emplId: "LE9999" }, ctx).claimPos, "10EOC03M");
+  assert.deepEqual(A.planClaim("u1", pending, { pos: "10EOC03M", emplId: "LE1234" }, Object.assign({}, ctx, { expectedEmplId: null })).claimPos, "10EOC03M");
+  assert.throws(() => A.planClaim("u1", pending, { pos: "10EOC03M", emplId: "LE1234" }, Object.assign({}, ctx, { takenBy: () => "u2" })), (e) => e.code === "already-exists");
+});
+
+test("cell numbers are standardized to +1 and ten digits", () => {
+  const cases = { "(415) 555-0100": "+14155550100", "415.555.0100": "+14155550100", "1-415-555-0100": "+14155550100",
+    "+1 415 555 0100": "+14155550100", "cell 415-555-0100 / home 650-555-0199": "+14155550100", "4155550100": "+14155550100",
+    "555-0100": null, "": null, "n/a": null };
+  Object.entries(cases).forEach(([raw, want]) => assert.equal(A.normCell(raw), want, raw));
+  assert.equal(A.cellKey("cell 415-555-0100 / home 650-555-0199"), "4155550100");
 });

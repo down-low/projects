@@ -850,3 +850,4 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .launch-count { margin: 10px 0 6px; }
 .launch-groups .hint { font-size: 0.8rem; }
 .launch-groups li { align-items: flex-start; }
+.empty.loading { text-align: center; }
