@@ -524,6 +524,8 @@
       body.querySelectorAll("[data-dv]").forEach(function (c) {
         c.onchange = function () {
           var g = gs.filter(function (x) { return x.dv.id === c.dataset.dv; })[0];
+          // Checking opens the lists, so you can see who's selected.
+          if (c.checked) g.bts.forEach(function (b) { w.open[g.dv.id + "/" + b.bt.id] = true; });
           setAll([].concat.apply([], g.bts.map(function (b) { return b.people; })), c.checked);
         };
       });
@@ -531,6 +533,7 @@
         c.onclick = function (e) { e.stopPropagation(); };
         c.onchange = function () {
           var k = c.dataset.bt.split("/"), g = gs.filter(function (x) { return x.dv.id === k[0]; })[0];
+          if (c.checked) w.open[c.dataset.bt] = true;
           setAll(g.bts.filter(function (b) { return b.bt.id === k[1]; })[0].people, c.checked);
         };
       });
