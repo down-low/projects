@@ -3,6 +3,8 @@
 
 Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule.html)
        python3 tools/build_artifact.py --capabilities   (the page-database rules to publish with)
+       python3 tools/build_artifact.py out.html --frozen https://ADMIN-SITE   (cut-over, CUTOVER.md: read-only page that
+         points to the Firebase sites; publish it with `--capabilities --frozen`, every write raised to the owner)
        python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json]
          (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js)
 """
@@ -30,6 +32,7 @@ CAPABILITIES = {
         {"path": "people", "read": "view", "write": "admin"},
         {"path": "staffing", "read": "view", "write": "admin"},
         {"path": "profiles", "read": "admin", "write": "admin"},
+        {"path": "assignments", "read": "view", "write": "admin"},  # move log from assignment-change notices
         {"path": "contacts", "read": "admin", "write": "admin"},  # cell numbers from the staff list
         {"path": "members", "read": "view", "write": "admin"},
         {"path": "members/{self}", "write": "interact"},
@@ -38,9 +41,22 @@ CAPABILITIES = {
         # Corrections: each member writes and reads only their own record; admins read and update all.
         {"path": "corrections", "read": "admin", "write": "admin"},
         {"path": "corrections/{self}", "read": "interact", "write": "interact"},
+        # Employee card: a roster seat's name, rank or Employee ID over the files. Everyone reads (IDs are on the page
+        # anyway); only admins write.
+        {"path": "rosterOverrides", "read": "view", "write": "admin"},
     ]},
     "user": {},
+    "downloads": True,  # Employee cards, Download backup (admins): the one-time move to Firebase
 }
+
+
+def frozen_capabilities():
+    """After cut-over the page database is a read-only copy: no page-level write below the owner."""
+    caps = json.loads(json.dumps(CAPABILITIES))
+    for rule in caps["db"]["rules"]:
+        if "write" in rule:
+            rule["write"] = "owner"
+    return caps
 
 
 def fold_trades(records):
@@ -52,7 +68,8 @@ def fold_trades(records):
             rec = {k: v for k, v in leg.items() if k != "kind"}
             rec.update({"id": f"trade:{t.get('id')}:{i}", "tradeId": t.get("id"), "createdAt": t.get("setAt") or t.get("createdAt")})
             records.setdefault(leg.get("kind"), []).append(rec)
-    for k in ("tradeReplies", "members"):
+    # Private records never go into a view-only page (cell numbers, corrections, personal dates).
+    for k in ("tradeReplies", "members", "contacts", "corrections", "profiles"):
         records.pop(k, None)
 
 
@@ -62,8 +79,15 @@ def main():
     # into a view-only page that needs no sign-in and no page database.
     args = sys.argv[1:]
     if "--capabilities" in args:
-        print(json.dumps(CAPABILITIES))
+        print(json.dumps(frozen_capabilities() if "--frozen" in args else CAPABILITIES))
         return
+    frozen = None
+    if "--frozen" in args:  # the address admins use after cut-over
+        i = args.index("--frozen")
+        frozen = args[i + 1]
+        if not frozen.startswith("https://"):
+            sys.exit("--frozen needs the new address, e.g. https://PROJECT-admin.web.app")
+        del args[i:i + 2]
     snapshot = None
     if "--snapshot" in args:
         i = args.index("--snapshot")
@@ -93,12 +117,20 @@ def main():
         snap = "window.SNAPSHOT=" + json.dumps(snapshot, separators=(",", ":")).replace("</", "<\\/") + ";"
     if demo is not None:
         snap += "window.TRADE_DEMO=" + json.dumps(demo, separators=(",", ":")).replace("</", "<\\/") + ";"
+    banner = ""
+    if frozen is not None:
+        import html as htmlmod
+        addr = htmlmod.escape(frozen)
+        banner = (f'<div class="frozen-banner" role="status" style="width:calc(100% - 32px);max-width:1148px;margin:12px auto 0;box-sizing:border-box">'
+                  f'<span><b>Moved.</b> The tour schedule is now at <a href="{addr}">{addr}</a>. This copy is frozen and read-only.</span>'
+                  f'<span id="frozen-backup"></span></div>\n')
+        snap += "window.PAGE_FROZEN=true;"
     html = (
         f"<title>{title}</title>\n"
         '<meta name="claude:viewport-fit-sides" content="cover">\n'
         f'<link rel="stylesheet" href="{fonts}">\n'
         f"<style>\n{read('style.css')}</style>\n"
-        f"{body}\n"
+        f"{banner}{body}\n"
         f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};{snap}</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"
@@ -108,6 +140,7 @@ def main():
         f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('awards.js')}</script>\n"
         f"<script>\n{read('corrections.js')}</script>\n"
+        f"<script>\n{read('card.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )
     os.makedirs(os.path.dirname(out), exist_ok=True)

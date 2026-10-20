@@ -1,0 +1,487 @@
+priority,category,rank_group,name,employee_id,seat,officer_list_says,tool_shows,differs_in,suggested_check
+2,vacant,H 40,"Crean,Ryan T.",CR7635,01BN231M,H 40 B01 A31,"vacant · covered by Hoo,E",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 40,"Pumphrey,Zachary W",PU8622,10BO229M,H 40 B10 A29,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,held,H 40,"Sato,Joel H",SA3603,01BO202M,H 40 B01 A02,"Molloy,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Gering,Rick W",GE4179,01BO203M,H 40 B01 A03,"Thompson,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Crispen,Dean",CR7255,02BO207M,H 40 B02 A07,"Pereira,J · covered by Kircher,G",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Rocco,John S",RO9757,03BO208M,H 40 B03 A08,"McKinney,S · covered by App,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Kasper,Marc T.",KA6606,03BO209M,H 40 B03 A09,"Hoo,E · covered by Benz,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Brown,David M",BR0862,04BO211M,H 40 B04 A11,"Kaialoa,S · covered by Cordero,K",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Untalan,Richard D",UN7612,04BO212M,H 40 B04 A12,"Leal,E",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Maloney,Michael E",MA5688,05BO225M,H 40 B05 A25,"Scheppler,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Hayes,Mark T",HA4317,05BO226M,H 40 B05 A26,"Cavellini,N",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"McGuire,Thomas A",MC8463,05BO226M,H 40 B05 A26,"Cavellini,N",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Mullin,Michael K",MU2854,06BO221M,H 40 B06 A21,"Johannessen,T",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Paratley,Anita D",PA5985,06BO222M,H 40 B06 A22,"McKeon,K",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Siguenza,Pablo",SI0377,06BO222M,H 40 B06 A22,"McKeon,K",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Alba,Matthew L",AL1783,07BO218M,H 40 B07 A18,"Toby,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Romero,Samuel",RO0008,07BO218M,H 40 B07 A18,"Toby,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Murdock,Cherish",MU6444,08BO216M,H 40 B08 A16,"Ibarra-Rivera,L",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Francois,Pierre L",FR2651,08BO217M,H 40 B08 A17,"Ramirez,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Kiernan,Thomas D",KI0171,09BO227M,H 40 B09 A27,"Lee,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 40,"Abbott,Thomas F",AB6214,10BO228M,H 40 B10 A28,"Triplitt,C",,List has this person; tool has someone else. Who owns the seat?
+3,differs,H 40,"Rivieccio,C",RI1361,01BO201M,H 30 E21 A02,B01 T1,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Molloy,D",MO5148,01BO202M,H 30 T13 A31,B01 T2,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Thompson,D",TH7542,01BO203M,H 40 AP A17,B01 T3,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Choy,A",CH1691,01BT204M,H 30 E35 A18,B07 T19 · covering 07BO219M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Pereira,J",PE8323,02BO207M,H 40 B01 A04,B02 T5 · moved to 02BO205M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"McKinney,S",MC6913,03BO208M,H 30 RS1 A22,B10 T24 · covering 10BT224M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Hoo,E",HO4233,03BO209M,H 30 E37 A03,B01 T31 · covering 01BN231M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Kuhn,K",KU1180,03BO210M,H 40 AP A16,B08 T14 · covering 08BT214M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Kaialoa,S",KA0423,04BO211M,H 51 CD3 0,B04 T11,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Leal,E",LE1207,04BO212M,H 30 E03 A22,B04 T12,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Rollins,F",RO6076,04BO213M,H 30 RS2 A26,B04 T13,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Scheppler,R",SC1471,05BO225M,H 30 E01 A01,B05 T25,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Cavellini,N",CA4340,05BO226M,H 30 T15 A20,B05 T26,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Johannessen,T",JO5420,06BO221M,H 40 B07 A18,B06 T21,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"McKeon,K",MC4957,06BO222M,H 40 B08 A14,B06 T22,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Scoble,H",SC2112,06BO223M,H 30 T48 A09,B06 T23,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Toby,R",TO7971,07BO218M,H 20 VR20 A27,B07 T18,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Kircher,G",KI9180,07BO219M,H 40 B07 A19,B02 T7 · covering 02BO207M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Ibarra-Rivera,L",IB3665,08BO216M,H 30 T08 A16,B08 T16,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Ramirez,R",RA9634,08BO217M,H 30 E06 A13,B08 T17,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Lee,M",LE8507,09BO227M,H 40 B03 A10,B09 T27,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Triplitt,C",TR6847,10BO228M,H 20 VR20 A24,B10 T28,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Smith,M",SM0735,10BO230M,H 40 B10 A24,B10 T30,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Benz,C",BE0675,added,H 30 E05 A06,B03 T9 · covering 03BO209M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 40,"Eckerdt,D",EC3860,added,H 30 T09 A09,B03 T10 · covering 03BO210M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+4,nonfield,H 40,"Cannon,Matthew M",CA5637,,H 40 CECC 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 40,"Cercos-IV,Frank",CE8113,,H 40 CD3 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 40,"D'Arcy,Patrick D",DA7026,,H 40 CD3 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 40,"Parks,Natasha J",PA7306,,H 40 CD3 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,noid,H 40,"Thompson,Michael I",TH2682,02TOC07M,H 40 B10 A30,"Thompson,M 02TOC07M",,In tool without Employee ID; set emplId.
+4,noid,H 40,"Smith,Kevin W",SM2424,38EOL18M,H 40 AP A18,"Smith,K 38EOL18M",,In tool without Employee ID; set emplId.
+2,vacant,H 30,"Chan,Keng Y",CH1139,09EOC04M,H 30 E09 A04,"vacant · covered by Burns,B",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Mullaney,Patrick K",MU5755,11EOC01M,H 30 E11 A01,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Montero,Ruben",MO0915,12EOC25M,H 30 E12 A25,"vacant · covered by Maravillas,A",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Oertli,Thomas P",OE9511,13EOC26M,H 30 E13 A26,"vacant · covered by McDonald Jr,R",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Kwan,Theresa E",KW9356,17EOC14M,H 30 E17 A14,"Murphy,B (open for bid) · covered by Harrington,J",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Jackson,Ethan H",JA2339,24EOC20M,H 30 E24 A20,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Buford,Shon M",BU0552,25EOC11M,H 30 E25 A11,"vacant · covered by Thomas,E",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Zhang,Mark H",ZH3741,34EOC19M,H 30 E34 A19,"vacant · covered by Lysenko,G",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Francisco,Shane G",FR0976,3FBOC08M,H 30 FB3 A08,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 30,"Novo,Dustin C",NO2159,43EOC29M,H 30 E43 A29,"vacant · covered by Silva,John",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,held,H 30,"Driscoll,Joseph D",DR4684,06TOC17M,H 30 T06 A17,"Barden,B",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Chu,Edward Y",CH8822,07EOC22M,H 30 E07 A22,"Smith Jr,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Tillman,Sherman",TI9344,10TOC07M,H 30 T10 A07,"Neff,T",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Mau,Julie C",MA8709,12TOC30M,H 30 T12 A30,"Del Grande,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Miller,Garreth",MI6202,14EOC12M,H 30 E14 A12,"Ayers,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Cassidy,Stephen F",CA9359,15EOC15M,H 30 E15 A15,"Noble,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Luttropp,Darius O",LU0677,18EOC21M,H 30 E18 A21,"Jurado,K",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Brannan,Sayumi",BR9780,31EOC10M,H 30 E31 A10,"Sankey,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Krieger,Aisha E",KR2108,32EOC09M,H 30 E32 A09,"Alvarenga,G",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Barden,Jeffrey J",BA0945,36EOC28M,H 30 E36 A28,"McCoy,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Day,Michael B",DA5318,39EOC28M,H 30 E39 A28,"Lui,P",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Pedruco,Alberto A",PE3941,40EOC13M,H 30 E40 A13,"Maguire,S · covered by Turner,T",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Shattuck,Thorin",SH4921,41EOC30M,H 30 E41 A30,"Estrada,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Calzolai,Franco S",CA2341,42EOC23M,H 30 E42 A23,"Wehrman,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 30,"Caulder,Leonard L",CA2386,48EOC05M,H 30 E48 A05,"Storey,E · covered by Faenzi,C",,List has this person; tool has someone else. Who owns the seat?
+3,differs,H 30,"Schnelker,R",SC1354,01EOC01M,H 20 E29 A30,T01 T5 · covering 01TOC05M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Mullane,S",MU2368,01SOC22M,H 30 T16 A17,RS1 T22,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Lui,D",LU4695,02EOC02M,H 20 T13 A30,E02 T2,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Hutchinson,M",HU6141,02SOC26M,H 30 E51 A08,RS2 T26,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Whittaker,D",WH8588,03EOC22M,H 20 E05 A07,E03 T22,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Cordero,K",CO7835,03TOC27M,H 30 T03 A27,B04 T11 · covering 04BO211M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"App,J",AP0725,04EOC01M,H 30 E02 A02,B03 T8 · covering 03BO208M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Carter,C",CA4618,04TOC05M,H 20 E04 A02,T04 T5 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Rosser,R",RO2705,05EOC06M,H 30 E10 A03,E05 T6,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Baker,M",BA1163,06EOC13M,H 3 E36 A16,E06 T13,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Barden,B",BA4388,06TOC17M,H 30 E38 A19,T06 T17,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Bendik,A",BE3903,07TOC27M,H 30 E08 A11,T07 T27,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Ramirez,C",RA6138,08EOC11M,H 2 T12 A18,E23 T29 · covering 23EOC29M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Vail,E",VA2403,09TOC09M,H 20 T09 A07,T09 T9,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Weddle,T",WE1407,10EOC03M,H 20 T11 A07,E10 T3 · D,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Neff,T",NE0812,10TOC07M,H 30 T05 A10,T10 T7,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Del Grande,J",DE9065,12TOC30M,H 20 E10 A02,T12 T30,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Ayers,J",AY2066,14EOC12M,H 20 E14 A11,E14 T12,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Noble,D",NO1425,15EOC15M,H 20 E42 A22,E15 T15,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Fine,B",FI7786,15TOC20M,H 20 T10 A06,T15 T20,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Aspelin,L",AS9242,16EOC12M,H 20 VR20 A12,B08 T15 · covering 08BO215M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Murphy,B",MU0511,17EOC14M,H 30 T17 A18,E17 T14 · WE,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Zammarchi,E",ZA1019,17TOC18M,H 30 E33 A12,T17 T18,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Jurado,K",JU8829,18EOC21M,H 20 E18 A23,E18 T21,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Walsh,B",WA7573,18TOC26M,H 30 T18 A26,E13 T26 · covering 13EOC26M · D,company,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Bergmark,H",BE3660,20EOC23M,H 20 E32 A10,E20 T23 · D,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Soule,A",SO6845,21EOC02M,H 30 T04 A05,E21 T2,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Fogle,T",FO3293,28EOC10M,H 20 E16 A14,E28 T10 · D,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Sankey,D",SA1604,31EOC10M,H 20 T11 A05,E31 T10,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Alvarenga,G",AL2225,32EOC09M,H 30 T19 A20,E32 T9,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Bryant,S",BR2426,33EOC12M,H 20 T10 A05,E33 T12,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Draper,J",DR9511,35EOC18M,H 20 RS1 A21,E35 T18 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"McCoy,C",MC3620,36EOC28M,H 30 E22 A24,E36 T28,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Lui,P",LU3779,39EOC28M,H 28 DTA DAY4W,E39 T28,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Maguire,S",MA8395,40EOC13M,H 20 T08 A14,T18 T26 · covering 18TOC26M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Estrada,M",ES3956,41EOC30M,H 20 E11 A04,E41 T30,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Wehrman,S",WE1747,42EOC23M,H 3 E42 A09,E42 T23,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Krishpinovich,N",KR5573,44EOC24M,H 30 E04 A01,B09 T25 · covering 09BO225M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Storey,E",ST1527,48EOC05M,H 20 E48 A07,E48 T5 · D,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Cafferata,D",CA1901,51EOC08M,H 2 AP A05,E51 T8 · D,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Alvarenga,M",AL2153,added,H 20 E29 A29,E22 T24 · covering 22EOC24M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Bautista,J",BA7729,added,H 20 E11 A03,E26 T25 · covering 26EOC25M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Burns,B",BU2659,added,H 20 E19 A16,E09 T4 · covering 09EOC04M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Lopez,Robert",LO6430,added,H 20 CECC CCS1,E44 T24 · covering 44EOC24M,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Lysenko,G",LY8986,added,H 20 T06 A16,E34 T19 · covering 34EOC19M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Maravillas,A",MA8793,added,H 20 E51 A09,E12 T25 · covering 12EOC25M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Pain,J",PA1494,added,H 20 E33 A11,E08 T11 · covering 08EOC11M,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Silva,John",SI4953,added,H 20 E03 A24,E43 T29 · covering 43EOC29M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 30,"Truong,Dat",TR0477,added,H 20 AP A11,T14 T16 · covering 14TOC16M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+4,nonfield,H 30,"Griffin,Daniel B",GR2074,,H 30 AP A10,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Hsieh,Frank",HS1874,,H 30 DT 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Kennedy,Ryan A.",KE1098,,H 30 AO 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Khadir,Abdul",KH2770,,H 30 AO 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Mathews,Berglioth M",MA6579,,H 30 AP A09,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Peoples,Brice P",PE1237,,H 30 SS 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Roland,Edward",RO7004,,H 30 AO 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 30,"Zalba,Jose A",ZA8176,,H 30 CD3 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,noid,H 30,"Lee,Patricia F",LE4624,02TOT30M,H 30 AP A01,"Lee,P 02TOT30M",,In tool without Employee ID; set emplId.
+4,noid,H 30,"Wong,Alan K",WO9678,12ETX03M,H 30 AP A05,"Wong,A 12ETX03M, Wong,A 10EOD05M",,In tool without Employee ID; set emplId.
+2,vacant,H 20,"Charlton,Michael B",CH6084,01TOL06M,H 20 T01 A06,"Harrington,J (open for bid) · covered by Bendo,D",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Martino,Daniel",MA5784,02ETL04M,H 20 E02 A04,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Scola,Matthew J",SC7631,03TOL26M,H 20 T03 A26,"Mauberret,M (open for bid)",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Evans,Marc E",EV8374,04TOL04M,H 20 T04 A04,"Tibbits,Z (open for bid)",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Nacua,Kaeo K",NA5053,08ETL20M,H 20 E08 A20,"vacant · covered by Gebler,S",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Robertson,Damon M",RO3040,09ETL10M,H 20 E09 A10,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Sorrenti,Danielle C",SO2596,11ENL31M,H 20 E11 A31,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Woo,Herman J",WO3998,15TOL19M,H 20 T15 A19,"Boutilier,C (open for bid) · covered by Porter,C",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Stanfield,John R",ST1647,18EOL22M,H 20 E18 A22,"Roy,J (open for bid)",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Stevenson Jr,Aaron C",ST3213,20ETL24M,H 20 E20 A24,"vacant · covered by Korn,P",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Hardeman,Mark A",HA4432,26EOL27M,H 20 E26 A27,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Kelly,Dennis O",KE7516,29EOL30M,H 20 E29 A30,"vacant · covered by Wyckoff,W",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Voight,Anthony",VO7081,31EOL08M,H 20 E31 A08,"vacant · covered by Scafani,S",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Balzarini,Matthew D",BA1485,31EOL09M,H 20 E31 A09,"Anderson,H (open for bid)",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Bonetti,Sean P",BO3527,35EOL17M,H 20 E35 A17,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Truppa,Jonathan A",TR1165,35EOL17M,H 20 E35 A17,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Lopes,John P",LO1622,37EOL01M,H 20 E37 A01,"vacant · covered by Murphy,P",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Kwan,Eric Chung Ho",KW0795,39EOL30M,H 20 E39 A30,vacant,,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Curry,Dwayne R",CU9781,3FBOL07M,H 20 FB3 A07,"Alba,K (open for bid)",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,vacant,H 20,"Cullinane,Bridget H",CU7573,48EOL06M,H 20 E48 A06,"vacant · covered by Edelman,J",,List has this person in the seat; tool shows it empty. Add holder or confirm vacancy.
+2,held,H 20,"Grimesey,Patrick C",GR6230,01ETL10M,H 20 E01 A10,"Kimmel,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Adams,Eugene D",AD6892,01SOL23M,H 20 RS1 A23,"Cruz,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Gallegos,Paul R",GA5696,01STL30M,H 20 RS1 A30,"Ginotti,G",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Magalong,Michael C",MA3329,01TOL04M,H 20 T01 A04,"Browne,G",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Yee,Tyson G",YE9315,02SOL24M,H 20 RS2 A24,"McCarthy,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Villavicencio,Walter P",VI1601,02SOL25M,H 20 RS2 A25,"Murtagh,A",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Kyono,Brian Y",KY7745,02TOL05M,H 20 T02 A05,"Miles,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"McGuigan,James M",MC1987,05ETL01M,H 20 E05 A01,"Capurro,V",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Mancinelli,Brook A.",MA7426,05TOL09M,H 20 T05 A09,"Melanephy,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Silvestrich,Stephen E.",SI8297,06EOL12M,H 20 E06 A12,"Chambre,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Buren,Heather M",BU3580,07EOL23M,H 20 E07 A23,"Hewling,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Mangiola,Paul",MA8802,07EOL24M,H 20 E07 A24,"Sansoni,V",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Cerna,George A",CE5502,07ETL28M,H 20 E07 A28,"Marcaletti,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Morris,David B",MO0957,07TOL25M,H 20 T07 A25,"Tassone,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Roldan,Frank P",RO9071,08EOL12M,H 20 E08 A12,"Vernon,A · covered by Mahoney,B",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Kosta,John R",KO2101,08EOL13M,H 20 E08 A13,"Paganini,N · covered by Joyce,Stephen",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Macias,Mark L",MA2012,08TOL15M,H 20 T08 A15,"Korn,P · covered by Flaherty,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Finnegan,Stephen M",FI5629,10EOL04M,H 20 E10 A04,"Berg,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Abrams,Catherine M",AB1010,11EOL02M,H 20 E11 A02,"Limon,A",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Mishler,Jason T",MI3600,12EOL26M,H 20 E12 A26,"Collins,B",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"DeJarlais,Julie C",DE3208,13EOL27M,H 20 E13 A27,"Johnson,A",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Saade,Magaly",SA2747,13TOL29M,H 20 T13 A29,"McDonald Jr,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Ferrara,Michael S",FE3541,14EOL14M,H 20 E14 A14,"Lewis,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Derammelaere,Ian J",DE7966,16EOL13M,H 20 E16 A13,"Meikle,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Watrous,Jason D",WA5682,17ETL20M,H 20 E17 A20,"Alexander,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Ashbrook,Johnathan P",AS6802,17TOL17M,H 20 T17 A17,"Doherty,P",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Gonzales,Michael R",GO3937,17TOL19M,H 20 T17 A19,"Stewart,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Simmons,Jason M",SI5988,18TOL25M,H 20 T18 A25,"Thurman,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Tin,Michael L",TI6392,19EOL17M,H 20 E19 A17,"Louie-Chelman,R",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Elias Jr,Mariano A",EL1089,19ETL14M,H 20 E19 A14,"Rosenthal,D · covered by Hoyt,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Lesavoy,Lester A",LE7734,19TOL18M,H 20 T19 A18,"McDonald,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Castain,Michael S",CA3921,19TOL19M,H 20 T19 A19,"Serchia,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"McGorrin,Brendan P",MC1320,20EOL22M,H 20 E20 A22,"Cabaud,N",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Putt,Frederick W",PU7836,21EOL03M,H 20 E21 A03,"Dresser,B",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Zlatunich,Robert P",ZL2247,21EOL04M,H 20 E21 A04,"Rogers,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Apostoli,Justin J",AP0421,22EOL22M,H 20 E22 A22,"Truong,D",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Tam,Henry",TA5822,23EOL30M,H 20 E23 A30,"Crehan,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Faciani,Charles W",FA7087,24EOL19M,H 20 E24 A19,"Jaime-Lopez,A",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Simon,Ramon",SI5454,28EOL09M,H 20 E28 A09,"Hartley,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Wong,Robert A",WO9550,33EOL13M,H 20 E33 A13,"Honda,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Yamamoto,Jiro B",YA1421,34EOL18M,H 20 E34 A18,"Stricklin,L",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Pampanin,Vincent A",PA9338,36EOL27M,H 20 E36 A27,"Grant,K",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Barry,Michael T",BA5661,36EOL29M,H 20 E36 A29,"Dugan,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Wombacher,Steven P.",WO9517,37EOL02M,H 20 E37 A02,"Cabrera,O",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Francisco,Raul",FR9035,3FBOL09M,H 20 FB3 A09,"Giacalone,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Prakin,Todd M",PR2240,40EOL11M,H 20 E40 A11,"Posey,C",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Rivera,Marciel O",RI2402,41EOL28M,H 20 E41 A28,"Vieira,M",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Martinez,Anthony D",MA6311,41EOL29M,H 20 E41 A29,"Marin,G · covered by Herrera,A",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Fucciolo,Michael A",FU6118,43EOL27M,H 20 E43 A27,"Emery II,J",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Cardinale,Kathryn M",CA4818,51EOL10M,H 20 E51 A10,"Chatfield,S",,List has this person; tool has someone else. Who owns the seat?
+2,held,H 20,"Salas,Kevin J",SA2126,,H 20 RS1 A11,no matching seat in tool,,List has this person; tool has someone else. Who owns the seat?
+3,differs,H 20,"McCloskey,D",MC4392,01ENL31M,H 20 T04 A06,E01 T31,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Calonico III,F",CA1510,01EOL02M,H 20 T16 A16,E01 T2,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Bendo,D",BE9782,01EOL03M,H 2 E05 A06,T01 T6 · covering 01TOL06M,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Kimmel,D",KI8274,01ETL10M,H 2 E21 A10,E01 T10,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Nackord,D",NA1978,01SOL21M,H 20 T16 A15,RS1 T21,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Cruz,S",CR8813,01SOL23M,H 20 E01 A02,RS1 T23,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Ginotti,G",GI1079,01STL30M,H 2 RS1 A24,RS1 T30,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Browne,G",BR9023,01TOL04M,H 20 T01 A06,T01 T4,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Harrington,J",HA4631,01TOL06M,H 20 E01 A03,E17 T14 · covering 17EOC14M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Pastori,S",PA5702,02EOL01M,H 2 E41 A04,E02 T1,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"McCarthy,S",MC2192,02SOL24M,H 20 E17 A16,RS2 T24,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Murtagh,A",MU1237,02SOL25M,H 28 DT DAY4W,RS2 T25,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Miles,R",MI5771,02TOL05M,H 20 E28 A08,T02 T5,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Digre,M",DI7183,02TOL06M,H 20 E06 A14,T02 T6,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Snyder,J",SN4792,03EOL21M,H 2 T02 A31,E03 T21,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Custodio,A",CU1122,03EOL23M,H 2 T12 A01,E03 T23 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Thornton,T",TH4011,03TOL25M,H 20 E03 A21,E35 T18 · covering 35EOC18M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Mauberret,M",MA1284,03TOL26M,H 2 T03 A17,T03 T26 · WE,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Swanson,A",SW1892,04EOL02M,H 2 E19 A20,E04 T2,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Tibbits,Z",TI2478,04TOL04M,H 33 RC2 A04,T04 T4 · WE,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Devaty,J",DE0551,04TOL06M,H 20 T09 A08,T04 T6,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Silva,M",SI1216,05EOL05M,H 2 E05 A10,E05 T5,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Silva,J",SI1725,05EOL07M,H 20 E05 A05,T05 T10 · covering 05TOC10M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Walsh,K",WA2639,05TOL08M,H 2 T05 A07,T05 T8,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Melanephy,M",ME1493,05TOL09M,H 2 E06 A21,T05 T9,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Chambre,C",CH8051,06EOL12M,H 2 E21 A08,E06 T12,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Barr,M",BA5256,06EOL14M,H 20 E04 A03,E06 T14,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Yee,A",YE1385,06ETL11M,H 2 RS2 A14,E06 T11,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Sullivan,B",SU1757,06TOL16M,H 2 E03 A30,T06 T16,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Hewling,D",HE2150,07EOL23M,H 2 T02 A13,E07 T23,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Sansoni,V",SA3142,07EOL24M,H 2 T08 A06,E07 T24,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Marcaletti,J",MA8269,07ETL28M,H 3 E42 A07,E07 T28,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Tassone,J",TA1483,07TOL25M,H 2 RS2 A22,T07 T25,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Rademacher,J",RA3098,07TOL26M,H 2 T18 A18,T07 T26,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Vernon,A",VE7102,08EOL12M,H 2 T05 A06,E10 T31 · covering 10ENL31M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Paganini,N",PA3546,08EOL13M,H 2 E02 A06,E02 T31 · covering 02ENL31M,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Korn,P",KO2111,08TOL15M,H 2 T16 A21,E20 T24 · covering 20ETL24M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Forbes,K",FO5446,09ENL31M,H 2 E29 A03,E09 T31,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Thomas,E",TH1557,09EOL05M,H 20 T13 A29,E25 T11 · covering 25EOC11M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Brown,X",BR1100,09EOL06M,H 2 RS2 A12,E09 T6,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Chin,W",CH7124,09TOL07M,H 20 E38 A20,T09 T7,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Helmer,N",HE2351,09TOL08M,H 2 E06 A15,T09 T8,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Lester,D",LE2603,10ENL31M,H 20 AO 0,E10 T3 · covering 10EOC03M,company,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Figueroa,S",FI9651,10EOL02M,H 2 T05 A03,E10 T2,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Berg,D",BE3109,10EOL04M,H 2 E05 A14,E10 T4,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Matej,J",MA4473,10ETL01M,H 2 E38 A24,E10 T1,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Warren,P",WA1582,10TOL05M,H 2 T05 A16,T10 T5,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Asturias,A",AS4949,10TOL06M,H 2 E14 A16,T10 T6,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Limon,A",LI5262,11EOL02M,H 20 E43 A28,E11 T2,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Michaelis,L",MI3945,11EOL03M,H 2 T16 A06,E11 T3,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Bristow,M",BR8178,11ETL04M,H 2 E15 A23,E11 T4,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Guajardo,M",GU0148,11TOL05M,H 20 E48 A04,T11 T5,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Parish,J",PA2903,11TOL07M,H 20 E42 A21,T11 T7,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Collins,B",CO7709,12EOL26M,H 20 E12 A21,E12 T26,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Johnson,A",JO1365,13EOL27M,H 2 E07 A31,E13 T27,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Moroney,N",MO2724,13EOL28M,H 2 T13 A28,E13 T28,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"McDonald Jr,R",MC1398,13TOL29M,H 20 E13 A28,E13 T26 · covering 13EOC26M,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Escobar,J",ES7694,13TOL30M,H 2 T13 A25,T13 T30,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Higgins,H",HI9865,14EOL13M,H 20 E14 A13,T16 T17 · covering 16TOC17M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Lewis,S",LE5871,14EOL14M,H 2 E07 A29,E14 T14,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Freeman,G",FR2767,14ETL11M,H 3 E14 A24,E14 T11,"tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Stornetta,S",ST3930,14TOL15M,H 2 E31 A17,T14 T15,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Horta,M",HO4160,15ETL14M,H 2 T15 A27,E15 T14,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"McDermott,P",MC9789,15TOL18M,H 20 E06 A11,T15 T18 · WE,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Boutilier,C",BO9243,15TOL19M,H 20 E39 A29,E04 T1 · covering 04EOC01M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Meikle,J",ME1851,16EOL13M,H 3 E51 A02,E16 T13,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Regala,J",RE1108,16TOL15M,H 2 E34 A22,T16 T15,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Aldridge,J",AL1116,16TOL16M,H 3 E03 A05,T16 T16,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Hill,J",HI1543,17EOL16M,H 2 E36 A09,E17 T16,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Alexander,J",AL1115,17ETL20M,H 2 T15 A28,E17 T20,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Doherty,P",DO3621,17TOL17M,H 20 E02 A03,T17 T17,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Stewart,D",ST1655,17TOL19M,H 20 T48 A10,T17 T19,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Roy,J",RO1878,18EOL22M,H 2 E02 A08,E18 T22,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Lam,K",LA9540,18EOL23M,H 20 E23 A28,E18 T23,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Strong,S",ST4263,19EOL16M,H 2 AP A01,E19 T16,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Louie-Chelman,R",LO1408,19EOL17M,H 2 T18 A20,E19 T17,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Rosenthal,D",RO2238,19ETL14M,H 2 T11 A16,E19 T14 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"McDonald,C",MC1167,19TOL18M,H 2 T14 A10,T19 T18,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Serchia,J",SE1235,19TOL19M,H 2 E29 A05,T19 T19 · D,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Phillips,K",PH3104,20EOL21M,H 20 E20 A21,E20 T23 · covering 20EOC23M,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Cabaud,N",CA2010,20EOL22M,H 2 E18 A26,E20 T22,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Dresser,B",DR5440,21EOL03M,H 20 E04 A07,E21 T3,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Rogers,J",RO8089,21EOL04M,H 20 E18 A31,T08 T16 · covering 08TOC16M,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Crehan,M",CR3065,23EOL30M,H 20 E18 A27,E23 T30,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Jaime-Lopez,A",JA1161,24EOL19M,H 2 E16 A18,E24 T19,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Turner,T",TU4821,25EOL13M,H 20 E25 A13,E40 T13 · covering 40EOC13M,company,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Samson,C",SA2548,28EOL08M,H 20 AP A08,E28 T8 · D,company,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Hartley,C",HA2238,28EOL09M,H 3 E12 A18,E28 T9,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Flaviani,M",FL7197,29EOL29M,H 2 T06 A13,E29 T29,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Anderson,H",AN5987,31EOL09M,H 28 DTA DAY4H,E31 T9,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Doudiet,H",DO1760,32EOL08M,H 2 E10 A11,E32 T8,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"O'Rourke,E",OR1465,32EOL10M,H 2 E10 A08,E32 T10,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Hunter,K",HU1656,33EOL11M,H 2 E25 A16,E33 T11,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Honda,J",HO7057,33EOL13M,H 2 T10 A30,E33 T13,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Stricklin,L",ST3870,34EOL18M,H 2 E38 A29,E34 T18,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Gibbs,C",GI9266,34EOL20M,H 20 E34 A20,E26 T25 · moved to 26EOC25M · D,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Cabrera,O",CA2195,37EOL02M,H 3 E11 A15,E37 T2,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Montes,S",MO2081,38EOL20M,H 2 T12 A21,E38 T20,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Nieto,S",NI0255,39EOL29M,H 2 E20 A30,E39 T29,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Giacalone,S",GI5319,3FBOL09M,H 20 E16 A11,FB3 T9 · D,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Posey,C",PO1111,40EOL11M,H 20 E40 A12,E40 T11,tour,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Jimenez,J",JI0337,40EOL12M,H 2 E10 A05,E40 T12 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Vieira,M",VI6275,41EOL28M,H 20 E32 A08,E41 T28,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Marin,G",MA1542,41EOL29M,H 20 E10 A01,E01 T1 · covering 01EOC01M,company,Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Padilla,D",PA5818,42EOL21M,H 2 E17 A21,E42 T21,"company, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Emery II,J",EM3890,43EOL27M,H 10 D3 A29,E43 T27,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Recendez,R",RE9730,43EOL28M,H 3 E11 A13,E43 T28,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Faenzi,C",FA9775,48EOL07M,H 2 AP A24,E48 T5 · covering 48EOC05M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Flores,J",FL3897,48HOL01M,H 20 E09 A05,HT48 T1,"company, tour",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"McFarland,G",MC4873,48HOL03M,H 2 AP A19,HT48 T3,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Bovo,G",BO1829,51EOL09M,H 10 B02 A05,E51 T9 · WE,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Chatfield,S",CH1897,51EOL10M,H 10 D2 A22,E51 T10,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Flaherty,M",FL2933,added,H 2 T48 A05,T08 T15 · covering 08TOL15M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Forbes,J",FO3045,added,H 2 E05 A11,T18 T24 · covering 18TOL24M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Johnson,P",JO2652,added,H 2 RS2 A10,E09 T5 · covering 09EOL05M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Joyce,Stephen",JO3145,added,H 2 E36 A03,E08 T13 · covering 08EOL13M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Loh,H",LO2043,added,H 2 E44 A28,T08 T14 · covering 08TOL14M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Moore,N",MO5293,added,H 2 T17 A11,T03 T25 · covering 03TOL25M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Porter,C",PO1192,added,H 2 E36 A11,T15 T19 · covering 15TOL19M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+3,differs,H 20,"Wyckoff,W",WY7009,added,H 2 T01 A27,E29 T30 · covering 29EOL30M,"company, tour, rank",Company/tour/rank differ. Often acting or detail; confirm and record cover/acting/status.
+4,nonfield,H 20,"Alba-Swanson,Katherine L",AL4034,,H 20 VR20 A19,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Baxter,Jonathan T",BA8724,,H 20 CD1 DAY4F,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Bright,Daniel M",BR8281,,H 20 DTI 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Busby,Thomas J",BU4340,,H 20 CECC CCS2,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Certain,Joseph S",CE6106,,H 20 AP A07,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Choy,John K F",CH9323,,H 20 CD1 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Galvin,Nancy E",GA5963,,H 20 HT48 A01,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Gralicer,Robyn E",GR2987,,H 20 AP A10,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Hunter,Shelia V",HU8337,,H 20 AP 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Jiang,Cecilia L",JI4525,,H 20 AP A06,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Karawanny,George",KA4970,,H 20 CD3 DAY4F,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Kotter,James T",KO6476,,H 20 DTI 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Kramer,Kevin F",KR0436,,H 20 VR20 A25,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Lee,Stanley H",LE4185,,H 20 DT 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Lucero,Cynthia M",LU7068,,H 20 CECC CCS1,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Martinez,Jennifer L",MA9087,,H 20 HT48 A02,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Merkins,Kyle J",ME4082,,H 20 AP DAY4F,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Neves,Janette M.",NE7314,,H 20 AP A04,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Ng,Roger W",NG1398,,H 20 SS 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Piper,Heather A",PI2055,,H 20 VR20 A31,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Pirosko,Janeen M",PI9745,,H 20 CECC CCS2,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Ray-Rohan,Chris",RA9202,,H 20 VR20 A19,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Rickert,Cynthia H",RI0712,,H 20 AP A02,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Thompson,Lenette B",TH8189,,H 20 AO 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Tuiasosopo,John M",TU1461,,H 20 AP A12,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,nonfield,H 20,"Woo,Arnold P",WO1576,,H 20 AO 0,not in tool,,"On officer list, not in tool (non-field assignment?). Add or ignore."
+4,noid,H 20,"Murphy,Thomas J",MU3162,11ETX10M,H 20 T08 A15,"Murphy,T 11ETX10M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Wu,Allen S",WU1200,12TOL29M,H 20 T18 A24,"Wu,A 12TOL29M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Wu,Anson S",WU1175,12TOL29M,H 20 T12 A29,"Wu,A 12TOL29M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Chan,Joe N",CH9956,13TOC31M,H 20 T02 A06,"Chan,J 13TOC31M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Wong,Wayne J",WO0816,14TOC16M,H 20 T14 A15,"Wong,W 14TOC16M, Wong,W 39EOD02M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Grant,John",GR5864,19TOD11M,H 20 SS 0,"Grant,J 19TOD11M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Yeh,Corey B.",YE8890,37EOC03M,H 20 E09 A06,"Yeh,C 37EOC03M",,In tool without Employee ID; set emplId.
+4,noid,H 20,"Johnston,Sean A",JO2603,person:x-JO2630,H 20 E03 A23,"Johnston,S person:x-JO2630",,In tool without Employee ID; set emplId.
+4,staff-name-ambiguous,Captain,"Chan,J",,13TOC31M,"name only: Chan,Jason K H 2 T09, Chan,Joe N H 20 T02",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Captain,"Smith Jr,J",,07EOC22M,"name only: Smith Jr,John A H 2 E01, Smith,Joshua G H 33 DTE",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Captain,"Wong,W",,14TOC16M,"ambiguous: Wong,Wayne J H 20 T14, Wong,William J H 2 T14",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Captain,"Yeh,C",,37EOC03M,"name only: Yeh,Clement C. MEDDIR EM, Yeh,Corey B. H 20 E09",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Lieutenant,"Alba,K",,3FBOL07M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Lieutenant,"Grant,K",,36EOL27M,"name only: Grant,Kiarra H 8 ST49, Grant,Kori H 2 E02",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Lieutenant,"Klofstad,J",,04EOL03M,"name only: Klofstad,Jason A H 3 AO, Klofstad,Judith A H 33 EM",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Lieutenant,"Kristoff,R",,16EOL11M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Lieutenant,"Wu,A",,12TOL29M,"ambiguous: Wu,Allen S H 20 T18, Wu,Anson S H 20 T12",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Adair,C",,18EOE27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Anderson,D",,38EOE25M,"ambiguous: Anderson,David R H 2 E25, Anderson,Derrick C H 2 DTA, Anderson,Dustin W H 2 T17",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Anderson,D",,17TOT13M,"ambiguous: Anderson,David R H 2 E25, Anderson,Derrick C H 2 DTA, Anderson,Dustin W H 2 T17",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Bailey,D",,18TTX14M,"ambiguous: Bailey,Denise L H 2 AP, Bailey,Dylan R H 2 E51",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Balestra,J",,34EOE25M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Baltodano,V",,40EOE19M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Barcena,J",,26EOE01M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Borrego-Crum,M",,05TOF15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Botkin,C",,13EOE03M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Boyd,L",,07TOF27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Caba,A",,42EOD25M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Carson,S",,37EOF11M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Cascio,K",,34EOD22M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Casserly,L",,05TOE01M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Chambers,S",,23EOE05M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Chen,J",,26EOE02M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Chen,V",,37ETX10M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Chin,B",,14TOT10M,"ambiguous: Chin,Bradford T H 2 E14, Chin,Brett A H 2 T18",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Chin,B",,18TOD21M,"ambiguous: Chin,Bradford T H 2 E14, Chin,Brett A H 2 T18",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Christiansen,L",,23EOD02M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Clarke,K",,35EOE23M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Cleary,J",,08ETX20M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Crosser,J",,43ETX05M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Cunha,P",,04TOF19M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Diaz Magana,L",,01EOE09M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Dickerson,C",,10TOE29M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Duffy,J",,18EOD26M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Dumaop,G",,35ETX26M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Dumetz-Hamilton,M",,24EOF28M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Durall,Z",,16TOE08M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Eaton Galloway,W",,42EOE27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Edais,A",,36EOE03M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Elhoffer,E",,34EOD21M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Ellington,J",,37EOD05M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Eng,D",,16TOT10M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Findley,I",,01EOE07M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Fowler,C",,05TOF16M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Gomez Pina,J",,25EOD14M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Greco,E",,01EOE08M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Hance,S",,34EOE24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Hanson,B",,08EOE18M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Hu,A",,22EOF13M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Hudson,J",,04EOF22M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Jackson,K",,19EOE22M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Jimenez,D",,24EOE26M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Jolley,H",,36EOF08M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Jones,C",,04EOF24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Jow,N",,15TOF27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lane,H",,16EOE19M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lang,G",,24EOE25M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Lee,P",,02TOT30M,"ambiguous: Lee,Paul E H 2 E39, Lee,Peter H 2 T02",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Levine,S",,26EOE31M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lim,O",,04TOE15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Liu,J",,18TOF31M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,FF/Paramedic,"Lopez,G",,11EOA14M,"ambiguous: Lopez,Gabriel H H 3 E11, Lopez,Griffith O H 3 ST49",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Louie,T",,31EOE15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lowder,M",,02EOE08M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lui,A",,22EOE28M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Lumpkins,T",,40EOF22M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Markham,N",,35EOE24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Marks,O",,18TOD22M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Marquez Jr,A",,19TOE04M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Martin,J",,23EOD31M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Mcclellan,L",,18TOT19M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Miller,W",,40EOD15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Mosqueda,J",,22EOD27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Mundahl,E",,18TOF30M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Navarro Perez,L",,29ETX07M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Nguyen,D",,37EOD04M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Nguyen,T",,39EOE05M,"ambiguous: Nguyen,Tan H 2 E39, Nguyen,Truc T H 2 E13",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"O'Leary,C",,23EOE04M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Ortega,T",,06EOE18M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Ostrowski,J",,18TOD23M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Perez Changar,A",,24EOF30M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rafael,R",,22EOF15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rashdan,A",,07TOE18M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rataul,A",,22EOF14M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Ratcliffe,C",,13EOD29M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Reidy,P",,18TOF01M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Reinhardt,J",,04TOF17M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Reininger,A",,11EOD06M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rhymes,M",,31EOE14M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rivas,M",,01EOD04M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Rivera,D",,13TOD27M,"ambiguous: Rivera,Duane J H 2 BE, Rivera,Duane T H 2 T48",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Roddy,S",,01ETX10M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Romeo,D",,19ETX24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Rosales,J",,42EOD24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Russell,K",,25EOF23M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Sapp,W",,19TOF29M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Schwartz,J",,31ETX17M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Siebert,S",,14EOE19M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Solberg,H",,16EOD15M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Soulette,A",,37EOF12M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,FF/Paramedic,"Spognardi,E",,51EOA02M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Steil,H",,19EOE23M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Stroud,S",,14TTX15M,"ambiguous: Stroud,Sara H H 2 E32, Stroud,Stephen F H 2 T14",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Suhr,M",,20EOE28M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,FF/Paramedic,"Summers,S",,25EOA03M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Tarasco,K",,32EOE14M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Tran,A",,14EOD16M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Tran,P",,10TOF14M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Truong,C",,31EOF25M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Untalan,C",,42EOE28M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Vashakidze,I",,07TOF26M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Velasco,T",,34ETX27M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Villalba Nunez,C",,10TOF13M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Waltz,C",,16TOE07M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"White,R",,13TOD26M,"ambiguous: White,Riley H 2 T03, White,Ryan M H 2 E28",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Williams,D",,07TOF25M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Winston,N",,38EOE24M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Wishom,R",,25EOE18M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Wong,K",,02TOE28M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Wong,P",,22EOE29M,no match,,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Wong,W",,39EOD02M,"ambiguous: Wong,William H 2 E39, Wong,William J H 2 T14",,,Match to staff list by hand; set emplId.
+4,staff-name-ambiguous,Firefighter,"Yee,A",,11TOD04M,"ambiguous: Yee,Andrew B H 2 RS2, Yee,Anthony D H 2 T11",,,Match to staff list by hand; set emplId.
+4,staff-name-no-match,Firefighter,"Yera-Paez,J",,43EOE04M,no match,,,Match to staff list by hand; set emplId.

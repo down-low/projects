@@ -764,3 +764,67 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 #list-q { width: 100%; margin-bottom: 4px; }
 ul.list-rows li { padding: 7px 14px; }
 ul.list-rows li .linkish { font-weight: 600; }
+
+/* Moves (position history from notices) */
+ul.hist.moves li { display: block; }
+/* Employee card (admins) */
+#card-detail { display: grid; gap: 12px; }
+#card-detail .card-head, #card-detail .card-sec { max-width: 860px; width: 100%; }
+#card-detail .card { margin: 0; }
+/* Roster: rank tiles that filter the table below */
+.roster-card { display: flex; flex-direction: column; gap: 10px; }
+.rtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.rtile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; min-height: 64px; text-align: left;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; cursor: pointer; font: inherit;
+}
+.rtile .n { font: 700 1.6rem var(--font-display); line-height: 1; }
+.rtile .k { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.rtile:hover { border-left-color: var(--muted); }
+.rtile.on { border-color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.rtile.on .k { color: var(--fg); }
+form.rbar { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px; border-top: 0; padding-top: 0; margin-top: 0; }
+form.rbar .rshow { flex: 0 0 auto; }
+form.rbar .rq { flex: 1 1 220px; }
+form.rbar input[type="search"] { width: 100%; }
+.rcols { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.rcols-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+.rcols label.chk { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; }
+.rcols > .btn { justify-self: start; }
+.rsum { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.rsum b { color: var(--fg); }
+.rwrap { border: 1px solid var(--line); border-radius: 8px; max-height: 70vh; overflow: auto; }
+table.roster-t thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; }
+table.roster-t th button.sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+table.roster-t th button.sort.on { color: var(--fg); }
+table.roster-t .sticky { position: sticky; left: 0; background: var(--surface); z-index: 1; }
+table.roster-t thead .sticky { z-index: 3; }
+table.roster-t td { vertical-align: middle; }
+table.roster-t select { min-height: 32px; padding: 3px 6px; }
+.rpager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; font-size: 0.88rem; color: var(--muted); }
+.rpager:empty { display: none; }
+.card-back { display: flex; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.card-head h2 { margin: 0 0 2px; }
+ul.card-list li { flex-wrap: wrap; }
+ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
+.card-editform { flex-basis: 100%; border-left: 3px solid var(--accent); padding-left: 10px; }
+.card-sec form.edit { margin-top: 10px; }
+@media (max-width: 640px) {
+  #card-detail { gap: 8px; }
+  .rtiles { display: flex; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 4px; }
+  .rtile { flex: 0 0 auto; min-height: 0; padding: 6px 12px; scroll-snap-align: start; }
+  .rtile .n { font-size: 1.2rem; }
+  .rwrap { max-height: 65vh; }
+  table.roster-t th, table.roster-t td { padding: 6px 8px; }
+  ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
+  .card-head .acts { flex-basis: 100%; }
+}
+
+/* Firebase test copy (until cut-over) and the frozen claude.ai page after it */
+.site-banner, .frozen-banner {
+  margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+  background: var(--swing-soft); color: var(--fg); border: 1px solid var(--swing);
+}
+.frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.frozen-banner a { color: inherit; font-weight: 600; }

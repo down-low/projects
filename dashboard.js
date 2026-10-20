@@ -387,7 +387,7 @@
         '<span class="hint">Report: ' + reportTotal + " working, including " + ot + " overtime hires (about " + regular + " regular). Tool: " + toolWorking +
         ". <b>About " + est + " people working who aren't in the tool.</b></span></summary>" +
         '<p class="hint">Apparatus where the Balance report shows more people than the tool (' + sumGaps + " in all; some of these are overtime hires, which the report doesn't split by apparatus). " +
-        "To fix a gap, add the person on the By person tab, or give them a cover assignment from Open seats.</p>" +
+        "To fix a gap, add the person on the Schedule tab, or give them a cover assignment from Open seats.</p>" +
         '<div class="gap-groups">' + Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).map(function (k) {
           return '<div><h4>' + esc(k) + "</h4><ul>" + groups[k].map(function (g) {
             return '<li><button class="linkish" data-goto="' + esc(g.co) + '">' + esc(g.co) + "</button> report " + g.report + ", tool " + g.tool + ' <b class="gap">+' + g.gap + "</b></li>";
@@ -461,7 +461,7 @@
         '<datalist id="cover-dl">' + api.people().map(function (p) {
           return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
         }).join("") + "</datalist>" +
-        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the By person tab, then assign them here. ' +
+        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the Schedule tab, then assign them here. ' +
         "To end a cover, open the person and use End today.</p></div>";
       seats.msg = "";
       $("seats-back").onclick = function () { api.state().seatsOpen = false; renderDash(); };

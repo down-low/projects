@@ -114,12 +114,6 @@ People who haven't signed up can still answer, two ways. The department number n
 - **Optional:** a **Download .ics** button on a person's page for a one-time import (no auto-updates); this could also work on the claude.ai page.
 - **Not planned:** two-way Google Calendar sync. It would need people to grant Calendar access, and a subscription covers the need.
 
-## Later
-- **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
-- **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
-- Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
-- Additional status codes (light duty, injury) if needed.
-
 ### Invite texts from admins: sign up, claim, verify
 Builds on the invites above; this one comes from an admin, not a trade.
 - **Who:** an admin picks everyone, a battalion, or only people not yet verified, and sends a text to the staff-list cell number on file (admin-only contacts).
@@ -127,7 +121,33 @@ Builds on the invites above; this one comes from an admin, not a trade.
 - **Opening it:** sign in (Google, email link or phone code), then the claim is filled in with their seat; they confirm station and tour and land on **Verify my info**.
 - **Safety:** only admins send; STOP is honoured (Twilio opt-out list); a seat already claimed and verified by someone else goes to an admin instead.
 
+### Contact list download (opt-in)
+A member can download an address book of coworkers who agreed to share their number.
+- **Who's in it:** only members who turned on **Share my cell number with other members** on My page (off by default). Each person sets their own; an admin can turn it off for someone. Cell numbers from the staff list stay admin-only until that person opts in.
+- **What's in it:** name, Employee ID, rank, station and tour, and cell number. Choose my battalion, my rank group, or everyone.
+- **Who can download:** approved members who share their own number ("share to see"); admins can download everyone who opted in.
+- **Formats:** a contacts file (`.vcf`) that imports into iPhone or Android contacts in one tap, and a CSV for spreadsheets.
+- **Safety:** each download is dated and logged (who, when, which group); turning sharing off drops a person from the next download; the file is built on request and never stored; the page says the list is for department use only.
+- **Not on the shared claude.ai page**, where cell numbers stay admin-only.
+
+### Choose my tabs (simpler phone view)
+Most people use the tool on a phone, where a full tab bar is a lot. Each person picks what they see.
+- **My page → Tabs and links:** switches for Schedule, Projection, Staffing, Trades, By rank and 6 of 9. Members start with **Schedule** and **Trades** on and the rest off, and can turn any back on. The bottom bar shows only what's on; **More** keeps the rest one tap away, so nothing is lost.
+- **Home tab:** the one they pick opens first (default Schedule, on their own card).
+- **By role, whatever the settings:** members never see editing links: "Not on the list? Add a person", the edit forms, Corrections, the admin employee card, Open seats, 2027 awards or Admin. Editors and admins see them and can hide them too.
+- **Follows the account:** settings sync across devices once signed in; before sign-in the choice is remembered on that device.
+- **Admin default:** an admin sets the starting tab set for new members (e.g. a "simple" preset of Schedule and Trades).
+
+## Later
+- **Paste import for assignment-change notices:** paste the notice table, review each row (matched person, seat, dates), then apply; writes the move log and the cover or move together.
+- **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
+- **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
+- Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
+- Additional status codes (light duty, injury) if needed.
+
 ## Shipped
+- Move log: every assignment-change notice row is kept per person (from/to seat, Last Reg, First Reg, ranks, source) and shown in a closed **Moves** fold on their page.
+- **Employee cards** (admins only; header link or More menu, and **Employee card** on a person's page): find anyone and edit their whole record in one place: name, rank and Employee ID (roster seats through `rosterOverrides`, added people on their record), own seat and moves, current cover and its type, leave, tour changes, the staff-list cell number, the "This is me" claim (remove, with Undo), their corrections (apply, dismiss, reopen, delete), and a history of every record touching them with Edit and Delete. Members and viewers never see it. The screen opens on a roster: rank tiles with headcounts that filter a sortable, paged table with a column chooser and a status quick edit.
 - Corrections: **Something wrong?** on every person page and **Verify my info** after "This is me" (also on your own page). Members send fixes (seat, leave / WE, covering / acting / shadowing, tour, Employee ID, own cell number, other); a "This is me" station or tour that differs from the roster sends one automatically. Admins see them under **Corrections** (count on the header link and menu); **Apply** opens the person's page with the edit form filled in and marks it applied on save; a cell number goes straight into the admin-only contacts.
 - Google sign-in, My page, Admin; claim-and-approve, and requests from people not on the vacancy list.
 - Tour changes, VA/S/D leave, cover assignments, added people.
@@ -136,6 +156,7 @@ Builds on the invites above; this one comes from an admin, not a trade.
 - Required staffing from the Balance report (313), Regular / Covering / Open split, "working but not in the tool" check, Open seats worklist for long-term covers.
 - Employee IDs: searchable, shown on person pages, duplicate names flagged.
 - Phone layout: bottom tabs (Find, Today, Staffing, More), menu sheet, Today grouped by rank, Staffing drill-down by battalion, on/off status in search.
+- Tabs named **Schedule** (one person), **Projection** (everyone on a date) and **Staffing** on phone and desktop alike.
 - View-only snapshot link with records baked in (no sign-in needed).
 - Holidays on the calendars (12 city holidays plus Halloween and Mother's Day as observances), worked out for any year.
 - Shift trades: "this is me" claim, Trade wizard (payback, recipients by division and battalion, board), Trades tab (board, sent to me, my trades, owed shifts), TR (traded off) on the schedule. App, text and email alerts come with the server launch.

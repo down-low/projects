@@ -768,6 +768,70 @@ ul.tlist.fixes .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content
 #list-q { width: 100%; margin-bottom: 4px; }
 ul.list-rows li { padding: 7px 14px; }
 ul.list-rows li .linkish { font-weight: 600; }
+
+/* Moves (position history from notices) */
+ul.hist.moves li { display: block; }
+/* Employee card (admins) */
+#card-detail { display: grid; gap: 12px; }
+#card-detail .card-head, #card-detail .card-sec { max-width: 860px; width: 100%; }
+#card-detail .card { margin: 0; }
+/* Roster: rank tiles that filter the table below */
+.roster-card { display: flex; flex-direction: column; gap: 10px; }
+.rtiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+.rtile {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 10px 12px; min-height: 64px; text-align: left;
+  background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-left: 4px solid var(--line); border-radius: 8px; cursor: pointer; font: inherit;
+}
+.rtile .n { font: 700 1.6rem var(--font-display); line-height: 1; }
+.rtile .k { font-size: 0.75rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+.rtile:hover { border-left-color: var(--muted); }
+.rtile.on { border-color: var(--accent); border-left-color: var(--accent); background: var(--accent-soft); }
+.rtile.on .k { color: var(--fg); }
+form.rbar { flex-direction: row; flex-wrap: wrap; align-items: flex-end; gap: 8px; border-top: 0; padding-top: 0; margin-top: 0; }
+form.rbar .rshow { flex: 0 0 auto; }
+form.rbar .rq { flex: 1 1 220px; }
+form.rbar input[type="search"] { width: 100%; }
+.rcols { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.rcols-head { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; }
+.rcols label.chk { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; }
+.rcols > .btn { justify-self: start; }
+.rsum { margin: 0; color: var(--muted); font-size: 0.88rem; }
+.rsum b { color: var(--fg); }
+.rwrap { border: 1px solid var(--line); border-radius: 8px; max-height: 70vh; overflow: auto; }
+table.roster-t thead th { position: sticky; top: 0; background: var(--surface); z-index: 2; }
+table.roster-t th button.sort { background: none; border: 0; padding: 0; font: inherit; color: inherit; text-transform: inherit; letter-spacing: inherit; cursor: pointer; }
+table.roster-t th button.sort.on { color: var(--fg); }
+table.roster-t .sticky { position: sticky; left: 0; background: var(--surface); z-index: 1; }
+table.roster-t thead .sticky { z-index: 3; }
+table.roster-t td { vertical-align: middle; }
+table.roster-t select { min-height: 32px; padding: 3px 6px; }
+.rpager { display: flex; align-items: center; gap: 10px; justify-content: flex-end; font-size: 0.88rem; color: var(--muted); }
+.rpager:empty { display: none; }
+.card-back { display: flex; }
+.card-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+.card-head h2 { margin: 0 0 2px; }
+ul.card-list li { flex-wrap: wrap; }
+ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
+.card-editform { flex-basis: 100%; border-left: 3px solid var(--accent); padding-left: 10px; }
+.card-sec form.edit { margin-top: 10px; }
+@media (max-width: 640px) {
+  #card-detail { gap: 8px; }
+  .rtiles { display: flex; overflow-x: auto; scroll-snap-type: x proximity; padding-bottom: 4px; }
+  .rtile { flex: 0 0 auto; min-height: 0; padding: 6px 12px; scroll-snap-align: start; }
+  .rtile .n { font-size: 1.2rem; }
+  .rwrap { max-height: 65vh; }
+  table.roster-t th, table.roster-t td { padding: 6px 8px; }
+  ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
+  .card-head .acts { flex-basis: 100%; }
+}
+
+/* Firebase test copy (until cut-over) and the frozen claude.ai page after it */
+.site-banner, .frozen-banner {
+  margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+  background: var(--swing-soft); color: var(--fg); border: 1px solid var(--swing);
+}
+.frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.frozen-banner a { color: inherit; font-weight: 600; }
 </style>
 
 <div class="page">
@@ -785,6 +849,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         <button class="hdr-link" id="six-link" type="button" aria-controls="view-six">6 of 9</button>
         <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
         <button class="hdr-link" id="fixes-link" type="button" aria-controls="view-fixes" hidden>Corrections</button>
+        <button class="hdr-link" id="card-link" type="button" aria-controls="view-card" hidden>Employee cards</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -795,9 +860,9 @@ ul.list-rows li .linkish { font-weight: 600; }
   </header>
 
   <nav class="tabs" role="tablist" aria-label="View">
-    <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"/></svg><span class="lbl-wide">Dashboard</span><span class="lbl-phone">Staffing</span></button>
-    <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lbl-wide">Who's working</span><span class="lbl-phone">Today</span></button>
-    <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="lbl-wide">By person</span><span class="lbl-phone">Find</span></button>
+    <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"/></svg><span class="lbl-wide">Staffing</span><span class="lbl-phone">Staffing</span></button>
+    <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lbl-wide">Projection</span><span class="lbl-phone">Projection</span></button>
+    <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="lbl-wide">Schedule</span><span class="lbl-phone">Schedule</span></button>
     <button class="tab" role="tab" id="tab-trades" data-view="trades" aria-controls="view-trades" hidden><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><span class="lbl-wide">Trades</span><span class="lbl-phone">Trades</span></button>
     <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
     <button class="tab" role="tab" id="tab-me" data-view="me" aria-controls="view-me" hidden>My page</button>
@@ -894,6 +959,10 @@ ul.list-rows li .linkish { font-weight: 600; }
     <div id="fixes-detail"></div>
   </section>
 
+  <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
+    <div id="card-detail"></div>
+  </section>
+
   <section class="view" id="view-awards" role="region" aria-label="2027 vacancy awards" hidden>
     <div id="awards-detail"></div>
   </section>
@@ -928,6 +997,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
         <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
         <li data-need="editor"><button type="button" data-go="fixes">Corrections <span class="hint" id="fixes-count"></span></button></li>
+        <li data-need="card"><button type="button" data-go="card">Employee cards</button></li>
       </ul>
       <h3 class="sheet-sec" id="sheet-docs-h" hidden>Documents</h3>
       <ul class="sheet-list" id="sheet-docs"></ul>
@@ -1280,6 +1350,9 @@ ul.list-rows li .linkish { font-weight: 600; }
  *   - "db":     the shared claude.ai page database (single-file build opened on claude.ai)
  *   - "server": the repo's server.py (/api/*), people sign in with Google; roles decide who edits
  *   - "none":   read-only (plain static hosting or a local file)
+ *   - Firebase Hosting (tools/build_firebase.py): accounts work as on server.py, so it reports mode "server" (hosted:
+ *     "firebase"); records come from Firestore onSnapshot as on the page. It adds signIn(), fetchData(path) (roster files
+ *     from Cloud Storage), openDoc(file) and importBackup(backup, onProgress) (admins).
  * onChange({statuses, tourChanges, covers, people}) fires whenever the records change.
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
  *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
@@ -1292,15 +1365,20 @@ ul.list-rows li .linkish { font-weight: 600; }
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * onChange also carries {members, trades, tradeReplies}.
+ * Employee card (admins): update(kind, id, patch), setOverride(pos, {emplId, name, rank} | null) (roster seats; onChange
+ * carries rosterOverrides, readable by everyone), setCell(key, cell | null), restoreMember(doc), deleteCorrection(id).
+ * The page database adds saveBackup() (admins): every collection, cell numbers included, offered as a file to the viewer
+ * for the one-time move to Firebase.
  */
 (function (root) {
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
+  var BACKUP_FORMAT = "tour-schedule-backup/1";
 
   function nowIso() { return new Date().toISOString(); }
   /* Corrections live one record per member, `corrections/<user id>` = {items: {<id>: correction}}: each member writes and
@@ -1350,15 +1428,17 @@ ul.list-rows li .linkish { font-weight: 600; }
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: flattenFixes(records.corrections) });
+          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
       }
-      var editable = false, uid = null, failed = false, canWrite = null;
+      // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
+      // Editors (platformEdit) can still save the backup.
+      var editable = false, platformEdit = false, uid = null, failed = false, canWrite = null;
       Object.keys(COLLECTIONS).forEach(function (kind) {
         db.collection(COLLECTIONS[kind]).onSnapshot(function (snap) {
           records[kind] = snap.docs.map(function (d) {
@@ -1371,12 +1451,12 @@ ul.list-rows li .linkish { font-weight: 600; }
       });
       var ready = user
         ? Promise.all([user.canEdit(), user.id(), user.can ? user.can("data.write") : null])
-          .then(function (r) { editable = !!r[0]; uid = r[1]; canWrite = r[2]; })
+          .then(function (r) { platformEdit = !!r[0]; editable = platformEdit && !root.PAGE_FROZEN; uid = r[1]; canWrite = r[2]; })
         : Promise.resolve();
       /* Trades are written by every member (Contributor access and up), not only editors. can("data.write") null means the
          platform didn't say: keep the controls and let a refused write decide. */
       var tradeBlocked = false;
-      function tradeOk() { return !!uid && !tradeBlocked && (editable || canWrite !== false); }
+      function tradeOk() { return !!uid && !tradeBlocked && !root.PAGE_FROZEN && (editable || canWrite !== false); }
       function tradeErr(e) {
         if (e && (e.code === "invalid_argument" || e.code === "permission_denied")) tradeBlocked = true;
         return new Error(e && e.code === "quota_exceeded" ? "The page's storage is full. Ask an admin to remove old records." :
@@ -1432,6 +1512,20 @@ ul.list-rows li .linkish { font-weight: 600; }
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             return db.collection("covers").doc(id).update({ end: end });
           },
+          /* Admins: every collection as one file for the move to Firebase (Admin, Import backup there). It holds the
+             staff-list cell numbers, so it goes only to the viewer's own device. Resolves {records, collections}. */
+          canBackup: function () { return platformEdit; },
+          saveBackup: function () {
+            if (!platformEdit) return Promise.reject(new Error(NO_EDIT));
+            var out = { format: BACKUP_FORMAT, exportedAt: nowIso(), collections: {} }, n = 0;
+            Object.keys(COLLECTIONS).forEach(function (kind) { out.collections[COLLECTIONS[kind]] = records[kind]; n += records[kind].length; });
+            return root.claude.use("downloads").then(function (dl) {
+              if (!dl) throw new Error("Downloads aren't available in this view. Open the page on claude.ai in a browser.");
+              return dl.save({ filename: "tour-schedule-backup-" + nowIso().slice(0, 10) + ".json", data: JSON.stringify(out) });
+            }).then(function () { return { records: n, collections: Object.keys(out.collections).length }; }, function (e) {
+              throw new Error(e && e.code === "declined" ? "The download was cancelled." : (e && e.message) || "The download failed.");
+            });
+          },
           canTrade: function () { return tradeOk(); },
           myMember: myMember,
           myKey: function () { var m = myMember(); return m ? m.key : null; },
@@ -1468,13 +1562,43 @@ ul.list-rows li .linkish { font-weight: 600; }
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
             return tw(db.collection("members").doc(uid).update({ verifiedAt: nowIso() }));
           },
-          // Admins: put a cell number in the staff-list contacts record.
+          // Admins: put a cell number in the staff-list contacts record (null removes it).
           setCell: function (key, cell) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
             var cells = Object.assign({}, doc ? doc.cells : {});
-            cells[key] = cell;
+            if (cell) cells[key] = cell; else delete cells[key];
             return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+          },
+          /* Employee card (admins). update merges fields into one record; a null field clears it. */
+          update: function (kind, id, patch) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            return db.collection(COLLECTIONS[kind]).doc(id).update(Object.assign({}, patch, { updatedAt: nowIso(), updatedBy: uid }));
+          },
+          // A roster seat's name, rank or Employee ID over the vacancy list and employee-ids.json; all empty removes it.
+          setOverride: function (pos, o) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var ref = db.collection("rosterOverrides").doc(pos);
+            if (!o || !(o.emplId || o.name || o.rank)) return ref.delete();
+            return ref.set({ emplId: o.emplId || null, name: o.name || null, rank: o.rank || null, forName: o.forName || null, updatedAt: nowIso(), updatedBy: uid });
+          },
+          // Undo for unclaim: put the removed "this is me" record back as it was.
+          restoreMember: function (doc) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var rec = Object.assign({}, doc);
+            delete rec.id;
+            return db.collection("members").doc(doc.id).set(rec);
+          },
+          // A correction is one item in its owner's record; the record is rewritten without it.
+          deleteCorrection: function (id) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), ref = db.collection("corrections").doc(parts[0]);
+            return ref.get().then(function (s) {
+              if (!s.exists) return;
+              var d = s.data(), items = Object.assign({}, d.items);
+              delete items[parts[1]];
+              return ref.set(Object.assign({}, d, { items: items }));
+            });
           },
           setAlerts: function (a) {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
@@ -1551,7 +1675,8 @@ ul.list-rows li .linkish { font-weight: 600; }
         contacts = res[1];
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
           people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
-          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [] });
+          trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [],
+          rosterOverrides: res[0].rosterOverrides || [] });
       });
     }
     function thenRefresh(p) { return p.then(function (j) { return refresh().then(function () { return j; }); }); }
@@ -1616,6 +1741,12 @@ ul.list-rows li .linkish { font-weight: 600; }
             },
             cancelTrade: function (trade) { return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(trade.id) + "/cancel")); },
             endCover: function (id, end) { return thenRefresh(call("PATCH", "api/covers/" + encodeURIComponent(id), { end: end })); },
+            update: function (kind, id, patch) {
+              return thenRefresh(call("PATCH", "api/admin/records/" + API_PATH[kind] + "/" + encodeURIComponent(id), patch));
+            },
+            setOverride: function (pos, o) { return thenRefresh(call("PUT", "api/admin/overrides/" + encodeURIComponent(pos), o || {})); },
+            setCell: function (key, cell) { return thenRefresh(call("PUT", "api/admin/cells/" + encodeURIComponent(key), { cell: cell || null })); },
+            deleteCorrection: function (id) { return thenRefresh(call("DELETE", "api/admin/corrections/" + encodeURIComponent(id))); },
             remove: function (kind, id) {
               return thenRefresh(call("DELETE", "api/" + API_PATH[kind] + "/" + encodeURIComponent(id)));
             },
@@ -1623,6 +1754,341 @@ ul.list-rows li .linkish { font-weight: 600; }
         });
       });
     }).catch(function () { return null; });
+  }
+
+  /* ---------- Firebase Hosting (Google sign-in, Firestore, Cloud Storage) ----------
+     tools/build_firebase.py loads the Firebase SDK and Hosting's /__/firebase/init.js and sets FIREBASE_HOSTED. Accounts
+     (sign-in gate, claim, Admin page, My page) work as on server.py, so the screens see mode "server". Roles are custom
+     claims {active, role, pos} that only the functions in firebase/functions set; firebase/firestore.rules checks them.
+     Records are read with onSnapshot and written as on the claude.ai page, trades included (legs on the trade).
+     Two Hosting sites share it (FIREBASE_SITE): "admin", the full page for editors and admins (anyone else is sent to the
+     app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
+     not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
+     "Test copy" banner until cut-over (CUTOVER.md). */
+  var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
+    "corrections", "assignments", "rosterOverrides"];
+  // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
+  var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
+  function firebaseAdapter(onChange) {
+    var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
+    var fb = root.firebase;
+    if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
+    var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
+    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false;
+    var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
+      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
+
+    function call(name, data) {
+      return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
+        var err = new Error((e && e.message) || "The server refused the request.");
+        err.reason = e && e.details && e.details.reason; // syncMe: "disabled" or "domain", shown on the sign-in screen
+        throw err;
+      });
+    }
+    function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
+    function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
+    function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
+    function active() { return approved() && !wrongSite(); }
+    function role() { return !active() ? null : SITE === "app" ? "member" : claims.role; }
+    function editable() { return role() === "editor" || role() === "admin"; }
+    function admin() { return role() === "admin"; }
+    function guard(ok) { return ok ? null : Promise.reject(new Error(NO_EDIT)); }
+    function refusal(e) {
+      throw new Error(e && e.code === "permission-denied" ? "You don't have access to make that change." :
+        "The change was not saved (" + ((e && (e.code || e.message)) || "error") + ").");
+    }
+    function w(p) { return p.catch(refusal); }
+
+    /* The signed-in account: syncMe creates it (pending) on first sign-in, refreshes the claims and returns the same JSON as
+       server.py's /api/me. The ID token is refreshed when the claims changed, so the rules see them at once. */
+    function syncMe() {
+      return call("syncMe").then(function (j) {
+        me = j;
+        return user.getIdTokenResult(!!j.claimsChanged);
+      }).then(function (t) {
+        claims = t.claims || {};
+        me.wrongSite = wrongSite();
+        me.appUrl = root.FIREBASE_APP_URL || null;
+      });
+    }
+
+    function contactMap() {
+      var out = {};
+      if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}) }]);
+      records.contacts.concat(records.myContact).forEach(function (c) {
+        if (c.pos) out[c.pos] = { email: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shared: !!c.share };
+      });
+      return out;
+    }
+    function emit() {
+      onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
+        covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
+        staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
+        members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
+        corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
+    }
+    function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
+    function watch(kind, ref) {
+      ref.onSnapshot(function (snap) {
+        records[kind] = snap.docs ? docs(snap) : snap.exists ? [Object.assign({}, snap.data(), { id: snap.id })] : [];
+        emit();
+      }, function (e) { if (root.console) console.warn("Firestore " + kind + ": " + (e && e.code)); });
+    }
+    function listen() {
+      if (listening || !active()) return;
+      listening = true;
+      ["statuses", "tourChanges", "covers", "people", "staffing", "assignments", "rosterOverrides", "trades", "tradeReplies"]
+        .forEach(function (kind) { watch(kind, fs.collection(kind)); });
+      watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
+      watch("myContact", fs.collection("contacts").doc(user.uid));
+      watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
+      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
+      watch("site", fs.collection("settings").doc("site"));
+    }
+    // Approval, a role change or a new roster link (made by an admin) reloads the page with the new access.
+    function watchAccount() {
+      fs.collection("users").doc(user.uid).onSnapshot(function (s) {
+        var d = s.exists ? s.data() : null;
+        if (!d || (d.status === me.status && d.role === me.role && (d.pos || null) === (me.pos || null))) return;
+        syncMe().then(function () { location.reload(); }, function () {});
+      }, function () {});
+    }
+
+    function addRec(kind, rec) {
+      rec.createdAt = nowIso();
+      rec.createdBy = user.uid;
+      return fs.collection(kind).add(rec);
+    }
+    function write(kind, rec) { return guard(editable()) || w(addRec(COLLECTIONS[kind], rec)); }
+    // Files that hold names (roster, IDs, PDFs) are in Cloud Storage, readable by active accounts only (storage.rules).
+    function fetchData(path) {
+      var bucket = fb.app().options.storageBucket;
+      return user.getIdToken().then(function (t) {
+        return fetch("https://firebasestorage.googleapis.com/v0/b/" + encodeURIComponent(bucket) + "/o/" + encodeURIComponent(path) + "?alt=media",
+          { headers: { Authorization: "Firebase " + t } });
+      });
+    }
+
+    var adapter = {
+      mode: "server",
+      hosted: "firebase",
+      me: function () { return me; },
+      isActive: active,
+      isAdmin: admin,
+      canEdit: editable,
+      canAdmin: admin,
+      editorName: function () { return me.signedIn ? me.name || me.googleEmail : null; },
+      // "test" until an admin sets the copy live at cut-over; null until the setting has loaded.
+      siteMode: function () { return records.site === null ? null : records.site[0] && records.site[0].mode === "live" ? "live" : "test"; },
+      setSiteMode: function (mode) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        return w(fs.collection("settings").doc("site").set({ mode: mode === "live" ? "live" : "test", updatedAt: nowIso(), updatedBy: user.uid }));
+      },
+      // On the employee app, editors and admins get a link to the back office (FIREBASE_ADMIN_URL, set at build).
+      adminUrl: function () { return SITE === "app" && staff() ? root.FIREBASE_ADMIN_URL || null : null; },
+      needsSignIn: function () { return !me.signedIn; },
+      contacts: contactMap,
+      signIn: function () {
+        var provider = new fb.auth.GoogleAuthProvider();
+        provider.setCustomParameters({ prompt: "select_account" });
+        return auth.signInWithPopup(provider).then(function () { location.reload(); }, function (e) {
+          if (e && (e.code === "auth/popup-blocked" || e.code === "auth/operation-not-supported-in-this-environment")) return auth.signInWithRedirect(provider);
+          if (e && (e.code === "auth/popup-closed-by-user" || e.code === "auth/cancelled-popup-request")) return;
+          throw e;
+        });
+      },
+      signOut: function () { return auth.signOut().then(function () { location.href = location.pathname; }); },
+      claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+      claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
+      rosterNames: function () { return call("rosterNames"); },
+      saveContact: function (c) {
+        var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
+          phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
+        return w(fs.collection("contacts").doc(user.uid).set(rec)).then(function () {
+          Object.assign(me, { contactEmail: rec.contactEmail, phoneMobile: rec.phoneMobile, phoneOther: rec.phoneOther, shareContact: rec.share });
+          return me;
+        });
+      },
+      adminUsers: function () { return call("adminUsers"); },
+      adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
+      stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
+      addStatus: function (rec) { return write("statuses", rec); },
+      addTourChange: function (rec) { return write("tourChanges", rec); },
+      addCover: function (rec) { return write("covers", rec); },
+      addPerson: function (rec) { return write("people", rec); },
+      endCover: function (id, end) { return guard(editable()) || w(fs.collection("covers").doc(id).update({ end: end })); },
+      setStaffing: function (company, n) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var ref = fs.collection("staffing").doc(company);
+        return w(n == null ? ref.delete() : ref.set({ required: n, updatedAt: nowIso(), updatedBy: user.uid }));
+      },
+      // Admins set anyone's dates; a member sets their own (the key is their linked position).
+      setProfile: function (key, dates) {
+        if (!admin() && !(active() && key === me.pos)) return Promise.reject(new Error(NO_EDIT));
+        var rec = { birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso(), updatedBy: user.uid };
+        return w(fs.collection("profiles").doc(key).set(rec)).then(function () {
+          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate };
+          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate };
+        });
+      },
+      profiles: function () {
+        return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+      },
+      canTrade: function () { return active() && !!me.pos; },
+      myKey: function () { return active() ? me.pos || null : null; },
+      myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
+      setAlerts: function (a) {
+        var alerts = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" };
+        return w(fs.collection("users").doc(user.uid).update({ alerts: alerts })).then(function () { me.alerts = alerts; return me; });
+      },
+      postTrade: function (rec) {
+        rec.status = "open";
+        return w(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
+      },
+      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })); },
+      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)); },
+      pickReply: function (trade, reply, writes) {
+        return w(fs.collection("trades").doc(trade.id).update({ status: "set", replyId: reply.id, takerKey: reply.takerKey,
+          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }));
+      },
+      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })); },
+      // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
+      canSuggest: function () { return active(); },
+      suggest: function (rec) {
+        var item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        item[k] = Object.assign(rec, { state: "open", byKey: me.pos || null, createdAt: nowIso(), createdBy: user.uid });
+        return w(fs.collection("corrections").doc(user.uid).set({ items: item }, { merge: true }));
+      },
+      handleCorrection: function (id, state, reason) {
+        if (!editable()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), item = {};
+        item[parts[1]] = { state: state, reason: reason || null, handledBy: user.uid, handledAt: nowIso() };
+        return w(fs.collection("corrections").doc(parts[0]).set({ items: item }, { merge: true }));
+      },
+      deleteCorrection: function (id) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), ref = fs.collection("corrections").doc(parts[0]);
+        return w(ref.get().then(function (s) {
+          if (!s.exists) return;
+          var d = s.data(), items = Object.assign({}, d.items);
+          delete items[parts[1]];
+          return ref.set(Object.assign({}, d, { items: items }));
+        }));
+      },
+      // Admins: the staff-list cell number (staffCells, admin-only rules); null removes it.
+      setCell: function (key, cell) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var ref = fs.collection("staffCells").doc(key);
+        return w(cell ? ref.set({ cell: cell, updatedAt: nowIso(), updatedBy: user.uid }) : ref.delete());
+      },
+      update: function (kind, id, patch) {
+        if (!editable()) return Promise.reject(new Error(NO_EDIT));
+        return w(fs.collection(COLLECTIONS[kind]).doc(id).update(Object.assign({}, patch, { updatedAt: nowIso(), updatedBy: user.uid })));
+      },
+      setOverride: function (pos, o) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var ref = fs.collection("rosterOverrides").doc(pos);
+        if (!o || !(o.emplId || o.name || o.rank)) return w(ref.delete());
+        return w(ref.set({ emplId: o.emplId || null, name: o.name || null, rank: o.rank || null, forName: o.forName || null, updatedAt: nowIso(), updatedBy: user.uid }));
+      },
+      remove: function (kind, id) {
+        if (!editable()) return Promise.reject(new Error(NO_EDIT));
+        var first = Promise.resolve();
+        if (kind === "people") {
+          var key = "person:" + id;
+          var linked = records.covers.filter(function (c) { return c.coverKey === key; }).map(function (c) { return ["covers", c.id]; })
+            .concat(records.statuses.filter(function (x) { return x.pos === key; }).map(function (x) { return ["statuses", x.id]; }));
+          first = linked.reduce(function (p, kd) { return p.then(function () { return fs.collection(kd[0]).doc(kd[1]).delete(); }); }, first);
+        }
+        return w(first.then(function () { return fs.collection(COLLECTIONS[kind]).doc(id).delete(); }));
+      },
+      fetchData: fetchData,
+      // Opens a PDF from Cloud Storage; the tab is opened first so the browser doesn't block it as a pop-up.
+      openDoc: function (file) {
+        var tab = root.open("", "_blank");
+        return fetchData("docs/" + file).then(function (r) {
+          if (!r.ok) throw new Error("HTTP " + r.status);
+          return r.blob();
+        }).then(function (b) {
+          var url = URL.createObjectURL(new Blob([b], { type: "application/pdf" }));
+          if (tab) tab.location.href = url; else location.href = url;
+        }, function (e) { if (tab) tab.close(); throw e; });
+      },
+      /* Admins: loads a backup file saved from the claude.ai page (its saveBackup), ids kept, so it can be run again.
+         The staff-list record (contacts/staff-list) becomes one staffCells doc per person; other contacts records are
+         skipped. opts.replace (cut-over): first removes every record in REPLACE_KINDS that isn't in the file, so Firestore
+         ends up holding exactly the page's records; accounts, contact info, audit and settings are left alone.
+         Only counts are reported. onProgress(text). Resolves {collection: {backup, firestore}}, read back after the write. */
+      importBackup: function (backup, opts, onProgress) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        if (!backup || backup.format !== BACKUP_FORMAT || !backup.collections) return Promise.reject(new Error("This isn't a backup file from the claude.ai page."));
+        var cols = backup.collections, writes = [], want = {};
+        REPLACE_KINDS.forEach(function (k) { want[k] = {}; });
+        IMPORT_KINDS.forEach(function (kind) {
+          (cols[kind] || []).forEach(function (d) {
+            var rec = Object.assign({}, d);
+            delete rec.id;
+            if (d.id) { writes.push([kind, String(d.id), rec]); want[kind][String(d.id)] = true; }
+          });
+        });
+        (cols.contacts || []).forEach(function (d) {
+          if (d.id !== "staff-list") return;
+          Object.keys(d.cells || {}).forEach(function (k) {
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+          });
+        });
+        var say = onProgress || function () {};
+        function inBatches(ops, apply, label) {
+          var chain = Promise.resolve(), done = 0;
+          for (var i = 0; i < ops.length; i += 400) {
+            (function (part) {
+              chain = chain.then(function () {
+                var batch = fs.batch();
+                part.forEach(function (x) { apply(batch, x); });
+                return batch.commit().then(function () { done += part.length; say(label + " " + done + " of " + ops.length + "…"); });
+              });
+            })(ops.slice(i, i + 400));
+          }
+          return chain;
+        }
+        var removals = Promise.resolve([]);
+        if (opts && opts.replace) {
+          removals = Promise.all(REPLACE_KINDS.map(function (k) {
+            return fs.collection(k).get().then(function (snap) {
+              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+            });
+          })).then(function (lists) { return [].concat.apply([], lists); });
+        }
+        return w(removals.then(function (gone) {
+          return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
+        }).then(function () {
+          return inBatches(writes, function (b, x) { b.set(fs.collection(x[0]).doc(x[1]), x[2]); }, "Imported");
+        }).then(function () {
+          return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
+        }).then(function (snaps) {
+          var out = {};
+          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          return out;
+        }));
+      },
+    };
+
+    return new Promise(function (resolve) {
+      var off = auth.onAuthStateChanged(function (u) { off(); resolve(u); });
+    }).then(function (u) {
+      if (!u) return adapter;
+      user = u;
+      return syncMe().then(function () {
+        watchAccount();
+        listen();
+        return adapter;
+      });
+    }).catch(function (e) {
+      // Signed in but the account was refused (disabled, or not an allowed domain): back to the sign-in screen, with why.
+      if (root.console) console.warn(e && e.message);
+      try { history.replaceState(null, "", location.pathname + "?auth_error=" + encodeURIComponent((e && e.reason) || "google")); } catch (x) { /* old browser */ }
+      return auth.signOut().then(function () { me = { signedIn: false, google: true }; return adapter; });
+    });
   }
 
   var readOnly = {
@@ -1655,7 +2121,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     function emit() {
       onChange({ statuses: (r.statuses || []).concat(st ? tradeLegs(st.trades, "statuses") : []), tourChanges: r.tourChanges || [],
         covers: (r.covers || []).concat(st ? tradeLegs(st.trades, "covers") : []), people: r.people || [], staffing: r.staffing || [],
-        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [] });
+        trades: st ? st.trades : [], tradeReplies: st ? st.replies : [], members: [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] });
     }
     setTimeout(emit, 0);
     var adapter = Object.assign({}, readOnly, { mode: "snapshot", asOf: snap.asOf });
@@ -1696,6 +2162,7 @@ ul.list-rows li .linkish { font-weight: 600; }
 
   function connect(onChange) {
     if (root.SNAPSHOT) return snapshotAdapter(onChange);
+    if (root.FIREBASE_HOSTED) return firebaseAdapter(onChange).then(function (f) { return f || readOnly; });
     return dbAdapter(onChange).then(function (a) {
       return a || serverAdapter(onChange).then(function (b) { return b || readOnly; });
     });
@@ -1736,7 +2203,9 @@ ul.list-rows li .linkish { font-weight: 600; }
       var errHtml = err ? '<p class="msg err" role="alert">' + esc(AUTH_ERRORS[err] || "Sign-in failed. Try again.") + "</p>" : "";
 
       if (!me.signedIn) {
-        var how = me.google
+        var how = me.google && api.backend().signIn
+          ? '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'
+          : me.google
           ? '<a class="btn primary big" href="auth/login">Sign in with Google</a>'
           : '<p class="hint">' + esc(AUTH_ERRORS.not_configured) + "</p>";
         var dev = me.devLogin
@@ -1747,6 +2216,18 @@ ul.list-rows li .linkish { font-weight: 600; }
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members. ' +
           "Sign in with your Google account to see who's working, your own tour, and to share contact info for shift swaps.</p>" +
           errHtml + how + dev + "</div>";
+        if ($("gate-in")) $("gate-in").onclick = function () {
+          api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
+        };
+        return;
+      }
+
+      // The admin site, signed in without editor or admin access: point to the employee app.
+      if (me.wrongSite) {
+        el.innerHTML = '<div class="card gate-card"><h2>Admins only</h2><p>This site is the back office for admins and editors. ' +
+          (me.appUrl ? 'Open the tour schedule at <a href="' + esc(me.appUrl) + '">' + esc(me.appUrl.replace(/^https?:\/\//, "")) + "</a>." : "Open the tour schedule app instead.") +
+          '</p><p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p></div>';
+        $("gate-out").onclick = function () { api.backend().signOut(); };
         return;
       }
 
@@ -1938,7 +2419,8 @@ ul.list-rows li .linkish { font-weight: 600; }
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>";
+          }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
+        if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
         out.addEventListener("change", onAdminChange);
@@ -1950,6 +2432,68 @@ ul.list-rows li .linkish { font-weight: 600; }
         drawPending();
         drawUsers();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
+    }
+
+    /* Cut-over (Firebase only, CUTOVER.md): the backup file saved on the claude.ai page (Download backup) is loaded straight
+       from this device. "Test copy" adds and updates records; "Replace everything" makes Firestore hold exactly the file's
+       records (accounts and contact info stay). Only counts are shown; the file holds cell numbers, so delete it afterwards.
+       Mode: the "Test copy" banner stays on until an admin sets the copy live. */
+    function importHtml() {
+      var mode = api.backend().siteMode ? api.backend().siteMode() : null;
+      return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
+        '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
+        "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
+        '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
+        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
+        '<span class="msg" id="import-msg" role="status"></span></div>' +
+        '<div class="table-wrap" id="import-counts" hidden></div>' +
+        '<h4>Mode</h4><div class="row"><span id="mode-now">' + modeText(mode) + "</span>" +
+        '<button class="btn small" type="button" id="mode-set">' + (mode === "live" ? "Back to test copy" : "Set live") + "</button>" +
+        '<span class="msg" id="mode-msg" role="status"></span></div></form>';
+    }
+    function modeText(mode) {
+      return mode === "live" ? "<b>Live.</b> No banner; this is the schedule." : "<b>Test copy.</b> Everyone sees a “Test copy” banner.";
+    }
+    function wireImport() {
+      $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-replace").onclick = function () {
+        if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
+        this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
+        runImport(true);
+      };
+      $("mode-set").onclick = function () {
+        var b = api.backend(), next = b.siteMode() === "live" ? "test" : "live";
+        if (next === "live" && this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: set live"; return; }
+        this.dataset.confirm = "";
+        api.say($("mode-msg"), "Saving…");
+        b.setSiteMode(next).then(function () {
+          $("mode-now").innerHTML = modeText(next);
+          $("mode-set").textContent = next === "live" ? "Back to test copy" : "Set live";
+          api.say($("mode-msg"), "Saved.");
+        }, function (er) { api.say($("mode-msg"), er.message, true); });
+      };
+    }
+    function runImport(replace) {
+      var file = $("import-file").files[0], msg = $("import-msg");
+      if (!file) return api.say(msg, "Choose the backup file first.", true);
+      api.say(msg, "Reading…");
+      file.text().then(function (text) {
+        var data;
+        try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
+        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
+      }).then(function (counts) {
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
+          : "Done. Every count matches the file.", !!off.length);
+        $("import-counts").hidden = false;
+        $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
+          keys.map(function (k) {
+            var c = counts[k], ok = c.backup === c.firestore;
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+          }).join("") + "</tbody></table>";
+      }, function (er) { api.say(msg, er.message, true); });
     }
 
     function posLabel(pos) {
@@ -2438,7 +2982,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         '<span class="hint">Report: ' + reportTotal + " working, including " + ot + " overtime hires (about " + regular + " regular). Tool: " + toolWorking +
         ". <b>About " + est + " people working who aren't in the tool.</b></span></summary>" +
         '<p class="hint">Apparatus where the Balance report shows more people than the tool (' + sumGaps + " in all; some of these are overtime hires, which the report doesn't split by apparatus). " +
-        "To fix a gap, add the person on the By person tab, or give them a cover assignment from Open seats.</p>" +
+        "To fix a gap, add the person on the Schedule tab, or give them a cover assignment from Open seats.</p>" +
         '<div class="gap-groups">' + Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, undefined, { numeric: true }); }).map(function (k) {
           return '<div><h4>' + esc(k) + "</h4><ul>" + groups[k].map(function (g) {
             return '<li><button class="linkish" data-goto="' + esc(g.co) + '">' + esc(g.co) + "</button> report " + g.report + ", tool " + g.tool + ' <b class="gap">+' + g.gap + "</b></li>";
@@ -2512,7 +3056,7 @@ ul.list-rows li .linkish { font-weight: 600; }
         '<datalist id="cover-dl">' + api.people().map(function (p) {
           return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
         }).join("") + "</datalist>" +
-        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the By person tab, then assign them here. ' +
+        '<p class="hint">Not on the roster? Add them first with "Not on the list? Add a person" on the Schedule tab, then assign them here. ' +
         "To end a cover, open the person and use End today.</p></div>";
       seats.msg = "";
       $("seats-back").onclick = function () { api.state().seatsOpen = false; renderDash(); };
@@ -3538,7 +4082,7 @@ ul.list-rows li .linkish { font-weight: 600; }
 </script>
 <script>
 /* Corrections: members tell admins what's wrong; admins apply it with the usual edit forms.
- * window.CorrectionViews(api) -> {link, open, openVerify, render, prefill, saved, count, afterClaim}. `api` comes from app.js.
+ * window.CorrectionViews(api) -> {link, open, openVerify, render, prefill, saved, count, afterClaim, summary, apply}. `api` comes from app.js.
  * - "Something wrong?" on any person page opens a short form: wrong seat, leave / working elsewhere, covering / acting /
  *   shadowing, tour, Employee ID, cell number (own page only) or other. It writes a correction; nothing changes until an
  *   admin applies it.
@@ -3827,7 +4371,618 @@ ul.list-rows li .linkish { font-weight: 600; }
     }
 
     return { link: link, wireLinks: wireLinks, open: open, openVerify: openVerify, render: render, prefill: prefill, saved: saved,
-      count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest };
+      count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest, summary: summary, apply: apply };
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* Employee card: one back-office screen where an admin finds a person and edits their whole record.
+ * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
+ * and viewers never see it, and the person page they use is unchanged.
+ * Sections: identity (name, rank, Employee ID), own seat and moves, current assignment, leave, tour changes, cell number
+ * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
+ * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
+ */
+(function (root) {
+  "use strict";
+  var M = root.TourMath;
+
+  root.CardViews = function (api) {
+    var $ = api.$, esc = api.esc;
+    /* key: the person shown; edit: "section|kind|id" of the record whose edit form is open; undo: a removed claim
+       ({key, member} on the shared page, {key, accountId} on the server). */
+    var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false,
+      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false, profiles: null };
+
+    function backend() { return api.backend(); }
+    function byPos() { return api.byPos(); }
+    function recs() { return api.recs(); }
+    function todayIso() { return api.iso(api.today()); }
+    function serverMode() { return backend() && backend().mode === "server"; }
+    function nameOf(key) { var p = byPos()[key]; return p ? p.name || "Vacant" : key; }
+    function when(isoStr) { return isoStr ? api.shortDate(api.fromIso(String(isoStr).slice(0, 10))) : ""; }
+    function btn(label, attrs, cls) { return '<button type="button" class="btn small' + (cls ? " " + cls : "") + '" ' + attrs + ">" + label + "</button>"; }
+    function msgEl(id) { return '<span class="msg" id="' + id + '" role="status"></span>'; }
+
+    function open(key) {
+      ui.key = key;
+      ui.edit = null;
+      api.show();
+    }
+
+    /* ---------- Records touching one person ---------- */
+    function covers(key) { return (recs().covers || []).filter(function (c) { return c.coverKey === key || c.targetPos === key; }); }
+    function statuses(key) { return (recs().statuses || []).filter(function (s) { return s.pos === key; }); }
+    function tourChanges(key) { return (recs().tourChanges || []).filter(function (c) { return c.pos === key; }); }
+    function claims(key) { return (recs().members || []).filter(function (m) { return m.key === key; }); }
+    function fixes(key) { return (recs().corrections || []).filter(function (c) { return c.aboutKey === key || c.byKey === key; }); }
+    function byStartDesc(a, b) { return String(b.start || b.effective).localeCompare(String(a.start || a.effective)); }
+    function live(r) { return !r.end || r.end >= todayIso(); }
+
+    function statusLine(s) {
+      return api.statusPill(s.code) + " <b>" + esc(api.STATUS_LABEL[s.code] || s.code) + "</b> " + esc(when(s.start)) +
+        (s.end ? (s.end !== s.start ? " – " + esc(when(s.end)) : "") : " onward");
+    }
+    function coverLine(c, key) {
+      if (c.coverKey === key) return "<b>" + esc(api.kindWord(c)) + " " + esc(api.slotLabel(c.targetPos)) + "</b> " +
+        (M.isMove(c) ? "" : '<span class="tag">' + esc(api.KIND[kindKey(c)][0]) + "</span> ") + esc(api.rangeText(c));
+      return "<b>" + esc(c.coverName || nameOf(c.coverKey)) + " · " + esc(api.kindWord(c).toLowerCase()) + "</b> in this seat " + esc(api.rangeText(c));
+    }
+    function kindKey(c) {
+      var who = byPos()[c.coverKey], seat = byPos()[c.targetPos];
+      return M.coverKind(c, who && who.rank, seat && seat.rank);
+    }
+    function tourLine(c) { return '<span class="st st-T">T</span> <b>Tour ' + esc(c.tour) + "</b> from " + esc(when(c.effective)); }
+
+    // One list row for a schedule record, with Edit / End today / Delete, and its edit form underneath when open.
+    function recRow(section, kind, r, html, p) {
+      var editKey = section + "|" + kind + "|" + r.id, trade = !!r.tradeId;
+      var acts = trade ? '<span class="hint">From a shift trade; change it on the Trades tab</span>' :
+        btn("Edit", 'data-cedit="' + esc(editKey) + '"') +
+        (kind === "covers" && !r.end && r.start <= todayIso() ? btn("End today", 'data-cend="' + esc(r.id) + '"') : "") +
+        btn("Delete", 'data-cdel="' + esc(kind) + '" data-id="' + esc(r.id) + '"');
+      var form = ui.edit === editKey ? editForm(kind, r, p) : "";
+      return "<li><div>" + html + (r.note ? '<div class="hint">' + esc(r.note) + "</div>" : "") + "</div>" +
+        '<div class="acts">' + acts + "</div>" + (form ? '<div class="card-editform">' + form + "</div>" : "") + "</li>";
+    }
+    // The edit form for one record; a cover is edited as the person covering (they may not be the person shown).
+    function editForm(kind, r, p) {
+      if (kind === "statuses") return api.statusForm(p, r, "kh");
+      if (kind === "tourChanges") return api.tourForm(p, r, "kh");
+      if (kind === "covers") return api.coverForm(coverer(r), r, "kh", { move: true });
+      return "";
+    }
+    function coverer(c) { return byPos()[c.coverKey] || { pos: c.coverKey, name: c.coverName || c.coverKey }; }
+    function list(rows, empty) { return rows.length ? '<ul class="hist card-list">' + rows.join("") + "</ul>" : '<p class="hint">' + empty + "</p>"; }
+    function section(id, title, sum, body, openDefault) {
+      var open = ui.folds && id in ui.folds ? ui.folds[id] : openDefault !== false;
+      return '<details class="card fold card-sec" data-cfold="' + id + '"' + (open ? " open" : "") + "><summary><h3>" + esc(title) + "</h3>" +
+        '<span class="fold-sum">' + sum + "</span></summary>" + body + "</details>";
+    }
+
+    /* ---------- Roster: rank tiles over a table of everyone ----------
+       Tiles count people per rank and filter the table; the table has search, sorting, paging, a column chooser (remembered
+       per browser) and a status quick edit. Clicking a name opens that person's card.
+
+       To add a column, add one entry to COLUMNS: {key, label, get(p) -> sortable value, html?(p) -> cell HTML, on: shown by
+       default, phone: shown by default on phones}. A new stored field (e.g. email, DSW No, seniority number) needs the data
+       first: an admin-only page collection (one rule in tools/build_artifact.py CAPABILITIES, read in store.js and passed
+       through onChange like rosterOverrides), then a COLUMNS entry that reads it. */
+    var PAGE_SIZES = [25, 50, 100, 0]; // 0 = all
+    var STATUS_OPTS = [["", "Full duty"], ["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]];
+    function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
+    function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
+    function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
+    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? c.phoneMobile : ""; }
+    function claimed(p) {
+      if (serverMode()) return (ui.users || []).some(function (u) { return u.pos === p.pos; });
+      return (recs().members || []).some(function (m) { return m.key === p.pos; });
+    }
+    function openFixes(p) { return (recs().corrections || []).filter(function (c) { return c.aboutKey === p.pos && c.state === "open"; }).length; }
+    function current(p) { return (recs().covers || []).filter(function (c) { return c.coverKey === p.pos && !M.isMove(c) && c.start <= todayIso() && live(c); })[0] || null; }
+    var COLUMNS = [
+      { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
+      { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
+      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
+        html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
+      { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,
+        html: function (p) { return esc(p.title) + (p.added ? "" : ' <span class="hint mono">' + esc(p.pos) + "</span>"); } },
+      { key: "rank", label: "Rank", get: function (p) { return p.rank; }, sortKey: function (p) { return api.RANKS.indexOf(p.rank); } },
+      { key: "hclass", label: "H-class", get: function (p) { return p.hclass || ""; } },
+      { key: "tour", label: "Tour", get: function (p) { return api.tourOn(p, api.today()) || ""; }, num: true, on: true, phone: true },
+      { key: "id", label: "Employee ID", get: function (p) { return p.emplId || ""; }, on: true, html: function (p) { return p.emplId ? '<span class="mono">' + esc(p.emplId) + "</span>" : '<span class="hint">—</span>'; } },
+      { key: "status", label: "Status", get: function (p) { return api.statusFor(p.pos, api.today()) || ""; }, on: true, phone: true, html: statusCell },
+      { key: "asg", label: "Assignment", get: function (p) { var c = current(p); return c ? api.kindWord(c) + " " + ((byPos()[c.targetPos] || {}).company || c.targetPos) : ""; } },
+      { key: "cell", label: "Cell", get: cellOf },
+      { key: "birth", label: "Birth date", get: function (p) { return profile(p).birthDate || ""; }, needs: "profiles" },
+      { key: "age", label: "Age", get: function (p) { return yearsSince(profile(p).birthDate); }, num: true, needs: "profiles" },
+      { key: "hire", label: "Hire date", get: function (p) { return profile(p).hireDate || ""; }, needs: "profiles" },
+      { key: "yos", label: "Years of service", get: function (p) { return yearsSince(profile(p).hireDate); }, num: true, needs: "profiles" },
+      { key: "claimed", label: "Claimed", get: function (p) { return claimed(p) ? "Yes" : ""; }, needs: "users" },
+      { key: "fixes", label: "Open corrections", get: openFixes, num: true },
+      { key: "action", label: "Action", get: function () { return ""; }, on: true, nosort: true,
+        html: function (p) { return btn("Open", 'data-ckey="' + esc(p.pos) + '"'); } },
+    ];
+    function coSort(co) { var m = /^([A-Z]+)(\d+)$/.exec(co || ""); return m ? m[1] + ("000" + m[2]).slice(-3) : "ZZZ" + (co || ""); }
+    function visibleCols() {
+      if (!ui.cols) {
+        var saved = null;
+        try { saved = JSON.parse(api.recall("card-cols") || "null"); } catch (e) { saved = null; }
+        ui.cols = Array.isArray(saved) ? saved : COLUMNS.filter(function (c) { return api.isPhone() ? c.phone || c.key === "action" : c.on; }).map(function (c) { return c.key; });
+      }
+      return COLUMNS.filter(function (c) { return ui.cols.indexOf(c.key) !== -1; });
+    }
+    // Profiles and (on the server) accounts load only when a column that needs them is shown.
+    function loadNeeds(cols) {
+      var b = backend();
+      cols.forEach(function (c) {
+        if (c.needs === "profiles" && !ui.profiles && !ui.profilesLoading) {
+          ui.profilesLoading = true;
+          b.profiles().then(function (list) {
+            ui.profiles = {};
+            list.forEach(function (x) { ui.profiles[x.key] = x; });
+            ui.profilesLoading = false;
+            drawRoster();
+          }, function () { ui.profiles = {}; ui.profilesLoading = false; });
+        }
+        if (c.needs === "users" && serverMode() && !ui.users) linkedUsers("");
+      });
+    }
+
+    function statusCell(p) {
+      var code = api.statusFor(p.pos, api.today());
+      if (code === "TR") return '<select disabled aria-label="Status"><option>TR (trade)</option></select>';
+      return '<select data-cstatus="' + esc(p.pos) + '" aria-label="Status for ' + esc(p.name) + '">' + STATUS_OPTS.map(function (o) {
+        return '<option value="' + o[0] + '"' + (o[0] === (code || "") ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+      }).join("") + '</select> <span class="msg" data-cstatus-msg="' + esc(p.pos) + '" role="status"></span>';
+    }
+    // Quick edit: VA / S / D / WE from today, open-ended; Full duty ends whatever is running today (a status that starts
+    // today is removed, an older one ends yesterday). Trade records are left alone.
+    function setStatus(pos, code, msg) {
+      var b = backend(), p = byPos()[pos], t = todayIso();
+      if (!p) return;
+      api.say(msg, "Saving…");
+      var y = api.iso(new Date(api.today().getFullYear(), api.today().getMonth(), api.today().getDate() - 1));
+      var running = (recs().statuses || []).filter(function (s) { return s.pos === pos && !s.tradeId && s.start <= t && (!s.end || s.end >= t); });
+      var done = code
+        ? b.addStatus({ pos: pos, name: p.name, code: code, start: t, end: null, note: "Set from the roster table" })
+        : running.reduce(function (pr, s) {
+          return pr.then(function () { return s.start >= t ? b.remove("statuses", s.id) : b.update("statuses", s.id, { end: y }); });
+        }, Promise.resolve());
+      done.then(function () { api.renderAll(true); }, function (er) { api.say(msg, er.message, true); });
+    }
+
+    function rosterRows() {
+      var match = api.makeMatcher(ui.q), t = api.today();
+      var rows = api.people().filter(function (p) {
+        if (ui.rank && p.rank !== ui.rank) return false;
+        return !match || match({ name: p.name, title: p.title, co: api.home(p), tour: api.tourOn(p, t), pos: p.pos, id: p.emplId });
+      });
+      var col = COLUMNS.filter(function (c) { return c.key === ui.sort.key; })[0];
+      if (col) {
+        var f = col.sortKey || col.get;
+        rows = rows.map(function (p) { return { p: p, v: f(p) }; }).sort(function (a, b) {
+          var x = a.v, y = b.v, empty = (x === "" || x == null) - (y === "" || y == null);
+          if (empty) return empty; // blanks last either way
+          var c = typeof x === "number" && typeof y === "number" ? x - y : String(x).localeCompare(String(y));
+          return c * ui.sort.dir || a.p.name.localeCompare(b.p.name);
+        }).map(function (r) { return r.p; });
+      }
+      return rows;
+    }
+    function tilesHtml() {
+      var counts = {}, all = api.people();
+      all.forEach(function (p) { counts[p.rank] = (counts[p.rank] || 0) + 1; });
+      return '<div class="rtiles" role="group" aria-label="Filter by rank">' +
+        [["", "All", all.length]].concat(api.RANKS.filter(function (r) { return counts[r]; }).map(function (r) { return [r, r, counts[r]]; })).map(function (x) {
+          return '<button type="button" class="rtile' + (ui.rank === x[0] ? " on" : "") + '" data-crank="' + esc(x[0]) + '" aria-pressed="' + (ui.rank === x[0]) + '">' +
+            '<span class="n">' + x[2] + '</span><span class="k">' + esc(x[1]) + "</span></button>";
+        }).join("") + "</div>";
+    }
+    function rosterHtml() {
+      return '<div class="card roster-card"><h2 class="view-title">Employee cards</h2>' +
+        '<p class="hint">Admins only. Tap a rank to filter; tap a name to open their card. Members never see this screen.</p>' +
+        (backend().saveBackup ? '<p class="row backup">' + btn("Download backup", 'id="card-backup"') + msgEl("card-backup-msg") +
+          '<span class="hint">Every record, cell numbers included, as one file for the move to Firebase. Keep it private.</span></p>' : "") +
+        tilesHtml() +
+        '<form class="edit rbar" id="card-search" novalidate role="search">' +
+        '<label class="rshow">Show<select id="card-per">' + PAGE_SIZES.map(function (n) {
+          return '<option value="' + n + '"' + (n === ui.per ? " selected" : "") + ">" + (n || "All") + "</option>";
+        }).join("") + "</select></label>" +
+        '<label class="rq">Search<input type="search" id="card-q" placeholder="Name, Employee ID, company, tour or position" autocomplete="off" value="' + esc(ui.q) + '"></label>' +
+        '<button type="button" class="btn" id="card-cols-btn" aria-expanded="' + !!ui.chooser + '" aria-controls="card-cols">☰ Columns</button></form>' +
+        '<div class="rcols" id="card-cols"' + (ui.chooser ? "" : " hidden") + '><div class="rcols-head"><b>Column chooser</b>' + btn("Done", 'id="card-cols-x"') + "</div>" +
+        COLUMNS.map(function (c) {
+          return '<label class="chk"><input type="checkbox" data-ccol="' + c.key + '"' + (ui.cols.indexOf(c.key) !== -1 ? " checked" : "") + "> " + esc(c.label) + "</label>";
+        }).join("") + btn("Reset to default", 'id="card-cols-reset"') + "</div>" +
+        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>';
+    }
+    // Redraws just the counts, table and pager, so typing in the search box keeps focus.
+    function drawRoster() {
+      if (!$("card-table")) return;
+      var cols = visibleCols(), rows = rosterRows(), per = ui.per, pages = per ? Math.max(1, Math.ceil(rows.length / per)) : 1;
+      loadNeeds(cols);
+      if (ui.page >= pages) ui.page = pages - 1;
+      var shown = per ? rows.slice(ui.page * per, ui.page * per + per) : rows;
+      var t = api.today(), st = { full: 0 };
+      rows.forEach(function (p) { var c = api.statusFor(p.pos, t); st[c || "full"] = (st[c || "full"] || 0) + 1; });
+      $("card-sum").innerHTML = "<b>" + rows.length + "</b> " + (ui.rank ? esc(ui.rank) + (rows.length === 1 ? "" : "s") : rows.length === 1 ? "person" : "people") +
+        " · " + st.full + " full duty" + ["VA", "S", "D", "WE", "TR"].filter(function (c) { return st[c]; }).map(function (c) { return " · " + c + " " + st[c]; }).join("");
+      $("card-table").innerHTML = rows.length ? '<table class="list roster-t"><thead><tr>' + cols.map(function (c) {
+        var on = ui.sort.key === c.key;
+        return '<th scope="col"' + (c.key === "name" ? ' class="sticky"' : "") + (c.nosort ? "" : ' aria-sort="' + (on ? (ui.sort.dir > 0 ? "ascending" : "descending") : "none") + '"') + ">" +
+          (c.nosort ? esc(c.label) : '<button type="button" class="sort' + (on ? " on" : "") + '" data-csort="' + c.key + '">' + esc(c.label) + (on ? (ui.sort.dir > 0 ? " ▲" : " ▼") : "") + "</button>") + "</th>";
+      }).join("") + "</tr></thead><tbody>" + shown.map(function (p) {
+        return "<tr>" + cols.map(function (c) {
+          var v = c.html ? c.html(p) : esc(c.get(p) == null ? "" : c.get(p));
+          return "<td" + (c.key === "name" ? ' class="sticky"' : c.num ? ' class="num"' : "") + ">" + v + "</td>";
+        }).join("") + "</tr>";
+      }).join("") + "</tbody></table>" : '<p class="hint">Nobody matches.</p>';
+      var from = rows.length ? ui.page * (per || rows.length) + 1 : 0, to = per ? Math.min(rows.length, (ui.page + 1) * per) : rows.length;
+      $("card-pager").innerHTML = pages > 1 ? btn("‹ Prev", 'data-cpage="-1"' + (ui.page ? "" : " disabled")) + " <span>" + from + "–" + to + " of " + rows.length + "</span> " +
+        btn("Next ›", 'data-cpage="1"' + (ui.page < pages - 1 ? "" : " disabled")) : "";
+    }
+    function wireRoster() {
+      var el = $("card-detail");
+      $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
+      $("card-search").onsubmit = function (e) { e.preventDefault(); };
+      $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
+      if ($("card-backup")) $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        api.say($("card-backup-msg"), "Preparing…");
+        backend().saveBackup().then(function (r) {
+          x.disabled = false;
+          api.say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; api.say($("card-backup-msg"), er.message, true); });
+      };
+      $("card-cols-btn").onclick = function () { ui.chooser = !ui.chooser; $("card-cols").hidden = !ui.chooser; this.setAttribute("aria-expanded", ui.chooser); };
+      $("card-cols-x").onclick = function () { ui.chooser = false; $("card-cols").hidden = true; $("card-cols-btn").setAttribute("aria-expanded", "false"); };
+      $("card-cols-reset").onclick = function () { ui.cols = null; try { api.store("card-cols", ""); } catch (e) { /* storage unavailable */ } render(); };
+      el.querySelectorAll("[data-ccol]").forEach(function (x) {
+        x.onchange = function () {
+          var k = x.dataset.ccol;
+          ui.cols = COLUMNS.map(function (c) { return c.key; }).filter(function (c) { return c === k ? x.checked : ui.cols.indexOf(c) !== -1; });
+          api.store("card-cols", JSON.stringify(ui.cols));
+          drawRoster();
+        };
+      });
+      el.querySelectorAll("[data-crank]").forEach(function (x) {
+        x.onclick = function () { ui.rank = x.dataset.crank; ui.page = 0; render(); };
+      });
+      // Table clicks (the table is redrawn without re-wiring, so delegate).
+      $("card-table").onclick = function (e) {
+        var s = e.target.closest("[data-csort]"), k = e.target.closest("[data-ckey]");
+        if (s) {
+          ui.sort = { key: s.dataset.csort, dir: ui.sort.key === s.dataset.csort ? -ui.sort.dir : 1 };
+          drawRoster();
+        } else if (k) open(k.dataset.ckey);
+      };
+      $("card-table").onchange = function (e) {
+        var sel = e.target.closest("[data-cstatus]");
+        if (sel) setStatus(sel.dataset.cstatus, sel.value, el.querySelector('[data-cstatus-msg="' + sel.dataset.cstatus + '"]'));
+      };
+      $("card-pager").onclick = function (e) {
+        var b = e.target.closest("[data-cpage]");
+        if (b) { ui.page += +b.dataset.cpage; drawRoster(); }
+      };
+    }
+
+    /* ---------- Render ---------- */
+    function render() {
+      var el = $("card-detail");
+      if (!el) return;
+      var b = backend();
+      if (!b || !b.update || !b.canAdmin()) { el.innerHTML = '<div class="empty">Only admins can open employee cards.</div>'; return; }
+      var p = ui.key ? byPos()[ui.key] : null;
+      if (!p) {
+        visibleCols();
+        el.innerHTML = rosterHtml();
+        wireRoster();
+        drawRoster();
+        return;
+      }
+      el.innerHTML = '<div class="card-back">' + btn("‹ Back to roster", 'id="card-back"') + "</div>" + cardHtml(p);
+      $("card-back").onclick = function () { ui.key = null; ui.edit = null; render(); el.scrollIntoView({ block: "start" }); };
+      wire(p);
+    }
+
+    function cardHtml(p) {
+      var t = api.today(), tIso = todayIso(), key = p.pos;
+      var s = api.day(p, t), st = api.statusFor(key, t), tour = api.tourOn(p, t);
+      var cv = covers(key).sort(byStartDesc);
+      var moves = cv.filter(function (c) { return c.coverKey === key && M.isMove(c); });
+      var mine = cv.filter(function (c) { return c.coverKey === key && !M.isMove(c); });
+      var inSeat = cv.filter(function (c) { return c.targetPos === key && c.coverKey !== key; });
+      var sts = statuses(key).sort(byStartDesc), tcs = tourChanges(key).sort(byStartDesc);
+      var nowLine = st ? api.statusPill(st) + " " + esc(api.STATUS_LABEL[st]) : s ? (s.acting ? esc(api.kindWord(s.acting)) + " at " : "Working at ") + esc(s.co || api.home(p)) : "Off today";
+
+      var head = '<div class="card card-head"><div><h2>' + esc(p.name) + "</h2>" +
+        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") + "</div>" +
+        "<div>Today: " + nowLine + "</div></div>" +
+        '<div class="acts">' + btn("Schedule page", 'data-cgo="' + esc(key) + '"') + "</div></div>";
+
+      // 1. Identity
+      var o0 = p.added ? null : api.orig(key), ov = p.added ? null : api.overrideFor(key);
+      var staleOv = !p.added && !ov && (recs().rosterOverrides || []).some(function (x) { return x.id === key; });
+      var idBody = '<form class="edit" id="ci-form" novalidate>' +
+        '<div class="row"><label>Name<input type="text" id="ci-name" maxlength="80" value="' + esc(p.name) + '"></label>' +
+        "<label>Rank<select id=\"ci-rank\">" + api.RANKS.map(function (r) { return "<option" + (r === p.rank ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</select></label>" +
+        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label></div>' +
+        (p.added ? '<div class="row"><label>Apparatus<input type="text" id="ci-co" maxlength="6" placeholder="e.g. E10, or blank" value="' + esc(p.company || "") + '"></label>' +
+          '<label>Tour<select id="ci-tour"><option value="">No tour</option>' + api.tourOptions(p.tour || 0) + "</select></label></div>" +
+          '<p class="hint">Added person, not on the vacancy list. Give both an apparatus and a tour, or neither.</p>'
+          : '<p class="hint">Vacancy list: ' + esc(o0.name) + " · " + esc(o0.rank) + " · ID " + esc(o0.emplId || "not on file") +
+            ". Changing the rank moves this seat to that rank on Projection and Staffing and changes who can trade with it. " +
+            "Leave the ID blank to use the file's.</p>") +
+        (staleOv ? '<p class="hint err">An older override for this seat no longer applies: the vacancy list has someone new here.</p>' : "") +
+        '<div class="row"><button class="btn primary" type="submit">Save identity</button>' +
+        (ov || staleOv ? " " + btn("Reset to vacancy list", 'id="ci-reset"') : "") + msgEl("ci-msg") + "</div></form>";
+
+      // 2. Own seat and moves
+      var own = moves.filter(function (c) { return c.start <= tIso && live(c); })[0];
+      var seatBody = "<p>" + (own ? "Owns <b>" + esc(api.slotLabel(own.targetPos)) + "</b> since " + esc(when(own.start))
+        : p.added ? (p.company ? "Added at " + esc(p.company) + (p.tour ? ", Tour " + p.tour : "") : "No own seat") : "Owns <b>" + esc(p.title) + " " + esc(key) + "</b> (vacancy list)") + "</p>" +
+        list(moves.map(function (c) { return recRow("seat", "covers", c, coverLine(c, key), p); }), "No moves recorded.") +
+        api.coverForm(p, null, "km", { moveOnly: true });
+
+      // 3. Current assignment
+      var cur = mine.filter(live);
+      var asgBody = list(cur.map(function (c) { return recRow("asg", "covers", c, coverLine(c, key), p); }), "In their own seat. No current or upcoming cover.") +
+        (inSeat.filter(live).length ? '<h4 class="sub-h">Others in this seat</h4>' + list(inSeat.filter(live).map(function (c) { return recRow("asg", "covers", c, coverLine(c, key), p); }), "") : "") +
+        api.coverForm(p, null, "kc", { move: false });
+
+      // 4. Leave and statuses (current and upcoming; older ones are in History)
+      var curSt = sts.filter(live);
+      var leaveBody = list(curSt.map(function (x) { return recRow("leave", "statuses", x, statusLine(x), p); }), "No current or upcoming leave.") +
+        api.statusForm(p, null, "ks");
+
+      // 5. Tour changes
+      var tourBody = p.added ? '<p class="hint">An added person\'s tour is under Identity.</p>' :
+        "<p>Tour " + esc(tour) + " today.</p>" + list(tcs.map(function (c) { return recRow("tour", "tourChanges", c, tourLine(c), p); }), "No tour changes.") +
+        api.tourForm(p, null, "kt");
+
+      // 6. Cell number (staff list, admins only)
+      var c = api.contacts()[key] || {};
+      var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
+        (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
+        '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? c.phoneMobile : "") + '"></label></div>' +
+        '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
+
+      // 7. "This is me" claim
+      var claimBody = claimHtml(key);
+
+      // 8. Corrections
+      var fx = fixes(key).sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); });
+      var F = api.fix();
+      var fixBody = list(fx.map(function (x) {
+        var about = x.aboutKey === key ? "" : "About " + esc(nameOf(x.aboutKey)) + ": ";
+        return "<li><div>" + about + esc(F.summary(x)) + (x.note ? '<div class="hint">“' + esc(x.note) + "”</div>" : "") +
+          '<div class="hint">' + (x.byKey === key ? "Sent by them" : "From " + esc(x.byName || (x.byKey ? nameOf(x.byKey) : "a member"))) + " · " + esc(when(x.createdAt)) +
+          " · " + esc(x.state) + (x.reason ? ": " + esc(x.reason) : "") + "</div></div>" +
+          '<div class="acts">' + (x.state === "open" ? btn("Apply", 'data-cfix="apply" data-id="' + esc(x.id) + '"', "primary") + btn("Dismiss", 'data-cfix="dismissed" data-id="' + esc(x.id) + '"')
+            : btn("Reopen", 'data-cfix="open" data-id="' + esc(x.id) + '"')) + btn("Delete", 'data-cfix="delete" data-id="' + esc(x.id) + '"') + "</div></li>";
+      }), "No corrections about or from them.") + msgEl("cf-msg");
+
+      // 9. History: every record touching the person
+      var hist = historyItems(p);
+      var histBody = list(hist.map(function (h) { return h.row; }), "Nothing recorded.");
+
+      var nCur = cur.length;
+      return head +
+        section("id", "Identity", esc(p.rank) + (p.emplId ? " · " + esc(p.emplId) : " · no ID") + (ov ? " · edited" : ""), idBody) +
+        section("seat", "Own seat and moves", moves.length ? moves.length + (moves.length === 1 ? " move" : " moves") : "No moves", seatBody, !api.isPhone()) +
+        section("asg", "Current assignment", nCur ? esc(api.kindWord(cur[0])) + " " + esc((byPos()[cur[0].targetPos] || {}).company || cur[0].targetPos) : "Own seat", asgBody, !api.isPhone()) +
+        section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
+        section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
+        section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +
+        section("fixes", "Corrections", fx.filter(function (x) { return x.state === "open"; }).length + " open of " + fx.length, fixBody, !api.isPhone()) +
+        section("hist", "History", hist.length + (hist.length === 1 ? " record" : " records"), histBody, !api.isPhone());
+    }
+
+    // The claim: on the shared page a `members` record; on the server the account linked to the position.
+    function claimSum(key) {
+      if (serverMode()) { var u = linkedUsers(key); return u ? (u.length ? "Linked" : "Not linked") : "…"; }
+      return claims(key).length ? "Claimed" : "Not claimed";
+    }
+    function linkedUsers(key) {
+      if (!ui.users) {
+        if (!ui.usersLoading) {
+          ui.usersLoading = true;
+          backend().adminUsers().then(function (us) { ui.users = us; ui.usersLoading = false; render(); }, function () { ui.users = []; ui.usersLoading = false; });
+        }
+        return null;
+      }
+      return ui.users.filter(function (u) { return u.pos === key; });
+    }
+    function claimHtml(key) {
+      var undo = ui.undo && ui.undo.key === key ? '<p>Claim removed. ' + btn("Undo", 'id="cl-undo"', "primary") + "</p>" : "";
+      if (serverMode()) {
+        var us = linkedUsers(key);
+        if (!us) return '<p class="hint">Loading accounts…</p>';
+        return undo + list(us.map(function (u) {
+          return "<li><div><b>" + esc(u.name || u.googleEmail) + '</b> <span class="hint">' + esc(u.googleEmail) + " · " + esc(u.role) + " · " + esc(u.status) + "</span></div>" +
+            '<div class="acts">' + btn("Unlink", 'data-cunlink="' + esc(u.id) + '"') + "</div></li>";
+        }), "No account is linked to this person. Link one on the Admin page.") + msgEl("cl-msg");
+      }
+      return undo + list(claims(key).map(function (m) {
+        return "<li><div>Claimed " + esc(when(m.claimedAt)) +
+          (m.confirmedStation || m.confirmedTour ? " · says " + esc(m.confirmedStation || "?") + ", Tour " + esc(m.confirmedTour || "?") : "") +
+          (m.emplId ? " · typed ID " + esc(m.emplId) : "") + (m.verifiedAt ? " · verified " + esc(when(m.verifiedAt)) : " · not verified") + "</div>" +
+          '<div class="acts">' + btn("Remove claim", 'data-cunclaim="' + esc(m.id) + '"') + "</div></li>";
+      }), "Nobody has said “This is me” for this person.") + msgEl("cl-msg");
+    }
+
+    function historyItems(p) {
+      var key = p.pos, out = [];
+      statuses(key).forEach(function (x) { out.push({ at: x.start, row: recRow("hist", "statuses", x, statusLine(x), p) }); });
+      tourChanges(key).forEach(function (x) { out.push({ at: x.effective, row: recRow("hist", "tourChanges", x, tourLine(x), p) }); });
+      covers(key).forEach(function (x) { out.push({ at: x.start, row: recRow("hist", "covers", x, '<span class="st st-A">' + (x.coverKey === key ? (M.isMove(x) ? "MV" : "AC") : "CV") + "</span> " + coverLine(x, key), p) }); });
+      claims(key).forEach(function (m) {
+        out.push({ at: m.claimedAt, row: "<li><div><b>Said “This is me”</b> " + esc(when(m.claimedAt)) + "</div>" +
+          '<div class="acts">' + btn("Remove claim", 'data-cunclaim="' + esc(m.id) + '"') + "</div></li>" });
+      });
+      fixes(key).forEach(function (x) {
+        out.push({ at: x.createdAt, row: "<li><div><b>Correction</b> " + esc(api.fix().summary(x)) + ' <span class="hint">' + esc(when(x.createdAt)) + " · " + esc(x.state) + "</span></div>" +
+          '<div class="acts">' + btn("Delete", 'data-cfix="delete" data-id="' + esc(x.id) + '"') + "</div></li>" });
+      });
+      var ov = !p.added && (recs().rosterOverrides || []).filter(function (o) { return o.id === key; })[0];
+      if (ov) {
+        out.push({ at: ov.updatedAt, row: "<li><div><b>Identity edited</b> " + esc([ov.name, ov.rank, ov.emplId].filter(Boolean).join(" · ")) +
+          ' <span class="hint">' + esc(when(ov.updatedAt)) + "</span></div>" + '<div class="acts">' + btn("Reset", 'data-creset="1"') + "</div></li>" });
+      }
+      if (p.added) {
+        var rec = (recs().people || []).filter(function (x) { return "person:" + x.id === key; })[0];
+        if (rec) out.push({ at: rec.createdAt, row: "<li><div><b>Added to the roster</b> " + esc(when(rec.createdAt)) + (rec.note ? '<div class="hint">' + esc(rec.note) + "</div>" : "") + "</div>" +
+          '<div class="acts">' + btn("Remove this person", 'data-cdel="people" data-id="' + esc(rec.id) + '"') + "</div></li>" });
+      }
+      return out.sort(function (a, b) { return String(b.at || "").localeCompare(String(a.at || "")); });
+    }
+
+    /* ---------- Wiring ---------- */
+    function confirmTap(b, label) {
+      if (b.dataset.confirm === "1") return true;
+      b.dataset.confirm = "1";
+      b.textContent = label;
+      b.classList.add("danger");
+      return false;
+    }
+    function fail(b) { return function (e) { b.disabled = false; b.textContent = e.message; }; }
+    function rerender() { api.renderAll(true); }
+
+    function wire(p) {
+      var el = $("card-detail"), b = backend(), key = p.pos;
+      el.querySelectorAll("details[data-cfold]").forEach(function (d) {
+        d.addEventListener("toggle", function () { ui.folds = ui.folds || {}; ui.folds[d.dataset.cfold] = d.open; });
+      });
+      el.querySelectorAll("[data-cgo]").forEach(function (x) { x.onclick = function () { api.choosePerson(x.dataset.cgo); }; });
+      el.querySelectorAll("[data-cedit]").forEach(function (x) {
+        x.onclick = function () { ui.edit = ui.edit === x.dataset.cedit ? null : x.dataset.cedit; render(); };
+      });
+      el.querySelectorAll("[data-cend]").forEach(function (x) {
+        x.onclick = function () { x.disabled = true; b.endCover(x.dataset.cend, todayIso()).then(rerender, fail(x)); };
+      });
+      el.querySelectorAll("[data-cdel]").forEach(function (x) {
+        x.onclick = function () {
+          if (!confirmTap(x, "Confirm delete")) return;
+          x.disabled = true;
+          var kind = x.dataset.cdel;
+          b.remove(kind, x.dataset.id).then(function () {
+            if (kind === "people") { ui.key = null; ui.q = ""; }
+            ui.edit = null;
+            rerender();
+          }, fail(x));
+        };
+      });
+      // Forms: add (km = move, kc = cover, ks = status, kt = tour) and the one open edit form (kh).
+      api.wireForms(p, "km", null);
+      api.wireForms(p, "kc", null);
+      api.wireForms(p, "ks", null);
+      api.wireForms(p, "kt", null);
+      if (ui.edit) {
+        var parts = ui.edit.split("|"), kind = parts[1], id = parts[2];
+        var rec = (recs()[kind] || []).filter(function (r) { return r.id === id; })[0];
+        if (rec) api.wireForms(kind === "covers" ? coverer(rec) : p, "kh", rec, function () { ui.edit = null; }, function () { ui.edit = null; render(); });
+      }
+      wireIdentity(p);
+      wireCell(key);
+      wireClaim(key);
+      wireFixes();
+    }
+
+    function wireIdentity(p) {
+      var f = $("ci-form"), b = backend(), key = p.pos;
+      if (!f) return;
+      if ($("ci-reset")) $("ci-reset").onclick = function () {
+        api.say($("ci-msg"), "Saving…");
+        b.setOverride(key, null).then(rerender, function (e) { api.say($("ci-msg"), e.message, true); });
+      };
+      f.onsubmit = function (e) {
+        e.preventDefault();
+        var msg = $("ci-msg"), name = $("ci-name").value.trim(), rank = $("ci-rank").value, empl = $("ci-id").value.trim().toUpperCase();
+        if (name.length < 2) return api.say(msg, "Enter the name, e.g. Lester,D.", true);
+        if (empl && !api.ID_RE.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        var other = empl && (api.byId()[empl] || []).filter(function (o) { return o.pos !== key; })[0];
+        if (other) return api.say(msg, "Employee ID " + empl + " is already on " + other.name + " (" + other.title + ").", true);
+        api.say(msg, "Saving…");
+        var done = function () { rerender(); api.say($("ci-msg"), "Saved."); }, err = function (er) { api.say($("ci-msg"), er.message, true); };
+        if (p.added) {
+          var co = $("ci-co").value.trim().toUpperCase(), tour = $("ci-tour").value;
+          if (co && !api.companyOk(co)) return api.say(msg, "Apparatus must be a company on the roster, like E10.", true);
+          if (!co !== !tour) return api.say(msg, "Pick both an apparatus and a tour, or neither.", true);
+          return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }).then(done, err);
+        }
+        // Roster seat: keep only what differs from the files, tied to the holder it was made for.
+        var o0 = api.orig(key);
+        var o = { name: name !== o0.name ? name : null, rank: rank !== o0.rank ? rank : null, emplId: empl && empl !== o0.emplId ? empl : null, forName: o0.name };
+        b.setOverride(key, o.name || o.rank || o.emplId ? o : null).then(done, err);
+      };
+    }
+
+    function wireCell(key) {
+      var f = $("cc-form"), b = backend();
+      if (!f) return;
+      f.onsubmit = function (e) {
+        e.preventDefault();
+        var cell = $("cc-cell").value.trim(), msg = $("cc-msg");
+        if (cell.replace(/\D/g, "").length < 10) return api.say(msg, "Enter a 10-digit number.", true);
+        api.say(msg, "Saving…");
+        b.setCell(key, cell).then(function () { rerender(); api.say($("cc-msg"), "Saved."); }, function (er) { api.say($("cc-msg"), er.message, true); });
+      };
+      if ($("cc-clear")) $("cc-clear").onclick = function () {
+        if (!confirmTap(this, "Confirm clear")) return;
+        b.setCell(key, null).then(rerender, fail(this));
+      };
+    }
+
+    function wireClaim(key) {
+      var el = $("card-detail"), b = backend();
+      el.querySelectorAll("[data-cunclaim]").forEach(function (x) {
+        x.onclick = function () {
+          if (!confirmTap(x, "Confirm remove")) return;
+          var m = claims(key).filter(function (c) { return c.id === x.dataset.cunclaim; })[0];
+          x.disabled = true;
+          b.unclaim(x.dataset.cunclaim).then(function () { ui.undo = m ? { key: key, member: m } : null; rerender(); }, fail(x));
+        };
+      });
+      el.querySelectorAll("[data-cunlink]").forEach(function (x) {
+        x.onclick = function () {
+          if (!confirmTap(x, "Confirm unlink")) return;
+          x.disabled = true;
+          var id = x.dataset.cunlink;
+          b.adminAction(id, { action: "unlink" }).then(function () { ui.undo = { key: key, accountId: id }; ui.users = null; rerender(); }, fail(x));
+        };
+      });
+      if ($("cl-undo")) $("cl-undo").onclick = function () {
+        var u = ui.undo, x = this;
+        x.disabled = true;
+        var p2 = u.accountId ? b.adminAction(u.accountId, { action: "link", pos: key }) : b.restoreMember(u.member);
+        p2.then(function () { ui.undo = null; ui.users = null; rerender(); }, fail(x));
+      };
+    }
+
+    function wireFixes() {
+      var el = $("card-detail"), b = backend();
+      el.querySelectorAll("[data-cfix]").forEach(function (x) {
+        x.onclick = function () {
+          var act = x.dataset.cfix, id = x.dataset.id;
+          if (act === "apply") return api.fix().apply(id);
+          if (act === "delete" && !confirmTap(x, "Confirm delete")) return;
+          x.disabled = true;
+          (act === "delete" ? b.deleteCorrection(id) : b.handleCorrection(id, act)).then(rerender, fail(x));
+        };
+      });
+      el.querySelectorAll("[data-creset]").forEach(function (x) {
+        x.onclick = function () {
+          if (!confirmTap(x, "Confirm reset")) return;
+          b.setOverride(ui.key, null).then(rerender, fail(x));
+        };
+      });
+    }
+
+    return { render: render, open: open };
   };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
@@ -3913,13 +5068,14 @@ ul.list-rows li .linkish { font-weight: 600; }
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes"].forEach(function (k) {
+    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
     $("six-link").classList.toggle("on", v === "six");
     $("awards-link").classList.toggle("on", v === "awards");
     $("fixes-link").classList.toggle("on", v === "fixes");
+    $("card-link").classList.toggle("on", v === "card");
     store("view", v);
     render();
   }
@@ -3934,6 +5090,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
     else if (state.view === "fixes") Fix.render();
+    else if (state.view === "card") Card.render();
     else renderRank();
   }
 
@@ -3999,7 +5156,7 @@ ul.list-rows li .linkish { font-weight: 600; }
   // Seats on the schedule: roster positions plus added people who have their own apparatus and tour.
   function slots() { return addedWithTour.length ? data.concat(addedWithTour) : data; }
 
-  /* ---------- Who's working (by date) ---------- */
+  /* ---------- Projection: everyone on a date ---------- */
   function renderDate() {
     var d = state.date;
     var w = M.watchFor(d);
@@ -4104,7 +5261,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     var t = (recs.trades || []).filter(function (x) { return x.id === c.tradeId; })[0];
     return t ? nameOf(t.posterKey) : null;
   }
-  // Tags for a Who's working row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
+  // Tags for a Projection row: acting / covering / shadowing (extra gets none), covered, swing, open for bid, added.
   function rowTags(x) {
     var tags = [];
     if (x.acting && x.kind !== "extra") {
@@ -4123,7 +5280,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     return tags;
   }
 
-  /* ---------- By person ---------- */
+  /* ---------- Schedule: one person ---------- */
   var suggestIdx = -1;
   function matches(q) {
     var match = makeMatcher(q);
@@ -4238,7 +5395,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     var out = $("person-detail");
     if (!p) {
       out.innerHTML = '<div class="empty">Type a last name, a company (E10) or a position number above to see that person\'s tour, their work days for any month, and their next shifts. ' +
-        people.length + " people are listed across " + data.length + " positions. You can also click any name in the Who's working list.</div>";
+        people.length + " people are listed across " + data.length + " positions. You can also click any name on the Projection tab.</div>";
       return;
     }
     var m = state.personMonth;
@@ -4302,7 +5459,8 @@ ul.list-rows li .linkish { font-weight: 600; }
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) +
+      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") + "</div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -4321,11 +5479,12 @@ ul.list-rows li .linkish { font-weight: 600; }
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
-      historyCard(p, datesCard(p)) + "</div></div>";
+      movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
+    if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -4396,10 +5555,26 @@ ul.list-rows li .linkish { font-weight: 600; }
   /* Folded sections on the person page: next shifts and history start open on wide screens and closed on phones
      (except your own Next shifts when you can trade);
      the editing forms start closed everywhere. A section someone opens or closes stays that way. */
+  // Position moves from assignment-change notices (the `assignments` log), newest first, as a closed fold.
+  function movesCard(p) {
+    var list = (recs.assignments || []).filter(function (a) { return a.key === p.pos || (p.emplId && a.emplId === p.emplId); })
+      .sort(function (a, b) { return String(b.firstReg).localeCompare(String(a.firstReg)); });
+    if (!list.length) return "";
+    function d(s) { return s ? shortDate(fromIso(s)) + " " + s.slice(0, 4) : "?"; }
+    function seat(pos, st, tour) { return esc(pos) + (st ? " " + esc(st) : "") + (tour ? " (Tour " + tour + ")" : ""); }
+    return foldOpen("moves", '<details class="card fold" data-fold="moves"', ">") + "<summary><h3>Moves</h3>" +
+      '<span class="fold-sum">' + list.length + (list.length === 1 ? " move" : " moves") + " · latest " + esc(d(list[0].firstReg)) + "</span></summary>" +
+      '<ul class="hist moves">' + list.map(function (a) {
+        return "<li><div><b>" + esc(d(a.firstReg)) + "</b> · " + seat(a.fromPos, a.fromStation) + " → " + seat(a.toPos, a.toStation, a.toTour) +
+          '<div class="hint">' + (a.lastReg ? "Last shift there " + esc(d(a.lastReg)) + " · " : "") + esc(a.rankFrom || "") +
+          (a.rankTo && a.rankTo !== a.rankFrom ? " → " + esc(a.rankTo) : "") + "</div>" +
+          '<div class="hint">' + esc(a.source || "") + (a.note ? " · " + esc(a.note) : "") + "</div></div></li>";
+      }).join("") + "</ul></details>";
+  }
   function foldOpen(key, head, tail) {
     var open = state.folds[key];
     // On phones, your own Next shifts start open when you can trade, so the Trade links show.
-    if (open == null) open = key === "edit" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
+    if (open == null) open = key === "edit" || key === "moves" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
     return head + (open ? " open" : "") + tail;
   }
   // Holiday marker (a dot) and the month's holidays listed under a calendar.
@@ -4490,32 +5665,7 @@ ul.list-rows li .linkish { font-weight: 600; }
           '<button class="btn small" data-remove="' + esc(it.kind) + '" data-id="' + esc(it.id) + '">Remove</button></div>' : "") + "</li>";
     }).join("") + "</ul>" : '<p class="hint">No tour changes, leave or cover assignments recorded.</p>';
 
-    var t = iso(today());
-    var forms = !canEdit ? editHint() :
-      '<form class="edit" id="f-status" novalidate><h4>Add status</h4>' +
-      '<div class="row"><label>Type<select id="fs-code"><option value="VA">VA · Vacation</option><option value="S">S · Sick</option><option value="D">D · Disabled</option><option value="WE">WE · Working elsewhere</option></select></label>' +
-      '<label>From<input type="date" id="fs-start" value="' + t + '" required></label>' +
-      '<label>To<input type="date" id="fs-end" value="' + t + '"></label></div>' +
-      '<label class="chk"><input type="checkbox" id="fs-open"> No end date yet</label>' +
-      '<label>Note<input type="text" id="fs-note" maxlength="500" placeholder="Optional"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save status</button><span class="msg" id="fs-msg" role="status"></span></div></form>' +
-      '<form class="edit" id="f-cover" novalidate><h4>Cover another position</h4>' +
-      '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>" +
-      '<label>Position to cover<input type="text" id="fc-target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off"></label>' +
-      '<label>Type<select id="fc-kind"><option value="">Covering or acting (by rank)</option><option value="cover">Covering · same rank, in someone\'s spot</option>' +
-      '<option value="acting">Acting · temporarily promoted to the seat\'s rank</option><option value="shadow">Shadowing · day-to-day LWLP (usually VR)</option>' +
-      '<option value="extra">Also in this seat · same tour, alongside the holder (e.g. two captains)</option></select></label>' +
-      '<div class="row"><label>From<input type="date" id="fc-start" value="' + t + '" required></label>' +
-      '<label>To<input type="date" id="fc-end" disabled></label></div>' +
-      '<label class="chk"><input type="checkbox" id="fc-open" checked> No end date yet</label>' +
-      '<label>Note<input type="text" id="fc-note" maxlength="500" placeholder="Optional, e.g. Weddle injured"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save cover</button><span class="msg" id="fc-msg" role="status"></span></div></form>' +
-      (p.added ? "" :
-      '<form class="edit" id="f-tour" novalidate><h4>Change tour</h4>' +
-      '<div class="row"><label>New tour<select id="ft-tour">' + tourOptions(tourOn(p, today())) + "</select></label>" +
-      '<label>Effective<input type="date" id="ft-eff" value="' + t + '" required></label></div>' +
-      '<label>Note<input type="text" id="ft-note" maxlength="500" placeholder="Optional, e.g. bid result"></label>' +
-      '<div class="row"><button class="btn primary" type="submit">Save tour change</button><span class="msg" id="ft-msg" role="status"></span></div></form>') +
+    var forms = !canEdit ? editHint() : statusForm(p) + coverForm(p) + (p.added ? "" : tourForm(p)) +
       (p.added ? '<div class="row danger-zone"><button class="btn small" data-remove="people" data-id="' + esc(p.pos.slice(7)) + '">Remove this person</button></div>' : "");
 
     return foldOpen("hist", '<details class="card fold" data-fold="hist"', ">") + "<summary><h3>Covers, leave &amp; history</h3>" +
@@ -4535,7 +5685,6 @@ ul.list-rows li .linkish { font-weight: 600; }
     return '<p class="hint">Only editors can record leave, tour changes or cover assignments.</p>';
   }
   function wireEditForms(p) {
-    var fs = $("f-status"), ft = $("f-tour"), fc = $("f-cover");
     document.querySelectorAll("#person-detail [data-remove]").forEach(function (b) {
       b.onclick = function () {
         if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm remove"; b.classList.add("danger"); return; }
@@ -4552,40 +5701,133 @@ ul.list-rows li .linkish { font-weight: 600; }
         backend.endCover(b.dataset.end, iso(today())).then(function () { renderAll(true); }, function (e) { b.disabled = false; b.textContent = e.message; });
       };
     });
-    if (!fs) return;
-    $("fc-open").onchange = function () { $("fc-end").disabled = this.checked; if (!this.checked && !$("fc-end").value) $("fc-end").value = $("fc-start").value; };
-    fc.onsubmit = function (e) {
-      e.preventDefault();
-      var msg = $("fc-msg"), target = slotFromInput($("fc-target").value);
-      var start = $("fc-start").value, end = $("fc-open").checked ? null : $("fc-end").value || null;
-      if (!target) return say(msg, "Pick the position to cover from the list.", true);
-      if (target === p.pos) return say(msg, "Someone can't cover their own position.", true);
-      if (!start) return say(msg, "Pick a start date.", true);
-      if (end && end < start) return say(msg, "The end date is before the start date.", true);
+    wireForms(p, "f", null, function () { Fix.saved(); });
+  }
+
+  /* ---------- Edit forms: status, cover, tour ----------
+     Shared by the person page (prefix "f": #f-status, #fs-code, #fc-target, #ft-tour …) and the employee card (other
+     prefixes). With rec the form edits that record (backend.update); without, it adds a new one. */
+  function slotOption(p) { return (p.name || "Vacant") + " · " + p.title + " · Tour " + p.tour + " (" + p.pos + ")"; }
+  function selectHtml(id, opts, sel) {
+    return '<select id="' + id + '">' + opts.map(function (o) {
+      return '<option value="' + esc(o[0]) + '"' + (String(o[0]) === String(sel == null ? "" : sel) ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+    }).join("") + "</select>";
+  }
+  function datesHtml(x, r, openDefault) {
+    var t = iso(today()), open = r.id ? !r.end : openDefault;
+    return '<div class="row"><label>From<input type="date" id="' + x + 'start" value="' + esc(r.start || t) + '" required></label>' +
+      '<label>To<input type="date" id="' + x + 'end" value="' + esc(r.end || (open ? "" : t)) + '"' + (open ? " disabled" : "") + "></label></div>" +
+      '<label class="chk"><input type="checkbox" id="' + x + 'open"' + (open ? " checked" : "") + "> No end date yet</label>";
+  }
+  function formEnd(pre, x, rec, label) {
+    return '<div class="row"><button class="btn primary" type="submit">' + (rec ? "Save changes" : label) + "</button>" +
+      (rec ? ' <button class="btn" type="button" data-form-cancel>Cancel</button>' : "") +
+      '<span class="msg" id="' + x + 'msg" role="status"></span></div></form>';
+  }
+  function statusForm(p, rec, pre) {
+    pre = pre || "f";
+    var x = pre + "s-", r = rec || {};
+    return '<form class="edit" id="' + pre + '-status" novalidate><h4>' + (rec ? "Edit status" : "Add status") + "</h4>" +
+      '<div class="row"><label>Type' + selectHtml(x + "code", [["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]], r.code) + "</label></div>" +
+      datesHtml(x, r, false) +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, "Save status");
+  }
+  // opt.move: show the "own seat" checkbox (employee card); opt.moveOnly: a move form.
+  function coverForm(p, rec, pre, opt) {
+    pre = pre || "f"; opt = opt || {};
+    var x = pre + "c-", r = rec || {}, target = r.targetPos && byPos[r.targetPos] ? slotOption(byPos[r.targetPos]) : "";
+    var isMv = rec ? M.isMove(rec) : !!opt.moveOnly;
+    return '<form class="edit" id="' + pre + '-cover" novalidate><h4>' + (rec ? (isMv ? "Edit move" : "Edit cover") : opt.moveOnly ? "Move to a new own seat" : "Cover another position") + "</h4>" +
+      (rec ? "" : opt.moveOnly ? '<p class="hint">From this date the seat is ' + esc(p.name) + "'s own; their old seat is vacant unless someone moves in.</p>"
+        : '<p class="hint">While covering, ' + esc(p.name) + " works that position's tour and company instead of " + (p.added && !p.tour ? "nothing" : "their own") + ".</p>") +
+      '<label>' + (isMv ? "New seat" : "Position to cover") + '<input type="text" id="' + x + 'target" list="slot-dl" placeholder="Name, company or position number" autocomplete="off" value="' + esc(target) + '"></label>' +
+      (isMv ? "" : '<label>Type' + selectHtml(x + "kind", [["", "Covering or acting (by rank)"], ["cover", "Covering · same rank, in someone's spot"],
+        ["acting", "Acting · temporarily promoted to the seat's rank"], ["shadow", "Shadowing · day-to-day LWLP (usually VR)"],
+        ["extra", "Also in this seat · same tour, alongside the holder (e.g. two captains)"]], r.kind || "") + "</label>") +
+      datesHtml(x, r, true) +
+      (opt.move && !opt.moveOnly ? '<label class="chk"><input type="checkbox" id="' + x + 'move"' + (isMv ? " checked" : "") + "> Move · this becomes their own seat</label>"
+        : '<input type="hidden" id="' + x + 'move" value="' + (isMv ? "1" : "") + '">') +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. Weddle injured" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, isMv ? "Save move" : "Save cover");
+  }
+  function tourForm(p, rec, pre) {
+    pre = pre || "f";
+    var x = pre + "t-", r = rec || {};
+    return '<form class="edit" id="' + pre + '-tour" novalidate><h4>' + (rec ? "Edit tour change" : "Change tour") + "</h4>" +
+      '<div class="row"><label>New tour<select id="' + x + 'tour">' + tourOptions(rec ? r.tour : tourOn(p, today())) + "</select></label>" +
+      '<label>Effective<input type="date" id="' + x + 'eff" value="' + esc(r.effective || iso(today())) + '" required></label></div>' +
+      '<label>Note<input type="text" id="' + x + 'note" maxlength="500" placeholder="Optional, e.g. bid result" value="' + esc(r.note || "") + '"></label>' +
+      formEnd(pre, x, rec, "Save tour change");
+  }
+  /* Wire whichever of the three forms with this prefix are on the page. after() runs once a save lands; onCancel for the
+     Cancel button on an edit form. */
+  function wireForms(p, pre, rec, after, onCancel) {
+    var fs = $(pre + "-status"), fc = $(pre + "-cover"), ft = $(pre + "-tour");
+    function done(x) {
+      return function () { if (after) after(); renderAll(true); say($(x + "msg"), "Saved."); };
+    }
+    function save(kind, add, patch, x) {
+      var msg = $(x + "msg");
       say(msg, "Saving…");
-      backend.addCover({ coverKey: p.pos, coverName: p.name, targetPos: target, start: start, end: end, note: $("fc-note").value.trim(),
-        kind: $("fc-kind").value || null })
-        .then(function () { Fix.saved(); renderAll(true); say($("fc-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
-    $("fs-open").onchange = function () { $("fs-end").disabled = this.checked; };
-    fs.onsubmit = function (e) {
-      e.preventDefault();
-      var start = $("fs-start").value, end = $("fs-open").checked ? null : $("fs-end").value || null, msg = $("fs-msg");
-      if (!start) return say(msg, "Pick a start date.", true);
-      if (end && end < start) return say(msg, "The end date is before the start date.", true);
-      say(msg, "Saving…");
-      backend.addStatus({ pos: p.pos, name: p.name, code: $("fs-code").value, start: start, end: end, note: $("fs-note").value.trim() })
-        .then(function () { Fix.saved(); renderAll(true); say($("fs-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
-    if (ft) ft.onsubmit = function (e) {
-      e.preventDefault();
-      var eff = $("ft-eff").value, tour = +$("ft-tour").value, msg = $("ft-msg");
-      if (!eff) return say(msg, "Pick an effective date.", true);
-      if (tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
-      say(msg, "Saving…");
-      backend.addTourChange({ pos: p.pos, name: p.name, tour: tour, effective: eff, note: $("ft-note").value.trim() })
-        .then(function () { Fix.saved(); renderAll(true); say($("ft-msg"), "Saved."); }, function (err) { say(msg, err.message, true); });
-    };
+      var p2 = rec ? backend.update(kind, rec.id, patch) : add(Object.assign({}, patch));
+      return p2.then(done(x), function (err) { say(msg, err.message, true); });
+    }
+    [fs, fc, ft].forEach(function (f) {
+      var c = f && f.querySelector("[data-form-cancel]");
+      if (c) c.onclick = function () { if (onCancel) onCancel(); };
+    });
+    function openToggle(x) {
+      var o = $(x + "open");
+      if (o) o.onchange = function () { $(x + "end").disabled = this.checked; if (!this.checked && !$(x + "end").value) $(x + "end").value = $(x + "start").value; };
+    }
+    function range(x) {
+      var start = $(x + "start").value, end = $(x + "open").checked ? null : $(x + "end").value || null;
+      if (!start) return say($(x + "msg"), "Pick a start date.", true), null;
+      if (end && end < start) return say($(x + "msg"), "The end date is before the start date.", true), null;
+      return { start: start, end: end };
+    }
+    if (fc) {
+      var xc = pre + "c-";
+      openToggle(xc);
+      fc.onsubmit = function (e) {
+        e.preventDefault();
+        var msg = $(xc + "msg"), target = slotFromInput($(xc + "target").value), mv = $(xc + "move");
+        var isMv = mv.type === "checkbox" ? mv.checked : !!mv.value;
+        if (!target) return say(msg, "Pick the position from the list.", true);
+        if (target === p.pos) return say(msg, "Someone can't cover their own position.", true);
+        var rg = range(xc);
+        if (!rg) return;
+        var rec2 = { targetPos: target, start: rg.start, end: rg.end, note: $(xc + "note").value.trim(), kind: $(xc + "kind") ? $(xc + "kind").value || null : null };
+        if (isMv) rec2.move = true; else if (rec && rec.move) rec2.move = false;
+        if (!rec) { rec2.coverKey = p.pos; rec2.coverName = p.name; }
+        save("covers", backend.addCover, rec2, xc);
+      };
+    }
+    if (fs) {
+      var xs = pre + "s-";
+      openToggle(xs);
+      fs.onsubmit = function (e) {
+        e.preventDefault();
+        var rg = range(xs);
+        if (!rg) return;
+        var rec2 = { code: $(xs + "code").value, start: rg.start, end: rg.end, note: $(xs + "note").value.trim() };
+        if (!rec) { rec2.pos = p.pos; rec2.name = p.name; }
+        save("statuses", backend.addStatus, rec2, xs);
+      };
+    }
+    if (ft) {
+      var xt = pre + "t-";
+      ft.onsubmit = function (e) {
+        e.preventDefault();
+        var eff = $(xt + "eff").value, tour = +$(xt + "tour").value, msg = $(xt + "msg");
+        if (!eff) return say(msg, "Pick an effective date.", true);
+        if (!rec && tour === tourOn(p, fromIso(eff))) return say(msg, "They are already on Tour " + tour + " on that date.", true);
+        var rec2 = { tour: tour, effective: eff, note: $(xt + "note").value.trim() };
+        if (!rec) { rec2.pos = p.pos; rec2.name = p.name; }
+        save("tourChanges", backend.addTourChange, rec2, xt);
+      };
+    }
   }
   function say(el, text, isErr) {
     if (!el) return;
@@ -4686,6 +5928,7 @@ ul.list-rows li .linkish { font-weight: 600; }
   function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
   // People added by editors (not on the vacancy list) join the roster as "person:<id>" entries.
   function rebuildPeople() {
+    applyOverrides();
     Object.keys(byPos).forEach(function (k) { if (k.indexOf("person:") === 0) delete byPos[k]; });
     var added = (recs.people || []).map(function (x) {
       var e = { pos: "person:" + x.id, name: x.name, rank: x.rank, title: x.rank + (x.company ? " " + x.company : "") + " (added)",
@@ -4702,6 +5945,27 @@ ul.list-rows li .linkish { font-weight: 600; }
       (byName[k] = byName[k] || []).push(p);
     });
   }
+  /* Roster overrides (employee card): a seat's name, rank or Employee ID over the vacancy list and employee-ids.json.
+     An override made for one holder (forName) stops applying once a new vacancy list puts someone else in the seat. */
+  var orig = {}; // pos -> {name, rank, emplId} from the files, before overrides
+  function overrideFor(pos) {
+    var o = (recs.rosterOverrides || []).filter(function (x) { return x.id === pos; })[0];
+    return o && orig[pos] && (!o.forName || o.forName === orig[pos].name) ? o : null;
+  }
+  function applyOverrides() {
+    var by = {};
+    (recs.rosterOverrides || []).forEach(function (o) { by[o.id] = o; });
+    data.forEach(function (p) {
+      var o0 = orig[p.pos], o = by[p.pos];
+      if (!o0) return;
+      if (o && o.forName && o.forName !== o0.name) o = null;
+      p.name = (o && o.name) || o0.name;
+      p.rank = (o && o.rank) || o0.rank;
+      p.emplId = (o && o.emplId) || o0.emplId || null;
+    });
+    var dl = $("slot-dl");
+    if (dl) dl.innerHTML = data.slice().sort(byCompany).map(function (p) { return '<option value="' + esc(slotOption(p)) + '"></option>'; }).join("");
+  }
   function slotFromInput(v) {
     var m = /\(?\b(\d{1,2}[A-Z]{2,4}\d{2,3}M)\)?\s*$/i.exec((v || "").trim());
     var pos = m && m[1].toUpperCase();
@@ -4710,14 +5974,14 @@ ul.list-rows li .linkish { font-weight: 600; }
   function boot(rows) {
     data = rows;
     var ids = (emplIds && emplIds.ids) || {};
-    data.forEach(function (p) { byPos[p.pos] = p; if (ids[p.pos] && p.name) p.emplId = ids[p.pos].id; });
-    rebuildPeople();
+    data.forEach(function (p) {
+      byPos[p.pos] = p;
+      orig[p.pos] = { name: p.name, rank: p.rank, emplId: ids[p.pos] && p.name ? ids[p.pos].id : null };
+    });
     var dl = document.createElement("datalist");
     dl.id = "slot-dl";
-    dl.innerHTML = data.slice().sort(byCompany).map(function (p) {
-      return '<option value="' + esc((p.name || "Vacant") + " · " + p.title + " · Tour " + p.tour + " (" + p.pos + ")") + '"></option>';
-    }).join("");
     document.body.appendChild(dl);
+    rebuildPeople();
     var rankSel = $("ap-rank");
     if (rankSel) rankOptions(rankSel, false);
     var t = today();
@@ -4789,6 +6053,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     Dash.wireDash();
     $("awards-link").onclick = function () { setView("awards"); };
     $("fixes-link").onclick = function () { setView("fixes"); };
+    $("card-link").onclick = function () { setView("card"); };
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -4799,8 +6064,15 @@ ul.list-rows li .linkish { font-weight: 600; }
     };
     $("ap-tour").innerHTML = '<option value="">No tour</option>' + tourOptions(0);
     if (window.DOCS) Dash.renderDocs(window.DOCS);
-    else fetch("docs/index.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; })
+    else getFile("docs/index.json").then(function (r) { return r.ok ? r.json() : null; })
       .then(Dash.renderDocs, function () { Dash.renderDocs(null); });
+    // On Firebase the PDFs are in Cloud Storage (signed-in members only), so the adapter opens them.
+    if (backend && backend.openDoc) document.addEventListener("click", function (e) {
+      var a = e.target.closest('a[href^="docs/"]');
+      if (!a) return;
+      e.preventDefault();
+      backend.openDoc(decodeURIComponent(a.getAttribute("href").slice(5))).catch(function () { /* the tab shows nothing */ });
+    });
 
     $("add-person-btn").onclick = function () { $("add-person").hidden = !$("add-person").hidden; if (!$("add-person").hidden) $("ap-name").focus(); };
     $("add-person").onsubmit = function (e) {
@@ -4852,7 +6124,7 @@ ul.list-rows li .linkish { font-weight: 600; }
   function renderAll(force) {
     if (!booted) return;
     var a = document.activeElement;
-    if (!force && (state.view === "person" || state.view === "me" || state.view === "trades") && a && a.closest && a.closest("form.edit, #cl-q, .trade-filters")) {
+    if (!force && (state.view === "person" || state.view === "me" || state.view === "trades" || state.view === "card") && a && a.closest && a.closest("form.edit, #cl-q, .trade-filters")) {
       var box = a.closest("form.edit, .trade-filters") || a;
       if (!deferred) { deferred = true; box.addEventListener("focusout", function once(e) {
         if (e.relatedTarget && box.contains(e.relatedTarget)) return;
@@ -4868,6 +6140,8 @@ ul.list-rows li .linkish { font-weight: 600; }
   }
 
   /* ---------- Accounts (server mode) ---------- */
+  // The employee card: admins on the shared page (Editor access) or on the server; never viewers, members or snapshots.
+  function isCardAdmin() { return !!(backend && backend.update && backend.canAdmin && backend.canAdmin()); }
   function serverMode() { return backend && backend.mode === "server"; }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
@@ -4876,6 +6150,7 @@ ul.list-rows li .linkish { font-weight: 600; }
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
+    if (v === "card") return isCardAdmin();
     return false;
   }
   // Open corrections, on the header link and the menu item (admins).
@@ -4891,14 +6166,16 @@ ul.list-rows li .linkish { font-weight: 600; }
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
+    $("card-link").hidden = !tabAllowed("card");
     if (!tabAllowed(state.view) && booted) setView("dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
-    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+    siteBanner();
   }
 
   function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
@@ -4955,10 +6232,35 @@ ul.list-rows li .linkish { font-weight: 600; }
         ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
         ' <button class="linkish" id="sign-out">Sign out</button>';
       $("sign-out").onclick = function () { backend.signOut(); };
+      if (backend.adminUrl && backend.adminUrl()) {
+        el.insertAdjacentHTML("beforeend", ' <a class="linkish" href="' + esc(backend.adminUrl()) + '">Back office</a>');
+      }
       return;
     }
     el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
       : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  /* Firebase: a "Test copy" banner until an admin sets the copy live (CUTOVER.md). Frozen claude.ai page
+     (tools/build_artifact.py --frozen): page Editors keep Download backup in the "Moved" banner. */
+  function siteBanner() {
+    var mode = backend && backend.siteMode ? backend.siteMode() : null, el = $("site-banner");
+    if (mode === "test" && !el) {
+      document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
+        "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
+    } else if (mode !== "test" && el) el.remove();
+    var fb = $("frozen-backup");
+    if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
+      fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
+      $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        say($("card-backup-msg"), "Preparing…");
+        backend.saveBackup().then(function (r) {
+          x.disabled = false;
+          say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
+      };
+    }
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -4991,6 +6293,20 @@ ul.list-rows li .linkish { font-weight: 600; }
     renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
+  var Card = window.CardViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    people: function () { return people; }, contacts: function () { return contacts; }, byId: function () { return byId; },
+    orig: function (pos) { return orig[pos] || null; }, overrideFor: overrideFor, makeMatcher: makeMatcher, isPhone: isPhone,
+    today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day, coverOf: coverOf,
+    statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, statusPill: statusPill, rangeText: rangeText, slotLabel: slotLabel,
+    kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL, RANKS: RANK_ORDER, ID_RE: ID_RE, tourOptions: tourOptions,
+    statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
+    companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
+    fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    Organization: window.Organization, store: store, recall: recall,
+    show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
+  });
+
   var Awards = window.AwardViews({
     $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     people: function () { return people; }, data: function () { return data; }, renderAll: renderAll, RANKS: RANK_ORDER,
@@ -5008,13 +6324,16 @@ ul.list-rows li .linkish { font-weight: 600; }
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] };
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;
+    siteBanner();
     if (booted) rebuildPeople();
     renderAll();
   }
+  // Roster files and the documents list: from the server or static folder, or Cloud Storage on Firebase.
+  function getFile(path) { return backend && backend.fetchData ? backend.fetchData(path) : fetch(path, { credentials: "same-origin" }); }
   function loadError(err) {
     $("date-results").innerHTML = '<div class="empty">Could not load the roster (' + esc(err.message) +
       "). Serve this folder over HTTP, for example with <code>python3 server.py</code>, then reload.</div>";
@@ -5027,13 +6346,13 @@ ul.list-rows li .linkish { font-weight: 600; }
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
-      return fetch("data/positions.json", { credentials: "same-origin" }).then(function (r) {
+      return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
         if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
         var json = function (url) {
-          return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+          return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };
         return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
           .then(function (got) {
