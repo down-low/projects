@@ -13,14 +13,7 @@
 
 Resolved 10/20/2026 (fir-sap2 lookups): Caba,Nigel CA6282 (38EOE26M; CA3889 is Norman, H30 DT), Rabbitt,Patrick RA2634 (29EOE06M; RA6553 is a CD2 civilian), Lau,Keith LA3602 (25EOD16M), Woo,Elsie WO2460 (25EOF21M), Rivera,Steven RI5821 (21ETX11M), Lee,Jeffrey LE1267 (04EOF23M), Davis swapped (38EOC19M Antione DA1471, 18ETX23M Ashley DA4375), Summers,Steve SU3362 (25EOA03M, OSE at E01).
 
-Still open (same name at a different company in the tool):
-
-| fir-sap2 | Tool |
-|---|---|
-| Liu,Jie LI4947 · T48 VR | Liu,J LI2376 · T18 18TOF31M |
-| Thurman,Marshall TH2536 · E36 VR | Thurman,M TH1082 (18TOL25M) and TH4753 (18TOT20M), both T18 |
-| Perez Changar,Antonio PE3329 · E29 VR | Perez Changar,A, no ID · E24 24EOF30M |
-| Rosales,Jerek RO1209 · T17, no seat code | Rosales,J RO3181 · E42 42EOD24M |
+Also resolved: Perez Changar,Antonio PE3329 (owns 24EOF30M, VR at E29); added Liu,Jie LI4947 (T48), Thurman,Marshall TH2536 (E36) and Rosales,Jerek RO1209 (T17), flagged for contact info.
 
 ## Not in the tool
 
