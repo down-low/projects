@@ -10,7 +10,8 @@
 
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
-    var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false };
+    var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -216,14 +217,102 @@
           "</p>" +
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
-            return "<li><div>" + who(p) + '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
+            return "<li><div>" + who(p) + (r.via === "poster" ? ' <span class="tag">Added by you</span>' : "") +
+              '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
               '<button class="btn small primary" data-pick="' + esc(r.id) + '" data-trade="' + esc(t.id) + '">Pick</button></li>';
-          }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') +
+          }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') + inviteHtml(t) +
+          (ui.addOpen === t.id ? addForm(t) : "") +
           '<div class="row"><button class="btn small" data-widen="' + esc(t.id) + '">Send to more people</button>' +
+          (ui.addOpen === t.id ? "" : '<button class="btn small" data-add="' + esc(t.id) + '">Add their answer</button>') +
           '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button><span class="msg" data-msg="' + esc(t.id) + '" role="status"></span></div>';
       }
       return '<article class="trade mine">' + head + (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</article>";
     }
+    /* ---------- Invites: people the trade was sent to who aren't on the tool yet ----------
+       The text goes from the poster's own phone (Messages opens with it filled in; they pick the person from their contacts).
+       The tool never fills in a number: staff-list cells stay admin-only. Replies come back to the poster, who records
+       them with Add their answer. */
+    function pageLink() {
+      if (root.FIREBASE_APP_URL) return root.FIREBASE_APP_URL;
+      if (root.PAGE_URL) return root.PAGE_URL;
+      return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
+    }
+    function inviteText(t) {
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos], link = pageLink();
+      return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
+        ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
+        " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
+    }
+    // iPhones and Macs take "sms:&body=", Android "sms:?body=".
+    function smsHref(body) {
+      return "sms:" + (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?") + "body=" + encodeURIComponent(body);
+    }
+    function notOnTool(t) {
+      var b = backend();
+      if (!b.onTool) return [];
+      return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
+    }
+    function smsLink(t, k, label, cls, run) {
+      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
+        esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
+    }
+    // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
+    function framed() { try { return root.self !== root.top; } catch (e) { return true; } }
+    function inviteHtml(t) {
+      var keys = notOnTool(t);
+      if (!keys.length) return "";
+      var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
+      if (framed()) {
+        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy the text once and send it from Messages" +
+          (keys.length === 1 ? "." : " to each of them, or as one group text. It's the same text for everyone.") + "</p>" +
+          '<textarea class="invite-copy" readonly rows="5" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" +
+          '<div class="row"><button class="btn small primary" data-invite-copy="' + esc(t.id) + '">Copy text</button><span class="msg" data-copy-msg="' + esc(t.id) + '"></span></div>' +
+          '<ul class="tlist">' + keys.map(function (k) {
+            var done = ui.invited[t.id + "/" + k];
+            return "<li><div>" + who(byPos()[k]) + "</div>" + '<div class="row">' +
+              '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
+              (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
+          }).join("") + "</ul></div>";
+      }
+      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      if (run) {
+        var k = run.keys[run.i];
+        html += k
+          ? '<div class="invite-run"><span class="hint">' + (run.i + 1) + " of " + run.keys.length + "</span> " + who(byPos()[k]) +
+            '<div class="row">' + smsLink(t, k, "Text " + byPos()[k].name, "primary", true) +
+            '<button class="btn small" data-invite-skip>Skip</button><button class="btn small" data-invite-stop>Done</button></div></div>'
+          : '<div class="row"><span class="hint">All done.</span><button class="btn small" data-invite-stop>Close</button></div>';
+      } else {
+        html += '<ul class="tlist">' + keys.map(function (k) {
+          return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
+            smsLink(t, k, "Invite") + "</li>";
+        }).join("") + "</ul>" +
+          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
+          '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
+      }
+      return html + "</div>";
+    }
+    // Add their answer: the poster records an answer they got by text (pay back later, or a day of the taker's).
+    function addForm(t) {
+      var poster = byPos()[t.posterKey], el = poster ? M.eligibleTakers(api.fromIso(t.date), poster, ctx()) : [];
+      var to = (t.audience && t.audience.to) || [];
+      el.sort(function (a, b) { return (to.indexOf(b.p.pos) !== -1) - (to.indexOf(a.p.pos) !== -1) || a.p.name.localeCompare(b.p.name); });
+      return '<form class="edit add-form" data-trade="' + esc(t.id) + '" novalidate><h4>Add their answer</h4>' +
+        '<p class="hint">For an answer you got by text or in person. It shows as added by you.</p>' +
+        '<label>Who<select id="ad-who"><option value="">Pick a person</option>' + el.map(function (e) {
+          return '<option value="' + esc(e.p.pos) + '">' + esc(e.p.name + " · " + e.p.rank + " · " + api.home(e.p)) + (to.indexOf(e.p.pos) !== -1 ? " (sent to)" : "") + "</option>";
+        }).join("") + "</select></label>" +
+        '<fieldset class="choice"><legend>How they pay you back</legend>' +
+        '<label class="chk"><input type="radio" name="ad-kind" value="later" checked> Pay back later</label>' +
+        '<label class="chk"><input type="radio" name="ad-kind" value="swap"> Swap: I work one of their shifts</label>' +
+        '<label class="indent">Their day I\'d work<input type="date" id="ad-swap" min="' + todayIso() + '" disabled></label></fieldset>' +
+        '<label>Note<input type="text" id="ad-note" maxlength="300" placeholder="Optional"></label>' +
+        '<div class="row"><button class="btn primary small" type="submit">Add</button><button class="btn small" type="button" data-add-x>Cancel</button>' +
+        '<span class="msg" id="ad-msg" role="status"></span></div></form>';
+    }
+
     // A shift I'm working for someone else.
     function tookCard(t) {
       return '<article class="trade mine"><div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) +
@@ -285,6 +374,59 @@
             .then(function () { ui.replyOpen = null; api.renderAll(true); }, function (er) { api.say(msg, er.message, true); });
         };
       });
+      out.querySelectorAll("[data-invite]").forEach(function (a) {
+        a.addEventListener("click", function () {
+          ui.invited[a.dataset.invite + "/" + a.dataset.key] = true;
+          if (a.hasAttribute("data-run") && ui.inviteRun) ui.inviteRun.i++;
+          setTimeout(renderTrades, 400); // after Messages opens
+        });
+      });
+      out.querySelectorAll("[data-invite-all]").forEach(function (b) {
+        b.onclick = function () { var t = find(b.dataset.inviteAll); ui.inviteRun = { id: t.id, keys: notOnTool(t), i: 0 }; renderTrades(); };
+      });
+      out.querySelectorAll("[data-invite-skip]").forEach(function (b) { b.onclick = function () { ui.inviteRun.i++; renderTrades(); }; });
+      out.querySelectorAll("[data-invite-stop]").forEach(function (b) { b.onclick = function () { ui.inviteRun = null; renderTrades(); }; });
+      out.querySelectorAll("[data-mark]").forEach(function (b) {
+        b.onclick = function () { var k = b.dataset.mark + "/" + b.dataset.key; ui.invited[k] = !ui.invited[k]; renderTrades(); };
+      });
+      // Copy by selecting the text box (works inside the claude.ai frame, where the clipboard API may not).
+      out.querySelectorAll("[data-invite-copy]").forEach(function (b) {
+        b.onclick = function () {
+          var id = b.dataset.inviteCopy;
+          if (!out.querySelector('[data-copy-text="' + id + '"]')) { ui.copyOpen = id; renderTrades(); }
+          var ta = out.querySelector('[data-copy-text="' + id + '"]'), msg = out.querySelector('[data-copy-msg="' + id + '"]');
+          if (!ta) return;
+          ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+          var ok = false;
+          try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+          var say = function (text) { if (msg) msg.textContent = text; else b.textContent = text; };
+          if (ok) say("Copied. Open Messages, paste it and send.");
+          else say("Press and hold the text, then Copy.");
+        };
+      });
+      out.querySelectorAll("[data-add]").forEach(function (b) { b.onclick = function () { ui.addOpen = b.dataset.add; renderTrades(); }; });
+      out.querySelectorAll("[data-add-x]").forEach(function (b) { b.onclick = function () { ui.addOpen = null; renderTrades(); }; });
+      out.querySelectorAll(".add-form").forEach(function (f) {
+        var swapIn = f.querySelector("#ad-swap");
+        f.querySelectorAll("[name=ad-kind]").forEach(function (r) { r.onchange = function () { swapIn.disabled = f.querySelector("[name=ad-kind]:checked").value !== "swap"; }; });
+        f.onsubmit = function (e) {
+          e.preventDefault();
+          var t = find(f.dataset.trade), msg = $("ad-msg"), taker = byPos()[f.querySelector("#ad-who").value];
+          if (!taker) return api.say(msg, "Pick who answered.", true);
+          if (!canTake(taker, t)) return api.say(msg, taker.name + " works that day or is marked off.", true);
+          var proposal = { later: true }, swapSeat = null;
+          if (f.querySelector("[name=ad-kind]:checked").value === "swap") {
+            var why = swapProblem(t, taker, swapIn.value);
+            if (why) return api.say(msg, why, true);
+            proposal = { swapDate: swapIn.value };
+            swapSeat = seatOn(taker, api.fromIso(swapIn.value));
+          }
+          api.say(msg, "Saving…");
+          backend().replyTrade({ tradeId: t.id, takerKey: taker.pos, takerName: taker.name, proposal: proposal, swapSeatPos: swapSeat,
+            note: f.querySelector("#ad-note").value.trim(), via: "poster", recordedBy: myKey() })
+            .then(function () { ui.addOpen = null; api.renderAll(true); }, function (er) { api.say(msg, er.message, true); });
+        };
+      });
       out.querySelectorAll("[data-pick]").forEach(function (b) {
         b.onclick = function () {
           if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm"; return; }
@@ -325,7 +467,9 @@
       if (!sw) return "Pick the day they'd work for you.";
       if (sw < todayIso() || sw === t.date) return "Pick a later day, not the traded day.";
       var d = api.fromIso(sw), poster = byPos()[t.posterKey];
-      if (!seatOn(taker, d)) return "You don't work " + dateText(sw) + ". Pick one of your shifts.";
+      if (!seatOn(taker, d)) {
+        return taker.pos === myKey() ? "You don't work " + dateText(sw) + ". Pick one of your shifts." : taker.name + " doesn't work " + dateText(sw) + ".";
+      }
       if (poster && (api.day(poster, d) || M.statusFor(poster.pos, d, recs().statuses))) return nameOf(t.posterKey) + " isn't free on " + dateText(sw) + ".";
       return null;
     }
@@ -524,6 +668,8 @@
       body.querySelectorAll("[data-dv]").forEach(function (c) {
         c.onchange = function () {
           var g = gs.filter(function (x) { return x.dv.id === c.dataset.dv; })[0];
+          // Checking opens the lists, so you can see who's selected.
+          if (c.checked) g.bts.forEach(function (b) { w.open[g.dv.id + "/" + b.bt.id] = true; });
           setAll([].concat.apply([], g.bts.map(function (b) { return b.people; })), c.checked);
         };
       });
@@ -531,6 +677,7 @@
         c.onclick = function (e) { e.stopPropagation(); };
         c.onchange = function () {
           var k = c.dataset.bt.split("/"), g = gs.filter(function (x) { return x.dv.id === k[0]; })[0];
+          if (c.checked) w.open[c.dataset.bt] = true;
           setAll(g.bts.filter(function (b) { return b.bt.id === k[1]; })[0].people, c.checked);
         };
       });

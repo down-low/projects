@@ -107,7 +107,9 @@ service cloud.firestore {
     }
     match /tradeReplies/{id} {
       allow read: if active();
-      allow create: if isAdmin() || (myPos() != null && data().takerKey == myPos());
+      // Your own answer, or (via "poster") an answer the poster got by text and records for someone on their trade.
+      allow create: if isAdmin() || (myPos() != null && (data().takerKey == myPos() ||
+          (data().via == 'poster' && get(/databases/$(database)/documents/trades/$(data().tradeId)).data.posterKey == myPos())));
       allow update, delete: if isAdmin();
     }
 

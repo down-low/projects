@@ -65,7 +65,9 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
     ("covers", "kind", "TEXT"),
-    ("covers", "move", "INTEGER"),  # a move to a new owned seat (2027 award or assignment, or set on the employee card)
+    ("covers", "move", "INTEGER"),
+    ("trade_replies", "via", "TEXT"),  # "poster": the poster recorded an answer they got by text (Add their answer)
+    ("trade_replies", "recordedBy", "TEXT"),  # a move to a new owned seat (2027 award or assignment, or set on the employee card)
 ]
 CORRECTION_KINDS = {"seat", "status", "cover", "tour", "id", "cell", "other"}
 CORRECTION_STATES = {"applied", "dismissed", "open"}  # open: reopened by an admin
@@ -858,7 +860,9 @@ class App:
             if r["tradeId"] in mine or r["takerKey"] == me:
                 r["proposal"] = json.loads(r["proposal"])
                 replies.append(r)
-        return {"trades": trades, "replies": replies}
+        # Who's on the tool (a linked, active account): the poster gets Invite for the others they sent a trade to.
+        on_tool = [r["pos"] for r in self.all("SELECT pos FROM users WHERE pos IS NOT NULL AND status = 'active'")] if me else []
+        return {"trades": trades, "replies": replies, "onTool": on_tool}
 
     def clean_audience(self, body, poster):
         aud = body.get("audience")
@@ -915,21 +919,30 @@ class App:
         return {"swapDate": swap}, seat
 
     def reply_trade(self, u, trade_id, body):
+        """A response to a trade: the taker's own, or (with takerKey) one the poster got by text and records for them."""
         me, t = u["pos"], self.get_trade(trade_id)
         if t["status"] != "open" or t["date"] < dt.date.today().isoformat():
             raise HttpError(409, "This trade is no longer open")
-        if not self.trade_visible(t, me):
+        taker, via = me, None
+        if body.get("takerKey") not in (None, me):
+            if t["posterKey"] != me:
+                raise HttpError(403, "Only the person who posted the trade can add someone's answer")
+            taker, via = body["takerKey"], "poster"
+            if not self.lookup(taker):
+                raise BadRequest("No such person on the roster")
+        elif not self.trade_visible(t, me):
             raise HttpError(404, "No such trade")
-        why = self.can_take(me, t["posterKey"], t["date"])
+        why = self.can_take(taker, t["posterKey"], t["date"])
         if why:
             raise BadRequest(why)
-        proposal, swap_seat = self.clean_proposal(t, me, body)
-        rec = {"id": uuid.uuid4().hex, "tradeId": trade_id, "takerKey": me, "takerName": (self.lookup(me) or {}).get("name"),
-               "proposal": json.dumps(proposal), "swapSeatPos": swap_seat, "note": clean_text(body.get("note"), "note"), "createdAt": now()}
+        proposal, swap_seat = self.clean_proposal(t, taker, body)
+        rec = {"id": uuid.uuid4().hex, "tradeId": trade_id, "takerKey": taker, "takerName": (self.lookup(taker) or {}).get("name"),
+               "proposal": json.dumps(proposal), "swapSeatPos": swap_seat, "note": clean_text(body.get("note"), "note"), "createdAt": now(),
+               "via": via, "recordedBy": me if via else None}
         with self.lock, self.conn:  # one response per person; a new one replaces the old
-            self.conn.execute("DELETE FROM trade_replies WHERE tradeId = ? AND takerKey = ?", (trade_id, me))
-            self.conn.execute("INSERT INTO trade_replies (id,tradeId,takerKey,takerName,proposal,swapSeatPos,note,createdAt) "
-                              "VALUES (:id,:tradeId,:takerKey,:takerName,:proposal,:swapSeatPos,:note,:createdAt)", rec)
+            self.conn.execute("DELETE FROM trade_replies WHERE tradeId = ? AND takerKey = ?", (trade_id, taker))
+            self.conn.execute("INSERT INTO trade_replies (id,tradeId,takerKey,takerName,proposal,swapSeatPos,note,createdAt,via,recordedBy) "
+                              "VALUES (:id,:tradeId,:takerKey,:takerName,:proposal,:swapSeatPos,:note,:createdAt,:via,:recordedBy)", rec)
         rec["proposal"] = proposal
         return rec
 
