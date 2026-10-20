@@ -73,8 +73,12 @@ def fold_trades(records):
         records.pop(k, None)
 
 
+MAIN_URL = "https://claude.ai/artifact/TS7W51mXHxgy7p2uvReSgC"  # the shared page (page database)
+DEMO_URL = "https://claude.ai/artifact/37DsLLYz74Kjysbd84cTXV"  # the view-only snapshot with the trade demo
+
+
 def main():
-    # build_artifact.py [out.html] [--snapshot records.json]
+    # build_artifact.py [out.html] [--snapshot records.json] [--page-url https://claude.ai/artifact/...]
     # --snapshot bakes page records ({"asOf": "YYYY-MM-DD", "records": {statuses, tourChanges, covers, people, staffing}})
     # into a view-only page that needs no sign-in and no page database.
     args = sys.argv[1:]
@@ -87,6 +91,11 @@ def main():
         frozen = args[i + 1]
         if not frozen.startswith("https://"):
             sys.exit("--frozen needs the new address, e.g. https://PROJECT-admin.web.app")
+        del args[i:i + 2]
+    page_url = None
+    if "--page-url" in args:  # the page's own claude.ai link, put in trade invite texts
+        i = args.index("--page-url")
+        page_url = args[i + 1]
         del args[i:i + 2]
     snapshot = None
     if "--snapshot" in args:
@@ -117,6 +126,7 @@ def main():
         snap = "window.SNAPSHOT=" + json.dumps(snapshot, separators=(",", ":")).replace("</", "<\\/") + ";"
     if demo is not None:
         snap += "window.TRADE_DEMO=" + json.dumps(demo, separators=(",", ":")).replace("</", "<\\/") + ";"
+    snap += "window.PAGE_URL=" + json.dumps(page_url or (DEMO_URL if snapshot is not None else MAIN_URL)) + ";"
     banner = ""
     if frozen is not None:
         import html as htmlmod
