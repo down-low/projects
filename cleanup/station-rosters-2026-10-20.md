@@ -11,20 +11,16 @@
 
 ## To check
 
-| | fir-sap2 | Tool |
-|---|---|---|
-| name match at another company | Liu,Jie LI4947 · T48 VR H 2 | Liu,J no ID · T18 18TOF31M |
-| OWN here; tool has a different ID | Caba,Nigel CA6282 · E38 OWN H 2 | Caba,N CA3889 · E38 38EOE26M |
-| name match at another company | Thurman,Marshall A TH2536 · E36 VR H 2 | Thurman,M no ID · T18 18TOL25M |
-| name match at another company | Perez Changar,Antonio PE3329 · E29 VR H 2 | Perez Changar,A no ID · E24 24EOF30M |
-| OWN here; tool has a different ID | Rabbitt,Patrick J RA2634 · E29 OWN H 2 | Rabbitt,P RA6553 · E29 29EOE06M |
-| OWN here; tool has a different ID | Lau,Keith Y LA3602 · E25 OWN H 2 | Lau,K LA1276 · E25 25EOD16M |
-| OWN here; tool has a different ID | Woo,Elsie L WO2460 · E25 OWN H 2 | Woo,E WO1471 · E25 25EOF21M |
-| OWN here; tool has a different ID | Rivera,Steven A RI5821 · E21 OWN H 2 | Rivera,S RI9665 · E21 21ETX11M |
-| name match at another company | Davis,Ashley C DA4375 · E18 OWN H 2 | Davis,A no ID · E38 38EOC19M |
-| name match at another company | Rosales,Jerek RO1209 · T17 - H 2 | Rosales,J no ID · E42 42EOD24M |
-| OWN here; tool has a different ID | Lee,Jeffrey LE1267 · E04 OWN H 2 | Lee,J LE7112 · E04 04EOF23M |
-| name match at another company | Summers,Steve M SU3362 · E01 OSE H 3 | Summers,S no ID · E25 25EOA03M |
+Resolved 10/20/2026 (fir-sap2 lookups): Caba,Nigel CA6282 (38EOE26M; CA3889 is Norman, H30 DT), Rabbitt,Patrick RA2634 (29EOE06M; RA6553 is a CD2 civilian), Lau,Keith LA3602 (25EOD16M), Woo,Elsie WO2460 (25EOF21M), Rivera,Steven RI5821 (21ETX11M), Lee,Jeffrey LE1267 (04EOF23M), Davis swapped (38EOC19M Antione DA1471, 18ETX23M Ashley DA4375), Summers,Steve SU3362 (25EOA03M, OSE at E01).
+
+Still open (same name at a different company in the tool):
+
+| fir-sap2 | Tool |
+|---|---|
+| Liu,Jie LI4947 · T48 VR | Liu,J LI2376 · T18 18TOF31M |
+| Thurman,Marshall TH2536 · E36 VR | Thurman,M TH1082 (18TOL25M) and TH4753 (18TOT20M), both T18 |
+| Perez Changar,Antonio PE3329 · E29 VR | Perez Changar,A, no ID · E24 24EOF30M |
+| Rosales,Jerek RO1209 · T17, no seat code | Rosales,J RO3181 · E42 42EOD24M |
 
 ## Not in the tool
 
