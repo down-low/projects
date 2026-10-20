@@ -362,8 +362,11 @@
         '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
           return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
         }).join("") + "</select></label>" +
-        '<p class="hint">Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the ' +
-        "details and a one-tap reply, so there's no need to open the page.</p></details>";
+        '<p class="hint">' + (backend().alertsLive
+          ? "Trades sent to you, answers to yours and picks always alert you on the ways you switch on, with the details and a one-tap answer. " +
+            "Texts start once the department's texting number is approved."
+          : "Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the details and a one-tap reply, so there's no need to open the page.") +
+        '</p><span class="msg" id="alert-msg" role="status"></span></details>';
     }
 
     function wireTab() {
@@ -378,7 +381,16 @@
         c.onchange = function () {
           var vals = {};
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
-          backend().setAlerts(vals).catch(function () { if (c.tagName !== "SELECT") c.checked = !c.checked; });
+          var b = backend(), msg = $("alert-msg");
+          // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
+          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          ready.then(function () {
+            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
+            return b.setAlerts(vals);
+          }).catch(function (er) {
+            if (c.tagName !== "SELECT") c.checked = !c.checked;
+            if (msg) api.say(msg, er.message, true);
+          });
         };
       });
       out.querySelectorAll("[data-reply]").forEach(function (b) {
@@ -509,24 +521,7 @@
     /* The records a pick sets (on the shared page they are kept on the trade; the server writes its own): the taker covers the
        poster's seat and the poster is TR; for a swap the same the other way on the swap day. An error string when the trade
        no longer works. */
-    function pickWrites(t, r) {
-      var poster = byPos()[t.posterKey], taker = byPos()[r.takerKey], d = api.fromIso(t.date);
-      if (!poster || !taker) return "That person is no longer on the roster.";
-      if (t.date < todayIso()) return "That day has passed.";
-      if (seatOn(poster, d) !== t.seatPos) return "Your schedule for that day has changed. Cancel this trade and post it again.";
-      if (!canTake(taker, t)) return taker.name + " now works that day or is marked off.";
-      var leg = function (cov, off, seat, day) {
-        return [{ kind: "covers", rec: { coverKey: cov.pos, coverName: cov.name, targetPos: seat, start: day, end: day, note: "Shift trade" } },
-          { kind: "statuses", rec: { pos: off.pos, name: off.name, code: "TR", start: day, end: day, note: "Shift trade" } }];
-      };
-      var writes = leg(taker, poster, t.seatPos, t.date);
-      if (r.proposal.swapDate) {
-        var why = swapProblem(t, taker, r.proposal.swapDate);
-        if (why) return why;
-        writes = writes.concat(leg(poster, taker, seatOn(taker, api.fromIso(r.proposal.swapDate)), r.proposal.swapDate));
-      }
-      return writes;
-    }
+    function pickWrites(t, r) { return M.pickLegs(t, r, { byPos: byPos(), opts: api.opts(), today: todayIso() }); }
 
     /* ---------- "This is me" (shared page) ---------- */
     function claimHtml() {

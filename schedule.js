@@ -223,7 +223,39 @@
     return out;
   }
 
+  function fromIsoDate(s) { var a = s.split("-"); return new Date(+a[0], a[1] - 1, +a[2]); }
+  // The seat person p works on d (their own, or the one they cover), or null when they're off or marked off.
+  function seatWorked(p, d, opts) {
+    var s = dayFor(p.pos, ownSeat(p), d, opts);
+    return s && !s.status ? (s.acting ? s.acting.targetPos : p.pos) : null;
+  }
+  /* The records a pick sets, shared by the page and the alert functions: the taker covers the poster's seat and the
+     poster is TR; for a swap, the same the other way on the swap day. trade: {posterKey, seatPos, date}; reply:
+     {takerKey, proposal}; ctx: {byPos, opts, today (ISO date)}. Returns [{kind: "covers"|"statuses", rec}], or a
+     sentence saying why the trade no longer works. */
+  function pickLegs(trade, reply, ctx) {
+    var poster = ctx.byPos[trade.posterKey], taker = ctx.byPos[reply.takerKey], d = fromIsoDate(trade.date), opts = ctx.opts;
+    if (!poster || !taker) return "That person is no longer on the roster.";
+    if (trade.date < ctx.today) return "That day has passed.";
+    if (seatWorked(poster, d, opts) !== trade.seatPos) return "Your schedule for that day has changed. Cancel this trade and post it again.";
+    if (!eligibleTakers(d, poster, { people: [taker], opts: opts }).length) return taker.name + " now works that day or is marked off.";
+    var leg = function (cov, off, seat, day) {
+      return [{ kind: "covers", rec: { coverKey: cov.pos, coverName: cov.name, targetPos: seat, start: day, end: day, note: "Shift trade" } },
+        { kind: "statuses", rec: { pos: off.pos, name: off.name, code: "TR", start: day, end: day, note: "Shift trade" } }];
+    };
+    var writes = leg(taker, poster, trade.seatPos, trade.date), sw = reply.proposal && reply.proposal.swapDate;
+    if (sw) {
+      var sd = fromIsoDate(sw), seat = seatWorked(taker, sd, opts);
+      if (sw < ctx.today || sw === trade.date) return "The swap day has to be a later day, not the traded day.";
+      if (!seat) return taker.name + " doesn't work " + sw + ".";
+      if (dayFor(poster.pos, ownSeat(poster), sd, opts) || statusFor(poster.pos, sd, opts && opts.statuses)) return poster.name + " isn't free on " + sw + ".";
+      writes = writes.concat(leg(poster, taker, seat, sw));
+    }
+    return writes;
+  }
+
   var api = {
+    seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,

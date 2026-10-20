@@ -6,11 +6,12 @@
  *   ALLOWED_DOMAINS  optional; only these email domains may sign in (empty: any Google account, approved by an admin)
  */
 "use strict";
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const A = require("./accounts");
+const AL = require("./alerts");
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 5 });
@@ -58,6 +59,7 @@ async function roster() {
   }
   return rosterCache;
 }
+const D = require("./deliver")({ db, admin, roster, now: () => now() });
 async function lookups() {
   const [{ rows, ids }, people] = await Promise.all([roster(), db.collection("people").get()]);
   const byPos = new Map(rows.map((p) => [p.pos, p]));
@@ -254,6 +256,7 @@ exports.answerFromInvite = wrap(async (req) => {
   await db.doc("tradeReplies/link_" + body.code).set({ tradeId: inv.tradeId, takerKey: inv.recipientKey, takerName: me.name || null,
     proposal, swapSeatPos: null, note, via: "link", verified: !!inv.usedBy, createdAt: now(), createdBy: "invite:" + inv.inviterKey });
   await ref.update({ answers: admin.firestore.FieldValue.increment(1) });
+  await D.reply("link_" + body.code).catch((e) => console.warn("alert: " + e.message));
   return { ok: true };
 });
 
@@ -282,6 +285,7 @@ exports.redeemInvite = wrap(async (req) => {
   });
   await syncClaims(auth.uid, user, auth.token);
   await audit(auth.uid, "invite", { pos: inv.recipientKey, by: inv.inviterKey, trade: inv.tradeId });
+  await D.trade(inv.tradeId).catch((e) => console.warn("alert: " + e.message));
   const { lookup } = await lookups();
   return Object.assign(await meFor(auth.uid, user, lookup), { claimsChanged: true });
 });
@@ -339,4 +343,68 @@ exports.stats = wrap(async (req) => {
   const date = req.data && /^\d{4}-\d{2}-\d{2}$/.test(req.data.date) ? req.data.date : now().slice(0, 10);
   const [{ lookup }, snap] = await Promise.all([lookups(), db.collection("profiles").get()]);
   return A.averages(snap.docs.map((d) => Object.assign({ key: d.id }, d.data())), date, (k) => !!lookup(k));
+});
+
+/* ---------- Trade alerts (deliver.js decides and sends) ----------
+   notify: the page asks after posting, widening, answering, picking or cancelling; only alerts that are due and weren't
+   sent yet go out, so asking twice is harmless. */
+exports.notify = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
+  const body = req.data || {};
+  if (typeof body.id !== "string" || !body.id) throw new HttpsError("invalid-argument", "id is required");
+  const sent = body.kind === "reply" ? await D.reply(body.id) : await D.trade(body.id);
+  return { sent };
+});
+
+const page = (title, inner) => '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+  "<title>" + title + '</title><body style="font:16px/1.45 -apple-system,Segoe UI,sans-serif;color:#1a2130;max-width:520px;margin:40px auto;padding:0 16px">' + inner + "</body>";
+const escHtml = (v) => String(v).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* One-tap links from alert emails. GET shows what will happen and a button (mail scanners open links on their own);
+   POST does it, once per link. */
+exports.alertAction = onRequest({ invoker: "public" }, async (req, res) => {
+  const token = String((req.query && req.query.a) || (req.body && req.body.a) || "");
+  const tok = AL.readToken(token, process.env.ALERT_KEY || "");
+  const back = '<p><a href="' + escHtml(D.appUrl() + "/") + '">Open the tour schedule</a></p>';
+  if (!tok) { res.status(400).send(page("Link expired", "<h2>That link has expired</h2><p>Open the trade in the app instead.</p>" + back)); return; }
+  const what = tok.k === "pick" ? "Pick this answer" : "I'm interested · pay back later";
+  if (req.method !== "POST") {
+    res.send(page("Shift trade", "<h2>" + escHtml(what) + '</h2><form method="post"><input type="hidden" name="a" value="' + escHtml(token) +
+      '"><button style="font:inherit;padding:10px 16px;border-radius:6px;border:0;background:#1a2130;color:#fff">Confirm</button></form>' + back));
+    return;
+  }
+  const used = db.doc("alertTokens/" + require("crypto").createHash("sha256").update(token).digest("hex"));
+  try { await used.create({ at: now(), uid: tok.u, kind: tok.k }); } catch (e) {
+    res.send(page("Already done", "<h2>Already done</h2><p>This link was used already.</p>" + back)); return;
+  }
+  const said = tok.k === "pick" ? await D.pick(tok.u, tok.t, tok.r) : await D.answer(tok.u, tok.t, { later: true }, null);
+  res.send(page("Shift trade", "<h2>" + escHtml(what) + "</h2><p>" + escHtml(said) + "</p>" + back));
+});
+
+/* Text replies (Twilio webhook, signature checked): "1" pay back later, "2 11/20" swap, "PICK" the last answer you were
+   told about. Set the number's "A message comes in" webhook to this function's URL (FIREBASE_SETUP.md). */
+exports.smsReply = onRequest({ invoker: "public" }, async (req, res) => {
+  const token = process.env.TWILIO_TOKEN || "";
+  const url = process.env.SMS_WEBHOOK_URL || D.fnUrl("smsReply");
+  const params = req.body || {};
+  if (!token || AL.twilioSignature(url, params, token) !== req.get("X-Twilio-Signature")) { res.status(403).send("forbidden"); return; }
+  const reply = (text) => res.type("text/xml").send("<Response>" + (text ? "<Message>" + escHtml(text) + "</Message>" : "") + "</Response>");
+  const from = AL.phoneKey(params.From), cmd = AL.parseSms(params.Body, now().slice(0, 10));
+  const ms = await D.members();
+  const m = Array.from(ms.values()).find((x) => x.phone && AL.phoneKey(x.phone) === from);
+  if (!m) return reply("This number isn't on the tour schedule. Add your cell on My page to answer by text.");
+  if (cmd && cmd.kind === "stop") { await db.doc("users/" + m.uid).update({ "alerts.text": false }); return reply(""); }
+  if (!cmd) return reply("Reply 1 = interested, pay back later · 2 and a date = swap (e.g. 2 11/20) · PICK = pick the last answer.");
+  const st = (await db.doc("alertState/" + m.uid).get()).data() || {};
+  if (cmd.kind === "pick") return reply(st.answer ? await D.pick(m.uid, st.answer.tradeId, st.answer.replyId) : "There's no answer to pick yet.");
+  if (!st.offer) return reply("There's no trade to answer yet.");
+  return reply(await D.answer(m.uid, st.offer, cmd.kind === "swap" ? { swapDate: cmd.date } : { later: true }, "By text"));
+});
+
+// The daily summary of new board posts; called once a day by .github/workflows/daily-alerts.yml with the ALERT_KEY.
+exports.dailySummary = onRequest({ invoker: "public" }, async (req, res) => {
+  const key = process.env.ALERT_KEY || "";
+  if (!key || req.method !== "POST" || req.get("X-Alert-Key") !== key) { res.status(403).send("forbidden"); return; }
+  res.json({ sent: await D.daily() });
 });
