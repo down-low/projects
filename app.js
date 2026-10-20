@@ -527,7 +527,7 @@
     var acts = [];
     if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
       acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
-        : '<button type="button" data-day-act="trade">Trade this shift<span class="hint">Send it to people who are off, or post it to the board</span></button>');
+        : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
     if (s && !s.status && backend && backend.canEdit()) {

@@ -154,6 +154,17 @@ test("trades: post as yourself, reply as yourself, only the poster sets or cance
   await assertFails(db(MEMBER).doc("trades/t1").update({ date: "2026-12-01" }));
 });
 
+test("admins post a trade for someone, record answers and pick; members can't post for others", async () => {
+  const rec = { posterKey: "11ENL01M", posterName: "Other", seatPos: "11ENL01M", date: "2026-12-10", note: "", status: "open",
+    audience: { board: true, to: [] }, postedBy: "admin", createdBy: "admin1", createdAt: "x" };
+  await assertFails(db(MEMBER).doc("trades/a1").set(rec));
+  await assertSucceeds(db(ADMIN).doc("trades/a1").set(rec));
+  await assertSucceeds(db(ADMIN).collection("tradeReplies").add({ tradeId: "a1", takerKey: "10EOC03M", via: "poster", proposal: { later: true } }));
+  await assertSucceeds(db(ADMIN).doc("trades/a1").update({ status: "set", takerKey: "10EOC03M", replyId: "r1", setAt: "x", legs: [] }));
+  // the person it's for can still manage it once they're on the tool
+  await assertSucceeds(db(OTHER).doc("trades/a1").update({ status: "cancelled", cancelledAt: "x" }));
+});
+
 test("corrections: each member their own; editors and admins all", async () => {
   await assertSucceeds(db(MEMBER).doc("corrections/mem1").get());
   await assertSucceeds(db(MEMBER).doc("corrections/mem1").set({ items: { b: { state: "open" } } }, { merge: true }));
