@@ -52,18 +52,42 @@
     });
   }
 
+  // BusinessObjects answers with a page that loads the report in a frame (sometimes through a redirect script),
+  // so follow frames, meta refreshes and location changes until a file arrives.
+  const isZip = (buf) => { const h = new Uint8Array(buf.slice(0, 2)); return h[0] === 0x50 && h[1] === 0x4b; };
+  function nextUrl(htmlText, base) {
+    const pats = [/<i?frame[^>]*\ssrc\s*=\s*["']([^"']+)["']/i, /http-equiv\s*=\s*["']?refresh["']?[^>]*url\s*=\s*([^"'>\s]+)/i,
+      /(?:window|document|top|self)\.location(?:\.href)?\s*=\s*["']([^"']+)["']/i, /location\.replace\(\s*["']([^"']+)["']/i];
+    for (const re of pats) { const m = re.exec(htmlText); if (m && m[1] && !/^about:|^javascript:/i.test(m[1])) return new URL(m[1].replace(/&amp;/g, '&'), base).href; }
+    return null;
+  }
+  async function getFile(url) {
+    const trail = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const res = await fetch(url, { credentials: 'include' });
+      const buf = await res.arrayBuffer();
+      if (isZip(buf)) return { buf };
+      const text = new TextDecoder().decode(buf);
+      trail.push({ url: res.url || url, type: res.headers.get('content-type'), text });
+      const next = nextUrl(text, res.url || url);
+      if (!next || next === url) break;
+      url = next;
+    }
+    return { trail };
+  }
+
   const out = [], empty = [], failed = [];
   for (const st of STATIONS) {
     try {
-      const res = await fetch(urlFor(st), { credentials: 'include' });
-      const buf = await res.arrayBuffer(), head = new Uint8Array(buf.slice(0, 2));
-      if (head[0] !== 0x50 || head[1] !== 0x4b) { // not an .xlsx (PK)
-        if (st === STATIONS[0] || !out.length) {
-          console.log('fir-sap2 sent', res.headers.get('content-type'), new TextDecoder().decode(buf.slice(0, 300)));
-          return alert('fir-sap2 did not send an Excel file for ' + st + '. Copy what the console shows (the line starting "fir-sap2 sent") into the chat.');
+      const got = await getFile(urlFor(st));
+      if (!got.buf) {
+        if (!out.length) {
+          got.trail.forEach((t, i) => console.log('fir-sap2 step ' + (i + 1) + ': ' + t.url + ' (' + t.type + ')\n' + t.text.slice(0, 3000)));
+          return alert('fir-sap2 did not send an Excel file for ' + st + '. In the console, right-click the "fir-sap2 step" lines → Copy (or select them all), and paste them into the chat.');
         }
         failed.push(st); continue;
       }
+      const buf = got.buf;
       const rows = people(await readXlsx(buf), st);
       if (rows.length) out.push(...rows); else empty.push(st);
       console.log('station rosters: ' + st + ' · ' + rows.length + ' people');
