@@ -671,6 +671,13 @@ ul.tlist.plain li { display: block; }
 .trade-alerts summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .trade-alerts .chk { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; margin-top: 6px; }
 .trade-alerts .hint { margin: 6px 0 0; }
+/* Invites: people a trade went to who aren't on the tool yet */
+.invite-box { display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; }
+.invite-box p.hint { margin: 0; }
+.invite-box a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.invite-run { display: flex; flex-direction: column; gap: 6px; }
+.invite-copy { width: 100%; font: inherit; font-size: 0.85rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+form.add-form { margin-top: 0; }
 fieldset.choice { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 fieldset.choice legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; padding: 0; }
 .trade-body label.chk, .choice .chk, .wz-list .chk, .wz-all { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--fg); }

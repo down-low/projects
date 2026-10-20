@@ -452,6 +452,18 @@ class TradeTest(unittest.TestCase):
         self.assertEqual((st, t5["proposal"]), (200, {"later": True}))
         self.assertEqual(len([c for c in poster.req("GET", "/api/records")[1]["covers"] if c["tradeId"] == t4["id"]]), 1)
 
+        # the poster records an answer they got by text; nobody else can answer for someone
+        poster.req("POST", f"/api/trades/{t4['id']}/cancel")
+        _, t6, _ = poster.req("POST", "/api/trades", {"date": day, "audience": {"board": False, "to": [capt]}})
+        self.assertIn(capt, poster.req("GET", "/api/trades")[1]["onTool"])
+        self.assertEqual(bystander.req("POST", f"/api/trades/{t6['id']}/replies", {"proposal": {"later": True}, "takerKey": capt})[0], 403)
+        self.assertEqual(poster.req("POST", f"/api/trades/{t6['id']}/replies", {"proposal": {"later": True}, "takerKey": ff})[0], 400)
+        st, r6, _ = poster.req("POST", f"/api/trades/{t6['id']}/replies", {"proposal": {"later": True}, "takerKey": capt, "note": "By text"})
+        self.assertEqual((st, r6["takerKey"], r6["via"], r6["recordedBy"]), (201, capt, "poster", lt))
+        st, t7, _ = poster.req("POST", f"/api/trades/{t6['id']}/pick", {"replyId": r6["id"]})
+        self.assertEqual((st, t7["takerKey"]), (200, capt))
+        poster.req("POST", f"/api/trades/{t6['id']}/cancel")
+
         # alerts opt-in is stored on the account
         st, me, _ = taker.req("PUT", "/api/me/alerts", {"text": True, "app": False, "email": True})
         self.assertEqual((st, me["alerts"]), (200, {"text": True, "app": False, "email": True, "board": "off"}))

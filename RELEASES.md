@@ -60,6 +60,8 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
 ### Invites from trades
+**Built now** (shared page and server): Invite, Invite all, Copy the text and Add their answer, with the page link in the text. Still to come with Firebase: the personal `/t/<code>` link, answering from it, and Employee ID verification.
+
 A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know. There are two kinds of "not on yet":
 
 - **On the roster but not signed in:** on the vacancy list (or already added), so the tool knows their seat, tour and Employee ID. The trade invite below is for them.
