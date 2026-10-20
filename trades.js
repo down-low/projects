@@ -263,14 +263,17 @@
       if (!keys.length) return "";
       var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy the text, then send it to " +
-          (keys.length === 1 ? "them" : "each of them") + " from Messages on your phone.</p>" +
+        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. " +
+          (navigator.share ? "Tap Invite and choose Messages, or copy the text" : "Copy the text") + " and send it to " +
+          (keys.length === 1 ? "them" : "each of them") + " from your phone.</p>" +
           '<textarea class="invite-copy" readonly rows="5" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" +
           '<div class="row"><button class="btn small primary" data-invite-copy="' + esc(t.id) + '">Copy text</button><span class="msg" data-copy-msg="' + esc(t.id) + '"></span></div>' +
           '<ul class="tlist">' + keys.map(function (k) {
             var done = ui.invited[t.id + "/" + k];
-            return "<li><div>" + who(byPos()[k]) + "</div>" + '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
-              (done ? "Texted ✓" : "Mark texted") + "</button></li>";
+            return "<li><div>" + who(byPos()[k]) + "</div>" + '<div class="row">' +
+              (navigator.share && !done ? '<button class="btn small primary" data-share="' + esc(t.id) + '" data-key="' + esc(k) + '">Invite</button>' : "") +
+              '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
+              (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
       }
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
@@ -385,6 +388,21 @@
       });
       out.querySelectorAll("[data-invite-skip]").forEach(function (b) { b.onclick = function () { ui.inviteRun.i++; renderTrades(); }; });
       out.querySelectorAll("[data-invite-stop]").forEach(function (b) { b.onclick = function () { ui.inviteRun = null; renderTrades(); }; });
+      // Invite inside the claude.ai page: the phone's share sheet (Messages, then the person). Marked texted only when it went.
+      out.querySelectorAll("[data-share]").forEach(function (b) {
+        b.onclick = function () {
+          var id = b.dataset.share, msg = out.querySelector('[data-copy-msg="' + id + '"]');
+          navigator.share({ text: inviteText(find(id)) }).then(function () {
+            ui.invited[id + "/" + b.dataset.key] = true;
+            renderTrades();
+          }, function (er) {
+            if (er && er.name === "AbortError") return; // closed the share sheet
+            if (msg) msg.textContent = "Sharing is blocked here. Use Copy text.";
+            var ta = out.querySelector('[data-copy-text="' + id + '"]');
+            if (ta) { ta.focus(); ta.select(); }
+          });
+        };
+      });
       out.querySelectorAll("[data-mark]").forEach(function (b) {
         b.onclick = function () { var k = b.dataset.mark + "/" + b.dataset.key; ui.invited[k] = !ui.invited[k]; renderTrades(); };
       });
