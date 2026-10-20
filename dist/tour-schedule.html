@@ -3523,12 +3523,25 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
         esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
     }
+    // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
+    function framed() { try { return root.self !== root.top; } catch (e) { return true; } }
     function inviteHtml(t) {
       var keys = notOnTool(t);
       if (!keys.length) return "";
+      var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
+      if (framed()) {
+        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy the text, then send it to " +
+          (keys.length === 1 ? "them" : "each of them") + " from Messages on your phone.</p>" +
+          '<textarea class="invite-copy" readonly rows="5" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" +
+          '<div class="row"><button class="btn small primary" data-invite-copy="' + esc(t.id) + '">Copy text</button><span class="msg" data-copy-msg="' + esc(t.id) + '"></span></div>' +
+          '<ul class="tlist">' + keys.map(function (k) {
+            var done = ui.invited[t.id + "/" + k];
+            return "<li><div>" + who(byPos()[k]) + "</div>" + '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
+              (done ? "Texted ✓" : "Mark texted") + "</button></li>";
+          }).join("") + "</ul></div>";
+      }
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
-      var html = '<div class="invite-box"><p class="hint">' + (keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't") +
-        " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -3542,8 +3555,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
             smsLink(t, k, "Invite") + "</li>";
         }).join("") + "</ul>" +
           '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
-          '<button class="linkish small-link" data-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
-          (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4">' + esc(inviteText(t)) + "</textarea>" : "");
+          '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
     }
@@ -3639,13 +3652,22 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       });
       out.querySelectorAll("[data-invite-skip]").forEach(function (b) { b.onclick = function () { ui.inviteRun.i++; renderTrades(); }; });
       out.querySelectorAll("[data-invite-stop]").forEach(function (b) { b.onclick = function () { ui.inviteRun = null; renderTrades(); }; });
-      out.querySelectorAll("[data-copy]").forEach(function (b) {
+      out.querySelectorAll("[data-mark]").forEach(function (b) {
+        b.onclick = function () { var k = b.dataset.mark + "/" + b.dataset.key; ui.invited[k] = !ui.invited[k]; renderTrades(); };
+      });
+      // Copy by selecting the text box (works inside the claude.ai frame, where the clipboard API may not).
+      out.querySelectorAll("[data-invite-copy]").forEach(function (b) {
         b.onclick = function () {
-          var text = inviteText(find(b.dataset.copy));
-          var shown = function () { ui.copyOpen = b.dataset.copy; renderTrades(); var ta = out.querySelector(".invite-copy"); if (ta) ta.select(); };
-          if (navigator.clipboard && navigator.clipboard.writeText) {
-            navigator.clipboard.writeText(text).then(function () { b.textContent = "Copied. Paste it into a text."; }, shown);
-          } else shown();
+          var id = b.dataset.inviteCopy;
+          if (!out.querySelector('[data-copy-text="' + id + '"]')) { ui.copyOpen = id; renderTrades(); }
+          var ta = out.querySelector('[data-copy-text="' + id + '"]'), msg = out.querySelector('[data-copy-msg="' + id + '"]');
+          if (!ta) return;
+          ta.focus(); ta.select(); ta.setSelectionRange(0, ta.value.length);
+          var ok = false;
+          try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+          var say = function (text) { if (msg) msg.textContent = text; else b.textContent = text; };
+          if (ok) say("Copied. Open Messages, paste it and send.");
+          else say("Press and hold the text, then Copy.");
         };
       });
       out.querySelectorAll("[data-add]").forEach(function (b) { b.onclick = function () { ui.addOpen = b.dataset.add; renderTrades(); }; });
