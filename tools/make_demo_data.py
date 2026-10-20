@@ -337,7 +337,8 @@ def fit_staffing(seats, recs, rng):
             short = sum(g for g in gap if g > 0) / total
             extra = -sum(g for g in gap if g < 0)
             out += (short - (SHORT_MIN + SHORT_MAX) / 2) ** 2 + (3 if short < SHORT_MIN or short > SHORT_MAX else 0)
-            out += 0.01 * extra + (3 if extra > MAX_EXTRA else 0)
+            out += 50 * (max(0, SHORT_MIN - short) + max(0, short - SHORT_MAX))  # the farther out, the worse
+            out += 0.01 * extra + (3 if extra > MAX_EXTRA else 0) + 0.5 * max(0, extra - MAX_EXTRA)
         return out
     # Pass 1: even out the head count per watch, overall and per apparatus (frozen seats averaged per watch).
     fixed = {w: {} for w in range(1, 32)}
@@ -397,6 +398,11 @@ def fit_staffing(seats, recs, rng):
             else:
                 req[co] = old
             continue
+        if rng.random() < 0.3:  # move one seat: shifts head count between watches
+            got = try_tour(rng.choice(free), rng.randint(1, 31), lambda: score(req), best + slack * rng.random())
+            if got is not None:
+                best = got
+            continue
         # Swap the tours of two seats: the head count per watch stays as even as pass 1 left it.
         s1, s2 = rng.sample(free, 2)
         t1, t2 = s1["tour"], s2["tour"]
@@ -421,6 +427,7 @@ def fit_staffing(seats, recs, rng):
           f"(mean {sum(shorts) / len(shorts):.1%}); extra people at most {max(extras)} a day; over {days[0]}..{days[-1]}")
     assert max(extras) <= MAX_EXTRA, "too many people over Required (Open wouldn't add up with On duty)"
     assert max(ons) < sum(req.values()), "more people on duty than Required"
+    assert SHORT_MIN - 1e-9 <= min(shorts) and max(shorts) <= SHORT_MAX + 1e-9, "a day is outside the 10-15% short range"
     return req
 
 
@@ -499,11 +506,31 @@ def main():
     ff_x = pick("Firefighter", 2)
     cover(ff_x[0]["pos"], ff_x[0]["name"], ff_x[1], "2026-10-05", "2026-12-31", "extra", "Second firefighter, training")
 
+    # Leave and covers running in the demo's first week, so today's Projection and Staffing show them.
+    ff_va, lt_va, lt_away = pick("Firefighter")[0], pick("Lieutenant")[0], pick("Lieutenant")[0]
+    status(ff_va, "VA", "2026-10-17", "2026-10-30", "Vacation")
+    status(lt_va, "VA", "2026-10-18", "2026-10-31", "Vacation")
+    cover(lt_away["pos"], lt_away["name"], lt_va, "2026-10-18", "2026-10-31", "cover", f"Covering {lt_va['name']}'s vacation")
+    pm_d = pick("FF/Paramedic")[0]
+    status(pm_d, "D", "2026-10-12", None, "Knee injury")
+    ff_d, ff_cov = pick("Firefighter", 2)
+    status(ff_d, "D", "2026-10-14", "2026-11-30", "")
+    cover(ff_cov["pos"], ff_cov["name"], ff_d, "2026-10-14", "2026-11-30", "cover", f"{ff_d['name']} on disability")
+    lt_d, ff_act = pick("Lieutenant")[0], pick("Firefighter")[0]
+    status(lt_d, "D", "2026-10-16", None, "Back injury")
+    cover(ff_act["pos"], ff_act["name"], lt_d, "2026-10-16", None, "acting", f"Acting Lieutenant while {lt_d['name']} is off")
+
     # An added person (relief, not on the vacancy list) covering a vacant seat.
     open_seats = list(vacant)
     people = [{"id": "p001", "name": next(names), "rank": "Firefighter", "company": None, "tour": None, "emplId": "DM0900",
                "note": "Relief", "createdAt": created("2026-09-15")}]
     cover("person:p001", people[0]["name"], open_seats.pop(0), "2026-09-15", None, "cover", "Relief, long-term")
+    # Two more relief people fill this week's vacation and the paramedic's disability.
+    for k, (rank, seat_, start, end, note) in enumerate([("Firefighter", ff_va, "2026-10-17", "2026-10-30", "Relief for vacation"),
+                                                          ("FF/Paramedic", pm_d, "2026-10-12", None, "Relief for disability")], 2):
+        people.append({"id": f"p{k:03d}", "name": next(names), "rank": rank, "company": None, "tour": None,
+                       "emplId": f"DM09{k:02d}", "note": "Relief", "createdAt": created(start)})
+        cover(f"person:p{k:03d}", people[-1]["name"], seat_, start, end, "cover", note)
 
     # Two moves from assignment-change notices, each logged in `assignments`.
     assignments = []

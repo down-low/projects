@@ -82,6 +82,51 @@
     "end": "2027-02-28",
     "note": "Fire prevention detail",
     "createdAt": "2026-10-15T15:09:00.000Z"
+   },
+   {
+    "id": "st015",
+    "pos": "04EOD10M",
+    "code": "VA",
+    "start": "2026-10-17",
+    "end": "2026-10-30",
+    "note": "Vacation",
+    "createdAt": "2026-10-17T15:15:00.000Z"
+   },
+   {
+    "id": "st016",
+    "pos": "02EOL25M",
+    "code": "VA",
+    "start": "2026-10-18",
+    "end": "2026-10-31",
+    "note": "Vacation",
+    "createdAt": "2026-10-18T15:16:00.000Z"
+   },
+   {
+    "id": "st018",
+    "pos": "09EOA01M",
+    "code": "D",
+    "start": "2026-10-12",
+    "end": null,
+    "note": "Knee injury",
+    "createdAt": "2026-10-12T15:18:00.000Z"
+   },
+   {
+    "id": "st019",
+    "pos": "03TOD03M",
+    "code": "D",
+    "start": "2026-10-14",
+    "end": "2026-11-30",
+    "note": "",
+    "createdAt": "2026-10-14T15:19:00.000Z"
+   },
+   {
+    "id": "st021",
+    "pos": "03TOL16M",
+    "code": "D",
+    "start": "2026-10-16",
+    "end": null,
+    "note": "Back injury",
+    "createdAt": "2026-10-16T15:21:00.000Z"
    }
   ],
   "tourChanges": [
@@ -144,7 +189,43 @@
     "createdAt": "2026-10-05T15:14:00.000Z"
    },
    {
-    "id": "cv015",
+    "id": "cv017",
+    "coverKey": "01EOL05M",
+    "coverName": "Glenrock,B",
+    "targetPos": "02EOL25M",
+    "start": "2026-10-18",
+    "end": "2026-10-31",
+    "kind": "cover",
+    "move": false,
+    "note": "Covering Stonebridge,B's vacation",
+    "createdAt": "2026-10-18T15:17:00.000Z"
+   },
+   {
+    "id": "cv020",
+    "coverKey": "02EOE15M",
+    "coverName": "Prestwick,L",
+    "targetPos": "03TOD03M",
+    "start": "2026-10-14",
+    "end": "2026-11-30",
+    "kind": "cover",
+    "move": false,
+    "note": "Wexley,A on disability",
+    "createdAt": "2026-10-14T15:20:00.000Z"
+   },
+   {
+    "id": "cv022",
+    "coverKey": "08TOD06M",
+    "coverName": "Galloway,R",
+    "targetPos": "03TOL16M",
+    "start": "2026-10-16",
+    "end": null,
+    "kind": "acting",
+    "move": false,
+    "note": "Acting Lieutenant while Fairbanks,C is off",
+    "createdAt": "2026-10-16T15:22:00.000Z"
+   },
+   {
+    "id": "cv023",
     "coverKey": "person:p001",
     "coverName": "Abernathy,P",
     "targetPos": "08TOT26M",
@@ -153,55 +234,79 @@
     "kind": "cover",
     "move": false,
     "note": "Relief, long-term",
-    "createdAt": "2026-09-15T15:15:00.000Z"
+    "createdAt": "2026-09-15T15:23:00.000Z"
    },
    {
-    "id": "cv016",
-    "coverKey": "04EOD10M",
-    "coverName": "Marlowe,J",
+    "id": "cv024",
+    "coverKey": "person:p002",
+    "coverName": "Redfern,W",
+    "targetPos": "04EOD10M",
+    "start": "2026-10-17",
+    "end": "2026-10-30",
+    "kind": "cover",
+    "move": false,
+    "note": "Relief for vacation",
+    "createdAt": "2026-10-17T15:24:00.000Z"
+   },
+   {
+    "id": "cv025",
+    "coverKey": "person:p003",
+    "coverName": "Hollister,D",
+    "targetPos": "09EOA01M",
+    "start": "2026-10-12",
+    "end": null,
+    "kind": "cover",
+    "move": false,
+    "note": "Relief for disability",
+    "createdAt": "2026-10-12T15:25:00.000Z"
+   },
+   {
+    "id": "cv026",
+    "coverKey": "02EOD09M",
+    "coverName": "Blackmere,E",
     "targetPos": "01EOE26M",
     "start": "2026-06-18",
     "end": null,
     "kind": "cover",
     "move": true,
     "note": "Assignment change (demo notice 26 A-050)",
-    "createdAt": "2026-06-18T15:16:00.000Z"
+    "createdAt": "2026-06-18T15:26:00.000Z"
    },
    {
-    "id": "cv018",
-    "coverKey": "02EOA01M",
-    "coverName": "Wolcott,G",
+    "id": "cv028",
+    "coverKey": "09EOA04M",
+    "coverName": "Kilbride,N",
     "targetPos": "03EOA04M",
     "start": "2026-08-04",
     "end": null,
     "kind": "cover",
     "move": true,
     "note": "Assignment change (demo notice 26 A-051)",
-    "createdAt": "2026-08-04T15:18:00.000Z"
+    "createdAt": "2026-08-04T15:28:00.000Z"
    },
    {
-    "id": "cv020",
-    "coverKey": "01EOD15M",
-    "coverName": "Coldwell,L",
+    "id": "cv030",
+    "coverKey": "08TOD02M",
+    "coverName": "Fairbanks,N",
     "targetPos": "03TOF19M",
     "start": "2027-01-17",
     "end": null,
     "kind": "cover",
     "move": true,
     "note": "2027 award (demo)",
-    "createdAt": "2027-01-17T15:20:00.000Z"
+    "createdAt": "2027-01-17T15:30:00.000Z"
    },
    {
-    "id": "cv021",
-    "coverKey": "03TOF21M",
-    "coverName": "Ivesdale,E",
+    "id": "cv031",
+    "coverKey": "09EOD15M",
+    "coverName": "Dunmore,M",
     "targetPos": "05EOE24M",
     "start": "2027-01-16",
     "end": null,
     "kind": "cover",
     "move": true,
     "note": "2027 award (demo)",
-    "createdAt": "2027-01-16T15:21:00.000Z"
+    "createdAt": "2027-01-16T15:31:00.000Z"
    }
   ],
   "people": [
@@ -213,20 +318,40 @@
     "tour": null,
     "emplId": "DM0900",
     "note": "Relief",
-    "createdAt": "2026-09-15T15:14:00.000Z"
+    "createdAt": "2026-09-15T15:22:00.000Z"
+   },
+   {
+    "id": "p002",
+    "name": "Redfern,W",
+    "rank": "Firefighter",
+    "company": null,
+    "tour": null,
+    "emplId": "DM0902",
+    "note": "Relief",
+    "createdAt": "2026-10-17T15:23:00.000Z"
+   },
+   {
+    "id": "p003",
+    "name": "Hollister,D",
+    "rank": "FF/Paramedic",
+    "company": null,
+    "tour": null,
+    "emplId": "DM0903",
+    "note": "Relief",
+    "createdAt": "2026-10-12T15:24:00.000Z"
    }
   ],
   "staffing": [],
   "assignments": [
    {
-    "id": "as017",
-    "key": "04EOD10M",
-    "emplId": "DM0043",
-    "name": "Marlowe,J",
+    "id": "as027",
+    "key": "02EOD09M",
+    "emplId": "DM0019",
+    "name": "Blackmere,E",
     "firstReg": "2026-06-18",
     "lastReg": "2026-06-12",
-    "fromPos": "04EOD10M",
-    "fromStation": "E04",
+    "fromPos": "02EOD09M",
+    "fromStation": "E02",
     "toPos": "01EOE26M",
     "toStation": "E01",
     "toTour": 26,
@@ -234,18 +359,18 @@
     "rankTo": "Firefighter",
     "source": "Assignment change notice 26 A-050 (demo)",
     "note": "",
-    "recordId": "cv016",
-    "createdAt": "2026-06-18T15:17:00.000Z"
+    "recordId": "cv026",
+    "createdAt": "2026-06-18T15:27:00.000Z"
    },
    {
-    "id": "as019",
-    "key": "02EOA01M",
-    "emplId": "DM0016",
-    "name": "Wolcott,G",
+    "id": "as029",
+    "key": "09EOA04M",
+    "emplId": "DM0105",
+    "name": "Kilbride,N",
     "firstReg": "2026-08-04",
     "lastReg": "2026-07-30",
-    "fromPos": "02EOA01M",
-    "fromStation": "E02",
+    "fromPos": "09EOA04M",
+    "fromStation": "E09",
     "toPos": "03EOA04M",
     "toStation": "E03",
     "toTour": 4,
@@ -253,8 +378,8 @@
     "rankTo": "FF/Paramedic",
     "source": "Assignment change notice 26 A-051 (demo)",
     "note": "",
-    "recordId": "cv018",
-    "createdAt": "2026-08-04T15:19:00.000Z"
+    "recordId": "cv028",
+    "createdAt": "2026-08-04T15:29:00.000Z"
    }
   ]
  }
