@@ -83,7 +83,17 @@
       if (!got.buf) {
         if (!out.length) {
           got.trail.forEach((t, i) => console.log('fir-sap2 step ' + (i + 1) + ': ' + t.url + ' (' + t.type + ')\n' + t.text.slice(0, 3000)));
-          return alert('fir-sap2 did not send an Excel file for ' + st + '. In the console, right-click the "fir-sap2 step" lines → Copy (or select them all), and paste them into the chat.');
+          if (!confirm('fir-sap2 did not hand the Excel file to this script.\n\nDownload each station\'s Excel file instead? That is ' + STATIONS.length +
+            ' files, about 3 seconds apart; Chrome asks once to allow multiple downloads (choose Allow). Then attach the files (or a zip of them) in the chat.\n\nCancel stops here; then copy the "fir-sap2 step" lines from the console into the chat.')) return;
+          // The same thing the address bar does: load each station's Excel link in a hidden frame and let the browser save it.
+          for (const s of STATIONS) {
+            const f = document.createElement('iframe');
+            f.style.display = 'none'; f.src = urlFor(s); document.body.appendChild(f);
+            console.log('station rosters: asked for ' + s);
+            await new Promise((r) => setTimeout(r, 3000));
+            setTimeout(() => f.remove(), 60000);
+          }
+          return alert('Asked for all ' + STATIONS.length + ' stations. When the downloads finish, attach the STATION_ROSTER files (or a zip of them) in the chat.');
         }
         failed.push(st); continue;
       }
