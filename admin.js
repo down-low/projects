@@ -19,11 +19,97 @@
     var $ = api.$, esc = api.esc;
     var roster = null, claimPick = null, adminFilter = "", adminUsersCache = [];
 
+    /* ---------- Trade invite links (?t=<code>, Firebase) ----------
+       Before sign-in: the trade and an answer form (answerInvite). Signed in and not yet approved: the Employee ID that
+       proves it's the invited person (redeemInvite), which links and approves the account. The code survives sign-in. */
+    function inviteCode() {
+      try {
+        var c = new URLSearchParams(location.search).get("t");
+        if (c) sessionStorage.setItem("tradeInvite", c);
+        return c || sessionStorage.getItem("tradeInvite");
+      } catch (e) { return null; }
+    }
+    function dropInvite() {
+      try { sessionStorage.removeItem("tradeInvite"); history.replaceState(null, "", location.pathname); } catch (e) { /* old browser */ }
+    }
+    function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
+    function signInButton() { return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'; }
+    function wireSignIn(el) {
+      if ($("gate-in")) $("gate-in").onclick = function () {
+        api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
+      };
+    }
+    function renderInviteAnswer(el, code) {
+      el.innerHTML = '<div class="card gate-card"><h2>Shift trade</h2><p class="hint" id="inv-body">Loading…</p></div>';
+      api.backend().inviteInfo(code).then(function (info) {
+        var card = el.querySelector(".gate-card");
+        if (info.error) {
+          card.innerHTML = "<h2>Shift trade</h2><p>" + esc(info.error) + ". Sign in to see the trade board.</p>" + signInButton();
+          dropInvite();
+          return wireSignIn(el);
+        }
+        var said = info.answer ? (info.answer.later ? "pay back later" : "they work your " + niceDate(info.answer.swapDate)) : "";
+        card.innerHTML = "<h2>Shift trade</h2>" +
+          "<p><b>" + esc(info.posterName) + "</b>" + (info.posterRank ? " (" + esc(info.posterRank) + ")" : "") + " wants to trade <b>" +
+          esc(niceDate(info.date)) + "</b>, a 24-hr shift" + (info.station ? " at " + esc(info.station) : "") + ".</p>" +
+          (info.note ? '<p class="trade-note">' + esc(info.note) + "</p>" : "") +
+          (info.forName ? '<p class="hint">This link is for ' + esc(info.forName) + ".</p>" : "") +
+          (said ? "<p>You answered: <b>" + esc(said) + "</b>. You can change it below.</p>" : "") +
+          (info.open
+            ? '<form class="edit" id="inv-form" novalidate><fieldset class="choice"><legend>I\'m interested</legend>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="later" checked> Pay me back later</label>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="swap"> Swap: they work one of my shifts</label>' +
+              '<label class="indent">My day they\'d work<input type="date" id="inv-swap" disabled></label></fieldset>' +
+              '<label>Note (optional)<input type="text" id="inv-note" maxlength="300"></label>' +
+              '<div class="row"><button class="btn primary" type="submit">Send my answer</button><span class="msg" id="inv-msg" role="status"></span></div></form>'
+            : "<p>This trade is no longer open.</p>") +
+          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. If they pick you, sign in with Google and your Employee ID to confirm it's you.") + "</p>" +
+          signInButton();
+        wireSignIn(el);
+        var f = $("inv-form");
+        if (!f) return;
+        var swap = $("inv-swap");
+        f.querySelectorAll("[name=inv-kind]").forEach(function (r) { r.onchange = function () { swap.disabled = f.querySelector("[name=inv-kind]:checked").value !== "swap"; }; });
+        f.onsubmit = function (e) {
+          e.preventDefault();
+          var msg = $("inv-msg"), later = f.querySelector("[name=inv-kind]:checked").value === "later";
+          if (!later && !swap.value) return api.say(msg, "Pick the day they'd work for you.", true);
+          api.say(msg, "Sending…");
+          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim())
+            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it; you'll confirm it's you if they pick you."); },
+              function (er) { api.say(msg, er.message, true); });
+        };
+      }, function (er) {
+        el.querySelector(".gate-card").innerHTML = "<h2>Shift trade</h2><p class=\"msg err\">" + esc(er.message) + "</p>" + signInButton();
+        wireSignIn(el);
+      });
+    }
+    function renderInviteRedeem(el, code, me) {
+      el.innerHTML = '<div class="card gate-card"><h2>Confirm it\'s you</h2>' +
+        '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
+        "<p>Enter your Employee ID. If it matches the person this trade invite was sent to, your account is set up right away.</p>" +
+        '<form class="edit claim-form" id="inv-redeem" novalidate><label>Employee ID<input type="text" id="inv-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Confirm</button><span class="msg" id="inv-rmsg" role="status"></span></div></form>' +
+        '<p><button class="linkish" type="button" id="inv-skip">Not you? Find yourself on the roster instead</button></p></div>';
+      $("gate-out").onclick = function () { api.backend().signOut(); };
+      $("inv-skip").onclick = function () { dropInvite(); renderGate(); };
+      $("inv-redeem").onsubmit = function (e) {
+        e.preventDefault();
+        var id = $("inv-id").value.trim().toUpperCase(), msg = $("inv-rmsg");
+        if (!/^[A-Z]{2}\d{4}$/.test(id)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        api.say(msg, "Checking…");
+        api.backend().redeemInvite(code, id).then(function () { dropInvite(); location.reload(); }, function (er) { api.say(msg, er.message, true); });
+      };
+    }
+
     /* ---------- Sign-in and claim screen ---------- */
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
       api.gate(true);
+      var code = api.backend().inviteInfo ? inviteCode() : null;
+      if (code && !me.signedIn) return renderInviteAnswer(el, code);
+      if (code && !me.wrongSite && me.status === "pending") return renderInviteRedeem(el, code, me);
       var err = null;
       try { err = new URLSearchParams(location.search).get("auth_error"); } catch (e) { /* old browser */ }
       var errHtml = err ? '<p class="msg err" role="alert">' + esc(AUTH_ERRORS[err] || "Sign-in failed. Try again.") + "</p>" : "";

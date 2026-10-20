@@ -641,6 +641,7 @@ s.held + .st { margin-left: 2px; }
 .cal .d.off.st-TR { border-color: var(--tr); background: repeating-linear-gradient(135deg, var(--tr-soft) 0 6px, var(--surface) 6px 12px); }
 .cal .d.off.st-TR .w { color: var(--tr); }
 .tag-st-open { background: var(--accent-soft); color: var(--accent); }
+.tag-st-pending { background: var(--swing-soft); color: var(--swing); }
 .tag-st-cancelled, .tag-st-expired { background: var(--line); color: var(--muted); font-weight: 500; }
 .trade-link { font-family: var(--font-body); font-size: 0.8rem; color: var(--accent); margin-left: 6px; }
 

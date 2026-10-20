@@ -102,3 +102,44 @@ test("stats return averages only, for known people", () => {
     "2026-10-19", (k) => !!lookup(k));
   assert.deepEqual(r, { avgAge: 40, nAge: 1, avgYos: 10, nYos: 1 });
 });
+
+const TRADE = { posterKey: "10EOC03M", status: "open", date: "2026-11-14", audience: { board: false, to: ["11ENL01M", "11ENL02M"] } };
+const ictx = (o) => Object.assign({ callerPos: "10EOC03M", today: "2026-10-20", onTool: () => false }, o);
+
+test("invites: only the poster, only people the trade went to, only people not on the tool", () => {
+  assert.equal(A.inviteProblem(TRADE, "11ENL01M", ictx()), null);
+  assert.match(A.inviteProblem(TRADE, "11ENL01M", ictx({ callerPos: "11ENL02M" })), /posted the trade/);
+  assert.match(A.inviteProblem(TRADE, "12ENL09M", ictx()), /sent the trade to/);
+  assert.match(A.inviteProblem(TRADE, "11ENL01M", ictx({ onTool: () => true })), /already on the tool/);
+  assert.match(A.inviteProblem(Object.assign({}, TRADE, { status: "set" }), "11ENL01M", ictx()), /no longer open/);
+  assert.match(A.inviteProblem(TRADE, "11ENL01M", ictx({ today: "2026-11-15" })), /no longer open/);
+  assert.match(A.inviteProblem(null, "11ENL01M", ictx()), /No such trade/);
+});
+
+test("invites expire on the trade's day or after 14 days", () => {
+  assert.equal(A.inviteExpiry("2026-11-14", "2026-10-20T12:00:00.000Z"), "2026-11-03T12:00:00.000Z");
+  assert.equal(A.inviteExpiry("2026-10-25", "2026-10-20T12:00:00.000Z"), "2026-10-25T23:59:59.999Z");
+  assert.match(A.inviteState({ expiresAt: "2026-10-19T00:00:00.000Z" }, NOW), /expired/);
+  assert.equal(A.inviteState({ expiresAt: "2026-10-25T00:00:00.000Z" }, NOW), null);
+  assert.match(A.inviteState(null, NOW), /isn't valid/);
+});
+
+test("answers from a link: pay back later or a later swap day", () => {
+  assert.deepEqual(A.cleanInviteAnswer({ proposal: { later: true } }, "2026-11-14", "2026-10-20"), { proposal: { later: true }, note: null });
+  assert.deepEqual(A.cleanInviteAnswer({ proposal: { swapDate: "2026-11-20" }, note: " ok " }, "2026-11-14", "2026-10-20").proposal, { swapDate: "2026-11-20" });
+  assert.throws(() => A.cleanInviteAnswer({ proposal: { swapDate: "2026-11-14" } }, "2026-11-14", "2026-10-20"), /later day/);
+  assert.throws(() => A.cleanInviteAnswer({ proposal: {} }, "2026-11-14", "2026-10-20"), /pay back later/);
+});
+
+test("signing in from a link: the Employee ID must match the invited person", () => {
+  const inv = { recipientKey: "11ENL01M", inviterKey: "10EOC03M", expiresAt: "2026-11-01T00:00:00.000Z", usedBy: null };
+  const pending = { status: "pending", role: "member", pos: null };
+  const patch = A.planRedeem("u1", pending, inv, "le1234", { expected: "LE1234", takenBy: null, nowIso: NOW });
+  assert.deepEqual([patch.pos, patch.status, patch.approvedBy, patch.invitedBy], ["11ENL01M", "active", "invite", "10EOC03M"]);
+  assert.throws(() => A.planRedeem("u1", pending, inv, "LE9999", { expected: "LE1234", nowIso: NOW }), /doesn't match/);
+  assert.throws(() => A.planRedeem("u1", pending, inv, "LE1234", { expected: null, nowIso: NOW }), /no Employee ID on file/);
+  assert.throws(() => A.planRedeem("u1", pending, inv, "LE1234", { expected: "LE1234", takenBy: "u2", nowIso: NOW }), /already linked/);
+  assert.throws(() => A.planRedeem("u1", pending, Object.assign({}, inv, { usedBy: "u2" }), "LE1234", { expected: "LE1234", nowIso: NOW }), /already been used/);
+  assert.throws(() => A.planRedeem("u1", { status: "active", pos: "12X" }, inv, "LE1234", { expected: "LE1234", nowIso: NOW }), /linked to someone else/);
+  assert.throws(() => A.planRedeem("u1", pending, inv, "1234", { expected: "LE1234", nowIso: NOW }), /two letters/);
+});

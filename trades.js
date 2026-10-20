@@ -11,7 +11,7 @@
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -85,7 +85,7 @@
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
     // My open or set trade for that day, or null.
     function tradeFor(pos, dIso) {
-      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set" || x.status === "pending"); })[0] || null;
     }
     function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
     function tradeLink(p, d) {
@@ -207,9 +207,13 @@
     function ownCard(t) {
       var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] };
       var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + '</span><span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
       var body = "";
-      if (st === "set") {
+      if (st === "pending") {
+        body = '<p class="trade-terms">You picked ' + esc(nameOf(t.takerKey)) + ". " + esc(terms(t.proposal, true)) + ".</p>" +
+          '<p class="hint">Waiting for them to sign in from their link with their Employee ID; then the trade is set.</p>' +
+          '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
+      } else if (st === "set") {
         body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + " works your shift. " + esc(terms(t.proposal, true)) + ".</p>" +
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
@@ -218,6 +222,7 @@
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + (r.via === "poster" ? ' <span class="tag">Added by you</span>' : "") +
+              (r.via === "link" ? ' <span class="tag">' + (r.verified ? "From their link" : "From their link · not verified") + "</span>" : "") +
               '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
               '<button class="btn small primary" data-pick="' + esc(r.id) + '" data-trade="' + esc(t.id) + '">Pick</button></li>';
           }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') + inviteHtml(t) +
@@ -237,15 +242,35 @@
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    function inviteText(t) {
-      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos], link = pageLink();
+    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    function inviteText(t, k) {
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
+      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
       return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
-    // iPhones and Macs take "sms:&body=", Android "sms:?body=".
-    function smsHref(body) {
-      return "sms:" + (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?") + "body=" + encodeURIComponent(body);
+    /* A Messages link, addressed to `cells` (staff-list numbers from createInvite) when there are any. iPhones and Macs
+       take "sms:<n>&body=" and "sms:/open?addresses=<a>,<b>&body=" for a group; Android "sms:<a>,<b>?body=". */
+    function smsHref(body, cells) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = (cells || []).map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    /* Personal links (Firebase): createInvite makes one code per person not on the tool, with their staff-list cell.
+       Fetched once per trade; until then (or elsewhere) the general link and no number. */
+    function inviteFor(t, k) { var l = ui.links[t.id]; return l && l.byKey ? l.byKey[k] || null : null; }
+    function loadLinks(t, keys) {
+      var b = backend();
+      if (!b.createInvite || ui.links[t.id]) return;
+      ui.links[t.id] = { loading: true };
+      b.createInvite(t.id, keys).then(function (rows) {
+        var by = {};
+        (rows || []).forEach(function (r) { by[r.key] = r; });
+        ui.links[t.id] = { byKey: by };
+        renderTrades();
+      }, function (er) { ui.links[t.id] = { error: er.message }; renderTrades(); });
     }
     function notOnTool(t) {
       var b = backend();
@@ -253,7 +278,8 @@
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
     function smsLink(t, k, label, cls, run) {
-      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
+      var mine = inviteFor(t, k);
+      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
         esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
     }
     // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
@@ -274,8 +300,13 @@
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
       }
-      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      loadLinks(t, keys);
+      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
+      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
+        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
+        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -288,8 +319,10 @@
           return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
             smsLink(t, k, "Invite") + "</li>";
         }).join("") + "</ul>" +
-          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
+          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
+            '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";

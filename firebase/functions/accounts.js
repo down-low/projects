@@ -182,7 +182,67 @@ function averages(rows, isoDate, known) {
   return { avgAge: avg(ages), nAge: ages.length, avgYos: avg(yos), nYos: yos.length };
 }
 
+/* ---------- Trade invites (personal links) ----------
+   tradeInvites/{code}: {tradeId, recipientKey, inviterKey, createdAt, expiresAt, usedBy, usedAt, answers}.
+   A poster texts a link from their own phone to someone the trade went to who has no account. The link lets them
+   answer before signing up; their Employee ID proves who they are when they sign in (planRedeem). */
+const INVITES_PER_DAY = 20;
+const INVITE_DAYS = 14;
+const ANSWERS_PER_INVITE = 10;
+const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
+
+/* Why the poster can't invite `key` to `trade`, or null. trade: {posterKey, status, date, audience}; ctx: {callerPos,
+   today, onTool(key) -> bool, sentToday (codes the caller made today, reused ones not counted)}. */
+function inviteProblem(trade, key, ctx) {
+  if (!trade) return "No such trade";
+  if (!ctx.callerPos || trade.posterKey !== ctx.callerPos) return "Only the person who posted the trade can invite people to it";
+  if (trade.status !== "open" || trade.date < ctx.today) return "This trade is no longer open";
+  if (((trade.audience && trade.audience.to) || []).indexOf(key) === -1) return "You can only invite people you sent the trade to";
+  if (ctx.onTool(key)) return "They're already on the tool and can see it";
+  return null;
+}
+// The link works until the trade's day or 14 days after it was made, whichever is first.
+function inviteExpiry(tradeDate, nowIso) {
+  const limit = new Date(Date.parse(nowIso) + INVITE_DAYS * 864e5).toISOString();
+  const dayEnd = tradeDate + "T23:59:59.999Z";
+  return dayEnd < limit ? dayEnd : limit;
+}
+// Why an invite can't be used now, or null.
+function inviteState(inv, nowIso) {
+  if (!inv) return "That link isn't valid";
+  if (inv.expiresAt < nowIso) return "That link has expired";
+  return null;
+}
+// An answer from the link: pay back later, or a swap day (checked against the schedule when the poster picks it).
+function cleanInviteAnswer(body, tradeDate, today) {
+  const p = body && body.proposal;
+  let proposal;
+  if (p && p.later === true) proposal = { later: true };
+  else if (p && isDate(p.swapDate)) {
+    if (p.swapDate === tradeDate || p.swapDate < today) throw bad("Pick a later day for the swap, not the traded day");
+    proposal = { swapDate: p.swapDate };
+  } else throw bad("Choose pay back later or a swap day");
+  return { proposal, note: cleanText(body.note, "note", 300) || null };
+}
+/* Signing in from a link: the Employee ID must match the one on file for the invited person. u: the account; expected:
+   that person's Employee ID or null; takenBy: the uid linked to recipientKey, or null. Returns the account fields to set. */
+function planRedeem(uid, u, inv, emplId, { expected, takenBy, nowIso }) {
+  const why = inviteState(inv, nowIso);
+  if (why) throw new AccountError("failed-precondition", why);
+  if (inv.usedBy && inv.usedBy !== uid) throw new AccountError("already-exists", "That link has already been used by another account");
+  if (!u || u.status === "disabled") throw new AccountError("permission-denied", "This account can't be used.");
+  if (u.status === "active" && u.pos && u.pos !== inv.recipientKey) throw new AccountError("failed-precondition", "Your account is already linked to someone else");
+  if (takenBy && takenBy !== uid) throw new AccountError("already-exists", "That person is already linked to another account. Ask an admin for help.");
+  const id = cleanText(emplId, "emplId", 20).toUpperCase();
+  if (!EMPL_ID_RE.test(id)) throw bad("Employee ID is two letters and four digits, e.g. LE1234");
+  if (!expected) throw new AccountError("failed-precondition", "There's no Employee ID on file for you yet. Pick your name below and an admin will approve it.");
+  if (id !== String(expected).toUpperCase()) throw new AccountError("permission-denied", "That Employee ID doesn't match the person this link was sent to.");
+  return { pos: inv.recipientKey, status: "active", claimPos: null, claimNote: null, claimRequest: null,
+    approvedBy: "invite", invitedBy: inv.inviterKey, approvedAt: nowIso };
+}
+
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
+  INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };
