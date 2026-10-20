@@ -18,6 +18,9 @@
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
+ * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
+ * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
  * Employee card (admins): update(kind, id, patch), setOverride(pos, {emplId, name, rank} | null) (roster seats; onChange
  * carries rosterOverrides, readable by everyone), setCell(key, cell | null), restoreMember(doc), deleteCorrection(id).
@@ -183,6 +186,7 @@
           canTrade: function () { return tradeOk(); },
           myMember: myMember,
           myKey: function () { var m = myMember(); return m ? m.key : null; },
+          onTool: function (key) { return records.members.some(function (m) { return m.key === key; }); },
           claimMember: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
             rec.userId = uid;
@@ -299,7 +303,7 @@
   /* ---------- server.py (Google sign-in, session cookie) ---------- */
   function serverAdapter(onChange) {
     if (!root.fetch || location.protocol === "file:") return Promise.resolve(null);
-    var me = null, contacts = {};
+    var me = null, contacts = {}, onTool = null;
     function getJson(path) {
       return fetch(path, { cache: "no-store", credentials: "same-origin" }).then(function (r) {
         return r.json().catch(function () { return {}; }).then(function (j) {
@@ -327,6 +331,7 @@
       return Promise.all([getJson("api/records"), getJson("api/contacts"), getJson("api/trades").catch(function () { return {}; }),
         admin ? getJson("api/admin/corrections").catch(function () { return []; }) : Promise.resolve([])]).then(function (res) {
         contacts = res[1];
+        onTool = res[2].onTool || null;
         onChange({ statuses: res[0].statuses, tourChanges: res[0].tourChanges, covers: res[0].covers || [],
           people: res[0].people || [], staffing: res[0].staffing || [], contacts: contacts,
           trades: res[2].trades || [], tradeReplies: res[2].replies || [], members: [], corrections: res[3] || [],
@@ -383,11 +388,13 @@
             canTrade: function () { return active() && !!me.pos; },
             myKey: function () { return active() ? me.pos || null : null; },
             myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
+            onTool: function (key) { return onTool ? onTool.indexOf(key) !== -1 : null; },
             setAlerts: function (a) { return call("PUT", "api/me/alerts", a).then(function (j) { me = j; return j; }); },
             postTrade: function (rec) { return thenRefresh(call("POST", "api/trades", rec)); },
             widenTrade: function (id, audience) { return thenRefresh(call("PATCH", "api/trades/" + encodeURIComponent(id), { audience: audience })); },
             replyTrade: function (rec) {
-              return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(rec.tradeId) + "/replies", { proposal: rec.proposal, note: rec.note }));
+              return thenRefresh(call("POST", "api/trades/" + encodeURIComponent(rec.tradeId) + "/replies", { proposal: rec.proposal, note: rec.note,
+                takerKey: rec.via === "poster" ? rec.takerKey : undefined }));
             },
             // The server writes the cover and TR records itself.
             pickReply: function (trade, reply) {
@@ -591,6 +598,7 @@
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
       myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
+      onTool: function () { return null; },
       setAlerts: function (a) {
         var alerts = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" };
         return w(fs.collection("users").doc(user.uid).update({ alerts: alerts })).then(function () { me.alerts = alerts; return me; });
@@ -765,6 +773,7 @@
     canTrade: function () { return false; },
     myKey: function () { return null; },
     myMember: function () { return null; },
+    onTool: function () { return null; },
   };
 
   /* A view-only snapshot: records baked into the page at build time (tools/build_artifact.py --snapshot),
@@ -792,6 +801,7 @@
       canTrade: function () { return true; },
       myKey: function () { return st.as; },
       myMember: function () { return { key: st.as, alerts: st.alerts[st.as] || {} }; },
+      onTool: function (key) { return demo.people.indexOf(key) !== -1; },
       setAlerts: function (a) { st.alerts[st.as] = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" }; return Promise.resolve(); },
       postTrade: function (rec) {
         rec = Object.assign({}, rec, { id: "demo" + ++st.n, status: "open", createdAt: nowIso() });

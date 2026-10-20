@@ -130,6 +130,10 @@ test("trades: post as yourself, reply as yourself, only the poster sets or cance
   await assertFails(db(PENDING).collection("trades").add({ posterKey: "10EOC03M", status: "open" }));
   await assertSucceeds(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL01M", proposal: { later: true } }));
   await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "10EOC03M", proposal: { later: true } }));
+  // the poster records an answer they got by text; nobody else can answer for someone
+  await assertSucceeds(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "poster", proposal: { later: true } }));
+  await assertFails(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", proposal: { later: true } }));
+  await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "poster", proposal: { later: true } }));
   await assertFails(db(OTHER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M" }));
   await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M", replyId: "r1", setAt: "x", legs: [] }));
   await assertFails(db(MEMBER).doc("trades/t1").update({ posterKey: "11ENL01M" }));
