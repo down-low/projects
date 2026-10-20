@@ -13,3 +13,7 @@ Names and Employee IDs only. Cell numbers go in on each person's Employee card, 
 | Lowder,Matthew B | LO2895 | 02EOE08M | ID was missing, no cell on file | ST02, 10/20/2026 |
 | Lee,Peter | LE6812 | 02TOT30M | ID was missing, no cell on file | ST02, 10/20/2026 |
 | Wong,Kyle D | WO2515 | 02TOE28M | ID was missing, no cell on file | ST02, 10/20/2026 |
+| Grimesey,Patrick C | GR6230 | E16, Captain (H30), seat not known | Not in the tool; added | fir-db1 Officers On Duty, 10/23–10/27/2026 |
+| Egan,Joseph W | EG8779 | E34, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
+| O'Toole,Richard C | OT4273 | E40, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
+| Boldt,Austin C | BO3091 | E12, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
