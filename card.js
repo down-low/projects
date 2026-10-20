@@ -218,7 +218,168 @@
         COLUMNS.map(function (c) {
           return '<label class="chk"><input type="checkbox" data-ccol="' + c.key + '"' + (ui.cols.indexOf(c.key) !== -1 ? " checked" : "") + "> " + esc(c.label) + "</label>";
         }).join("") + btn("Reset to default", 'id="card-cols-reset"') + "</div>" +
-        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>';
+        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>' +
+        firHtml();
+    }
+
+    /* ---------- Compare with fir-db1 (fir.js) ----------
+       Pick a rank level; the tool lists the people it has questions about (or everyone at that level) with the reasons, and
+       builds a console script for just them. Run it in a signed-in fir-db1 tab, then choose the CSV it downloads here. The
+       file is read in this browser and kept in memory only. */
+    function firPlan() {
+      var F = root.FirCompare, f = ui.fir, d = f.date ? api.fromIso(f.date) : api.today();
+      var md = function (x) { return (x.getMonth() + 1) + "/" + x.getDate() + "/" + x.getFullYear(); };
+      var date = md(d), to = f.to && f.to > (f.date || "") ? md(api.fromIso(f.to)) : "";
+      if (f.source === "list" && f.list) {
+        // A loaded list: people by the list's Employee IDs; rows without one can't be pulled.
+        var lt = F.targetsFromList(f.list, api, f.group);
+        return { list: lt, label: f.list.name + (f.group ? ", " + f.group : ""), skipped: lt.filter(function (x) { return !x.id; }).length,
+          people: lt.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.p ? x.p.name : x.name, co: x.p ? api.home(x.p) || "" : "" }; }),
+          companies: [], date: date, to: to };
+      }
+      var list = F.targets(api, f.level, f.all).map(function (x) { return { p: x.p, id: x.p.emplId || "", name: x.p.name, reasons: x.reasons }; });
+      var people = list.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.name, co: api.home(x.p) || "" }; });
+      var cos = {};
+      list.forEach(function (x) { if (!x.id && api.home(x.p)) cos[api.home(x.p)] = 1; });
+      var lv = F.LEVELS.filter(function (l) { return l.id === f.level; })[0];
+      return { list: list, label: lv.label + (f.all ? ", everyone" : ", questions only"), people: people, companies: Object.keys(cos), date: date, to: to };
+    }
+    function firHtml() {
+      var F = root.FirCompare;
+      if (!F || !api.dayRows) return "";
+      ui.fir = ui.fir || { level: "H40", all: false, date: api.iso(api.today()) };
+      var f = ui.fir, plan = firPlan(), r = f.result;
+      var asked = plan.list.filter(function (x) { return x.reasons.length; }).length;
+      return '<details class="card fold fir-card" id="fir-card"' + (f.open ? " open" : "") + "><summary><h3>Check with fir-db1</h3>" +
+        '<span class="fold-sum">' + (r ? r.people.filter(function (x) { return x.issues.length; }).length + " of " + r.people.length + " people differ" : "positions the tool isn't sure about") + "</span></summary>" +
+        '<form class="edit fir-form" id="fir-form" novalidate><div class="row">' +
+        '<label>Who<select id="fir-source"><option value="tool"' + (f.source !== "list" ? " selected" : "") + ">People this tool has questions about</option>" +
+        '<option value="list"' + (f.source === "list" ? " selected" : "") + ">People on a list (CSV)</option></select></label>" +
+        '<label>From date<input type="date" id="fir-date" value="' + esc(f.date) + '"></label>' +
+        '<label>To date (optional)<input type="date" id="fir-to" value="' + esc(f.to || "") + '"></label></div>' +
+        (f.source === "list"
+          ? '<div class="row"><label>List<input type="file" id="fir-list" accept=".csv,text/csv"></label>' +
+            (f.list && f.list.groups.length ? '<label>Rank group<select id="fir-group"><option value="">All groups</option>' + f.list.groups.map(function (g) {
+              return '<option value="' + esc(g) + '"' + (g === f.group ? " selected" : "") + ">" + esc(g) + "</option>"; }).join("") + "</select></label>" : "") + "</div>" +
+            '<p class="hint">' + (f.list ? "Loaded <b>" + esc(f.list.name) + "</b> (" + f.list.rows.length + " rows). " : "") +
+            "Any CSV with an <code>employee_id</code> column, e.g. <code>cleanup/records-in-question.csv</code>. Read in this browser only.</p>"
+          : '<div class="row"><label>Rank level<select id="fir-level">' + F.LEVELS.map(function (l) { return '<option value="' + l.id + '"' + (l.id === f.level ? " selected" : "") + ">" + esc(l.label) + "</option>"; }).join("") + "</select></label></div>" +
+            '<label class="chk"><input type="checkbox" id="fir-all"' + (f.all ? " checked" : "") + "> Everyone at this level, not just the ones with questions</label>") + "</form>" +
+        '<details class="fir-who"><summary><b>' + plan.list.length + "</b> to check" + (f.all ? " (" + asked + " with questions)" : "") +
+        " · " + plan.people.length + " employee pages" + (plan.companies.length ? " + " + plan.companies.length + " company pages (no Employee ID)" : "") +
+        (plan.skipped ? " · " + plan.skipped + " without an Employee ID (not pulled)" : "") + "</summary>" +
+        (plan.list.length ? '<ul class="tlist fir-list">' + plan.list.map(function (x) {
+          return "<li><div>" + (x.p ? '<button type="button" class="linkish" data-ckey="' + esc(x.p.pos) + '">' + esc(x.p.name) + '</button> <span class="hint">' + esc(x.p.title)
+            : esc(x.name) + ' <span class="hint">not in the tool') + (x.id ? " · " + esc(x.id) : "") + "</span>" +
+            (x.reasons.length ? '<div class="hint">' + esc(x.reasons.join(" · ")) + "</div>" : "") + "</div></li>";
+        }).join("") + "</ul>" : '<p class="hint">' + (f.source === "list" ? (f.list ? "Nobody in this group." : "Choose a list file above.") : 'Nobody at this level has open questions. Tick "Everyone" to check them all anyway.') + "</p>") + "</details>" +
+        '<ol class="fir-steps"><li>On the city VPN, open fir-db1 and sign in (any page).</li>' +
+        "<li>" + btn("Copy pull script", 'id="fir-copy"' + (plan.people.length + plan.companies.length ? "" : " disabled"), "primary") +
+        " then in that tab open the console (F12 → Console; type <code>allow pasting</code> if Chrome asks), paste and press Enter. " +
+        "It opens each person's time page (14 days from the date) and downloads <code>fir-&lt;date&gt;.csv</code>.</li>" +
+        '<li>Choose that file here: <input type="file" id="fir-file" accept=".csv,text/csv"> <span class="msg" id="fir-msg" role="status">' + esc(f.error || "") + "</span></li></ol>" +
+        '<textarea id="fir-script" class="fir-script" readonly hidden></textarea>' +
+        '<p class="hint">The script only reads pages your fir-db1 login can already see, one at a time. The file stays on this computer; nothing is saved to the tool.</p>' +
+        (r ? firResult(r) : "") + "</details>";
+    }
+    function firCell(f) {
+      if (!f) return '<span class="hint">—</span>';
+      var st = root.FirCompare.firState(f);
+      return esc([f.co || (f.mode === "co" ? f.query : ""), f.position, f.role, f.trc].filter(Boolean).join(" · ")) + (f.status && f.status !== f.trc ? " " + api.statusPill(f.status) : "") +
+        (st.kind === "off" ? ' <span class="hint">off</span>' : "");
+    }
+    function toolCell(e) {
+      if (!e) return '<span class="hint">off that day</span>';
+      var bits = [e.co, e.seat];
+      if (e.kind) bits.push((api.KIND[e.kind] || api.KIND.cover)[0]);
+      return esc(bits.join(" · ")) + (e.status ? " " + api.statusPill(e.status) : e.off ? ' <span class="tag tag-away">' + (e.away ? "away" : "covered") + "</span>" : "");
+    }
+    function firResult(r) {
+      var diff = r.people.filter(function (x) { return x.issues.length; }), same = r.people.filter(function (x) { return !x.issues.length; });
+      var span = r.dates.length ? api.shortDate(api.fromIso(r.dates[0])) + (r.dates.length > 1 ? " – " + api.shortDate(api.fromIso(r.dates[r.dates.length - 1])) : "") : "";
+      var flags = r.flags.filter(function (x) { return x.flag !== "empty"; });
+      var row = function (x) {
+        return '<details class="fir-person"><summary><button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button> " +
+          '<span class="hint mono">' + esc(x.emplId || "") + "</span> · " + x.issues.length + " of " + x.days + " days differ" +
+          '<div class="hint">' + esc(firstNotes(x.issues)) + "</div>" + (x.notes.length ? '<div class="hint">' + esc(x.notes.join(" · ")) + "</div>" : "") + "</summary>" +
+          '<div class="table-wrap"><table class="list fir-t"><thead><tr><th>Date</th><th>fir-db1</th><th>This tool</th><th>Note</th></tr></thead><tbody>' +
+          x.issues.map(function (it) {
+            return "<tr><td>" + esc(api.shortDate(api.fromIso(it.date))) + "</td><td>" + firCell(it.fir) + "</td><td>" + toolCell(it.tool) + "</td><td>" + esc(it.note) + "</td></tr>";
+          }).join("") + "</tbody></table></div></details>";
+      };
+      return '<div class="fir-result"><p><b>' + esc(span) + "</b> · " + r.people.length + " people checked · <b>" + diff.length + "</b> with differences · " + same.length + " agree on every day</p>" +
+        (flags.length ? '<p class="hint err">Couldn\'t read: ' + esc(flags.map(function (x) { return x.query + " (" + x.flag + ")"; }).join(", ")) + "</p>" : "") +
+        (diff.length ? diff.map(row).join("") : '<p class="hint">No differences.</p>') +
+        (r.unknown.length ? '<details class="fir-sec" open><summary><b>On fir-db1, not in the tool</b> <span class="n">' + r.unknown.length + "</span></summary><ul class=\"tlist\">" +
+          r.unknown.map(function (u) {
+            var w = u.rows.filter(function (f) { return f.position; })[0] || u.rows[0];
+            return "<li><div>" + esc(u.name) + ' <span class="hint mono">' + esc(u.emplId) + "</span> · " + firCell(w) + "</div></li>";
+          }).join("") + "</ul><p class=\"hint\">Add them with <b>Not on the list? Add a person</b> on the Schedule tab if they belong.</p></details>" : "") +
+        (r.toolOnly.length ? '<details class="fir-sec"><summary><b>Working there in the tool, not on fir-db1\'s company list</b> <span class="n">' + r.toolOnly.length + "</span></summary><ul class=\"tlist\">" +
+          r.toolOnly.map(function (t) {
+            return "<li><div>" + (t.p ? '<button type="button" class="linkish" data-ckey="' + esc(t.key) + '">' + esc(t.p.name) + "</button>" : esc(t.key)) + " · " + esc(api.shortDate(api.fromIso(t.date))) + " · " + toolCell(t.tool) + "</div></li>";
+          }).join("") + "</ul></details>" : "") +
+        (same.length ? '<details class="fir-sec" open><summary><b>Agree on every day</b> <span class="n">' + same.length + "</span></summary><p>" +
+          same.map(function (x) { return '<button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button>" + (x.notes.length ? ' <span class="hint">(' + esc(x.notes.join(" · ")) + ")</span>" : ""); }).join("<br>") + "</p></details>" : "") + "</div>";
+    }
+    function firstNotes(issues) {
+      var seen = {}, out = [];
+      issues.forEach(function (i) { var n = i.note.split(" · ")[0]; if (!seen[n]) { seen[n] = 1; out.push(n); } });
+      return out.join(" · ");
+    }
+    function wireFir() {
+      var F = root.FirCompare, card = $("fir-card");
+      if (!F || !card) return;
+      card.addEventListener("toggle", function () { ui.fir.open = card.open; });
+      $("fir-source").onchange = function () { ui.fir.source = this.value; render(); };
+      if ($("fir-level")) $("fir-level").onchange = function () { ui.fir.level = this.value; render(); };
+      if ($("fir-all")) $("fir-all").onchange = function () { ui.fir.all = this.checked; render(); };
+      if ($("fir-group")) $("fir-group").onchange = function () { ui.fir.group = this.value; render(); };
+      if ($("fir-list")) $("fir-list").onchange = function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            var l = F.parseList(rd.result);
+            l.name = file.name;
+            ui.fir.list = l;
+            ui.fir.group = l.groups[0] || "";
+            ui.fir.error = "";
+          } catch (er) { ui.fir.error = er.message; }
+          render();
+        };
+        rd.readAsText(file);
+      };
+      $("fir-date").onchange = function () { if (this.value) { ui.fir.date = this.value; render(); } };
+      $("fir-to").onchange = function () { ui.fir.to = this.value; render(); };
+      $("fir-form").onsubmit = function (e) { e.preventDefault(); };
+      $("fir-copy").onclick = function () {
+        var text = F.script(firPlan()), ta = $("fir-script"), b = this;
+        ta.value = text;
+        var shown = function () { ta.hidden = false; ta.focus(); ta.select(); api.say($("fir-msg"), "Copy the script from the box above (it's selected).", false); };
+        try {
+          navigator.clipboard.writeText(text).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy pull script"; }, 2000); }, shown);
+        } catch (e) { shown(); }
+      };
+      $("fir-file").onchange = function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            ui.fir.result = F.compare(F.parseCsv(rd.result), api);
+            ui.fir.error = "";
+          } catch (er) { ui.fir.result = null; ui.fir.error = er.message; }
+          ui.fir.open = true;
+          render();
+        };
+        rd.readAsText(file);
+      };
+      card.addEventListener("click", function (e) {
+        var k = e.target.closest("[data-ckey]");
+        if (k) { e.preventDefault(); open(k.dataset.ckey); }
+      });
     }
     // Redraws just the counts, table and pager, so typing in the search box keeps focus.
     function drawRoster() {
@@ -247,6 +408,7 @@
     }
     function wireRoster() {
       var el = $("card-detail");
+      wireFir();
       $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
       $("card-search").onsubmit = function (e) { e.preventDefault(); };
       $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
