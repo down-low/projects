@@ -295,7 +295,8 @@ def most_per_post(seats, recs, day):
 # Required staffing: short by SHORT_MIN..SHORT_MAX of Required on every day from AS_OF to FIT_END, as the Staffing
 # screen counts it (Open = sum over apparatus of required minus working, where short).
 SHORT_MIN, SHORT_MAX, FIT_END = 0.10, 0.15, "2027-06-30"
-REQUIRED_RANGE = {"E": (3, 5), "T": (4, 6), "RS1": (3, 5), "MA1": (1, 1), "B01": (2, 2), "B02": (1, 1), "RC1": (1, 1)}
+MAX_EXTRA = 2  # people over Required, summed over apparatus: one company's surplus doesn't fill another's gap
+REQUIRED_RANGE = {"E": (3, 6), "T": (4, 7), "RS1": (3, 6), "MA1": (1, 1), "B01": (2, 2), "B02": (1, 1), "RC1": (1, 1)}
 
 
 def fit_days():
@@ -332,8 +333,11 @@ def fit_staffing(seats, recs, rng):
         total, out = sum(req.values()), 0.0
         for day in days:
             b, f = base[day], free_w[wk[day]]
-            short = sum(max(0, req[co] - b.get(co, 0) - f.get(co, 0)) for co in cos) / total
-            out += (short - (SHORT_MIN + SHORT_MAX) / 2) ** 2 + (1 if short < SHORT_MIN or short > SHORT_MAX else 0)
+            gap = [req[co] - b.get(co, 0) - f.get(co, 0) for co in cos]
+            short = sum(g for g in gap if g > 0) / total
+            extra = -sum(g for g in gap if g < 0)
+            out += (short - (SHORT_MIN + SHORT_MAX) / 2) ** 2 + (3 if short < SHORT_MIN or short > SHORT_MAX else 0)
+            out += 0.01 * extra + (3 if extra > MAX_EXTRA else 0)
         return out
     # Pass 1: even out the head count per watch, overall and per apparatus (frozen seats averaged per watch).
     fixed = {w: {} for w in range(1, 32)}
@@ -376,7 +380,7 @@ def fit_staffing(seats, recs, rng):
         if got is not None:
             cur = got
     # Pass 2: required per apparatus and finer tour moves, scored day by day with the records applied.
-    req = {co: max(rng_of(co)[0], min(rng_of(co)[1], round(sum(base[day].get(co, 0) + free_w[wk[day]].get(co, 0) for day in days) / len(days))))
+    req = {co: max(rng_of(co)[0], min(rng_of(co)[1], round(sum(base[day].get(co, 0) + free_w[wk[day]].get(co, 0) for day in days) / len(days)) + 1))
            for co in cos}
     best = score(req)
     steps = 100000
@@ -407,12 +411,16 @@ def fit_staffing(seats, recs, rng):
         else:
             for s, tour in ((s1, t1), (s2, t2)):
                 contrib(s, -1, free_w); used.discard(s["pos"]); retour(s, tour); used.add(s["pos"]); contrib(s, 1, free_w)
-    shorts = []
+    shorts, extras, ons = [], [], []
     for day in days:
         n = on_duty(seats, recs, day)
         shorts.append(sum(max(0, req[co] - n.get(co, 0)) for co in cos) / sum(req.values()))
-    print(f"required {sum(req.values())}; short {min(shorts):.1%} to {max(shorts):.1%} (mean {sum(shorts) / len(shorts):.1%}) "
-          f"over {days[0]}..{days[-1]}")
+        extras.append(sum(max(0, n.get(co, 0) - req[co]) for co in cos))
+        ons.append(sum(n.get(co, 0) for co in cos))
+    print(f"required {sum(req.values())}; on duty {min(ons)}-{max(ons)}; short {min(shorts):.1%} to {max(shorts):.1%} "
+          f"(mean {sum(shorts) / len(shorts):.1%}); extra people at most {max(extras)} a day; over {days[0]}..{days[-1]}")
+    assert max(extras) <= MAX_EXTRA, "too many people over Required (Open wouldn't add up with On duty)"
+    assert max(ons) < sum(req.values()), "more people on duty than Required"
     return req
 
 
@@ -460,10 +468,10 @@ def main():
     def status(seat, code, start, end, note):
         statuses.append({"id": rid("st"), "pos": seat["pos"], "code": code, "start": start, "end": end, "note": note, "createdAt": created(start)})
     ff = pick("Firefighter", 8)
-    status(ff[0], "VA", "2026-10-12", "2026-10-25", "Vacation")
+    status(ff[0], "VA", "2026-11-16", "2026-11-29", "Vacation")
     status(ff[1], "VA", "2026-11-02", "2026-11-15", "")
     status(pick("Lieutenant")[0], "VA", "2026-12-20", "2027-01-05", "Holidays")
-    status(ff[2], "S", "2026-10-18", "2026-10-22", "")
+    status(ff[2], "S", "2026-10-19", "2026-10-21", "")
     status(pick("FF/Paramedic")[0], "S", "2026-11-05", "2026-11-08", "")
     capt_d = pick("Captain")[0]
     status(capt_d, "D", "2026-09-01", None, "Shoulder injury")

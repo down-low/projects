@@ -26,8 +26,9 @@ it to the real tool's claude.ai links; the demo has its own artifact.
    from a fixed day (2026-10-19), so every run writes the same bytes. Shapes follow the real files; values are invented.
    It also fits staffing: it spreads the tours of seats no record mentions so the head count is even from day to day,
    and picks each apparatus's Required, so Staffing shows the division **10–15% short** (Open ÷ Required, as the
-   Staffing screen counts it) from 2026-10-19 to 2027-06-30; the run prints the range (currently 9.3%–14.8%, mean 12.1%;
-   9 of 255 days at 5 of 54). `on_duty()` in the script counts staff by the same rules as the Staffing screen. The run
+   Staffing screen counts it) from 2026-10-19 to 2027-06-30, with On duty always below Required and at most 2 people
+   over Required at any company (Open counts each company's gap; a surplus elsewhere doesn't fill it). Currently
+   Required 60, on duty 51–56, 10.0%–15.0% short. The run prints these and fails if a limit is broken. `on_duty()` in the script counts staff by the same rules as the Staffing screen. The run
    takes about a minute and a half.
    Records cover VA / S / D / WE, a tour change, an acting, cover, shadow and extra cover, an added relief person, two moves
    with `assignments` rows (the Moves fold), two 2027 award moves, vacant seats and spots open for bid.

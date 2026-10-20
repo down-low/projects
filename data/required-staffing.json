@@ -1,7 +1,7 @@
 {
  "asOf": "2026-10-19",
  "source": "Demo (fictional)",
- "overtimeHires": 0,
+ "overtimeHires": 5,
  "apparatus": {
   "B01": {
    "reportWorking": 2,
@@ -28,8 +28,8 @@
    "required": 4
   },
   "E05": {
-   "reportWorking": 3,
-   "required": 3
+   "reportWorking": 4,
+   "required": 4
   },
   "E06": {
    "reportWorking": 4,
@@ -40,12 +40,12 @@
    "required": 4
   },
   "E08": {
-   "reportWorking": 3,
-   "required": 3
+   "reportWorking": 5,
+   "required": 5
   },
   "E09": {
-   "reportWorking": 3,
-   "required": 3
+   "reportWorking": 4,
+   "required": 4
   },
   "E10": {
    "reportWorking": 4,
@@ -60,12 +60,12 @@
    "required": 1
   },
   "RS1": {
-   "reportWorking": 3,
-   "required": 3
-  },
-  "T03": {
    "reportWorking": 4,
    "required": 4
+  },
+  "T03": {
+   "reportWorking": 5,
+   "required": 5
   },
   "T08": {
    "reportWorking": 5,
