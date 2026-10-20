@@ -20,4 +20,4 @@ Names and Employee IDs only. Cell numbers go in on each person's Employee card, 
 
 ## Added from the station rosters (10/20/2026)
 
-95 more people were added from the fir-sap2 station rosters, each with "needs contact info" in their note. The list (name, ID, company, reason, rank) is under "Not in the tool" in `station-rosters-2026-10-20.md`; the Employee card roster can filter them by searching "needs contact".
+95 more people were added from the fir-sap2 station rosters, each with "needs contact info" in their note. The list (name, ID, company, reason, rank) is under "Not in the tool" in `station-rosters-2026-10-20.md`; on the Employee card roster, add the Cell column and sort by it to see everyone without a cell number.
