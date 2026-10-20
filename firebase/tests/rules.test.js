@@ -142,6 +142,9 @@ test("trades: post as yourself, reply as yourself, only the poster sets or cance
   await assertFails(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "link", proposal: { later: true } }));
   await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL01M", verified: true, proposal: { later: true } }));
   await assertFails(db(MEMBER).doc("tradeInvites/abc").get());
+  await assertFails(db(MEMBER).doc("launchInvites/11ENL01M").get());
+  await assertFails(db(MEMBER).doc("launchInvites/11ENL01M").set({ via: "group" }));
+  await assertSucceeds(db(ADMIN).doc("launchInvites/11ENL01M").set({ via: "group", sentAt: "x" }));
   await assertFails(db(MEMBER).doc("tradeInvites/abc").set({ tradeId: "t1", recipientKey: "11ENL02M" }));
   // the poster can mark a trade picked but waiting for the person to sign in
   await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "pending", replyId: "link_x", takerKey: "11ENL02M", proposal: { later: true }, legs: [] }));

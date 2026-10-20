@@ -119,7 +119,15 @@ Keep making official changes on the claude.ai page until cut-over: changes made 
 
 Next: test with a few people using [`BETA.md`](BETA.md) (optional), then switch over with [`CUTOVER.md`](CUTOVER.md).
 
-## 11. Trade alerts (app notifications, email, texts)
+## 11. Sign-in with a cell number
+
+So people can sign in with the cell number on the staff list and a texted code, without a Google account:
+
+1. Firebase console → **Authentication** → **Sign-in method** → **Add new provider** → **Phone** → **Enable** → **Save**.
+2. That's all. Each code text costs a few cents and counts toward the budget alert from step 2.
+3. To try it: in a private window, open the employee app, enter your cell, type the code. If your cell is on the staff list (it is once the page backup is loaded under Admin → Cut-over), you land on your own schedule.
+
+## 12. Trade alerts (app notifications, email, texts)
 
 Each kind of alert stays off until its settings are added, so do these in any order. Add them on GitHub under **Settings → Secrets and variables → Actions**, then publish again (**Actions → Firebase → Run workflow**, or merge any change).
 

@@ -2,8 +2,9 @@
  * They follow server.py: sign_in, me_json, claim, roster_names, admin_action, clean_person_fields and stats.
  * index.js does the reads and writes; these functions only decide.
  *
- * users/{uid}: {email, name, status: pending|active|disabled, role: member|editor|admin, pos, claimPos, claimNote,
- *               claimRequest, alerts, createdAt, lastLogin}
+ * users/{uid}: {email, phone, name, status: pending|active|disabled, role: member|editor|admin, pos, claimPos, claimNote,
+ *               claimRequest, alerts, approvedBy, createdAt, lastLogin}
+ * People sign in with Google (email) or with their cell number and a texted code (phone, E.164).
  * Custom claims (what firestore.rules and storage.rules check): {active, role, pos}.
  */
 "use strict";
@@ -35,21 +36,40 @@ function emailAllowed(email, domains) {
   return at !== -1 && domains.indexOf(email.slice(at + 1)) !== -1;
 }
 
-/* First sign-in creates the account (pending, or an active admin for ADMIN_EMAILS); later sign-ins refresh the email,
-   name and lastLogin, and make ADMIN_EMAILS admins again. Returns {user, created}. */
-function signIn(existing, { email, name, isAdmin, allowed, now }) {
-  if (!allowed && !isAdmin) throw new AccountError("permission-denied", "That Google account isn't from an allowed domain.", "domain");
+/* First sign-in creates the account (pending, or an active admin for ADMIN_EMAILS); later sign-ins refresh the email
+   or phone, name and lastLogin, and make ADMIN_EMAILS admins again. A cell-number sign-in has phone and no email; the
+   domain rule is for Google accounts only (the staff-list match decides for cells, planCellMatch). Returns {user, created}. */
+function signIn(existing, { email, phone, name, isAdmin, allowed, now }) {
+  if (!phone && !allowed && !isAdmin) throw new AccountError("permission-denied", "That Google account isn't from an allowed domain.", "domain");
+  const label = email || phone;
   if (!existing) {
     return {
       created: true,
-      user: { email, name: name || email, role: isAdmin ? "admin" : "member", status: isAdmin ? "active" : "pending", pos: null,
+      user: { email: email || null, phone: phone || null, name: name || label, role: isAdmin ? "admin" : "member", status: isAdmin ? "active" : "pending", pos: null,
         claimPos: null, claimNote: null, claimRequest: null, createdAt: now, lastLogin: now },
     };
   }
   if (existing.status === "disabled") throw new AccountError("permission-denied", "This account has been disabled.", "disabled");
-  const user = Object.assign({}, existing, { email, name: name || existing.name || email, lastLogin: now });
+  const user = Object.assign({}, existing, { email: email || existing.email || null, phone: phone || existing.phone || null,
+    name: name || existing.name || label, lastLogin: now });
   if (isAdmin) Object.assign(user, { role: "admin", status: "active" });
   return { created: false, user };
+}
+
+/* A cell-number sign-in links itself when the number is on the staff list for exactly one seat that no other account
+   has. cells: Map key -> cell from staffCells; takenBy(key) -> uid or null. Returns the account fields to set, or null
+   (no match, more than one, or the seat is taken): then the person uses the normal claim screen. */
+const cellKey = (n) => String(n || "").replace(/\D/g, "").slice(-10);
+function planCellMatch(uid, u, phone, cells, takenBy, now) {
+  if (!u || u.status !== "pending" || !phone) return null;
+  const want = cellKey(phone);
+  if (want.length !== 10) return null;
+  const hits = [];
+  cells.forEach((cell, key) => { if (cellKey(cell) === want) hits.push(key); });
+  if (hits.length !== 1) return null;
+  const other = takenBy(hits[0]);
+  if (other && other !== uid) return null;
+  return { pos: hits[0], status: "active", claimPos: null, claimNote: null, claimRequest: null, approvedBy: "cell", approvedAt: now };
 }
 
 function claimsFor(user) {
@@ -68,7 +88,7 @@ function meJson(uid, u, { lookup, contact, profile }) {
   const c = contact || {};
   const alerts = u.alerts || {};
   return {
-    signedIn: true, id: uid, name: u.name, googleEmail: u.email, role: u.role, status: u.status,
+    signedIn: true, id: uid, name: u.name, googleEmail: u.email || u.phone || null, phone: u.phone || null, role: u.role, status: u.status,
     pos: u.pos || null, posName: (pos && pos.name) || null,
     claimPos: u.claimPos || null, claimName: (claim && claim.name) || null, claimNote: u.claimNote || null,
     contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shareContact: !!c.share,
@@ -226,23 +246,38 @@ function cleanInviteAnswer(body, tradeDate, today) {
 }
 /* Signing in from a link: the Employee ID must match the one on file for the invited person. u: the account; expected:
    that person's Employee ID or null; takenBy: the uid linked to recipientKey, or null. Returns the account fields to set. */
-function planRedeem(uid, u, inv, emplId, { expected, takenBy, nowIso }) {
+function planRedeem(uid, u, inv, emplId, { expected, takenBy, nowIso, cellMatch }) {
   const why = inviteState(inv, nowIso);
   if (why) throw new AccountError("failed-precondition", why);
   if (inv.usedBy && inv.usedBy !== uid) throw new AccountError("already-exists", "That link has already been used by another account");
   if (!u || u.status === "disabled") throw new AccountError("permission-denied", "This account can't be used.");
   if (u.status === "active" && u.pos && u.pos !== inv.recipientKey) throw new AccountError("failed-precondition", "Your account is already linked to someone else");
   if (takenBy && takenBy !== uid) throw new AccountError("already-exists", "That person is already linked to another account. Ask an admin for help.");
+  const patch = { pos: inv.recipientKey, status: "active", claimPos: null, claimNote: null, claimRequest: null,
+    approvedBy: "invite", invitedBy: inv.inviterKey, approvedAt: nowIso };
+  if (cellMatch) return patch; // signed in with the invited person's own staff-list cell
   const id = cleanText(emplId, "emplId", 20).toUpperCase();
   if (!EMPL_ID_RE.test(id)) throw bad("Employee ID is two letters and four digits, e.g. LE1234");
   if (!expected) throw new AccountError("failed-precondition", "There's no Employee ID on file for you yet. Pick your name below and an admin will approve it.");
   if (id !== String(expected).toUpperCase()) throw new AccountError("permission-denied", "That Employee ID doesn't match the person this link was sent to.");
-  return { pos: inv.recipientKey, status: "active", claimPos: null, claimNote: null, claimRequest: null,
-    approvedBy: "invite", invitedBy: inv.inviterKey, approvedAt: nowIso };
+  return patch;
+}
+
+/* Launch texts from the department number: who to send to. keys: the people the admin chose; cells: Map key -> cell;
+   onTool(key); sent(key) -> true when already texted from the department number. Returns {send: [{key, cell}], skipped}. */
+function launchTargets(keys, cells, onTool, sent) {
+  const out = [], skipped = { onTool: 0, noCell: 0, sent: 0 };
+  Array.from(new Set(keys)).forEach((k) => {
+    if (onTool(k)) skipped.onTool++;
+    else if (!cells.get(k) || cellKey(cells.get(k)).length !== 10) skipped.noCell++;
+    else if (sent(k)) skipped.sent++;
+    else out.push({ key: k, cell: cells.get(k) });
+  });
+  return { send: out, skipped };
 }
 
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  cellKey, planCellMatch, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

@@ -33,8 +33,42 @@
       try { sessionStorage.removeItem("tradeInvite"); history.replaceState(null, "", location.pathname); } catch (e) { /* old browser */ }
     }
     function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
-    function signInButton() { return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'; }
+    function signInButton() {
+      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
+        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+    }
+    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
+       once; anyone else lands on the claim screen. */
+    function phoneHtml() {
+      return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
+        '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
+        '<div id="ph-code-row" hidden><label>The 6-digit code we texted you<input type="text" id="ph-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+        '<div class="row"><button class="btn primary big" type="button" id="ph-ok">Sign in</button><button class="linkish" type="button" id="ph-again">Send a new code</button></div></div>' +
+        '<span class="msg" id="ph-msg" role="status"></span></form>';
+    }
+    function wirePhone() {
+      var f = $("ph-form");
+      if (!f) return;
+      var msg = $("ph-msg"), b = api.backend();
+      var send = function () {
+        api.say(msg, "Sending…");
+        b.sendCode($("ph-cell").value, "ph-send").then(function (num) {
+          $("ph-code-row").hidden = false;
+          api.say(msg, "Code sent to " + num.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, "($1) $2-$3") + ".");
+          $("ph-code").focus();
+        }, function (er) { api.say(msg, er.message, true); });
+      };
+      f.onsubmit = function (e) { e.preventDefault(); send(); };
+      $("ph-again").onclick = send;
+      var ok = function () {
+        api.say(msg, "Signing in…");
+        b.confirmCode($("ph-code").value).catch(function (er) { api.say(msg, er.message, true); });
+      };
+      $("ph-ok").onclick = ok;
+      $("ph-code").oninput = function () { if (/^\d{6}$/.test(this.value.trim())) ok(); };
+    }
     function wireSignIn(el) {
+      wirePhone();
       if ($("gate-in")) $("gate-in").onclick = function () {
         api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
       };
@@ -116,7 +150,7 @@
 
       if (!me.signedIn) {
         var how = me.google && api.backend().signIn
-          ? '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'
+          ? signInButton()
           : me.google
           ? '<a class="btn primary big" href="auth/login">Sign in with Google</a>'
           : '<p class="hint">' + esc(AUTH_ERRORS.not_configured) + "</p>";
@@ -125,12 +159,10 @@
             '<div class="row"><input type="email" id="dev-email" name="email" required placeholder="name@example.org">' +
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
-        el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members. ' +
-          "Sign in with your Google account to see who's working, your own tour, and to share contact info for shift swaps.</p>" +
+        el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
+          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
-        if ($("gate-in")) $("gate-in").onclick = function () {
-          api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
-        };
+        wireSignIn(el);
         return;
       }
 
@@ -156,6 +188,7 @@
         : "";
       el.innerHTML = '<div class="card gate-card"><h2>Claim your record</h2>' +
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
+        (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
         "<p>Find yourself on the roster so the schedule knows which position is yours. An admin approves each request.</p>" +
@@ -331,7 +364,8 @@
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
+          }).join("") + "</datalist>" + (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
+          (api.backend().importBackup ? importHtml() : "");
         if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
@@ -344,6 +378,161 @@
         drawPending();
         drawUsers();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
+      if ($("launch")) drawLaunch();
+    }
+
+    /* ---------- Invite people (Firebase admin site): the launch text with the sign-up link ----------
+       Group texts from the admin's own phone, 10 people each, with their staff-list cells filled in; or one by one; or,
+       once Twilio is approved, one personal text each from the department number. Contact cards (.vcf) for the chosen
+       people, logged. Sent marks live in launchInvites/{pos}. */
+    var launch = { dv: "", bt: "", co: "", grp: "", notOn: true, hideSent: true, msg: null, run: null, twilio: null, open: false };
+    var GROUP = 10;
+    function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
+    function launchMsg() {
+      return launch.msg != null ? launch.msg
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+    }
+    function launchSms(cells, body) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = cells.map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    function where(p) { return Organization.locate(p.company || p.title) || null; }
+    // Everyone matching the filters: [{p, cell, on, sent}], in station order.
+    function launchPeople() {
+      var b = api.backend(), cells = b.contacts ? b.contacts() : {}, sent = b.launchSent(), M = root.TourMath;
+      return api.people().filter(function (p) {
+        var o = where(p);
+        if (launch.dv && (!o || o.division.id !== launch.dv)) return false;
+        if (launch.bt && (!o || o.battalion.id !== launch.bt)) return false;
+        if (launch.co && (p.company || "") !== launch.co) return false;
+        if (launch.grp && M.rankGroup(p.rank) !== launch.grp) return false;
+        return true;
+      }).map(function (p) {
+        var c = cells[p.pos];
+        return { p: p, cell: c && c.staffList ? c.phoneMobile : null, on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
+      }).filter(function (x) { return !(launch.notOn && x.on); })
+        .sort(function (a, c) { return Organization.order(a.p.company || a.p.title) - Organization.order(c.p.company || c.p.title) || a.p.name.localeCompare(c.p.name); });
+    }
+    function drawLaunch() {
+      var el = $("launch"), b = api.backend();
+      if (launch.twilio === null && b.launchStatus) { launch.twilio = false; b.launchStatus().then(function (r) { launch.twilio = !!r.twilio; drawLaunch(); }, function () {}); }
+      var all = launchPeople(), todo = all.filter(function (x) { return x.cell && !(launch.hideSent && x.sent); });
+      var groups = [];
+      for (var i = 0; i < todo.length; i += GROUP) groups.push(todo.slice(i, i + GROUP));
+      var opts = function (list, cur) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join(""); };
+      var dvs = [], bts = [];
+      Organization.DIVISIONS.forEach(function (dv) {
+        if (dv.hidden) return;
+        dvs.push([dv.id, dv.name]);
+        dv.battalions.forEach(function (bt) { if (!launch.dv || launch.dv === dv.id) bts.push([bt.id, bt.name]); });
+      });
+      var cos = Array.from(new Set(api.people().filter(function (p) {
+        var o = where(p); return p.company && (!launch.bt || (o && o.battalion.id === launch.bt)) && (!launch.dv || (o && o.division.id === launch.dv));
+      }).map(function (p) { return p.company; }))).sort(function (a, c) { return Organization.order(a) - Organization.order(c); });
+      var grps = Array.from(new Set(api.people().map(function (p) { return root.TourMath.rankGroup(p.rank); }))).sort();
+      var noCell = all.filter(function (x) { return !x.cell; }).length, sentN = all.filter(function (x) { return x.sent; }).length;
+      var run = launch.run;
+      el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
+        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
+        '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
+        '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
+        '<label>Rank group<select data-l="grp"><option value="">All</option>' + opts(grps.map(function (g) { return [g, g]; }), launch.grp) + "</select></label></div>" +
+        '<label class="chk"><input type="checkbox" data-l="notOn"' + (launch.notOn ? " checked" : "") + "> Only people not on the tool yet</label>" +
+        '<label class="chk"><input type="checkbox" data-l="hideSent"' + (launch.hideSent ? " checked" : "") + "> Hide people already texted</label>" +
+        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
+        '<label>Message<textarea id="launch-msg" rows="3" maxlength="600">' + esc(launchMsg()) + "</textarea></label>" +
+        (run
+          ? (run.i < run.list.length
+            ? '<div class="invite-run"><span class="hint">' + (run.i + 1) + " of " + run.list.length + "</span> <b>" + esc(run.list[run.i].p.name) + '</b> <span class="hint">' + esc(run.list[run.i].p.title) + "</span>" +
+              '<div class="row"><a class="btn small primary" target="_blank" rel="noopener" data-l1="send" href="' + esc(launchSms([run.list[run.i].cell], launchMsg())) + '">Text ' + esc(run.list[run.i].p.name) + "</a>" +
+              '<button class="btn small" data-l1="skip">Skip</button><button class="btn small" data-l1="stop">Done</button></div></div>'
+            : '<div class="row"><span class="hint">All done.</span><button class="btn small" data-l1="stop">Close</button></div>')
+          : (groups.length
+            ? '<p class="hint">Group texts from your phone, ' + GROUP + " people each. Everyone in a group sees the others' replies; use <b>One by one</b> to avoid that.</p>" +
+              '<ul class="tlist launch-groups">' + groups.map(function (g, gi) {
+                return "<li><div><b>Group " + (gi + 1) + " of " + groups.length + "</b> · " + g.length + ' people<div class="hint">' + esc(g.map(function (x) { return x.p.name; }).join(", ")) + "</div></div>" +
+                  '<div class="row"><a class="btn small primary" target="_blank" rel="noopener" data-lg="' + gi + '" href="' + esc(launchSms(g.map(function (x) { return x.cell; }), launchMsg())) + '">Open in Messages</a>' +
+                  '<button class="btn small" data-lmark="' + gi + '">Mark sent</button></div></li>';
+              }).join("") + "</ul>" +
+              '<div class="row"><button class="btn small" data-l1="start">One by one (' + todo.length + ")</button>" +
+              '<button class="btn small" data-l1="vcf">Download contact cards (' + todo.length + ")</button>" +
+              (launch.twilio ? '<button class="btn small" data-l1="twilio">Send from department number (' + todo.length + ")</button>" : "") + "</div>"
+            : '<p class="hint">Nobody left to text with these filters.</p>')) +
+        '<span class="msg" id="launch-say" role="status"></span></details>';
+      el._groups = groups; el._todo = todo;
+      wireLaunch(el);
+    }
+    function wireLaunch(el) {
+      var b = api.backend(), say = function (t, bad) { api.say($("launch-say"), t, bad); };
+      $("launch-fold").addEventListener("toggle", function () { launch.open = this.open; });
+      el.querySelectorAll("[data-l]").forEach(function (c) {
+        c.onchange = function () {
+          var k = c.dataset.l;
+          launch[k] = c.type === "checkbox" ? c.checked : c.value;
+          if (k === "dv") { launch.bt = ""; launch.co = ""; }
+          if (k === "bt") launch.co = "";
+          launch.run = null;
+          drawLaunch();
+        };
+      });
+      $("launch-msg").onchange = function () { launch.msg = this.value; drawLaunch(); };
+      el.querySelectorAll("[data-lmark]").forEach(function (x) {
+        x.onclick = function () {
+          var g = el._groups[+x.dataset.lmark];
+          b.launchMark(g.map(function (y) { return y.p.pos; }), "group").then(function () { say("Marked " + g.length + " as texted."); drawLaunch(); }, function (er) { say(er.message, true); });
+        };
+      });
+      el.querySelectorAll("[data-lg]").forEach(function (a) {
+        a.addEventListener("click", function () { say("After you send it, tap Mark sent."); });
+      });
+      el.querySelectorAll("[data-l1]").forEach(function (x) {
+        var act = x.dataset.l1;
+        if (act === "send") {
+          x.addEventListener("click", function () {
+            var cur = launch.run.list[launch.run.i];
+            launch.run.i++;
+            b.launchMark([cur.p.pos], "single").catch(function () {});
+            setTimeout(drawLaunch, 400);
+          });
+          return;
+        }
+        x.onclick = function () {
+          if (act === "start") { launch.run = { list: el._todo.slice(), i: 0 }; drawLaunch(); }
+          else if (act === "skip") { launch.run.i++; drawLaunch(); }
+          else if (act === "stop") { launch.run = null; drawLaunch(); }
+          else if (act === "vcf") downloadCards(el._todo, say);
+          else if (act === "twilio") {
+            if (x.dataset.confirm !== "1") { x.dataset.confirm = "1"; x.textContent = "Confirm: text " + el._todo.length + " people"; x.classList.add("danger"); return; }
+            x.disabled = true;
+            say("Sending…");
+            b.launchSend(el._todo.map(function (y) { return y.p.pos; }), launchMsg()).then(function (r) {
+              say("Sent " + r.sent + (r.failed ? ", " + r.failed + " failed" : "") + ".");
+              drawLaunch();
+            }, function (er) { x.disabled = false; say(er.message, true); });
+          }
+        };
+      });
+    }
+    // Contact cards for the chosen people (name, rank and station, cell), saved on this device; the download is logged.
+    function downloadCards(list, say) {
+      var withCell = list.filter(function (x) { return x.cell; });
+      if (!withCell.length) return say("No cells to save.", true);
+      var vesc = function (t) { return String(t).replace(/[\\;,]/g, function (c) { return "\\" + c; }); };
+      var cards = withCell.map(function (x) {
+        var parts = x.p.name.split(","), last = parts[0].trim(), first = (parts[1] || "").trim();
+        return ["BEGIN:VCARD", "VERSION:3.0", "N:" + vesc(last) + ";" + vesc(first) + ";;;", "FN:" + vesc((first ? first + " " : "") + last),
+          "ORG:SFFD", "TITLE:" + vesc(x.p.rank + (x.p.company ? " " + x.p.company : "")), "TEL;TYPE=CELL:" + x.cell, "END:VCARD"].join("\r\n");
+      }).join("\r\n");
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([cards + "\r\n"], { type: "text/vcard" }));
+      a.download = "sffd-contacts.vcf";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      api.backend().launchAudit(withCell.length).catch(function () {});
+      say("Saved " + withCell.length + " contact cards. The file has cell numbers: delete it once they're imported.");
     }
 
     /* Cut-over (Firebase only, CUTOVER.md): the backup file saved on the claude.ai page (Download backup) is loaded straight

@@ -438,8 +438,18 @@
     if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
     var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
+    var phoneVerifier = null, phoneConfirm = null;
+    var PHONE_ERRORS = {
+      "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
+      "auth/code-expired": "That code has expired. Ask for a new one.",
+      "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
+      "auth/invalid-phone-number": "Enter your 10-digit cell number.",
+      "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
+      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/captcha-check-failed": "The page check failed. Reload and try again.",
+    };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -507,7 +517,7 @@
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
-      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
+      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
       var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
@@ -567,9 +577,42 @@
         });
       },
       signOut: function () { return auth.signOut().then(function () { location.href = location.pathname; }); },
+      /* Cell-number sign-in (Firebase Auth phone provider): sendCode(cell, buttonId) texts a 6-digit code, behind an
+         invisible reCAPTCHA on that button; confirmCode(code) signs in. A staff-list cell links the account at once (syncMe). */
+      phoneSignIn: true,
+      sendCode: function (cell, buttonId) {
+        var digits = String(cell || "").replace(/[^0-9]/g, "");
+        if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+        if (digits.length !== 10) return Promise.reject(new Error("Enter your 10-digit cell number."));
+        if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
+        return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
+          if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+        });
+      },
+      confirmCode: function (code) {
+        if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
+        return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+        });
+      },
       claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
       claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
       rosterNames: function () { return call("rosterNames"); },
+      /* Launch invites (admins, Admin → Invite people): the staff-list cells (contacts()), who's on the tool (onTool),
+         who was already texted (launchSent: pos -> {via, sentAt}), marking texts sent from the admin's own phone, the
+         contact-card download log, and texts from the department number once Twilio is set up. */
+      launchSent: function () { var o = {}; records.launchInvites.forEach(function (d) { o[d.id] = d; }); return o; },
+      launchMark: function (keys, via) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch(), at = nowIso();
+        keys.forEach(function (k) { batch.set(fs.collection("launchInvites").doc(k), { via: via, sentAt: at, by: user.uid }); });
+        return w(batch.commit());
+      },
+      launchUnmark: function (key) { return admin() ? w(fs.collection("launchInvites").doc(key).delete()) : Promise.reject(new Error(NO_EDIT)); },
+      launchStatus: function () { return call("launchInvites", { action: "status" }); },
+      launchAudit: function (count) { return call("launchInvites", { action: "audit", count: count }); },
+      launchSend: function (keys, text) { return call("launchInvites", { action: "send", keys: keys, text: text }); },
       // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
       createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
       inviteInfo: function (code) { return call("inviteInfo", { code: code }); },

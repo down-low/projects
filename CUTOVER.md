@@ -37,7 +37,7 @@ The two can't be kept in sync, so the switch happens once, all together. Allow a
    - The **Test copy** banner disappears on both sites.
 7. **Share the addresses.**
    - Admins and editors: the back office.
-   - Everyone else: the employee app (signing in with Google; you approve each new account under Admin).
+   - Everyone else: **Admin → Invite people** in the back office. It texts the employee app link from your phone, 10 people per group text with their staff-list cells filled in (or one by one, or from the department number once Twilio is approved). People sign in with that cell and a texted code and land on their own schedule; nobody waits for approval. Anyone whose cell isn't on the staff list picks their name and you approve them under Admin.
 8. **Delete the backup file**, and empty the trash.
 9. **Retire the claude.ai page later.**
    - It stays up, frozen and read-only, as a reference for a few weeks.

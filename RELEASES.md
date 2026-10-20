@@ -19,6 +19,8 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 Hosting, Google sign-in, Firestore and Storage in place of `server.py`; see **`FIREBASE_PLAN.md`** for the data model, security rules, functions, migration, tests and launch steps. First confirm with the department or city IT where employee data may be hosted.
 
 ### Sign-in without a Google account
+**Built on Firebase (Oct 2026): cell number + texted code.** The cell is matched to the staff list (`staffCells`); exactly one free seat with that cell links and approves the account at once (`approvedBy: "cell"`, audited) and saves the number for trade texts. Otherwise the person picks their name and an admin approves. A personal trade invite link opened with the invited person's cell needs no Employee ID. **Launch invites:** Admin → Invite people texts the app link from the admin's phone (groups of 10 with cells filled in, or one by one), downloads contact cards (.vcf, logged), or sends from the department number once Twilio is set up (`launchInvites` function).
+
 Offer these alongside Google sign-in (all built into Firebase Auth), so members without a Google account can still sign in:
 
 - **Email link (no password):** enter any email address and tap the sign-in link sent to it. Free; nothing to forget. This is the main backup.
@@ -39,7 +41,7 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
 ### Shift-trade alerts (app, text and email)
-**Built on Firebase (Oct 2026):** functions `notify` (the page asks after each post, widen, answer, pick or cancel; nothing is sent twice), `alertAction` (one-tap links: a confirm button, then it acts once), `smsReply` (Twilio webhook, signature checked) and `dailySummary` (run each morning by `.github/workflows/daily-alerts.yml`). App push (FCM, `firebase-messaging-sw.js`), email (Gmail app password over SMTP) and texts (Twilio REST) each switch on when their settings are added (FIREBASE_SETUP.md, step 11). Picks from an alert or a text use the same pick logic as the page (`TourMath.pickLegs`). Texts wait on Twilio's A2P 10DLC approval. App notifications open the app on the Trades tab; they don't carry answer buttons.
+**Built on Firebase (Oct 2026):** functions `notify` (the page asks after each post, widen, answer, pick or cancel; nothing is sent twice), `alertAction` (one-tap links: a confirm button, then it acts once), `smsReply` (Twilio webhook, signature checked) and `dailySummary` (run each morning by `.github/workflows/daily-alerts.yml`). App push (FCM, `firebase-messaging-sw.js`), email (Gmail app password over SMTP) and texts (Twilio REST) each switch on when their settings are added (FIREBASE_SETUP.md, step 12). Picks from an alert or a text use the same pick logic as the page (`TourMath.pickLegs`). Texts wait on Twilio's A2P 10DLC approval. App notifications open the app on the Trades tab; they don't carry answer buttons.
 
 The Trades tab already stores each member's opt-in: three switches, "Notify me by text / in the app / by email", shown as "available at launch". With the server:
 

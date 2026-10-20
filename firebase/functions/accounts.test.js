@@ -143,3 +143,36 @@ test("signing in from a link: the Employee ID must match the invited person", ()
   assert.throws(() => A.planRedeem("u1", { status: "active", pos: "12X" }, inv, "LE1234", { expected: "LE1234", nowIso: NOW }), /linked to someone else/);
   assert.throws(() => A.planRedeem("u1", pending, inv, "1234", { expected: "LE1234", nowIso: NOW }), /two letters/);
 });
+
+test("cell-number sign-in: a phone account, no domain rule", () => {
+  const a = A.signIn(null, { phone: "+14155550110", isAdmin: false, allowed: false, now: NOW });
+  assert.deepEqual([a.user.phone, a.user.email, a.user.status, a.user.name], ["+14155550110", null, "pending", "+14155550110"]);
+  const b = A.signIn(a.user, { phone: "+14155550110", isAdmin: false, allowed: false, now: NOW });
+  assert.equal(b.created, false);
+  assert.equal(A.meJson("u", b.user, { lookup, contact: null, profile: null }).phone, "+14155550110");
+});
+
+test("cell-number sign-in links the one staff-list seat with that cell", () => {
+  const cells = new Map([["10EOC03M", "(415) 555-0110"], ["11ENL01M", "415.555.0111"], ["12X", "415-555-0112"], ["13X", "4155550112"]]);
+  const pending = { status: "pending", role: "member", pos: null };
+  const p = A.planCellMatch("u1", pending, "+14155550110", cells, () => null, NOW);
+  assert.deepEqual([p.pos, p.status, p.approvedBy], ["10EOC03M", "active", "cell"]);
+  assert.equal(A.planCellMatch("u1", pending, "+14155559999", cells, () => null, NOW), null); // not on the list
+  assert.equal(A.planCellMatch("u1", pending, "+14155550112", cells, () => null, NOW), null); // two seats share it
+  assert.equal(A.planCellMatch("u1", pending, "+14155550110", cells, () => "u2", NOW), null); // seat taken
+  assert.equal(A.planCellMatch("u1", { status: "active", pos: "X" }, "+14155550110", cells, () => null, NOW), null);
+});
+
+test("a personal invite link opened with the invited person's cell needs no Employee ID", () => {
+  const inv = { recipientKey: "11ENL01M", inviterKey: "10EOC03M", expiresAt: "2026-11-01T00:00:00.000Z", usedBy: null };
+  const p = A.planRedeem("u1", { status: "pending" }, inv, "", { expected: "LE1234", nowIso: NOW, cellMatch: true });
+  assert.deepEqual([p.pos, p.status, p.approvedBy], ["11ENL01M", "active", "invite"]);
+  assert.throws(() => A.planRedeem("u1", { status: "pending" }, inv, "", { expected: "LE1234", nowIso: NOW, cellMatch: false }), /two letters/);
+});
+
+test("launch texts skip people on the tool, without a cell, or already texted", () => {
+  const cells = new Map([["a", "4155550101"], ["b", "4155550102"], ["c", ""], ["d", "4155550104"], ["e", "123"]]);
+  const r = A.launchTargets(["a", "b", "c", "d", "e", "a"], cells, (k) => k === "b", (k) => k === "d");
+  assert.deepEqual(r.send, [{ key: "a", cell: "4155550101" }]);
+  assert.deepEqual(r.skipped, { onTool: 1, noCell: 2, sent: 1 });
+});
