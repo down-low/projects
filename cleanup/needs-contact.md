@@ -17,3 +17,7 @@ Names and Employee IDs only. Cell numbers go in on each person's Employee card, 
 | Egan,Joseph W | EG8779 | E34, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
 | O'Toole,Richard C | OT4273 | E40, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
 | Boldt,Austin C | BO3091 | E12, Lieutenant (H20), seat not known | Not in the tool; added | Officers On Duty, 10/23–10/27/2026 |
+
+## Added from the station rosters (10/20/2026)
+
+95 more people were added from the fir-sap2 station rosters, each with "needs contact info" in their note. The list (name, ID, company, reason, rank) is under "Not in the tool" in `station-rosters-2026-10-20.md`; the Employee card roster can filter them by searching "needs contact".
