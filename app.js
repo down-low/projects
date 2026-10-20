@@ -934,6 +934,7 @@
 
   /* ---------- Boot ---------- */
   var byPos = {};
+  var openTrades = false; // opened from a trade alert link (?trade=)
   var addedWithTour = [];
   var byId = {}, byName = {}; // employee ID -> people, name -> people (more than one means a duplicate)
   function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
@@ -1118,7 +1119,7 @@
     }
     booted = true;
     applyAccountUi();
-    var v = recall("view");
+    var v = openTrades ? "trades" : recall("view");
     setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
   }
   function selectText(el) {
@@ -1361,7 +1362,9 @@
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
-        if (/[?&](auth_error|t)=/.test(location.search)) history.replaceState(null, "", location.pathname);
+        // ?trade=<id>: opened from a trade alert, so start on the Trades tab.
+        openTrades = /[?&]trade=/.test(location.search);
+        if (/[?&](auth_error|t|trade)=/.test(location.search)) history.replaceState(null, "", location.pathname);
         try { sessionStorage.removeItem("tradeInvite"); } catch (e) { /* a trade invite link opened by someone already approved */ }
         var json = function (url) {
           return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });

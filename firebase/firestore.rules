@@ -91,10 +91,11 @@ service cloud.firestore {
       allow delete: if (signedIn() && uid == request.auth.uid) || isAdmin();
     }
 
-    // Accounts: created and changed by the functions; a person reads their own and sets their own alerts and tabs.
+    // Accounts: created and changed by the functions; a person reads their own and sets their own alerts, tabs and
+    // app-notification tokens. (alertLog, alertState and alertTokens, used by the alert functions, match no rule.)
     match /users/{uid} {
       allow read: if (signedIn() && uid == request.auth.uid) || isAdmin();
-      allow update: if signedIn() && uid == request.auth.uid && only(['alerts', 'prefs']);
+      allow update: if signedIn() && uid == request.auth.uid && only(['alerts', 'prefs', 'pushTokens']);
     }
 
     // Shift trades. As on the claude.ai page, every approved member can read them; the page shows each person only

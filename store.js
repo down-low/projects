@@ -449,6 +449,8 @@
       });
     }
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
+    // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
+    function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -616,16 +618,34 @@
       },
       postTrade: function (rec) {
         rec.status = "open";
-        return w(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
+        return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
-      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })); },
-      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)); },
+      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
+      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
       // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
       pickReply: function (trade, reply, writes) {
         return w(fs.collection("trades").doc(trade.id).update({ status: reply.via === "link" && !reply.verified ? "pending" : "set", replyId: reply.id, takerKey: reply.takerKey,
-          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }));
+          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }))
+          .then(function () { notify("trade", trade.id); });
       },
-      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })); },
+      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
+      // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
+      alertsLive: true,
+      canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
+      registerPush: function () {
+        if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
+        return Notification.requestPermission().then(function (p) {
+          if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
+            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
+          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        }).then(function (reg) {
+          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+        }).then(function (token) {
+          if (!token) throw new Error("This browser didn't give a notification token.");
+          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+        });
+      },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
       suggest: function (rec) {

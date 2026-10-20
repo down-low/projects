@@ -120,6 +120,10 @@ test("accounts: read your own, change only alerts and tabs", async () => {
   await assertFails(db(MEMBER).collection("users").get());
   await assertSucceeds(db(MEMBER).doc("users/mem1").update({ alerts: { text: true, app: false, email: false, board: "off" } }));
   await assertFails(db(MEMBER).doc("users/mem1").update({ role: "admin" }));
+  await assertSucceeds(db(MEMBER).doc("users/mem1").update({ pushTokens: ["tok1"] }));
+  await assertFails(db(OTHER).doc("users/mem1").update({ pushTokens: ["tok2"] }));
+  await assertFails(db(MEMBER).doc("alertState/mem1").get());
+  await assertFails(db(MEMBER).doc("alertLog/t1").get());
   await assertFails(db(MEMBER).doc("users/mem1").update({ status: "active", pos: "11ENL01M" }));
   await assertFails(db(PENDING).doc("users/pend1").set({ status: "active", role: "admin" }));
 });

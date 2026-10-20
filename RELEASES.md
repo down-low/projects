@@ -39,6 +39,8 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
 ### Shift-trade alerts (app, text and email)
+**Built on Firebase (Oct 2026):** functions `notify` (the page asks after each post, widen, answer, pick or cancel; nothing is sent twice), `alertAction` (one-tap links: a confirm button, then it acts once), `smsReply` (Twilio webhook, signature checked) and `dailySummary` (run each morning by `.github/workflows/daily-alerts.yml`). App push (FCM, `firebase-messaging-sw.js`), email (Gmail app password over SMTP) and texts (Twilio REST) each switch on when their settings are added (FIREBASE_SETUP.md, step 11). Picks from an alert or a text use the same pick logic as the page (`TourMath.pickLegs`). Texts wait on Twilio's A2P 10DLC approval. App notifications open the app on the Trades tab; they don't carry answer buttons.
+
 The Trades tab already stores each member's opt-in: three switches, "Notify me by text / in the app / by email", shown as "available at launch". With the server:
 
 - **App (push):** Firebase Cloud Messaging, free. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push. On iPhone, notifications only work after the app is added to the Home Screen (Apple's rule for web apps).

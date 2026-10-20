@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Build the two Firebase Hosting folders from the app files (FIREBASE_PLAN.md, "Two apps, one backend").
 
-Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL]
+Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY]
   out_dir defaults to firebase/; it gets public-app/ (the employee app) and public-admin/ (the back office).
-  The URLs (set by the deploy workflow) let each site link to the other.
+  The URLs (set by the deploy workflow) let each site link to the other. --vapid-key (the Web Push key from Firebase
+  Cloud Messaging) turns on app notifications for trade alerts; the app gets firebase-messaging-sw.js for them.
+  It also copies schedule.js into firebase/functions/lib/, for the trade alert functions.
 
 Hosting is public, so only the static app goes there: no roster, Employee IDs, awards or PDFs (those are in Cloud
 Storage, readable by approved accounts, uploaded by .github/workflows/firebase.yml). index.html gets the Firebase SDK
@@ -45,10 +47,17 @@ MANIFEST = """{
 SITES = {"app": "public-app", "admin": "public-admin"}
 
 
+# App notifications (trade alerts): Firebase Cloud Messaging's service worker, at the site root.
+PUSH_WORKER = f"""importScripts("/__/firebase/{SDK}/firebase-app-compat.js", "/__/firebase/{SDK}/firebase-messaging-compat.js", "/__/firebase/init.js");
+firebase.messaging(); // shows each alert as a notification; tapping it opens the trade (webpush.fcmOptions.link)
+"""
+
+
 def sdk_tags(site, urls):
-    libs = ["app", "auth", "firestore", "functions"]
+    libs = ["app", "auth", "firestore", "functions"] + (["messaging"] if site == "app" and urls.get("vapid") else [])
     tags = [f'<script src="/__/firebase/{SDK}/firebase-{lib}-compat.js"></script>' for lib in libs]
-    cfg = {"FIREBASE_HOSTED": True, "FIREBASE_SITE": site, "FIREBASE_APP_URL": urls.get("app"), "FIREBASE_ADMIN_URL": urls.get("admin")}
+    cfg = {"FIREBASE_HOSTED": True, "FIREBASE_SITE": site, "FIREBASE_APP_URL": urls.get("app"), "FIREBASE_ADMIN_URL": urls.get("admin"),
+           "FIREBASE_VAPID_KEY": urls.get("vapid") if site == "app" else None}
     js = "".join(f"window.{k} = {json.dumps(v)};" for k, v in cfg.items())
     tags += ['<script src="/__/firebase/init.js"></script>', f"<script>{js}</script>"]
     return "\n".join(tags) + "\n"
@@ -81,6 +90,9 @@ def build_site(out, site, urls):
             f.write(MANIFEST)
         with open(os.path.join(out, "icon.svg"), "w") as f:
             f.write(ICON)
+        if urls.get("vapid"):
+            with open(os.path.join(out, "firebase-messaging-sw.js"), "w") as f:
+                f.write(PUSH_WORKER)
     html = html.replace("</head>", extra + "</head>", 1)
     with open(path, "w") as f:
         f.write(html)
@@ -90,15 +102,18 @@ def build_site(out, site, urls):
 def main():
     args = sys.argv[1:]
     urls = {}
-    for key in ("app", "admin"):
-        flag = f"--{key}-url"
+    for key, flag in (("app", "--app-url"), ("admin", "--admin-url"), ("vapid", "--vapid-key")):
         if flag in args:
             i = args.index(flag)
-            urls[key] = args[i + 1].rstrip("/")
+            if args[i + 1]:
+                urls[key] = args[i + 1].rstrip("/")
             del args[i:i + 2]
     base = os.path.abspath(args[0]) if args else os.path.join(ROOT, "firebase")
     for site, folder in SITES.items():
         build_site(os.path.join(base, folder), site, urls)
+    lib = os.path.join(ROOT, "firebase", "functions", "lib")
+    os.makedirs(lib, exist_ok=True)
+    shutil.copy(os.path.join(ROOT, "schedule.js"), os.path.join(lib, "schedule.js"))
 
 
 if __name__ == "__main__":
