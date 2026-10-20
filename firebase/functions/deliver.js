@@ -176,5 +176,5 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
     return pending ? "Picked " + name + ". It's set once they sign in from their invite link." : "Picked " + name + ". The trade is on the schedule.";
   }
 
-  return { trade, reply, daily, answer, pick, members, appUrl, fnUrl };
+  return { trade, reply, daily, answer, pick, members, appUrl, fnUrl, sendText };
 };

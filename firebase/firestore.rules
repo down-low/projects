@@ -117,6 +117,11 @@ service cloud.firestore {
       allow update, delete: if isAdmin();
     }
 
+    // Launch invites: who an admin has texted the sign-up link to (Admin → Invite people).
+    match /launchInvites/{pos} {
+      allow read, write: if isAdmin();
+    }
+
     // Trade invites (personal links): made and read only by the functions (createInvite, inviteInfo, redeemInvite).
     match /tradeInvites/{code} {
       allow read, write: if false;

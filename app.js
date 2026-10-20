@@ -1364,8 +1364,15 @@
       }).then(function (rows) {
         // ?trade=<id>: opened from a trade alert, so start on the Trades tab.
         openTrades = /[?&]trade=/.test(location.search);
+        var linkCode = (/[?&]t=([^&]+)/.exec(location.search) || [])[1];
         if (/[?&](auth_error|t|trade)=/.test(location.search)) history.replaceState(null, "", location.pathname);
-        try { sessionStorage.removeItem("tradeInvite"); } catch (e) { /* a trade invite link opened by someone already approved */ }
+        // A trade invite link opened by someone already approved: when they're the person it was for (signed in with
+        // that person's staff-list cell), it confirms their answer from the link. Otherwise it's just dropped.
+        try {
+          var inviteCode = sessionStorage.getItem("tradeInvite") || linkCode;
+          sessionStorage.removeItem("tradeInvite");
+          if (inviteCode && backend.redeemInvite) backend.redeemInvite(decodeURIComponent(inviteCode), "").catch(function () {});
+        } catch (e) { /* storage unavailable */ }
         var json = function (url) {
           return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
         };

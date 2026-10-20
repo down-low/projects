@@ -99,20 +99,39 @@ function audit(actor, action, detail) {
 }
 
 // On every page load after sign-in: create or refresh the account, set the claims, return /api/me.
+// Signing in with a cell number: the staff-list cell (staffCells) that matches links the account to that seat at once.
+async function staffCellMap() {
+  const snap = await db.collection("staffCells").get();
+  return new Map(snap.docs.map((d) => [d.id, d.data().cell]));
+}
 exports.syncMe = wrap(async (req) => {
   const auth = signedIn(req);
-  const email = String(auth.token.email || "").toLowerCase();
-  if (!email || auth.token.email_verified !== true) throw new HttpsError("permission-denied", "Sign in with a Google account.", { reason: "google" });
+  const email = auth.token.email_verified === true ? String(auth.token.email || "").toLowerCase() : "";
+  const phone = auth.token.phone_number || "";
+  if (!email && !phone) throw new HttpsError("permission-denied", "Sign in with your cell number or a Google account.", { reason: "google" });
   const { admins, domains } = settings();
   const ref = db.doc("users/" + auth.uid);
+  const cells = phone ? await staffCellMap() : null;
   const result = await db.runTransaction(async (t) => {
     const snap = await t.get(ref);
-    const r = A.signIn(snap.exists ? snap.data() : null, { email, name: auth.token.name || "", isAdmin: admins.includes(email),
-      allowed: A.emailAllowed(email, domains), now: now() });
+    const r = A.signIn(snap.exists ? snap.data() : null, { email, phone, name: auth.token.name || "", isAdmin: !!email && admins.includes(email),
+      allowed: !!email && A.emailAllowed(email, domains), now: now() });
+    if (phone) {
+      const key = Array.from(cells.keys()).find((k) => A.cellKey(cells.get(k)) === A.cellKey(phone));
+      const linked = key ? await t.get(db.collection("users").where("pos", "==", key)) : null;
+      const patch = A.planCellMatch(auth.uid, r.user, phone, cells, () => (linked && !linked.empty ? linked.docs[0].id : null), now());
+      if (patch) { Object.assign(r.user, patch); r.cellLinked = patch.pos; }
+    }
     t.set(ref, r.user);
     return r;
   });
-  if (result.created) await audit(auth.uid, "signup", { email });
+  if (result.created) await audit(auth.uid, "signup", { email: email || null, phone: phone || null });
+  if (result.cellLinked) {
+    await audit(auth.uid, "cellLink", { pos: result.cellLinked });
+    // The cell they signed in with becomes the number for trade texts (My page).
+    const c = db.doc("contacts/" + auth.uid), cs = await c.get();
+    if (!cs.exists || !cs.data().phoneMobile) await c.set({ pos: result.cellLinked, phoneMobile: phone, share: false, updatedAt: now() }, { merge: true });
+  }
   const changed = await syncClaims(auth.uid, result.user, auth.token);
   const { lookup } = await lookups();
   return Object.assign(await meFor(auth.uid, result.user, lookup), { claimsChanged: changed });
@@ -268,12 +287,14 @@ exports.redeemInvite = wrap(async (req) => {
   const { ref, inv } = await inviteDoc(body.code);
   if (!inv) throw new HttpsError("not-found", "That link isn't valid");
   const expected = await expectedEmplId(inv.recipientKey);
+  const invitedCell = await db.doc("staffCells/" + inv.recipientKey).get().then((d) => (d.exists && d.data().cell) || null);
+  const cellMatch = !!(auth.token.phone_number && invitedCell && A.cellKey(invitedCell) === A.cellKey(auth.token.phone_number));
   const uref = db.doc("users/" + auth.uid);
   const user = await db.runTransaction(async (t) => {
     const [usnap, linked] = await Promise.all([t.get(uref), t.get(db.collection("users").where("pos", "==", inv.recipientKey))]);
     const u = usnap.exists ? usnap.data() : null;
     const takenBy = linked.empty ? null : linked.docs[0].id;
-    const patch = A.planRedeem(auth.uid, u, inv, body.emplId, { expected, takenBy, nowIso: now() });
+    const patch = A.planRedeem(auth.uid, u, inv, body.emplId, { expected, takenBy, nowIso: now(), cellMatch });
     const rref = db.doc("tradeReplies/link_" + body.code), tref = db.doc("trades/" + inv.tradeId);
     const [rsnap, tsnap] = await Promise.all([t.get(rref), t.get(tref)]);
     t.update(uref, patch);
@@ -407,4 +428,33 @@ exports.dailySummary = onRequest({ invoker: "public" }, async (req, res) => {
   const key = process.env.ALERT_KEY || "";
   if (!key || req.method !== "POST" || req.get("X-Alert-Key") !== key) { res.status(403).send("forbidden"); return; }
   res.json({ sent: await D.daily() });
+});
+
+/* Launch invites (admin site → Admin → Invite people). status: whether the department number can send; audit: log a
+   contact-card download; send: a personal text from the department number to each chosen person not on the tool yet
+   (Twilio; recorded in launchInvites/{pos} and audited). Group texts from the admin's own phone need no function. */
+exports.launchInvites = wrap(async (req) => {
+  const actor = requireAdmin(req);
+  const body = req.data || {};
+  const twilio = !!(process.env.TWILIO_SID && process.env.TWILIO_TOKEN && process.env.TWILIO_FROM);
+  if (body.action === "status") return { twilio };
+  if (body.action === "audit") {
+    await audit(actor.uid, "contactsDownload", { count: Number(body.count) || 0 });
+    return { ok: true };
+  }
+  if (body.action !== "send") throw new HttpsError("invalid-argument", "Unknown action");
+  if (!twilio) throw new HttpsError("failed-precondition", "The department texting number isn't set up yet.");
+  const text = typeof body.text === "string" ? body.text.trim().slice(0, 600) : "";
+  if (text.length < 20) throw new HttpsError("invalid-argument", "Write the message first.");
+  const keys = Array.isArray(body.keys) ? body.keys.filter((k) => typeof k === "string").slice(0, 1000) : [];
+  const [cells, onTool, logged] = await Promise.all([staffCellMap(), activePositions(), db.collection("launchInvites").get()]);
+  const viaTwilio = new Set(logged.docs.filter((d) => d.data().via === "twilio").map((d) => d.id));
+  const plan = A.launchTargets(keys, cells, (k) => onTool.has(k), (k) => viaTwilio.has(k));
+  let sent = 0, failed = 0;
+  for (const x of plan.send) {
+    const ok = await D.sendText(x.cell, text).catch(() => false);
+    if (ok) { sent++; await db.doc("launchInvites/" + x.key).set({ sentAt: now(), via: "twilio", by: actor.uid }); } else failed++;
+  }
+  await audit(actor.uid, "launchTexts", { sent, failed, skipped: plan.skipped });
+  return { sent, failed, skipped: plan.skipped };
 });
