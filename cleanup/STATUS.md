@@ -43,7 +43,9 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - The cell on 21EOE08M was Christopher's, so it moved to 11TOF15M.
     - Dumont,Catherine has no phone in fir-db1.
   - Rescue Captain file: Pendergast, Byrne,M, Warren,J.
-  - Staff list now 740 cells (version 4).
+  - Captain, Lieutenant, ISS and FF/Paramedic files: 82 cells. All had a CELL; none was already on file.
+  - Staff list now 822 cells (version 5).
+  - Firefighter pull held for now (user).
 - `fir-pull-noid.js` run 10/21. Results:
   - **WE, confirmed by the user, written 10/21** (open-ended, from 1/1/2026): Alba,K 3FBOL07M; Louie,T 31EOE15M; Dickerson,C 10TOE29M.
   - **Written 10/21 (user OK):**

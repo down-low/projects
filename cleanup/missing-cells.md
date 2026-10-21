@@ -1,138 +1,22 @@
 # People in the tool with no cell number
 
-Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-list cell. Names, positions and Employee IDs only; numbers never go in the repo.
+Generated 2026-10-21 from the page records: 407 of 1228 people have no staff-list cell. Names, positions and Employee IDs only; numbers never go in the repo.
 
 | Rank | Missing |
 | --- | --- |
-| Battalion Chief | 1 |
-| Rescue Captain | 3 |
-| Captain | 14 |
-| Lieutenant | 31 |
-| ISS | 3 |
-| FF/Paramedic | 36 |
-| Firefighter | 408 |
+| Lieutenant | 2 |
+| Firefighter | 402 |
 | Pilot | 2 |
 | Marine Engineer | 1 |
 
-## Battalion Chief (1)
+## Lieutenant (2)
 
 | Name | Employee ID | Company | Position | Tour | H-class |
 | --- | --- | --- | --- | --- | --- |
-| Cannon,M | CA5637 | Battalion Chief (added) | added | — | — |
-
-## Rescue Captain (3)
-
-| Name | Employee ID | Company | Position | Tour | H-class |
-| --- | --- | --- | --- | --- | --- |
-| Warren,J | WA4230 | RC2 | added | — | — |
-| Byrne,M | BY7692 | Rescue Captain (added) | added | — | — |
-| Pendergast,M | PE1683 | Rescue Captain (added) | added | — | — |
-
-## Captain (14)
-
-| Name | Employee ID | Company | Position | Tour | H-class |
-| --- | --- | --- | --- | --- | --- |
-| Smith Jr,J | SM2694 | E07 | 07EOC22M | 22 | H30 |
-| Grimesey,P | GR6230 | E16 | added | — | — |
-| Yeh,C | YE8890 | E37 | 37EOC03M | 3 | H30 |
-| Davis,A | DA1471 | E38 | 38EOC19M | 19 | H30 |
-| Filkins,D | FI2398 | T02 | added | — | — |
-| Chan,J | CH9956 | T13 | 13TOC31M | 31 | H30 |
-| Wong,W | WO0816 | T14 | 14TOC16M | 16 | H30 |
-| Abrams,C | AB1010 | Captain (added) | added | — | — |
-| Ballard,M | BA1054 | Captain (added) | added | — | — |
-| DeJarlais,J | DE3208 | Captain (added) | added | — | — |
-| Elias Jr,M | EL1089 | Captain (added) | added | — | — |
-| Johnston,S | JO2603 | Captain (added) | added | — | — |
-| Oxford,N | OX1894 | Captain (added) | added | — | — |
-| Truppa,J | TR1165 | Captain (added) | added | — | — |
-
-## Lieutenant (31)
-
-| Name | Employee ID | Company | Position | Tour | H-class |
-| --- | --- | --- | --- | --- | --- |
-| Richardson,K | RI1550 | E02 | added | — | — |
-| Klofstad,J | KL1384 | E04 | 04EOL03M | 3 | H20 |
-| Capurro,V | CA5068 | E05 | 05ETL01M | 1 | H20 |
-| Atkinson,K | AT3449 | E11 | added | — | — |
-| Boldt,A | BO3091 | E12 | added | — | — |
-| Kristoff,R | KR2333 | E16 | 16EOL11M | 11 | H20 |
-| Truong,D | TR0477 | E22 | 22EOL22M | 22 | H20 |
-| Christiansen,L | CH2321 | E23 | 23EOD02M | 2 | H2 |
-| Egan,J | EG8779 | E34 | added | — | — |
-| Grant,K | GR1466 | E36 | 36EOL27M | 27 | H20 |
-| O'Toole,R | OT4273 | E40 | added | — | — |
 | Lopez,R | — | E42 | 42EOL22M | 22 | H20 |
 | Alba,K | — | FB3 | 3FBOL07M | 7 | H20 |
-| Wu,A | WU1175 | T12 | 12TOL29M | 29 | H20 |
-| Thurman,M | TH1082 | T18 | 18TOL25M | 25 | H20 |
-| Clark,A | CL1037 | Lieutenant (added) | added | — | — |
-| Drake III,C | DR9468 | Lieutenant (added) | added | — | — |
-| Halpin,N | HA5274 | Lieutenant (added) | added | — | — |
-| Jebe,D | JE3282 | Lieutenant (added) | added | — | — |
-| Kim,Z | KI2294 | Lieutenant (added) | added | — | — |
-| Konefal,K | KO2554 | Lieutenant (added) | added | — | — |
-| Lamond,A | LA2474 | Lieutenant (added) | added | — | — |
-| Marshall,K | MA4705 | Lieutenant (added) | added | — | — |
-| Maxwell,L | MA3507 | Lieutenant (added) | added | — | — |
-| Melton Jr.,D | ME7678 | Lieutenant (added) | added | — | — |
-| Miller,D | MI1261 | Lieutenant (added) | added | — | — |
-| Montero,J | MO3110 | Lieutenant (added) | added | — | — |
-| Moreno,Z | MO2810 | Lieutenant (added) | added | — | — |
-| Nielsen,K | NI5395 | Lieutenant (added) | added | — | — |
-| Palu,J | PA4020 | Lieutenant (added) | added | — | — |
-| Shea,K | SH1473 | Lieutenant (added) | added | — | — |
 
-## ISS (3)
-
-| Name | Employee ID | Company | Position | Tour | H-class |
-| --- | --- | --- | --- | --- | --- |
-| Parra,N | PA2774 | B01 | added | — | — |
-| Morales,J | MO3842 | ISS (added) | added | — | — |
-| Sandine,S | SA4105 | ISS (added) | added | — | — |
-
-## FF/Paramedic (36)
-
-| Name | Employee ID | Company | Position | Tour | H-class |
-| --- | --- | --- | --- | --- | --- |
-| Levesque,E | LE5590 | E08 | added | — | — |
-| Lopez,G | LO0245 | E11 | 11EOA14M | 14 | H3 |
-| Bradford,S | BR1017 | E22 | added | — | — |
-| Gilio,J | GI1502 | E22 | added | — | — |
-| Jekayinfa,O | JE4734 | E22 | added | — | — |
-| Summers,S | SU3362 | E25 | 25EOA03M | 3 | H3 |
-| Shepard,K | SH3135 | E28 | added | — | — |
-| Hanley,J | HA6250 | E35 | added | — | — |
-| Wu,J | WU2056 | E36 | added | — | — |
-| Gordon,M | GO2086 | E40 | added | — | — |
-| O'Rourke,O | OR3604 | E40 | added | — | — |
-| Spognardi,E | SP3448 | E51 | 51EOA02M | 2 | H3 |
-| Erese,S | ER2108 | T08 | added | — | — |
-| Marino,M | MA3301 | T09 | added | — | — |
-| Rangel,E | RA1669 | T13 | added | — | — |
-| Backman,B | BA4275 | FF/Paramedic (added) | added | — | — |
-| Burgess,B | BU5293 | FF/Paramedic (added) | added | — | — |
-| Cairo,B | CA2484 | FF/Paramedic (added) | added | — | — |
-| Cheung,H | CH2603 | FF/Paramedic (added) | added | — | — |
-| Deaner,J | DE1227 | FF/Paramedic (added) | added | — | — |
-| Fartash,D | FA6340 | FF/Paramedic (added) | added | — | — |
-| Garavaglia,C | GA1940 | FF/Paramedic (added) | added | — | — |
-| Hausel,N | HA2634 | FF/Paramedic (added) | added | — | — |
-| Huynh,M | HU1157 | FF/Paramedic (added) | added | — | — |
-| LaBauve,E | LA1666 | FF/Paramedic (added) | added | — | — |
-| Link,S | LI4085 | FF/Paramedic (added) | added | — | — |
-| Lopez,E | LO4278 | FF/Paramedic (added) | added | — | — |
-| Mah,M | MA3964 | FF/Paramedic (added) | added | — | — |
-| Mahaffey,S | MA1320 | FF/Paramedic (added) | added | — | — |
-| Moore,K | MO4496 | FF/Paramedic (added) | added | — | — |
-| O'Driscoll,B | OD3139 | FF/Paramedic (added) | added | — | — |
-| Olguin,A | OL2779 | FF/Paramedic (added) | added | — | — |
-| Rios,A | RI1181 | FF/Paramedic (added) | added | — | — |
-| Schraner,D | SC3203 | FF/Paramedic (added) | added | — | — |
-| Steward,M | ST4461 | FF/Paramedic (added) | added | — | — |
-| Wiltshire,D | WI1740 | FF/Paramedic (added) | added | — | — |
-
-## Firefighter (408)
+## Firefighter (402)
 
 | Name | Employee ID | Company | Position | Tour | H-class |
 | --- | --- | --- | --- | --- | --- |
@@ -212,8 +96,8 @@ Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-lis
 | Swanson,L | SW3684 | E19 | 19EOE21M | 21 | H2 |
 | Barnes,D | BA2315 | E20 | 20EOD26M | 26 | H2 |
 | Forbes,V | FO1136 | E20 | 20EOE29M | 29 | H2 |
-| Suhr,M | — | E20 | 20EOE28M | 28 | H2 |
 | Campagna,B | CA1043 | E21 | added | — | — |
+| Dumont,C | DU2026 | E21 | 21EOE08M | 8 | H2 |
 | Mejia,C | ME4070 | E21 | 21EOD05M | 5 | H2 |
 | Moreno,A | MO4487 | E21 | added | — | — |
 | Hu,A | HU1439 | E22 | 22EOF13M | 13 | H2 |
@@ -267,7 +151,6 @@ Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-lis
 | Hance,S | HA3609 | E34 | 34EOE24M | 24 | H2 |
 | Tang,M | TA3152 | E34 | added | — | — |
 | Velasco,T | VE2733 | E34 | 34ETX27M | 27 | H2 |
-| Clarke,K | — | E35 | 35EOE23M | 23 | H2 |
 | Dumaop,G | DU2761 | E35 | 35ETX26M | 26 | H2 |
 | Markham,N | MA5161 | E35 | 35EOE24M | 24 | H2 |
 | Edais,A | ED1048 | E36 | 36EOE03M | 3 | H2 |
@@ -355,7 +238,6 @@ Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-lis
 | Villalba Nunez,C | VI2676 | T10 | 10TOF13M | 13 | H2 |
 | Brennan,C | BR4204 | T11 | 11TOE29M | 29 | H2 |
 | Byrne,J | BY1924 | T11 | added | — | — |
-| Dumont,C | — | T11 | 11TOF15M | 15 | H2 |
 | Heavey,A | HE1655 | T11 | added | — | — |
 | Orengo,D | OR2083 | T11 | added | — | — |
 | Yee,A | YE5965 | T11 | 11TOD04M | 4 | H2 |
@@ -367,8 +249,6 @@ Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-lis
 | Valenzuela Lopez,J | VA1333 | T12 | 12TOE21M | 21 | H2 |
 | Rivera,D | RI7456 | T13 | 13TOD27M | 27 | H2 |
 | White,R | WH1049 | T13 | 13TOD26M | 26 | H2 |
-| Chin,B | — | T14 | 14TOT10M | 10 | H2 |
-| Chin,Bradford | CH1575 | T14 | added | — | — |
 | Hagan,C | HA6857 | T14 | 14TOF24M | 24 | H2 |
 | Hansen,C | HA5307 | T14 | added | — | — |
 | Holmes,H | HO5159 | T14 | added | — | — |
@@ -390,8 +270,6 @@ Generated 2026-10-21 from the page records: 499 of 1230 people have no staff-lis
 | Watanabe,K | WA4252 | T17 | added | — | — |
 | Aranda,E | AR3345 | T18 | added | — | — |
 | Bailey,D | BA1601 | T18 | 18TTX14M | 14 | H2 |
-| Chin,B | — | T18 | 18TOD21M | 21 | H2 |
-| Chin,Brett | CH1466 | T18 | added | — | — |
 | Liu,J | LI2376 | T18 | 18TOF31M | 31 | H2 |
 | Maguire,C | MA4242 | T18 | added | — | — |
 | Marks,O | MA3131 | T18 | 18TOD22M | 22 | H2 |
