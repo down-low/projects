@@ -77,6 +77,15 @@
   function store(k, v) { try { localStorage.setItem("tour-schedule:" + k, v); } catch (e) { /* storage unavailable */ } }
   function recall(k) { try { return localStorage.getItem("tour-schedule:" + k); } catch (e) { return null; } }
 
+  /* ---------- Theme: follow the phone, or always light or dark (remembered on this device) ---------- */
+  function applyTheme(v) {
+    if (v !== "light" && v !== "dark") v = "system";
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.themeSet === v ? "true" : "false"); });
+  }
+  applyTheme(recall("theme"));
+
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
@@ -497,23 +506,42 @@
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       identTiles(p, tourNow, next) +
+      // Two rows up top: the tiles, then one full row of data (rank, position, today's leave) ending in a › that opens
+      // the rest. The row never wraps; values shorten instead. No label: not "Details", since in the department a
+      // detail is an assignment to another station.
+      '<div class="ident-row">' +
       kv("Rank", p.rank) +
+      (p.added ? kv("Roster", "Added, not on the vacancy list") + (p.tour ? kv("Apparatus", p.company) : "") : kv("Position", p.title)) +
+      (p.added && !p.tour ? "" : '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>") +
+      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
+      (function () {
+        var notes = [];
+        if (actingNow) notes.push(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow));
+        if (moveNext) notes.push("New seat");
+        if (coveredNow) notes.push("Covered");
+        if (upcoming) notes.push("Tour change");
+        if (p.open) notes.push("Open for bid");
+        var open = !!state.folds.ident;
+        return '<button type="button" class="ident-toggle' + (notes.length ? " has-notes" : "") + '" id="ident-toggle" aria-controls="ident-body" aria-expanded="' + open +
+          '" aria-label="' + esc((open ? "Show less" : "Show more") + (notes.length ? " (" + notes.join(", ") + ")" : "")) + '"' +
+          (notes.length ? ' title="' + esc(notes.join(" · ")) + '"' : "") +
+          '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+          Trades.personExtras(p) +
+          '<div class="ident-body" id="ident-body"' + (open ? "" : " hidden") + ">";
+      })() +
       kv("Employee ID", p.emplId || "Not on file", "kv-id") +
-      (p.added && !p.tour
-        ? kv("Roster", "Added, not on the vacancy list")
-        : (p.added ? kv("Roster", "Added, not on the vacancy list") + kv("Apparatus", p.company) : kv("Position", p.title) + kv("Position no.", p.pos)) +
-          '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
-          (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
-          kv("Works watches", watchesFor(tourNow).join(" "))) +
+      (p.added ? "" : kv("Position no.", p.pos)) +
+      (p.added && !p.tour ? "" : (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
+        kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
       (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow), slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
       (moveNext ? kv(moveNext.start > iso(t) ? "Own seat from " + shortDate(fromIso(moveNext.start)) : "Own seat", (byPos[moveNext.targetPos] || {}).title + " " + moveNext.targetPos +
         (actingNow && (!actingNow.end || actingNow.end >= moveNext.start) ? " · the cover above continues until it's ended" : "")) : "") +
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
-      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) +
-      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Fix.link(p) +
+      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") +
+      "</div></div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -538,6 +566,13 @@
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
+    $("ident-toggle").onclick = function () {
+      var open = $("ident-body").hidden;
+      state.folds.ident = open;
+      $("ident-body").hidden = !open;
+      this.setAttribute("aria-expanded", open);
+      this.setAttribute("aria-label", this.getAttribute("aria-label").replace(open ? "Show more" : "Show less", open ? "Show less" : "Show more"));
+    };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -1274,6 +1309,8 @@
     $("tab-more").onclick = function () { openSheet(this); };
     $("more-sheet").addEventListener("click", function (e) {
       if (e.target.closest("[data-close]")) return closeSheet();
+      var th = e.target.closest("[data-theme-set]");
+      if (th) { store("theme", th.dataset.themeSet); applyTheme(th.dataset.themeSet); return; }
       var go = e.target.closest("[data-go]");
       if (go) {
         var to = go.dataset.go;

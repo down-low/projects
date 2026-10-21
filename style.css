@@ -171,6 +171,21 @@ td.co { font-weight: 500; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
 .ident { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; }
 .ident h2 { font-family: var(--font-display); font-weight: 700; font-size: 2rem; margin: 0; line-height: 1; text-transform: uppercase; }
+/* Person card: the tiles, then one full row of data ending in a › that opens the rest. The row never wraps; values shorten. */
+.ident-row { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 28px; }
+.ident-row .kv { min-width: 0; }
+.ident-row .kv .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ident-toggle {
+  position: relative; flex: 0 0 auto; margin-left: auto; align-self: center; width: 44px; height: 44px; padding: 0;
+  display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%;
+  background: none; color: var(--fg); cursor: pointer;
+}
+.ident-toggle:hover { border-color: var(--muted); }
+.ident-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s; }
+.ident-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.ident-toggle.has-notes::after { content: ""; position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .ident-toggle svg { transition: none; } }
+.ident-body { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 10px; }
 .kv { display: flex; flex-direction: column; gap: 2px; }
 .kv .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .kv .v { font-family: var(--font-data); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
@@ -569,6 +584,10 @@ s.held + .st { margin-left: 2px; }
 .sheet-list button:hover, .sheet-list a:hover, .sheet-list button:focus-visible, .sheet-list a:focus-visible { background: var(--accent-soft); }
 .sheet-list a .hint { font-size: 0.78rem; }
 .sheet-list .danger { color: var(--accent); }
+.sheet-theme { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 20px; }
+.theme-seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.sheet-list .theme-seg button { width: auto; min-height: 36px; padding: 4px 14px; border-radius: 999px; align-items: center; font-size: 0.9rem; }
+.sheet-list .theme-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .sheet-mode:empty { display: none; }
 .sheet-list .sheet-mode { border-top: 0; }
 .sheet-mode { padding: 12px 20px; color: var(--muted); font-size: 0.9rem; }
@@ -609,6 +628,7 @@ s.held + .st { margin-left: 2px; }
   .suggest .who > span:first-child { font-weight: 600; font-size: 1rem; }
 
   .ident { gap: 10px 20px; }
+  .ident-row { flex-basis: 100%; gap: 16px; }
   .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
   .tile { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
   .tile .k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
