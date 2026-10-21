@@ -8,7 +8,7 @@ const path = require("path");
 
 const PLAYWRIGHT = ["/opt/node-tools/node_modules/playwright", "playwright"];
 const DIST = path.join(__dirname, "..", "..", "dist", "tour-schedule.html");
-const COLLECTIONS = ["covers", "statuses", "people", "rosterOverrides", "tourChanges", "staffing"];
+const COLLECTIONS = ["covers", "statuses", "people", "rosterOverrides", "tourChanges", "staffing", "contacts"];
 
 function loadDump(dir) {
   const db = {};

@@ -33,6 +33,10 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 130th: Graham,Joanna GR5197; Jackson,Jewan JA1783; Sagin,Aaron SA4156; Salabarria,Che SA7512; Soto,Jonathan SO1453
     - 129th: Cardenas,Alejandra CA1668; Del Castillo Haas,Daniela DE2773; Murphy,Evin MU2715; Nguyen,Kamal NG1179 (resigned)
 
+## Cell numbers (10/21)
+- `missing-cells.md`: 499 of 1,230 people in the tool have no staff-list cell (Firefighter 408, most of them added people from the 2027 awards and new classes). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
+- `fir-phone-probe.js`: one paste on fir-db1 page 2 shows how the Phone numbers pop-up loads, before a pull script is written. Waiting on the VPN.
+
 ## Next step
 1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
 2. When the VPN is back, run the H 30 pull.
