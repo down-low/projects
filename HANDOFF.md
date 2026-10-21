@@ -11,7 +11,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
    Scope: `FIREBASE_PLAN.md`. Branch `claude/firebase-beta`.
 2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`.
-3. **Data cleanup.** The open questions below.
+3. **Data cleanup.** Done in **one chat only** (the records chat, branch `claude/zen-wright-gqa6gq`). Its progress and next step live in `cleanup/STATUS.md`, its routine in `cleanup/README.md`; feature chats don't edit records.
 
 ## Shape of the hosted tool
 
