@@ -1,7 +1,7 @@
 /* Employee card: one back-office screen where an admin finds a person and edits their whole record.
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
- * Sections: identity (name, rank, Employee ID), own seat and moves, current assignment, leave, tour changes, cell number
+ * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
  * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
@@ -14,7 +14,7 @@
     /* key: the person shown; edit: "section|kind|id" of the record whose edit form is open; undo: a removed claim
        ({key, member} on the shared page, {key, accountId} on the server). */
     var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false,
-      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false, profiles: null };
+      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false };
 
     function backend() { return api.backend(); }
     function byPos() { return api.byPos(); }
@@ -93,7 +93,7 @@
     var PAGE_SIZES = [25, 50, 100, 0]; // 0 = all
     var STATUS_OPTS = [["", "Full duty"], ["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]];
     function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
-    function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
+    function profile(p) { return (api.profiles() || {})[p.pos] || {}; }
     function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
     function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? root.TourMath.showCell(c.phoneMobile) : ""; }
     function claimed(p) {
@@ -117,6 +117,8 @@
       { key: "status", label: "Status", get: function (p) { return api.statusFor(p.pos, api.today()) || ""; }, on: true, phone: true, html: statusCell },
       { key: "asg", label: "Assignment", get: function (p) { var c = current(p); return c ? api.kindWord(c) + " " + ((byPos()[c.targetPos] || {}).company || c.targetPos) : ""; } },
       { key: "cell", label: "Cell", get: cellOf },
+      { key: "class", label: "Class", get: function (p) { return profile(p).classNo || null; }, num: true, needs: "profiles",
+        html: function (p) { return esc(root.TourMath.classLabel(profile(p).classNo)); } },
       { key: "birth", label: "Birth date", get: function (p) { return profile(p).birthDate || ""; }, needs: "profiles" },
       { key: "age", label: "Age", get: function (p) { return yearsSince(profile(p).birthDate); }, num: true, needs: "profiles" },
       { key: "hire", label: "Hire date", get: function (p) { return profile(p).hireDate || ""; }, needs: "profiles" },
@@ -135,19 +137,10 @@
       }
       return COLUMNS.filter(function (c) { return ui.cols.indexOf(c.key) !== -1; });
     }
-    // Profiles and (on the server) accounts load only when a column that needs them is shown.
+    // Profiles (shared with the person page, app.js) and (on the server) accounts load only when a column that needs them is shown.
     function loadNeeds(cols) {
-      var b = backend();
       cols.forEach(function (c) {
-        if (c.needs === "profiles" && !ui.profiles && !ui.profilesLoading) {
-          ui.profilesLoading = true;
-          b.profiles().then(function (list) {
-            ui.profiles = {};
-            list.forEach(function (x) { ui.profiles[x.key] = x; });
-            ui.profilesLoading = false;
-            drawRoster();
-          }, function () { ui.profiles = {}; ui.profilesLoading = false; });
-        }
+        if (c.needs === "profiles") api.loadProfiles();
         if (c.needs === "users" && serverMode() && !ui.users) linkedUsers("");
       });
     }
@@ -467,6 +460,7 @@
         drawRoster();
         return;
       }
+      loadNeeds([{ needs: "profiles" }]); // the academy class in the identity section
       el.innerHTML = '<div class="card-back">' + btn("‹ Back to roster", 'id="card-back"') + "</div>" + cardHtml(p);
       $("card-back").onclick = function () { ui.key = null; ui.edit = null; render(); el.scrollIntoView({ block: "start" }); };
       wire(p);
@@ -483,7 +477,8 @@
       var nowLine = st ? api.statusPill(st) + " " + esc(api.STATUS_LABEL[st]) : s ? (s.acting ? esc(api.kindWord(s.acting)) + " at " : "Working at ") + esc(s.co || api.home(p)) : "Off today";
 
       var head = '<div class="card card-head"><div><h2>' + esc(p.name) + "</h2>" +
-        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") + "</div>" +
+        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") +
+          (profile(p).classNo ? " · " + esc(root.TourMath.classLabel(profile(p).classNo)) + " class" : "") + "</div>" +
         "<div>Today: " + nowLine + "</div></div>" +
         '<div class="acts">' + btn("Schedule page", 'data-cgo="' + esc(key) + '"') + "</div></div>";
 
@@ -493,7 +488,9 @@
       var idBody = '<form class="edit" id="ci-form" novalidate>' +
         '<div class="row"><label>Name<input type="text" id="ci-name" maxlength="80" value="' + esc(p.name) + '"></label>' +
         "<label>Rank<select id=\"ci-rank\">" + api.RANKS.map(function (r) { return "<option" + (r === p.rank ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</select></label>" +
-        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label></div>' +
+        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label>' +
+        '<label>Class<input type="number" id="ci-class" min="1" max="999" inputmode="numeric" placeholder="' + (api.profiles() ? "e.g. 137" : "Loading…") + '"' +
+          (api.profiles() ? "" : " disabled") + ' value="' + esc(profile(p).classNo || "") + '"></label></div>' +
         (p.added ? '<div class="row"><label>Apparatus<input type="text" id="ci-co" maxlength="6" placeholder="e.g. E10, or blank" value="' + esc(p.company || "") + '"></label>' +
           '<label>Tour<select id="ci-tour"><option value="">No tour</option>' + api.tourOptions(p.tour || 0) + "</select></label></div>" +
           '<p class="hint">Added person, not on the vacancy list. Give both an apparatus and a tour, or neither.</p>'
@@ -690,18 +687,27 @@
         if (empl && !api.ID_RE.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
         var other = empl && (api.byId()[empl] || []).filter(function (o) { return o.pos !== key; })[0];
         if (other) return api.say(msg, "Employee ID " + empl + " is already on " + other.name + " (" + other.title + ").", true);
+        var cls = $("ci-class").value.trim();
+        if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return api.say(msg, "Class is the academy class number, e.g. 137.", true);
         api.say(msg, "Saving…");
         var done = function () { rerender(); api.say($("ci-msg"), "Saved."); }, err = function (er) { api.say($("ci-msg"), er.message, true); };
+        // The class lives in the person's profile (admins only), saved first; the dates there are kept.
+        var classNo = cls ? +cls : null, first = Promise.resolve();
+        if (api.profiles() && classNo !== (profile(p).classNo || null)) {
+          first = b.setProfile(key, { classNo: classNo }).then(function () {
+            api.profiles()[key] = Object.assign({ key: key, birthDate: null, hireDate: null }, api.profiles()[key], { classNo: classNo });
+          });
+        }
         if (p.added) {
           var co = $("ci-co").value.trim().toUpperCase(), tour = $("ci-tour").value;
           if (co && !api.companyOk(co)) return api.say(msg, "Apparatus must be a company on the roster, like E10.", true);
           if (!co !== !tour) return api.say(msg, "Pick both an apparatus and a tour, or neither.", true);
-          return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }).then(done, err);
+          return first.then(function () { return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }); }).then(done, err);
         }
         // Roster seat: keep only what differs from the files, tied to the holder it was made for.
         var o0 = api.orig(key);
         var o = { name: name !== o0.name ? name : null, rank: rank !== o0.rank ? rank : null, emplId: empl && empl !== o0.emplId ? empl : null, forName: o0.name };
-        b.setOverride(key, o.name || o.rank || o.emplId ? o : null).then(done, err);
+        first.then(function () { return b.setOverride(key, o.name || o.rank || o.emplId ? o : null); }).then(done, err);
       };
     }
 

@@ -1358,6 +1358,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   }
   // +14155550100 -> (415) 555-0100, for showing.
   function showCell(c) { var n = normCell(c); return n ? "(" + n.slice(2, 5) + ") " + n.slice(5, 8) + "-" + n.slice(8) : c || ""; }
+  // Academy class 137 -> "137th" (121st, 122nd, 113th), or "" when unknown.
+  function classLabel(n) {
+    if (!n) return "";
+    var t = n % 100, u = n % 10;
+    return n + (t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
+  }
   /* Search that takes words in any order: "david lester", "lester d", "dave lester" and "Lester,D" all match
      "Lester,D". Each word of q must start a word of text (or, from 3 letters, appear inside one, for position numbers),
      or be a first name whose initial is a one-letter word there ("david" -> "D"); and at least one word must match
@@ -1373,7 +1379,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   }
 
   var api = {
-    normCell: normCell, showCell: showCell, wordsMatch: wordsMatch,
+    normCell: normCell, showCell: showCell, classLabel: classLabel, wordsMatch: wordsMatch,
     seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
@@ -1449,7 +1455,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
  *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
  *   kind = "statuses" | "tourChanges" | "covers" | "people".
- * Both add staffing overrides and personal dates: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate}),
+ * Both add staffing overrides and personal details: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate, classNo})
+ * (fields left out keep their stored value),
  * profiles() (admins), stats(isoDate) -> {avgAge, nAge, avgYos, nYos} or null, canAdmin().
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
@@ -1508,6 +1515,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     });
     return out;
   }
+  // A profile write: the fields given replace the stored ones; the others (dates, class) are kept.
+  function mergeProfile(dates, cur) {
+    cur = cur || {};
+    function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
+    return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
+  }
+  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -1599,10 +1613,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           },
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
-            return db.collection("profiles").doc(key).set({ birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso() });
+            var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
+            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
-            return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+            return Promise.resolve(records.profiles.map(profileOut));
           },
           stats: function (isoDate) { return Promise.resolve(editable ? averages(records.profiles, isoDate) : null); },
           endCover: function (id, end) {
@@ -1817,7 +1832,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             setStaffing: function (company, n) { return thenRefresh(call("PUT", "api/staffing/" + encodeURIComponent(company), { required: n })); },
             setProfile: function (key, dates) {
               return call("PUT", "api/profiles/" + encodeURIComponent(key), dates).then(function (j) {
-                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate };
+                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate, classNo: j.classNo == null ? null : j.classNo };
                 return j;
               });
             },
@@ -2088,14 +2103,17 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       // Admins set anyone's dates; a member sets their own (the key is their linked position).
       setProfile: function (key, dates) {
         if (!admin() && !(active() && key === me.pos)) return Promise.reject(new Error(NO_EDIT));
-        var rec = { birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso(), updatedBy: user.uid };
-        return w(fs.collection("profiles").doc(key).set(rec)).then(function () {
-          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate };
-          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate };
+        // A merge write: fields left out (the class, when a member saves their dates) stay as stored.
+        var cur = records.profiles.filter(function (x) { return x.id === key; })[0] || (key === me.pos ? me.profile : null);
+        var rec = Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso(), updatedBy: user.uid }), patch = { updatedAt: rec.updatedAt, updatedBy: rec.updatedBy };
+        ["birthDate", "hireDate", "classNo"].forEach(function (k) { if (k in dates) patch[k] = rec[k]; });
+        return w(fs.collection("profiles").doc(key).set(patch, { merge: true })).then(function () {
+          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
+          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
         });
       },
       profiles: function () {
-        return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+        return Promise.resolve(records.profiles.map(profileOut));
       },
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
@@ -5444,7 +5462,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 /* Employee card: one back-office screen where an admin finds a person and edits their whole record.
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
- * Sections: identity (name, rank, Employee ID), own seat and moves, current assignment, leave, tour changes, cell number
+ * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
  * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
@@ -5457,7 +5475,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     /* key: the person shown; edit: "section|kind|id" of the record whose edit form is open; undo: a removed claim
        ({key, member} on the shared page, {key, accountId} on the server). */
     var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false,
-      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false, profiles: null };
+      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false };
 
     function backend() { return api.backend(); }
     function byPos() { return api.byPos(); }
@@ -5536,7 +5554,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var PAGE_SIZES = [25, 50, 100, 0]; // 0 = all
     var STATUS_OPTS = [["", "Full duty"], ["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]];
     function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
-    function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
+    function profile(p) { return (api.profiles() || {})[p.pos] || {}; }
     function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
     function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? root.TourMath.showCell(c.phoneMobile) : ""; }
     function claimed(p) {
@@ -5560,6 +5578,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       { key: "status", label: "Status", get: function (p) { return api.statusFor(p.pos, api.today()) || ""; }, on: true, phone: true, html: statusCell },
       { key: "asg", label: "Assignment", get: function (p) { var c = current(p); return c ? api.kindWord(c) + " " + ((byPos()[c.targetPos] || {}).company || c.targetPos) : ""; } },
       { key: "cell", label: "Cell", get: cellOf },
+      { key: "class", label: "Class", get: function (p) { return profile(p).classNo || null; }, num: true, needs: "profiles",
+        html: function (p) { return esc(root.TourMath.classLabel(profile(p).classNo)); } },
       { key: "birth", label: "Birth date", get: function (p) { return profile(p).birthDate || ""; }, needs: "profiles" },
       { key: "age", label: "Age", get: function (p) { return yearsSince(profile(p).birthDate); }, num: true, needs: "profiles" },
       { key: "hire", label: "Hire date", get: function (p) { return profile(p).hireDate || ""; }, needs: "profiles" },
@@ -5578,19 +5598,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }
       return COLUMNS.filter(function (c) { return ui.cols.indexOf(c.key) !== -1; });
     }
-    // Profiles and (on the server) accounts load only when a column that needs them is shown.
+    // Profiles (shared with the person page, app.js) and (on the server) accounts load only when a column that needs them is shown.
     function loadNeeds(cols) {
-      var b = backend();
       cols.forEach(function (c) {
-        if (c.needs === "profiles" && !ui.profiles && !ui.profilesLoading) {
-          ui.profilesLoading = true;
-          b.profiles().then(function (list) {
-            ui.profiles = {};
-            list.forEach(function (x) { ui.profiles[x.key] = x; });
-            ui.profilesLoading = false;
-            drawRoster();
-          }, function () { ui.profiles = {}; ui.profilesLoading = false; });
-        }
+        if (c.needs === "profiles") api.loadProfiles();
         if (c.needs === "users" && serverMode() && !ui.users) linkedUsers("");
       });
     }
@@ -5910,6 +5921,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         drawRoster();
         return;
       }
+      loadNeeds([{ needs: "profiles" }]); // the academy class in the identity section
       el.innerHTML = '<div class="card-back">' + btn("‹ Back to roster", 'id="card-back"') + "</div>" + cardHtml(p);
       $("card-back").onclick = function () { ui.key = null; ui.edit = null; render(); el.scrollIntoView({ block: "start" }); };
       wire(p);
@@ -5926,7 +5938,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var nowLine = st ? api.statusPill(st) + " " + esc(api.STATUS_LABEL[st]) : s ? (s.acting ? esc(api.kindWord(s.acting)) + " at " : "Working at ") + esc(s.co || api.home(p)) : "Off today";
 
       var head = '<div class="card card-head"><div><h2>' + esc(p.name) + "</h2>" +
-        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") + "</div>" +
+        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") +
+          (profile(p).classNo ? " · " + esc(root.TourMath.classLabel(profile(p).classNo)) + " class" : "") + "</div>" +
         "<div>Today: " + nowLine + "</div></div>" +
         '<div class="acts">' + btn("Schedule page", 'data-cgo="' + esc(key) + '"') + "</div></div>";
 
@@ -5936,7 +5949,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var idBody = '<form class="edit" id="ci-form" novalidate>' +
         '<div class="row"><label>Name<input type="text" id="ci-name" maxlength="80" value="' + esc(p.name) + '"></label>' +
         "<label>Rank<select id=\"ci-rank\">" + api.RANKS.map(function (r) { return "<option" + (r === p.rank ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</select></label>" +
-        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label></div>' +
+        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label>' +
+        '<label>Class<input type="number" id="ci-class" min="1" max="999" inputmode="numeric" placeholder="' + (api.profiles() ? "e.g. 137" : "Loading…") + '"' +
+          (api.profiles() ? "" : " disabled") + ' value="' + esc(profile(p).classNo || "") + '"></label></div>' +
         (p.added ? '<div class="row"><label>Apparatus<input type="text" id="ci-co" maxlength="6" placeholder="e.g. E10, or blank" value="' + esc(p.company || "") + '"></label>' +
           '<label>Tour<select id="ci-tour"><option value="">No tour</option>' + api.tourOptions(p.tour || 0) + "</select></label></div>" +
           '<p class="hint">Added person, not on the vacancy list. Give both an apparatus and a tour, or neither.</p>'
@@ -6133,18 +6148,27 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         if (empl && !api.ID_RE.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
         var other = empl && (api.byId()[empl] || []).filter(function (o) { return o.pos !== key; })[0];
         if (other) return api.say(msg, "Employee ID " + empl + " is already on " + other.name + " (" + other.title + ").", true);
+        var cls = $("ci-class").value.trim();
+        if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return api.say(msg, "Class is the academy class number, e.g. 137.", true);
         api.say(msg, "Saving…");
         var done = function () { rerender(); api.say($("ci-msg"), "Saved."); }, err = function (er) { api.say($("ci-msg"), er.message, true); };
+        // The class lives in the person's profile (admins only), saved first; the dates there are kept.
+        var classNo = cls ? +cls : null, first = Promise.resolve();
+        if (api.profiles() && classNo !== (profile(p).classNo || null)) {
+          first = b.setProfile(key, { classNo: classNo }).then(function () {
+            api.profiles()[key] = Object.assign({ key: key, birthDate: null, hireDate: null }, api.profiles()[key], { classNo: classNo });
+          });
+        }
         if (p.added) {
           var co = $("ci-co").value.trim().toUpperCase(), tour = $("ci-tour").value;
           if (co && !api.companyOk(co)) return api.say(msg, "Apparatus must be a company on the roster, like E10.", true);
           if (!co !== !tour) return api.say(msg, "Pick both an apparatus and a tour, or neither.", true);
-          return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }).then(done, err);
+          return first.then(function () { return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }); }).then(done, err);
         }
         // Roster seat: keep only what differs from the files, tied to the holder it was made for.
         var o0 = api.orig(key);
         var o = { name: name !== o0.name ? name : null, rank: rank !== o0.rank ? rank : null, emplId: empl && empl !== o0.emplId ? empl : null, forName: o0.name };
-        b.setOverride(key, o.name || o.rank || o.emplId ? o : null).then(done, err);
+        first.then(function () { return b.setOverride(key, o.name || o.rank || o.emplId ? o : null); }).then(done, err);
       };
     }
 
@@ -6835,39 +6859,45 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       '<div class="tile"><span class="k">Empl ID</span><span class="v mono">' + esc(p.emplId || "—") + "</span></div></div>";
   }
 
-  /* ---------- Birth and hire dates (admins) ---------- */
+  /* ---------- Personal details: academy class, birth and hire dates (admins) ---------- */
+  // One cache, by person key, for this card and the Employee card (card.js), loaded on first use.
   var profilesCache = null, profilesLoading = false;
+  function loadProfiles() {
+    if (profilesCache || profilesLoading || !backend) return;
+    profilesLoading = true;
+    backend.profiles().then(function (list) {
+      profilesCache = {};
+      list.forEach(function (x) { profilesCache[x.key] = x; });
+      profilesLoading = false;
+      if (state.view === "person" || state.view === "card") renderAll(true);
+    }, function () { profilesLoading = false; profilesCache = {}; });
+  }
   function datesCard(p) {
     if (!backend || !backend.canAdmin()) return "";
     if (!profilesCache) {
-      if (!profilesLoading) {
-        profilesLoading = true;
-        backend.profiles().then(function (list) {
-          profilesCache = {};
-          list.forEach(function (x) { profilesCache[x.key] = x; });
-          profilesLoading = false;
-          if (state.view === "person") renderAll();
-        }, function () { profilesLoading = false; profilesCache = {}; });
-      }
-      return '<div class="card"><h3>Personal dates</h3><p class="hint">Loading…</p></div>';
+      loadProfiles();
+      return '<div class="card"><h3>Personal details</h3><p class="hint">Loading…</p></div>';
     }
     var pf = profilesCache[p.pos] || {};
-    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal dates</h3>' +
-      '<p class="hint">Admins only. Used for the dashboard\'s average age and years of service.</p>' +
-      '<div class="row"><label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
+    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal details</h3>' +
+      '<p class="hint">Admins only. The dates feed the dashboard\'s average age and years of service.</p>' +
+      '<div class="row"><label>Class<input type="number" id="pd-class" min="1" max="999" inputmode="numeric" placeholder="e.g. 137" value="' + esc(pf.classNo || "") + '"></label>' +
+      '<label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
       '<label>Hire date<input type="date" id="pd-hire" value="' + esc(pf.hireDate || "") + '"></label></div>' +
-      '<div class="row"><button class="btn primary" type="submit">Save dates</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
+      '<div class="row"><button class="btn primary" type="submit">Save details</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
   }
   function wireDates(p) {
     var f = $("pd-form");
     if (!f) return;
     f.onsubmit = function (e) {
       e.preventDefault();
-      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null;
+      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null, cls = $("pd-class").value.trim();
+      if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return say($("pd-msg"), "Class is the academy class number, e.g. 137.", true);
       if (bd && hd && hd <= bd) return say($("pd-msg"), "The hire date must be after the birth date.", true);
       say($("pd-msg"), "Saving…");
-      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd };
+      var classNo = cls ? +cls : null;
+      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
+        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -7543,6 +7573,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    profiles: function () { return profilesCache; }, loadProfiles: loadProfiles,
     Organization: window.Organization, store: store, recall: recall,
     byName: function (n) { return byName[nameKey(n)] || []; },
     dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },

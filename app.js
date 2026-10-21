@@ -618,39 +618,45 @@
       '<div class="tile"><span class="k">Empl ID</span><span class="v mono">' + esc(p.emplId || "—") + "</span></div></div>";
   }
 
-  /* ---------- Birth and hire dates (admins) ---------- */
+  /* ---------- Personal details: academy class, birth and hire dates (admins) ---------- */
+  // One cache, by person key, for this card and the Employee card (card.js), loaded on first use.
   var profilesCache = null, profilesLoading = false;
+  function loadProfiles() {
+    if (profilesCache || profilesLoading || !backend) return;
+    profilesLoading = true;
+    backend.profiles().then(function (list) {
+      profilesCache = {};
+      list.forEach(function (x) { profilesCache[x.key] = x; });
+      profilesLoading = false;
+      if (state.view === "person" || state.view === "card") renderAll(true);
+    }, function () { profilesLoading = false; profilesCache = {}; });
+  }
   function datesCard(p) {
     if (!backend || !backend.canAdmin()) return "";
     if (!profilesCache) {
-      if (!profilesLoading) {
-        profilesLoading = true;
-        backend.profiles().then(function (list) {
-          profilesCache = {};
-          list.forEach(function (x) { profilesCache[x.key] = x; });
-          profilesLoading = false;
-          if (state.view === "person") renderAll();
-        }, function () { profilesLoading = false; profilesCache = {}; });
-      }
-      return '<div class="card"><h3>Personal dates</h3><p class="hint">Loading…</p></div>';
+      loadProfiles();
+      return '<div class="card"><h3>Personal details</h3><p class="hint">Loading…</p></div>';
     }
     var pf = profilesCache[p.pos] || {};
-    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal dates</h3>' +
-      '<p class="hint">Admins only. Used for the dashboard\'s average age and years of service.</p>' +
-      '<div class="row"><label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
+    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal details</h3>' +
+      '<p class="hint">Admins only. The dates feed the dashboard\'s average age and years of service.</p>' +
+      '<div class="row"><label>Class<input type="number" id="pd-class" min="1" max="999" inputmode="numeric" placeholder="e.g. 137" value="' + esc(pf.classNo || "") + '"></label>' +
+      '<label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
       '<label>Hire date<input type="date" id="pd-hire" value="' + esc(pf.hireDate || "") + '"></label></div>' +
-      '<div class="row"><button class="btn primary" type="submit">Save dates</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
+      '<div class="row"><button class="btn primary" type="submit">Save details</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
   }
   function wireDates(p) {
     var f = $("pd-form");
     if (!f) return;
     f.onsubmit = function (e) {
       e.preventDefault();
-      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null;
+      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null, cls = $("pd-class").value.trim();
+      if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return say($("pd-msg"), "Class is the academy class number, e.g. 137.", true);
       if (bd && hd && hd <= bd) return say($("pd-msg"), "The hire date must be after the birth date.", true);
       say($("pd-msg"), "Saving…");
-      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd };
+      var classNo = cls ? +cls : null;
+      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
+        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -1326,6 +1332,7 @@
     statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    profiles: function () { return profilesCache; }, loadProfiles: loadProfiles,
     Organization: window.Organization, store: store, recall: recall,
     byName: function (n) { return byName[nameKey(n)] || []; },
     dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },
