@@ -38,7 +38,13 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - `fir-phone-probe.js` (run 10/21): the Phone numbers pop-up is on app 1021 page 2 and is in the page HTML, so it can be fetched per Employee ID.
 - `fir-pull-phones-01-…09-*.js`: one script per rank, top ranks first (`node tools/make_phone_pull.js <missing.json>`). Each downloads `fir-phones-<rank>.csv` (key, ID, name, type, number, flag) and resumes after a sign-out. Load rule: CELL, else HOME; never overwrite a cell already on file; ask before the write.
 - Loaded 10/21: Battalion Chief file (Cannon,M CA5637 CELL). Staff list now 733 cells.
-- `fir-pull-noid.js`: company pages for the 10 people below, to find their Employee IDs first.
+- `fir-pull-noid.js` run 10/21. Results:
+  - **WE, confirmed by the user, written 10/21** (open-ended, from 1/1/2026): Alba,K 3FBOL07M; Louie,T 31EOE15M; Dickerson,C 10TOE29M.
+  - **Proposed, waiting on OK:**
+    - 14TOT10M becomes CH1575, and 18TOD21M becomes CH1466. Then delete the duplicate added records x-CH1575 and x-CH1466.
+    - 11TOF15M becomes DU2026, and 21EOE08M changes to DU2621 (Dumont,Catherine, 131st; to confirm).
+    - Suhr 20EOE28M becomes SU6506, and Clarke 35EOE23M becomes CL1125 (both from the PX report).
+  - **Asked:** do Lopez (42EOL22M, now x-LO6430 Captain) and Joyce (36EOE02M, now x-JO3145 Lt) still own those seats?
 - Not pullable (no Employee ID): Lieutenant Alba,K FB3, Lopez,R E42; Firefighter Chin,B T14, Chin,B T18, Clarke,K E35, Dickerson,C T10, Dumont,C T11, Joyce,S E36, Louie,T E31, Suhr,M E20.
 
 ## Next step
