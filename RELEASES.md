@@ -162,6 +162,11 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
 - Daily overtime entry (voluntary, mandatory, advance hire) and upload of each day's Balance report to reconcile automatically.
 - Additional status codes (light duty, injury) if needed.
+- **Overtime hours and WDO lists (requested by members, low priority):**
+  - **OT hours:** shown only on the member's own page ("OT hours: 120 · as of <date>"); private to the member and admins (`otHours/{key}`: owner or admin). Source: fir-db1 page 1021:29 (Employee ID, name, OT hours). An admin refreshes it every two weeks: paste a pull script in a signed-in fir-db1 tab (like `cleanup/fir-pull-*.js`), it downloads a CSV, upload it in the back office (Admin → Imports).
+  - **WDO lists:** an admin saves the day's "WDO Hit List" and "Mandatory WDO List" PDFs from the FIR-FireBulletin SharePoint and uploads them; the back office reads them in the browser (pdf.js) into `wdoLists/{date}` (order, name, Employee ID). Each member sees "WDO list: #14 of 80 · Mandatory list: #6" on their page, and gets an app notification when their place changes or they reach a top-N they choose (the existing `notify` function and app-alert opt-in). The lists are already posted to the whole department, so members can see them.
+  - **Why not a scheduled job pulling with the admin's account:** fir-db1 is on the city's internal network (`.ad.sfgov.org`, VPN only), which Firebase can't reach. SharePoint needs a city Microsoft login; storing a personal password or session on a server breaks city IT policy and stops working at the next password or MFA change. Never store one.
+  - **Automating later:** SharePoint can become a daily scheduled function once city IT approves a read-only Microsoft Graph app for that library. fir-db1 can only be automated from a machine inside the city network that IT approves.
 
 ## Shipped
 - Move log: every assignment-change notice row is kept per person (from/to seat, Last Reg, First Reg, ranks, source) and shown in a closed **Moves** fold on their page.
