@@ -260,14 +260,15 @@ exports.inviteInfo = wrap(async (req) => {
   const t = tsnap.exists ? tsnap.data() : null;
   if (!t) return { error: "That trade is gone" };
   const poster = lookup(t.posterKey) || {}, seat = lookup(t.seatPos) || {}, me = lookup(inv.recipientKey) || {};
-  const reply = await db.doc("tradeReplies/link_" + req.data.code).get();
-  return { date: t.date, open: t.status === "open" && t.date >= today(), posterName: poster.name || t.posterName || "",
-    posterRank: poster.rank || "", station: seat.company || "", note: t.note || "", forName: me.name || "",
+  const [reply, expected, { ids }] = await Promise.all([db.doc("tradeReplies/link_" + req.data.code).get(), expectedEmplId(inv.recipientKey), roster()]);
+  return { needsSignIn: !expected || (inv.idMisses || 0) >= A.INVITE_ID_TRIES, date: t.date, open: t.status === "open" && t.date >= today(), posterName: poster.name || t.posterName || "",
+    posterRank: poster.rank || "", station: seat.company || "", note: t.note || "",
+    forName: A.friendlyName((ids[inv.recipientKey] && ids[inv.recipientKey].name) || me.name || ""),
     answer: reply.exists ? reply.data().proposal : null, used: !!inv.usedBy };
 });
 
-// An answer from the link, before sign-in. It's saved unverified; the poster can pick it, and it's confirmed when the
-// person signs in with their Employee ID.
+// An answer from the link, before sign-in. Only the invited person can answer: their Employee ID must match the one on
+// file, so a link that reached the wrong person records nothing. Wrong IDs count against the link.
 exports.answerFromInvite = wrap(async (req) => {
   const body = req.data || {};
   const { ref, inv } = await inviteDoc(body.code);
@@ -278,10 +279,15 @@ exports.answerFromInvite = wrap(async (req) => {
   const t = tsnap.exists ? tsnap.data() : null;
   if (!t || t.status !== "open" || t.date < today()) throw new HttpsError("failed-precondition", "This trade is no longer open");
   const { proposal, note } = A.cleanInviteAnswer(body, t.date, today());
+  const check = A.checkInviteId(inv, body.emplId, await expectedEmplId(inv.recipientKey));
+  if (!check.ok) {
+    if (check.miss) await ref.update({ idMisses: admin.firestore.FieldValue.increment(1) });
+    throw new HttpsError("permission-denied", check.why);
+  }
   const { lookup } = await lookups();
   const me = lookup(inv.recipientKey) || {};
   await db.doc("tradeReplies/link_" + body.code).set({ tradeId: inv.tradeId, takerKey: inv.recipientKey, takerName: me.name || null,
-    proposal, swapSeatPos: null, note, via: "link", verified: !!inv.usedBy, createdAt: now(), createdBy: "invite:" + inv.inviterKey });
+    proposal, swapSeatPos: null, note, via: "link", verified: true, createdAt: now(), createdBy: "invite:" + inv.inviterKey });
   await ref.update({ answers: admin.firestore.FieldValue.increment(1) });
   await D.reply("link_" + body.code).catch((e) => console.warn("alert: " + e.message));
   return { ok: true };

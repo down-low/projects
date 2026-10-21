@@ -265,7 +265,7 @@
     function inviteText(t, k) {
       var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
       var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
-      return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
+      return (k ? "Hi " + api.firstName(k) + ", " : "") + p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
@@ -297,6 +297,11 @@
       if (!b.onTool) return [];
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
+    // Who a text goes to, and the staff-list number Messages will open to, so the poster knows before sending.
+    function sendTo(t, k) {
+      var mine = inviteFor(t, k);
+      return mine && mine.cell ? '<p class="hint">Opens to ' + esc(M.showCell(mine.cell)) + ", " + esc(api.firstName(k)) + "'s cell on the staff list</p>" : "";
+    }
     function smsLink(t, k, label, cls, run) {
       var mine = inviteFor(t, k);
       return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
@@ -309,13 +314,13 @@
       if (!keys.length) return "";
       var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy the text once and send it from Messages" +
-          (keys.length === 1 ? "." : " to each of them, or as one group text. It's the same text for everyone.") + "</p>" +
-          '<textarea class="invite-copy" readonly rows="5" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" +
-          '<div class="row"><button class="btn small primary" data-invite-copy="' + esc(t.id) + '">Copy text</button><span class="msg" data-copy-msg="' + esc(t.id) + '"></span></div>' +
+        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy each person's text and send it to them from Messages.</p>" +
           '<ul class="tlist">' + keys.map(function (k) {
-            var done = ui.invited[t.id + "/" + k];
-            return "<li><div>" + who(byPos()[k]) + "</div>" + '<div class="row">' +
+            var done = ui.invited[t.id + "/" + k], id = t.id + "/" + k, name = api.firstName(k);
+            return '<li class="invite-one"><div>' + who(byPos()[k]) +
+              '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(id) + '">' + esc(inviteText(t, k)) + "</textarea>" +
+              '<span class="msg" data-copy-msg="' + esc(id) + '"></span></div>' + '<div class="row">' +
+              '<button class="btn small primary" data-invite-copy="' + esc(id) + '">Copy ' + esc(name) + "'s text</button>" +
               '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
@@ -331,13 +336,13 @@
         var k = run.keys[run.i];
         html += k
           ? '<div class="invite-run"><span class="hint">' + (run.i + 1) + " of " + run.keys.length + "</span> " + who(byPos()[k]) +
-            '<div class="row">' + smsLink(t, k, "Text " + byPos()[k].name, "primary", true) +
+            sendTo(t, k) + '<div class="row">' + smsLink(t, k, "Text " + api.firstName(k), "primary", true) +
             '<button class="btn small" data-invite-skip>Skip</button><button class="btn small" data-invite-stop>Done</button></div></div>'
           : '<div class="row"><span class="hint">All done.</span><button class="btn small" data-invite-stop>Close</button></div>';
       } else {
         html += '<ul class="tlist">' + keys.map(function (k) {
-          return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
-            smsLink(t, k, "Invite") + "</li>";
+          return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + sendTo(t, k) + "</div>" +
+            smsLink(t, k, "Text " + api.firstName(k)) + "</li>";
         }).join("") + "</ul>" +
           '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
             '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +

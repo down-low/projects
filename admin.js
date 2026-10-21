@@ -83,21 +83,26 @@
           return wireSignIn(el);
         }
         var said = info.answer ? (info.answer.later ? "pay back later" : "they work your " + niceDate(info.answer.swapDate)) : "";
+        var forWho = info.forName ? esc(info.forName) : "";
         card.innerHTML = "<h2>Shift trade</h2>" +
+          (forWho ? "<p>Hi " + forWho + ", this trade invite is for you.</p>" : "") +
           "<p><b>" + esc(info.posterName) + "</b>" + (info.posterRank ? " (" + esc(info.posterRank) + ")" : "") + " wants to trade <b>" +
           esc(niceDate(info.date)) + "</b>, a 24-hr shift" + (info.station ? " at " + esc(info.station) : "") + ".</p>" +
           (info.note ? '<p class="trade-note">' + esc(info.note) + "</p>" : "") +
-          (info.forName ? '<p class="hint">This link is for ' + esc(info.forName) + ".</p>" : "") +
+          (forWho ? '<p class="hint">Not ' + forWho + "? Don't answer here; ask " + esc(info.posterName) + " to send you your own link.</p>" : "") +
           (said ? "<p>You answered: <b>" + esc(said) + "</b>. You can change it below.</p>" : "") +
-          (info.open
+          (info.open && info.needsSignIn ? "<p>Sign in to answer.</p>" : "") +
+          (info.open && !info.needsSignIn
             ? '<form class="edit" id="inv-form" novalidate><fieldset class="choice"><legend>I\'m interested</legend>' +
               '<label class="chk"><input type="radio" name="inv-kind" value="later" checked> Pay me back later</label>' +
               '<label class="chk"><input type="radio" name="inv-kind" value="swap"> Swap: they work one of my shifts</label>' +
               '<label class="indent">My day they\'d work<input type="date" id="inv-swap" disabled></label></fieldset>' +
               '<label>Note (optional)<input type="text" id="inv-note" maxlength="300"></label>' +
+              '<label>Your Employee ID<input type="text" id="inv-empl" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters" autocomplete="off"></label>' +
+              '<p class="hint">So only ' + (forWho || "the person this was sent to") + " can answer.</p>" +
               '<div class="row"><button class="btn primary" type="submit">Send my answer</button><span class="msg" id="inv-msg" role="status"></span></div></form>'
-            : "<p>This trade is no longer open.</p>") +
-          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. If they pick you, sign in with Google and your Employee ID to confirm it's you.") + "</p>" +
+            : info.open ? "" : "<p>This trade is no longer open.</p>") +
+          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. Sign in to see the whole trade board.") + "</p>" +
           signInButton();
         wireSignIn(el);
         var f = $("inv-form");
@@ -108,9 +113,11 @@
           e.preventDefault();
           var msg = $("inv-msg"), later = f.querySelector("[name=inv-kind]:checked").value === "later";
           if (!later && !swap.value) return api.say(msg, "Pick the day they'd work for you.", true);
+          var empl = $("inv-empl").value.trim().toUpperCase();
+          if (!/^[A-Z]{2}\d{4}$/.test(empl)) return api.say(msg, "Enter your Employee ID: two letters and four digits, e.g. LE1234.", true);
           api.say(msg, "Sending…");
-          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim())
-            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it; you'll confirm it's you if they pick you."); },
+          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim(), empl)
+            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it."); },
               function (er) { api.say(msg, er.message, true); });
         };
       }, function (er) {

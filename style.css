@@ -678,6 +678,8 @@ ul.tlist.plain li { display: block; }
 .invite-box a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .invite-run { display: flex; flex-direction: column; gap: 6px; }
 .invite-copy { width: 100%; font: inherit; font-size: 0.85rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+ul.tlist li.invite-one { flex-direction: column; align-items: stretch; }
+li.invite-one .invite-copy { margin-top: 6px; }
 form.add-form { margin-top: 0; }
 fieldset.choice { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 fieldset.choice legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; padding: 0; }
