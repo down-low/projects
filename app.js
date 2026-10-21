@@ -9,7 +9,7 @@
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {} };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, crewIdx: 0 };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -80,7 +80,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -97,6 +97,7 @@
     else if (state.view === "six") Dash.renderSix();
     else if (state.view === "date") renderDate();
     else if (state.view === "person") renderPerson();
+    else if (state.view === "crew") renderCrew();
     else if (state.view === "me") Accounts.renderMe();
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
@@ -290,6 +291,44 @@
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
     if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">' + (/^2027 (award|assignment)/.test(x.moved.note || "") ? "2027 seat" : "Moved here") + "</span>");
     return tags;
+  }
+
+  /* ---------- Crew: who's on your apparatus on your next shifts (members) ---------- */
+  var RANK_SHORT = { "Battalion Chief": "BC", "Rescue Captain": "RC", Captain: "Capt", Lieutenant: "Lt", "FF/Paramedic": "FF/PM",
+    Firefighter: "FF", "Marine Engineer": "ME" };
+  function renderCrew() {
+    var out = $("crew-detail");
+    var me = byPos[myPos()];
+    if (!me) {
+      out.innerHTML = '<div class="empty">Link your account to your roster spot (Trades, This is me) to see your crew.</div>';
+      return;
+    }
+    var shifts = [], d = today();
+    for (var k = 0; k < 60 && shifts.length < 4; k++, d = addDays(d, 1)) {
+      var s = day(me, d);
+      if (s && !s.status) shifts.push({ d: d, co: s.co || home(me), k: k });
+    }
+    if (!shifts.length) { out.innerHTML = '<div class="empty">No shifts in the next 60 days.</div>'; return; }
+    var i = Math.min(state.crewIdx, shifts.length - 1), cur = shifts[i];
+    var co = Organization.apparatus(cur.co);
+    var rows = mergeCovered(dayRows(cur.d)).filter(function (r) { return r.name && Organization.apparatus(r.co) === co; })
+      .sort(function (a, b) { return RANK_ORDER.indexOf(a.slot.rank) - RANK_ORDER.indexOf(b.slot.rank) || (a.name || "").localeCompare(b.name || ""); });
+    var on = rows.filter(function (r) { return !r.off; }).length;
+    out.innerHTML =
+      '<div class="crew-days" role="group" aria-label="Your next shifts">' + shifts.map(function (x, j) {
+        return '<button type="button" class="btn small' + (j === i ? " primary" : "") + '" data-crew="' + j + '" aria-pressed="' + (j === i) + '">' +
+          (x.k === 0 ? "Today" : x.k === 1 ? "Tomorrow" : esc(shortDate(x.d))) + "</button>";
+      }).join("") + "</div>" +
+      '<p class="hint crew-head">' + esc(co) + " on " + esc(longDate(cur.d)) + " · " + on + " on duty</p>" +
+      '<div class="group"><ul class="plist">' + rows.map(function (x) {
+        return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(RANK_SHORT[x.slot.rank] || x.slot.rank) + "</span>" +
+          '<span class="pl-main"><span class="pl-names">' + nameCell(x) + (x.who && x.who.pos === me.pos ? ' <span class="tag">You</span>' : "") + "</span>" +
+          '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
+          '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
+      }).join("") + "</ul></div>";
+    out.querySelectorAll("[data-crew]").forEach(function (b) {
+      b.onclick = function () { state.crewIdx = +b.dataset.crew; renderCrew(); };
+    });
   }
 
   /* ---------- Schedule: one person ---------- */
@@ -1125,7 +1164,9 @@
     booted = true;
     applyAccountUi();
     var v = openTrades ? "trades" : recall("view");
-    setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
+    // Members start on their own schedule, or on one of their main tabs if they left it open last time.
+    if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(v) === -1) v = "person";
+    setView(tabAllowed(v) ? v : isPhone() || simpleUi() ? "person" : "dash");
   }
   function selectText(el) {
     if (!el) return;
@@ -1166,8 +1207,12 @@
     var k = backend.myKey();
     return k && byPos[k] ? k : null;
   }
+  // The simpler member layout: anyone who can't edit (everyone on the employee app). Editors and admins keep every tab.
+  // Until the account is known (the single-file page boots first), keep today's layout.
+  function simpleUi() { return !!backend && !backend.canEdit(); }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
+    if (v === "crew") return simpleUi() && !!myPos();
     if (v === "me") return serverMode() && backend.isActive();
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
@@ -1184,16 +1229,19 @@
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
+    document.querySelector(".page").classList.toggle("simple", simpleUi());
+    $("tab-crew").hidden = !tabAllowed("crew");
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
     $("card-link").hidden = !tabAllowed("card");
-    if (!tabAllowed(state.view) && booted) setView("dash");
+    if (!tabAllowed(state.view) && booted) setView(simpleUi() ? "person" : "dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
-    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
+      simple: simpleUi() };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1369,6 +1417,8 @@
       // Linked with "This is me": open on yourself, unless someone was already picked this visit.
       if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
       applyAccountUi();
+      // Members (now that we know) start on a main tab, as boot does on the other builds.
+      if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(state.view) === -1) return setView("person");
       renderAll(true);
     });
   } else {

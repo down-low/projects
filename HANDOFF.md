@@ -10,7 +10,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
    - cut-over (`CUTOVER.md`).
 
    Scope: `FIREBASE_PLAN.md`. Branch `claude/firebase-beta`.
-2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`. Audit, mock-up links and the recommendation: `docs/ui-simplification.md`.
+2. **UI simplification.** The pages are too much for a typical employee. Direction picked (A for members; the admin site is the back office). First step shipped on branch `claude/ui-mockups`: member tabs Schedule, Crew (your apparatus), Projection, Trades, More. Status and next steps: `docs/ui-simplification.md`.
 3. **Data cleanup.** Done in **one chat only** (the records chat, branch `claude/zen-wright-gqa6gq`). Its progress and next step live in `cleanup/STATUS.md`, its routine in `cleanup/README.md`; feature chats don't edit records.
 
 ## Shape of the hosted tool

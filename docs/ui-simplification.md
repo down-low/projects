@@ -66,14 +66,17 @@ What a typical employee actually needs, in order: **my next shift and my schedul
 - On the shared claude.ai page this is already true: `canEdit()` and `canAdmin()` both mean Editor access (`store.js`).
 - The self-hosted server (`ROLES = ("member", "editor", "admin")` in `server.py`) and `FIREBASE_PLAN.md` (`role: member|editor|admin`) still have `editor`. **Follow-up for the Firebase branch:** drop it, or map it to admin, and gate edits on admin.
 
-### Rough rollout (when approved)
+### Rollout
 
-1. Open on your own page: if "This is me" (or the server's roster link) is set, the app opens on My schedule; otherwise on Find yourself.
-2. Station table in `organization.js`, confirmed by you; then the Crew view.
-3. Member tab bar: My schedule, Crew, Projection, Trades, More (phone and desktop). Staffing, By rank and 6 of 9 move to More. Projection gets a **My station** chip. `tabAllowed` and the More sheet's `data-need` already handle hiding.
-4. Split `renderPerson`: a short member card (name, company, tour, next shifts, calendar, Something wrong?) and the advanced folds, which members reach from "More details".
-5. Admin hub: one button gated by `canAdmin`, listing the existing views (`fixes`, `card`, `awards`, `admin`, `dash`, and Open seats via `state.seatsOpen`). Person pages show **Open employee card** instead of the Edit fold.
-6. Later: Tabs and links (B).
+**Done (first PR):** members (anyone who can't edit, so everyone on the employee app) open on their own page and get Schedule, Crew, Projection, Trades and More on phones and desktop. Staffing, By rank, 6 of 9, Documents and My page are under More. Crew is **your apparatus** for each of your next four shifts (`renderCrew` in `app.js`). The admin site is unchanged.
+
+Next:
+
+1. Station table in `organization.js` (from you), then Crew widens to the whole station.
+2. Projection gets a **My station** chip.
+3. Split `renderPerson`: a short member card (name, company, tour, next shifts, calendar, Something wrong?) and the advanced folds, which members reach from "More details".
+4. Admin hub (if the separate admin site needs it): one button gated by `canAdmin`, listing the existing views (`fixes`, `card`, `awards`, `admin`, `dash`, and Open seats via `state.seatsOpen`). Person pages show **Open employee card** instead of the Edit fold.
+5. Later: Tabs and links (B).
 
 ## Still open
 
