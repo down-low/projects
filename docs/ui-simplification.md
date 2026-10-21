@@ -55,7 +55,9 @@ What a typical employee actually needs, in order: **my next shift and my schedul
 
 **Crew** exists only in the mock-ups: the second tab, and the "Who's on with me" button on home. It lists everyone at your station (Engine 61 and Truck 61 in the mock-ups) on one of your shifts, with cover and acting tags. The app has nothing like it today; the closest is typing a company code (`E61`) into the Projection filter, which shows one company on the date picked. In code it would be the same rows Projection uses (`dayRows(d)` in `app.js`), filtered to the person's station.
 
-**Decided:** keep Crew as its own tab for review. If it turns out to duplicate Projection, it folds into Projection's **My station** filter (also in the mock-ups) and the bar drops back to four tabs.
+**Decided:** Crew is the **whole station** (every company housed there) on that date, with cover and acting tags, as mocked. Also decided: keep Crew as its own tab for review. If it turns out to duplicate Projection, it folds into Projection's **My station** filter (also in the mock-ups) and the bar drops back to four tabs.
+
+**Data needed: a station table.** The app has no stations today: `organization.js` goes division → battalion → apparatus, and the employee-card roster's "Station" column (`card.js`) actually shows the person's company. Crew needs an explicit station → companies list (for example `STATIONS` in `organization.js`). Same-numbered companies usually share a station (E10, T10), but not always, and rescue squads and other units sit at particular stations, so the list should be confirmed rather than guessed from numbers. Crew is then `dayRows(d)` filtered to the companies of the person's station that day (their own company from `home()`, or the company they're covering). Once the table exists, the roster column can show the real station.
 
 ### Roles: member and admin only
 
@@ -67,12 +69,13 @@ What a typical employee actually needs, in order: **my next shift and my schedul
 ### Rough rollout (when approved)
 
 1. Open on your own page: if "This is me" (or the server's roster link) is set, the app opens on My schedule; otherwise on Find yourself.
-2. Member tab bar: My schedule, Crew, Projection, Trades, More (phone and desktop). Staffing, By rank and 6 of 9 move to More. Projection gets a **My station** chip. `tabAllowed` and the More sheet's `data-need` already handle hiding.
-3. Split `renderPerson`: a short member card (name, company, tour, next shifts, calendar, Something wrong?) and the advanced folds, which members reach from "More details".
-4. Admin hub: one button gated by `canAdmin`, listing the existing views (`fixes`, `card`, `awards`, `admin`, `dash`, and Open seats via `state.seatsOpen`). Person pages show **Open employee card** instead of the Edit fold.
-5. Later: Tabs and links (B).
+2. Station table in `organization.js`, confirmed by you; then the Crew view.
+3. Member tab bar: My schedule, Crew, Projection, Trades, More (phone and desktop). Staffing, By rank and 6 of 9 move to More. Projection gets a **My station** chip. `tabAllowed` and the More sheet's `data-need` already handle hiding.
+4. Split `renderPerson`: a short member card (name, company, tour, next shifts, calendar, Something wrong?) and the advanced folds, which members reach from "More details".
+5. Admin hub: one button gated by `canAdmin`, listing the existing views (`fixes`, `card`, `awards`, `admin`, `dash`, and Open seats via `state.seatsOpen`). Person pages show **Open employee card** instead of the Edit fold.
+6. Later: Tabs and links (B).
 
 ## Still open
 
 - After review: keep **Crew** as a tab, or fold it into Projection's My station filter?
-- Is Crew your station (both companies, as mocked), or just your company?
+- Who can supply the station list (which companies share each station)? The Balance report doesn't have it.
