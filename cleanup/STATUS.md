@@ -35,8 +35,10 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 ## Cell numbers (10/21)
 - `missing-cells.md`: 499 of 1,230 people in the tool have no staff-list cell (Firefighter 408, most of them added people from the 2027 awards and new classes). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
-- `fir-phone-probe.js`: one paste on fir-db1 page 2 shows how the Phone numbers pop-up loads, before a pull script is written. Waiting on the VPN.
+- `fir-phone-probe.js` (run 10/21): the Phone numbers pop-up is on app 1021 page 2 and is in the page HTML, so it can be fetched per Employee ID.
+- `fir-pull-phones-01-…09-*.js`: one script per rank, top ranks first (`node tools/make_phone_pull.js <missing.json>`). Each downloads `fir-phones-<rank>.csv` (key, ID, name, type, number, flag) and resumes after a sign-out. Load rule: CELL, else HOME; never overwrite a cell already on file; ask before the write.
+- Not pullable (no Employee ID): Lieutenant Alba,K FB3, Lopez,R E42; Firefighter Chin,B T14, Chin,B T18, Clarke,K E35, Dickerson,C T10, Dumont,C T11, Joyce,S E36, Louie,T E31, Suhr,M E20.
 
 ## Next step
 1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
-2. When the VPN is back, run the H 30 pull.
+2. When the VPN is back, run the H 30 pull and the phone pulls (Battalion Chief first).

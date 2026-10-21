@@ -5,7 +5,7 @@
  * the console (F12 > Console) and press Enter. It copies its report to the clipboard; paste that back in the chat.
  */
 (async () => {
-  const mask = (s) => String(s == null ? "" : s).replace(/\+?\(?\d[\d\s().\-]{8,}\d/g, "#").slice(0, 300);
+  const mask = (s) => String(s == null ? "" : s).replace(/\+?\(?\d[\d\s().\/\-]{8,}\d/g, "#").slice(0, 300);
   const out = { url: location.pathname + location.search.replace(/\d{3}[\d\s().\-]{6,}\d/g, "#"), apex: typeof apex !== "undefined" };
   const reg = () => document.getElementById("PHONE_NUMBERS");
   const shape = (el) => {
