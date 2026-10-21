@@ -119,6 +119,8 @@ Screens 640px wide or narrower get a phone layout: a slim header (date and watch
 
 On wider screens the layout is unchanged; the editing forms on a person's page sit behind one **Edit** row everywhere.
 
+**Members** (anyone who can't edit, so everyone on the employee app) get a simpler set, on phones and desktop alike: **Schedule** (opens on your own page), **Crew**, **Projection**, **Trades** and **More**. Staffing, the rank month grid, 6 of 9, the documents and My page are under More (`data-need="simple"` marks the Staffing item). **Crew** lists who is on your apparatus on each of your next four shifts, with the same leave and cover tags as Projection; it needs your account linked to your roster spot. Editors and admins keep every tab as before. Plan and mock-ups: `docs/ui-simplification.md`.
+
 ## Signing up when you're not on the vacancy list
 
 After signing in with Google, someone who can't find their name picks **I'm not on the list** and enters their name, rank, apparatus and tour. An admin sees the request on the Admin page; **Approve and add to roster** adds them with that apparatus and tour (tagged "Added") and gives them access.

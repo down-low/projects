@@ -853,3 +853,12 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .launch-groups .hint { font-size: 0.8rem; }
 .launch-groups li { align-items: flex-start; }
 .empty.loading { text-align: center; }
+
+/* Members (anyone who can't edit): Schedule, Crew, Projection, Trades, More; Staffing and By rank move to More */
+.page.simple #tab-dash, .page.simple #tab-rank, .page.simple #tab-me { display: none !important; }
+.page.simple .tab-more { display: flex; }
+.page.simple #tab-person { order: 1; } .page.simple #tab-crew { order: 2; } .page.simple #tab-date { order: 3; }
+.page.simple #tab-trades { order: 4; } .page.simple .tab-more { order: 5; }
+.crew-days { display: flex; flex-wrap: wrap; gap: 8px; }
+.crew-days .btn.small { min-height: 40px; padding: 6px 14px; }
+.crew-head { margin: 10px 0; }
