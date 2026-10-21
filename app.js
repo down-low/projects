@@ -46,7 +46,8 @@
     }
     if ((m = /^(?:tour|t\.)\s*(\d{1,2})$/.exec(q))) return function (f) { return f.tour === +m[1]; };
     if (/^\d{1,2}[a-z]{2,4}\d{2,3}m$/.test(q)) return function (f) { return (f.pos || "").toLowerCase() === q; };
-    return function (f) { return [f.name, f.title, f.id, f.extra].join(" ").toLowerCase().indexOf(q) !== -1; };
+    // Names: words in any order, first or last ("david lester", "lester d").
+    return function (f) { return M.wordsMatch(q, [f.name, f.title, f.id, f.extra].join(" ")); };
   }
   function statusPill(code) {
     return code ? '<span class="st st-' + esc(code) + '" title="' + esc(STATUS_LABEL[code] || code) + '">' + esc(code) + "</span>" : "";
@@ -338,9 +339,11 @@
     items[suggestIdx].scrollIntoView({ block: "nearest" });
     $("person-input").setAttribute("aria-activedescendant", items[suggestIdx].id);
   }
+  var pickedThisVisit = false;
   function choosePerson(pos) {
     var p = byPos[pos];
     if (!p) return;
+    pickedThisVisit = true;
     state.personPos = pos;
     state.personMonth = new Date(state.date.getFullYear(), state.date.getMonth(), 1);
     $("person-input").value = p.name || "";
@@ -524,7 +527,7 @@
     var acts = [];
     if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
       acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
-        : '<button type="button" data-day-act="trade">Trade this shift<span class="hint">Send it to people who are off, or post it to the board</span></button>');
+        : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
     if (s && !s.status && backend && backend.canEdit()) {
@@ -851,6 +854,7 @@
     var bits = [];
     if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
     [[c.staffList ? "" : "Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+      if (ph[1] && M.normCell(ph[1])) ph[1] = M.showCell(ph[1]); // shown as (415) 555-0100
       if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
     });
     return '<div class="kv contact-kv"><span class="k">' + (c.staffList ? "Cell · staff list, admins only" : "Contact for swaps" + (c.shared ? "" : " · not shared, admins only")) + '</span><span class="v contact-v">' +
@@ -934,6 +938,7 @@
 
   /* ---------- Boot ---------- */
   var byPos = {};
+  var openTrades = false; // opened from a trade alert link (?trade=)
   var addedWithTour = [];
   var byId = {}, byName = {}; // employee ID -> people, name -> people (more than one means a duplicate)
   function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
@@ -1075,8 +1080,15 @@
     };
     $("ap-tour").innerHTML = '<option value="">No tour</option>' + tourOptions(0);
     if (window.DOCS) Dash.renderDocs(window.DOCS);
-    else fetch("docs/index.json", { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; })
+    else getFile("docs/index.json").then(function (r) { return r.ok ? r.json() : null; })
       .then(Dash.renderDocs, function () { Dash.renderDocs(null); });
+    // On Firebase the PDFs are in Cloud Storage (signed-in members only), so the adapter opens them.
+    if (backend && backend.openDoc) document.addEventListener("click", function (e) {
+      var a = e.target.closest('a[href^="docs/"]');
+      if (!a) return;
+      e.preventDefault();
+      backend.openDoc(decodeURIComponent(a.getAttribute("href").slice(5))).catch(function () { /* the tab shows nothing */ });
+    });
 
     $("add-person-btn").onclick = function () { $("add-person").hidden = !$("add-person").hidden; if (!$("add-person").hidden) $("ap-name").focus(); };
     $("add-person").onsubmit = function (e) {
@@ -1104,14 +1116,15 @@
       }, function (err) { say(msg, err.message, true); });
     };
 
-    var savedPerson = recall("person");
+    // The Schedule tab opens on you when your account is linked to the roster, else on the last person searched.
+    var savedPerson = myPos() || recall("person");
     if (savedPerson && byPos[savedPerson] && byPos[savedPerson].name) {
       state.personPos = savedPerson;
       $("person-input").value = byPos[savedPerson].name;
     }
     booted = true;
     applyAccountUi();
-    var v = recall("view");
+    var v = openTrades ? "trades" : recall("view");
     setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
   }
   function selectText(el) {
@@ -1147,6 +1160,12 @@
   // The employee card: admins on the shared page (Editor access) or on the server; never viewers, members or snapshots.
   function isCardAdmin() { return !!(backend && backend.update && backend.canAdmin && backend.canAdmin()); }
   function serverMode() { return backend && backend.mode === "server"; }
+  // The roster position this account is linked to (Firebase, server, or "This is me" on the shared page), or null.
+  function myPos() {
+    if (!backend || backend.mode === "snapshot" || !backend.myKey) return null; // the demo's "viewing as" isn't you
+    var k = backend.myKey();
+    return k && byPos[k] ? k : null;
+  }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
     if (v === "me") return serverMode() && backend.isActive();
@@ -1179,6 +1198,7 @@
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
     renderEditChip();
+    siteBanner();
   }
 
   function snapshotLabel() { return "View only · records as of " + (backend.asOf ? shortDate(fromIso(backend.asOf)) : "publish date"); }
@@ -1235,10 +1255,35 @@
         ' <span class="role-pill">' + esc(me.status === "active" ? me.role : me.status) + "</span>" +
         ' <button class="linkish" id="sign-out">Sign out</button>';
       $("sign-out").onclick = function () { backend.signOut(); };
+      if (backend.adminUrl && backend.adminUrl()) {
+        el.insertAdjacentHTML("beforeend", ' <a class="linkish" href="' + esc(backend.adminUrl()) + '">Back office</a>');
+      }
       return;
     }
     el.innerHTML = backend.mode === "snapshot" ? '<span class="dot"></span>' + esc(snapshotLabel())
       : backend.canEdit() ? '<span class="dot on"></span>Editing' : '<span class="dot"></span>View only';
+  }
+  /* Firebase: a "Test copy" banner until an admin sets the copy live (CUTOVER.md). Frozen claude.ai page
+     (tools/build_artifact.py --frozen): page Editors keep Download backup in the "Moved" banner. */
+  function siteBanner() {
+    var mode = backend && backend.siteMode ? backend.siteMode() : null, el = $("site-banner");
+    if (mode === "test" && !el) {
+      document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
+        "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
+    } else if (mode !== "test" && el) el.remove();
+    var fb = $("frozen-backup");
+    if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
+      fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
+      $("card-backup").onclick = function () {
+        var x = this;
+        x.disabled = true;
+        say($("card-backup-msg"), "Preparing…");
+        backend.saveBackup().then(function (r) {
+          x.disabled = false;
+          say($("card-backup-msg"), "Saved " + r.records + " records from " + r.collections + " collections.");
+        }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
+      };
+    }
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -1306,9 +1351,12 @@
     recsVersion++;
     fixesBadge();
     if (r.contacts) contacts = r.contacts;
+    siteBanner();
     if (booted) rebuildPeople();
     renderAll();
   }
+  // Roster files and the documents list: from the server or static folder, or Cloud Storage on Firebase.
+  function getFile(path) { return backend && backend.fetchData ? backend.fetchData(path) : fetch(path, { credentials: "same-origin" }); }
   function loadError(err) {
     $("date-results").innerHTML = '<div class="empty">Could not load the roster (' + esc(err.message) +
       "). Serve this folder over HTTP, for example with <code>python3 server.py</code>, then reload.</div>";
@@ -1316,26 +1364,43 @@
   if (window.POSITIONS) {
     // Single-file build: show the schedule at once, then light up editing when the page database answers.
     boot(window.POSITIONS);
-    window.ScheduleStore.connect(onRecords).then(function (b) { backend = b; applyAccountUi(); renderAll(true); });
+    window.ScheduleStore.connect(onRecords).then(function (b) {
+      backend = b;
+      // Linked with "This is me": open on yourself, unless someone was already picked this visit.
+      if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
+      applyAccountUi();
+      renderAll(true);
+    });
   } else {
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
-      return fetch("data/positions.json", { credentials: "same-origin" }).then(function (r) {
+      // The roster and the three smaller files download together (Firebase may have started them during sign-in).
+      var json = function (url) {
+        return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+      };
+      var others = Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")]);
+      return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
-        if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
-        var json = function (url) {
-          return fetch(url, { credentials: "same-origin" }).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
-        };
-        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
-          .then(function (got) {
-            requiredData = got[0]; emplIds = got[1]; recsVersion++;
-            window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
-            window.AWARDS_2027 = window.AWARDS_2027 || got[2];
-            boot(rows);
-          });
+        // ?trade=<id>: opened from a trade alert, so start on the Trades tab.
+        openTrades = /[?&]trade=/.test(location.search);
+        var linkCode = (/[?&]t=([^&]+)/.exec(location.search) || [])[1];
+        if (/[?&](auth_error|t|trade)=/.test(location.search)) history.replaceState(null, "", location.pathname);
+        // A trade invite link opened by someone already approved: when they're the person it was for (signed in with
+        // that person's staff-list cell), it confirms their answer from the link. Otherwise it's just dropped.
+        try {
+          var inviteCode = sessionStorage.getItem("tradeInvite") || linkCode;
+          sessionStorage.removeItem("tradeInvite");
+          if (inviteCode && backend.redeemInvite) backend.redeemInvite(decodeURIComponent(inviteCode), "").catch(function () {});
+        } catch (e) { /* storage unavailable */ }
+        return others.then(function (got) {
+          requiredData = got[0]; emplIds = got[1]; recsVersion++;
+          window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
+          window.AWARDS_2027 = window.AWARDS_2027 || got[2];
+          boot(rows);
+        });
       });
     }).catch(loadError);
   }

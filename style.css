@@ -641,6 +641,7 @@ s.held + .st { margin-left: 2px; }
 .cal .d.off.st-TR { border-color: var(--tr); background: repeating-linear-gradient(135deg, var(--tr-soft) 0 6px, var(--surface) 6px 12px); }
 .cal .d.off.st-TR .w { color: var(--tr); }
 .tag-st-open { background: var(--accent-soft); color: var(--accent); }
+.tag-st-pending { background: var(--swing-soft); color: var(--swing); }
 .tag-st-cancelled, .tag-st-expired { background: var(--line); color: var(--muted); font-weight: 500; }
 .trade-link { font-family: var(--font-body); font-size: 0.8rem; color: var(--accent); margin-left: 6px; }
 
@@ -671,6 +672,13 @@ ul.tlist.plain li { display: block; }
 .trade-alerts summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .trade-alerts .chk { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; margin-top: 6px; }
 .trade-alerts .hint { margin: 6px 0 0; }
+/* Invites: people a trade went to who aren't on the tool yet */
+.invite-box { display: flex; flex-direction: column; gap: 6px; border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; }
+.invite-box p.hint { margin: 0; }
+.invite-box a.btn { text-decoration: none; display: inline-flex; align-items: center; }
+.invite-run { display: flex; flex-direction: column; gap: 6px; }
+.invite-copy { width: 100%; font: inherit; font-size: 0.85rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+form.add-form { margin-top: 0; }
 fieldset.choice { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 fieldset.choice legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; padding: 0; }
 .trade-body label.chk, .choice .chk, .wz-list .chk, .wz-all { display: flex; flex-direction: row; align-items: center; gap: 8px; font-size: 0.92rem; color: var(--fg); }
@@ -820,3 +828,26 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   ul.card-list li .acts { justify-content: flex-start; flex-basis: 100%; }
   .card-head .acts { flex-basis: 100%; }
 }
+
+/* Firebase test copy (until cut-over) and the frozen claude.ai page after it */
+.site-banner, .frozen-banner {
+  margin: 0; padding: 8px 12px; border-radius: 8px; font-size: 0.9rem;
+  background: var(--swing-soft); color: var(--fg); border: 1px solid var(--swing);
+}
+.frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
+.frozen-banner a { color: inherit; font-weight: 600; }
+
+/* Sign-in: cell number first, Google second */
+.phone-in { border-top: 0; margin-top: 0; padding-top: 0; }
+.phone-in input[type="tel"], .phone-in input[type="text"] { font-size: 1.1rem; min-height: 46px; }
+.gate-or { text-align: center; margin: 4px 0; }
+/* Invite people (admin) */
+.launch-filters { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 640px) { .launch-filters { grid-template-columns: 1fr 1fr; } .launch-filters label:last-child { grid-column: auto; } }
+.launch textarea { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.launch label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.launch label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--fg); margin-top: 6px; }
+.launch-count { margin: 10px 0 6px; }
+.launch-groups .hint { font-size: 0.8rem; }
+.launch-groups li { align-items: flex-start; }
+.empty.loading { text-align: center; }

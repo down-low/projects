@@ -19,6 +19,8 @@ The awards report (`docs/vacancy-awards-26A082.pdf`, dated 09/18/2026) moves abo
 Hosting, Google sign-in, Firestore and Storage in place of `server.py`; see **`FIREBASE_PLAN.md`** for the data model, security rules, functions, migration, tests and launch steps. First confirm with the department or city IT where employee data may be hosted.
 
 ### Sign-in without a Google account
+**Built on Firebase (Oct 2026): cell number + texted code.** The cell is matched to the staff list (`staffCells`); exactly one free seat with that cell links and approves the account at once (`approvedBy: "cell"`, audited) and saves the number for trade texts. Otherwise the person picks their name and an admin approves. A personal trade invite link opened with the invited person's cell needs no Employee ID. **Launch invites:** Admin → Invite people texts the app link from the admin's phone (groups of 10 with cells filled in, or one by one), downloads contact cards (.vcf, logged), or sends from the department number once Twilio is set up (`launchInvites` function).
+
 Offer these alongside Google sign-in (all built into Firebase Auth), so members without a Google account can still sign in:
 
 - **Email link (no password):** enter any email address and tap the sign-in link sent to it. Free; nothing to forget. This is the main backup.
@@ -28,6 +30,7 @@ Offer these alongside Google sign-in (all built into Firebase Auth), so members 
   - **Apple sign-in**, which needs a $99/year Apple developer account;
   - **email and password**, only if members ask for it.
 - **Same claim flow for everyone:** after any sign-in, find yourself by name or Empl ID and confirm your station and tour; an admin approves or undoes the claim. One person can link more than one sign-in method to the same account.
+- **Built on Firebase (Oct 2026, first user feedback):** on the claim screen, names match in any order ("dave lester"), one match is picked for you, and the Employee ID on file for that position approves the account at once (`approvedBy: "emplId"`, audited); without it an admin approves. The app opens on your own schedule once you're linked, shows "Loading the schedule…" while it starts, and downloads the roster files together (during sign-in for returning users). Staff-list cells are standardized to +1XXXXXXXXXX (`normCell`) on save and import and when read.
 
 ### Installable app (PWA)
 Only on the self-hosted server (`server.py`); the claude.ai links run inside claude.ai's viewer and can't install as an app.
@@ -39,12 +42,24 @@ Only on the self-hosted server (`server.py`); the claude.ai links run inside cla
 - **Check before launch:** "Add to Home Screen" on iPhone (Safari) and Android (Chrome) opens full-screen with the bottom tab bar clear of the home indicator; sign-in still works from the installed app.
 
 ### Shift-trade alerts (app, text and email)
+**Built on Firebase (Oct 2026):** functions `notify` (the page asks after each post, widen, answer, pick or cancel; nothing is sent twice), `alertAction` (one-tap links: a confirm button, then it acts once), `smsReply` (Twilio webhook, signature checked) and `dailySummary` (run each morning by `.github/workflows/daily-alerts.yml`). App push (FCM, `firebase-messaging-sw.js`), email (Gmail app password over SMTP) and texts (Twilio REST) each switch on when their settings are added (FIREBASE_SETUP.md, step 12). Picks from an alert or a text use the same pick logic as the page (`TourMath.pickLegs`). Texts wait on Twilio's A2P 10DLC approval. App notifications open the app on the Trades tab; they don't carry answer buttons.
+
 The Trades tab already stores each member's opt-in: three switches, "Notify me by text / in the app / by email", shown as "available at launch". With the server:
 
 - **App (push):** Firebase Cloud Messaging, free. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push. On iPhone, notifications only work after the app is added to the Home Screen (Apple's rule for web apps).
 - **Text (SMS):** the department's **Twilio** account, sent from a Cloud Function (or `server.py`). Google has no SMS-sending API (Google Voice has none, Firebase only texts sign-in codes), and carrier email-to-text gateways are unreliable (AT&T's is shut down), so texts need Twilio.
   - **Start early:** US texts from an app need **A2P 10DLC** registration in Twilio (brand plus campaign). It takes days to a couple of weeks, with a small monthly fee plus a fraction of a cent per text.
-  - Phone numbers come from My page. The opt-in switch is the consent; texts honor STOP replies.
+  - **Not in the first launch.** Launch goes out with app notifications, email and texts sent from the poster's own phone. The "Notify me by text" switch stays "coming soon" until the Twilio campaign is approved.
+  - **Text opt-in page (needed before the Twilio registration is submitted):**
+    - A phone number field.
+    - An **unchecked** checkbox, separate from signing up and from accepting any terms, with this text exactly:
+      > ☐ I agree to receive text messages from SFFD Tour Calendar (Sequent Systems LLC) about shift trade offers sent to me and responses to my trade posts. Message frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out. See our [Terms of Service] and [Privacy Policy].
+    - A clear submit button.
+    - The consent is saved on the account with the time, the number and the wording version; turning it off clears it.
+    - Public **Terms of Service** and **Privacy Policy** pages, open without signing in (Twilio's reviewers visit them): Sequent Systems LLC, what is sent and why, numbers never shared or sold, HELP and STOP.
+    - `smsReply` answers HELP with a help line and STOP with an opt-out confirmation, and turns the member's text switch off.
+    - The page's URL and a screenshot go into the Twilio campaign form.
+  - **Sender name:** the brand registered with Twilio is Sequent Systems LLC. Using "SFFD" in the sender name may need the department's written OK; carriers can reject a campaign that uses another organization's name.
   - Twilio keys stay in function secrets, never in the repo.
 - **Email:** sent from a department Gmail / Workspace account (Gmail API from a Cloud Function, or SMTP from `server.py`), to the contact email on My page, else the sign-in email. Free at this size; the fallback for anyone without the app.
 - **The details are in the alert,** so nobody has to open the page just to decide:
@@ -60,6 +75,9 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **Opt-out:** the switches stay on the Trades tab; texts also honor STOP replies.
 
 ### Invites from trades
+**Built now** (shared page and server): Invite, Invite all, Copy the text and Add their answer, with the page link in the text.
+**Built on Firebase (Oct 2026):** a personal link per person (`<app>/?t=<code>`, functions `createInvite`, `inviteInfo`, `answerFromInvite`, `redeemInvite`), Messages addressed to their staff-list cell when one is on file (audited), **Group text** (all their cells, the general link), answering from the link before signing up, and Employee ID confirmation that links and approves the account. A pick on an unconfirmed link answer waits as **Picked** until they confirm. Still to come: the 48-hour lapse of an unconfirmed pick (needs a scheduled function), and the trade-less **Invite someone** join link.
+
 A trade can go to someone who isn't on the tool yet. That's the best way for it to spread: the invite brings something they want, from someone they know. There are two kinds of "not on yet":
 
 - **On the roster but not signed in:** on the vacancy list (or already added), so the tool knows their seat, tour and Employee ID. The trade invite below is for them.

@@ -3,6 +3,8 @@
 
 Usage: python3 tools/build_artifact.py [out.html]   (default: dist/tour-schedule.html)
        python3 tools/build_artifact.py --capabilities   (the page-database rules to publish with)
+       python3 tools/build_artifact.py out.html --frozen https://ADMIN-SITE   (cut-over, CUTOVER.md: read-only page that
+         points to the Firebase sites; publish it with `--capabilities --frozen`, every write raised to the owner)
        python3 tools/build_artifact.py out.html --snapshot records.json [--demo demo.json]
          (view-only page; --demo adds clickable sample trades that are never saved, see tools/demo_trades.js)
 """
@@ -44,7 +46,17 @@ CAPABILITIES = {
         {"path": "rosterOverrides", "read": "view", "write": "admin"},
     ]},
     "user": {},
+    "downloads": True,  # Employee cards, Download backup (admins): the one-time move to Firebase
 }
+
+
+def frozen_capabilities():
+    """After cut-over the page database is a read-only copy: no page-level write below the owner."""
+    caps = json.loads(json.dumps(CAPABILITIES))
+    for rule in caps["db"]["rules"]:
+        if "write" in rule:
+            rule["write"] = "owner"
+    return caps
 
 
 def fold_trades(records):
@@ -61,14 +73,30 @@ def fold_trades(records):
         records.pop(k, None)
 
 
+MAIN_URL = "https://claude.ai/artifact/TS7W51mXHxgy7p2uvReSgC"  # the shared page (page database)
+DEMO_URL = "https://claude.ai/artifact/37DsLLYz74Kjysbd84cTXV"  # the view-only snapshot with the trade demo
+
+
 def main():
-    # build_artifact.py [out.html] [--snapshot records.json]
+    # build_artifact.py [out.html] [--snapshot records.json] [--page-url https://claude.ai/artifact/...]
     # --snapshot bakes page records ({"asOf": "YYYY-MM-DD", "records": {statuses, tourChanges, covers, people, staffing}})
     # into a view-only page that needs no sign-in and no page database.
     args = sys.argv[1:]
     if "--capabilities" in args:
-        print(json.dumps(CAPABILITIES))
+        print(json.dumps(frozen_capabilities() if "--frozen" in args else CAPABILITIES))
         return
+    frozen = None
+    if "--frozen" in args:  # the address admins use after cut-over
+        i = args.index("--frozen")
+        frozen = args[i + 1]
+        if not frozen.startswith("https://"):
+            sys.exit("--frozen needs the new address, e.g. https://PROJECT-admin.web.app")
+        del args[i:i + 2]
+    page_url = None
+    if "--page-url" in args:  # the page's own claude.ai link, put in trade invite texts
+        i = args.index("--page-url")
+        page_url = args[i + 1]
+        del args[i:i + 2]
     snapshot = None
     if "--snapshot" in args:
         i = args.index("--snapshot")
@@ -98,12 +126,21 @@ def main():
         snap = "window.SNAPSHOT=" + json.dumps(snapshot, separators=(",", ":")).replace("</", "<\\/") + ";"
     if demo is not None:
         snap += "window.TRADE_DEMO=" + json.dumps(demo, separators=(",", ":")).replace("</", "<\\/") + ";"
+    snap += "window.PAGE_URL=" + json.dumps(page_url or (DEMO_URL if snapshot is not None else MAIN_URL)) + ";"
+    banner = ""
+    if frozen is not None:
+        import html as htmlmod
+        addr = htmlmod.escape(frozen)
+        banner = (f'<div class="frozen-banner" role="status" style="width:calc(100% - 32px);max-width:1148px;margin:12px auto 0;box-sizing:border-box">'
+                  f'<span><b>Moved.</b> The tour schedule is now at <a href="{addr}">{addr}</a>. This copy is frozen and read-only.</span>'
+                  f'<span id="frozen-backup"></span></div>\n')
+        snap += "window.PAGE_FROZEN=true;"
     html = (
         f"<title>{title}</title>\n"
         '<meta name="claude:viewport-fit-sides" content="cover">\n'
         f'<link rel="stylesheet" href="{fonts}">\n'
         f"<style>\n{read('style.css')}</style>\n"
-        f"{body}\n"
+        f"{banner}{body}\n"
         f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};{snap}</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"

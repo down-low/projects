@@ -1,0 +1,125 @@
+# Tests every pull request; deploys main to Firebase: the employee app (<project>.web.app) and the admin back office
+# (<project>-admin.web.app, or ADMIN_SITE), rules, functions, roster files and PDFs to Storage.
+# Setup (FIREBASE_SETUP.md): secret FIREBASE_SERVICE_ACCOUNT (the deploy key), variables FIREBASE_PROJECT_ID and
+# ADMIN_EMAILS, optional ALLOWED_DOMAINS and ADMIN_SITE. Until FIREBASE_PROJECT_ID is set the deploy job is skipped.
+# Trade alerts (optional; each channel is off until its settings are there): variable FIREBASE_VAPID_KEY (app
+# notifications), secrets GMAIL_USER and GMAIL_APP_PASSWORD (email), TWILIO_SID, TWILIO_TOKEN and TWILIO_FROM (texts),
+# ALERT_KEY (signs one-tap links; also used by daily-alerts.yml).
+name: Firebase
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: firebase-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Python tests
+        run: python3 -m unittest discover -s tests
+      - name: Account and alert logic tests
+        run: node --test firebase/functions/accounts.test.js firebase/functions/alerts.test.js
+      - name: Syntax check
+        run: for f in *.js firebase/functions/*.js firebase/tests/*.js; do node --check "$f"; done
+      - name: Install rules test tools
+        working-directory: firebase/tests
+        run: npm install --no-audit --no-fund
+      - name: Security rules tests (emulator)
+        working-directory: firebase
+        run: npx --yes firebase-tools@13 emulators:exec --only firestore,storage --project demo-tour-schedule "node --test tests/rules.test.js"
+
+  deploy:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && vars.FIREBASE_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    env:
+      PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+      ADMIN_SITE: ${{ vars.ADMIN_SITE }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Build the two Hosting folders
+        run: |
+          ADMIN_SITE="${ADMIN_SITE:-$PROJECT-admin}"
+          echo "ADMIN_SITE=$ADMIN_SITE" >> "$GITHUB_ENV"
+          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY"
+        env:
+          VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+      - name: Function settings
+        env:
+          ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
+          ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TWILIO_SID: ${{ secrets.TWILIO_SID }}
+          TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+          ALERT_KEY: ${{ secrets.ALERT_KEY }}
+        run: |
+          # Values go in quoted so spaces (a Gmail app password has them) survive.
+          for k in ADMIN_EMAILS ALLOWED_DOMAINS GMAIL_USER GMAIL_APP_PASSWORD TWILIO_SID TWILIO_TOKEN TWILIO_FROM ALERT_KEY; do
+            printf '%s="%s"\n' "$k" "${!k}"
+          done > firebase/functions/.env
+          printf 'APP_URL="https://%s.web.app"\n' "$PROJECT" >> firebase/functions/.env
+      - name: Install function packages
+        working-directory: firebase/functions
+        run: npm install --omit=dev --no-audit --no-fund
+      - name: Deploy
+        working-directory: firebase
+        run: |
+          # The back office is a second Hosting site; create it on the first deploy (site names are global: if it's taken,
+          # set the ADMIN_SITE variable to another name).
+          npx --yes firebase-tools@13 hosting:sites:get "$ADMIN_SITE" --project "$PROJECT" > /dev/null 2>&1 ||
+            npx --yes firebase-tools@13 hosting:sites:create "$ADMIN_SITE" --project "$PROJECT" --non-interactive
+          npx --yes firebase-tools@13 target:apply hosting app "$PROJECT" --project "$PROJECT"
+          npx --yes firebase-tools@13 target:apply hosting admin "$ADMIN_SITE" --project "$PROJECT"
+          npx --yes firebase-tools@13 deploy --project "$PROJECT" --only hosting,firestore,storage,functions --non-interactive --force
+      - name: Roster files and PDFs to Storage
+        run: |
+          # The default Firebase bucket, by exact name (other project buckets, like the functions upload one, also end in appspot.com).
+          BUCKETS=$(gcloud storage buckets list --project "$PROJECT" --format='value(name)')
+          BUCKET=""
+          for b in "$PROJECT.firebasestorage.app" "$PROJECT.appspot.com"; do
+            if echo "$BUCKETS" | grep -qx "$b"; then BUCKET="$b"; break; fi
+          done
+          if [ -z "$BUCKET" ]; then echo "No Storage bucket found. Turn on Storage in the Firebase console (FIREBASE_SETUP.md)."; exit 1; fi
+          # The page reads these files from the browser, so the bucket allows the app's own addresses.
+          printf '[{"origin":["https://%s.web.app","https://%s.firebaseapp.com","https://%s.web.app","https://%s.firebaseapp.com"],"method":["GET"],"responseHeader":["Authorization","Content-Type"],"maxAgeSeconds":3600}]' "$PROJECT" "$PROJECT" "$ADMIN_SITE" "$ADMIN_SITE" > cors.json
+          gcloud storage buckets update "gs://$BUCKET" --cors-file=cors.json
+          gcloud storage cp --cache-control=no-cache data/positions.json data/required-staffing.json data/employee-ids.json data/vacancy-awards-2027.json "gs://$BUCKET/data/"
+          gcloud storage rsync docs "gs://$BUCKET/docs" --delete-unmatched-destination-objects --cache-control=no-cache
+          # One-time cleanup: an earlier deploy copied these into the functions upload bucket by mistake.
+          for b in $(echo "$BUCKETS" | grep '^gcf-v2-uploads-'); do
+            gcloud storage rm -r "gs://$b/data" "gs://$b/docs" 2>/dev/null || true
+          done
+      - name: Address
+        run: echo "Employee app https://$PROJECT.web.app · back office https://$ADMIN_SITE.web.app"
