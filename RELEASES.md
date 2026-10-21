@@ -49,7 +49,17 @@ The Trades tab already stores each member's opt-in: three switches, "Notify me b
 - **App (push):** Firebase Cloud Messaging, free. The installed app (PWA) asks for notification permission and saves its FCM token on the member's account; a Cloud Function sends the push. On iPhone, notifications only work after the app is added to the Home Screen (Apple's rule for web apps).
 - **Text (SMS):** the department's **Twilio** account, sent from a Cloud Function (or `server.py`). Google has no SMS-sending API (Google Voice has none, Firebase only texts sign-in codes), and carrier email-to-text gateways are unreliable (AT&T's is shut down), so texts need Twilio.
   - **Start early:** US texts from an app need **A2P 10DLC** registration in Twilio (brand plus campaign). It takes days to a couple of weeks, with a small monthly fee plus a fraction of a cent per text.
-  - Phone numbers come from My page. The opt-in switch is the consent; texts honor STOP replies.
+  - **Not in the first launch.** Launch goes out with app notifications, email and texts sent from the poster's own phone. The "Notify me by text" switch stays "coming soon" until the Twilio campaign is approved.
+  - **Text opt-in page (needed before the Twilio registration is submitted):**
+    - A phone number field.
+    - An **unchecked** checkbox, separate from signing up and from accepting any terms, with this text exactly:
+      > ☐ I agree to receive text messages from SFFD Tour Calendar (Sequent Systems LLC) about shift trade offers sent to me and responses to my trade posts. Message frequency varies. Msg & data rates may apply. Reply HELP for help, STOP to opt out. See our [Terms of Service] and [Privacy Policy].
+    - A clear submit button.
+    - The consent is saved on the account with the time, the number and the wording version; turning it off clears it.
+    - Public **Terms of Service** and **Privacy Policy** pages, open without signing in (Twilio's reviewers visit them): Sequent Systems LLC, what is sent and why, numbers never shared or sold, HELP and STOP.
+    - `smsReply` answers HELP with a help line and STOP with an opt-out confirmation, and turns the member's text switch off.
+    - The page's URL and a screenshot go into the Twilio campaign form.
+  - **Sender name:** the brand registered with Twilio is Sequent Systems LLC. Using "SFFD" in the sender name may need the department's written OK; carriers can reject a campaign that uses another organization's name.
   - Twilio keys stay in function secrets, never in the repo.
 - **Email:** sent from a department Gmail / Workspace account (Gmail API from a Cloud Function, or SMTP from `server.py`), to the contact email on My page, else the sign-in email. Free at this size; the fallback for anyone without the app.
 - **The details are in the alert,** so nobody has to open the page just to decide:

@@ -4,14 +4,14 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 ## Priorities, in order
 
-1. **Firebase launch.** Built (both sites). Next:
+1. **Firebase launch.** Built (both sites). Next: Launch is **without Twilio texts** (app notifications, email, texts from the poster's own phone); the text opt-in page is planned in `RELEASES.md`, Shift-trade alerts.
    - the user's setup, in their own Google account (`FIREBASE_SETUP.md`);
    - an optional test beta on test data (`BETA.md`);
    - cut-over (`CUTOVER.md`).
 
    Scope: `FIREBASE_PLAN.md`. Branch `claude/firebase-beta`.
 2. **UI simplification.** The pages are too much for a typical employee. Mock-ups first, nothing changes in the app until a direction is picked. Branch `claude/ui-mockups`.
-3. **Data cleanup.** The open questions below.
+3. **Data cleanup.** Done in **one chat only** (the records chat, branch `claude/zen-wright-gqa6gq`). Its progress and next step live in `cleanup/STATUS.md`, its routine in `cleanup/README.md`; feature chats don't edit records.
 
 ## Shape of the hosted tool
 
