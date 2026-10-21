@@ -8,3 +8,4 @@ firebase/functions/node_modules/
 firebase/functions/.env
 firebase/tests/node_modules/
 firebase/*.log
+cleanup/.sync-*/

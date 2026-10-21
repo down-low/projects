@@ -4616,12 +4616,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   function shortNote(n) { n = String(n || ""); return n.length > 60 ? n.slice(0, 57) + "…" : n; }
 
   /* The console script for a plan: {date: "MM/DD/YYYY" or "", to: "MM/DD/YYYY" (optional range end), people: [{id, name, co}],
-     companies: [codes], label}.
+     companies: [codes], label, concurrency (pages at once, default 1), resumeKey (keep progress across a sign-out), fileName}.
      Employee pages for people with IDs (14 days from the date); company pages (100 rows) for the companies listed. */
   function script(plan) {
     return "/* Tour schedule: fir-db1 pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(async () => {\n" +
-      "  const PLAN = " + JSON.stringify({ date: plan.date || "", to: plan.to || "", people: plan.people || [], companies: plan.companies || [] }) + ";\n" +
+      "  const PLAN = " + JSON.stringify({ date: plan.date || "", to: plan.to || "", people: plan.people || [], companies: plan.companies || [],
+        concurrency: plan.concurrency || 1, resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ";\n" +
       "  const COLS = " + JSON.stringify(COLS) + ";\n" +
       "  const m = /[?&]p=(\\d+):\\d+:(\\d+)/.exec(location.href);\n" +
       "  if (!m) return alert('Open a fir-db1 page first (signed in), then run this again.');\n" +
@@ -4671,25 +4672,48 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       "  const get = async (url) => { const h = await (await fetch(url, { credentials: 'same-origin' })).text();\n" +
       "    if (!/Time Entry/.test(h) && /type=\"password\"/i.test(h)) throw new Error('signed-out'); return h; };\n" +
       "  const total = PLAN.people.length + PLAN.companies.length;\n" +
-      "  let n = 0;\n" +
-      "  try {\n" +
-      "    for (const p of PLAN.people) {\n" +
-      "      console.log('fir pull ' + (++n) + '/' + total + ': ' + p.name + ' ' + p.id);\n" +
-      "      let rows = null; const seen = {};\n" +
-      "      for (const a of anchors) {\n" +
-      "        const got = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(a)));\n" +
-      "        if (!got) continue;\n" +
-      "        rows = rows || [];\n" +
-      "        got.forEach((r) => { const k = r.date || JSON.stringify(r); if (!seen[k] && inRange(r.date)) { seen[k] = 1; rows.push(r); } });\n" +
-      "        if (anchors.length > 1) await wait();\n" +
-      "      }\n" +
-      "      if (!rows) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' });\n" +
-      "      else if (!rows.length) out.push({ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' });\n" +
-      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name })));\n" +
-      "      await wait();\n" +
+      "  // Resume (PLAN.resumeKey): finished people and their rows are kept in this browser, so after a sign-out the\n" +
+      "  // same script picks up where it stopped. Cleared once the file is downloaded.\n" +
+      "  const RK = PLAN.resumeKey ? 'tour-schedule:' + PLAN.resumeKey : null;\n" +
+      "  let saved = { done: [], rows: [] };\n" +
+      "  try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || 'null') || saved; } catch (e) { }\n" +
+      "  const done = new Set(saved.done);\n" +
+      "  saved.rows.forEach((v) => { const r = {}; COLS.forEach((c, i) => { r[c] = v[i]; }); out.push(r); });\n" +
+      "  const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out.map((r) => COLS.map((c) => r[c] == null ? '' : r[c])) })); } catch (e) { console.warn('Could not save progress: ' + e.message); } };\n" +
+      "  if (done.size) console.log('fir pull: resuming, ' + done.size + ' already done.');\n" +
+      "  let n = done.size, stop = null;\n" +
+      "  const pullPerson = async (p) => {\n" +
+      "    let rows = null; const seen = {};\n" +
+      "    for (const a of anchors) {\n" +
+      "      const got = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(a)));\n" +
+      "      if (!got) continue;\n" +
+      "      rows = rows || [];\n" +
+      "      got.forEach((r) => { const k = r.date || JSON.stringify(r); if (!seen[k] && inRange(r.date)) { seen[k] = 1; rows.push(r); } });\n" +
+      "      if (anchors.length > 1) await wait();\n" +
       "    }\n" +
+      "    if (!rows) return [{ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' }];\n" +
+      "    if (!rows.length) return [{ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' }];\n" +
+      "    return rows.map((r) => Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name }));\n" +
+      "  };\n" +
+      "  try {\n" +
+      "    // PLAN.concurrency workers (default 1) take people from one queue.\n" +
+      "    const queue = PLAN.people.filter((p) => !done.has(p.id));\n" +
+      "    const worker = async () => {\n" +
+      "      while (queue.length && !stop) {\n" +
+      "        const p = queue.shift();\n" +
+      "        try { const rows = await pullPerson(p); rows.forEach((r) => out.push(r)); done.add(p.id); }\n" +
+      "        catch (e) { stop = e; queue.unshift(p); break; }\n" +
+      "        if (++n % 25 === 0) save();\n" +
+      "        console.log('fir pull ' + n + '/' + total + ': ' + p.name + ' ' + p.id);\n" +
+      "        await wait();\n" +
+      "      }\n" +
+      "    };\n" +
+      "    await Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker));\n" +
+      "    if (stop) throw stop;\n" +
       "    for (const co of PLAN.companies) {\n" +
+      "      if (done.has('co:' + co)) continue;\n" +
       "      console.log('fir pull ' + (++n) + '/' + total + ': company ' + co);\n" +
+      "      done.add('co:' + co);\n" +
       "      let rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH,P2_NUM_ROWS:' + enc(co) + ',' + enc(date) + ',Co,100'));\n" +
       "      if (!rows) rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH:' + enc(co) + ',' + enc(date) + ',Co'));\n" +
       "      if (!rows) out.push({ mode: 'co', pulledFor: date, query: co, flag: 'no-table' });\n" +
@@ -4698,13 +4722,15 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       "      await wait();\n" +
       "    }\n" +
       "  } catch (e) {\n" +
+      "    if (RK) { save(); return alert(e.message === 'signed-out' ? 'fir-db1 signed you out after ' + done.size + ' of ' + total + '. Sign in again, then paste and run this script again: it carries on where it stopped.' : 'The pull stopped (' + e.message + ') after ' + done.size + ' of ' + total + '. Paste and run it again to carry on.'); }\n" +
       "    if (e.message === 'signed-out') alert('fir-db1 signed you out. Sign in again and rerun; the rows so far are in the file.'); else console.error(e);\n" +
       "  }\n" +
+      "  if (RK) try { localStorage.removeItem(RK); } catch (e) { }\n" +
       "  const q = (v) => { v = v == null ? '' : String(v); return /[\",\\n]/.test(v) ? '\"' + v.replace(/\"/g, '\"\"') + '\"' : v; };\n" +
       "  const csv = [COLS.join(',')].concat(out.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\\n');\n" +
       "  const a = document.createElement('a');\n" +
       "  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));\n" +
-      "  a.download = 'fir-' + date.replace(/\\//g, '-') + (PLAN.to ? '_to_' + PLAN.to.replace(/\\//g, '-') : '') + '.csv';\n" +
+      "  a.download = PLAN.fileName || 'fir-' + date.replace(/\\//g, '-') + (PLAN.to ? '_to_' + PLAN.to.replace(/\\//g, '-') : '') + '.csv';\n" +
       "  document.body.appendChild(a); a.click(); a.remove();\n" +
       "  console.log('fir pull done: ' + out.length + ' rows.');\n" +
       "})();\n";
