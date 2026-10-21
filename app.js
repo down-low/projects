@@ -506,13 +506,14 @@
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       identTiles(p, tourNow, next) +
-      // Two rows up top (tiles, then rank and position, plus today's leave); the rest folds under Details.
+      // Two rows up top (tiles, then rank and position, plus today's leave); the rest folds under a small More link.
+      // (Not "Details": in the department a detail is an assignment to another station.)
       kv("Rank", p.rank) +
       (p.added ? kv("Roster", "Added, not on the vacancy list") + (p.tour ? kv("Apparatus", p.company) : "") : kv("Position", p.title)) +
       (p.added && !p.tour ? "" : '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
       Trades.personExtras(p) +
-      foldOpen("ident", '<details class="ident-more" data-fold="ident"', ">") + "<summary>Details" +
+      foldOpen("ident", '<details class="ident-more" data-fold="ident"', ">") + '<summary><span class="im-closed">' +
       (function () {
         var notes = [];
         if (actingNow) notes.push(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow));
@@ -520,8 +521,8 @@
         if (coveredNow) notes.push("Covered");
         if (upcoming) notes.push("Tour change");
         if (p.open) notes.push("Open for bid");
-        return notes.length ? ' <span class="hint">· ' + esc(notes.join(" · ")) + "</span>" : "";
-      })() + '</summary><div class="ident-body">' +
+        return notes.length ? '<span class="hint">' + esc(notes.join(" · ")) + " · </span>" : "";
+      })() + 'More ›</span><span class="im-open">Less ‹</span></summary><div class="ident-body">' +
       kv("Employee ID", p.emplId || "Not on file", "kv-id") +
       (p.added ? "" : kv("Position no.", p.pos)) +
       (p.added && !p.tour ? "" : (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
