@@ -11,7 +11,8 @@
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
  *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
  *   kind = "statuses" | "tourChanges" | "covers" | "people".
- * Both add staffing overrides and personal dates: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate}),
+ * Both add staffing overrides and personal details: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate, classNo})
+ * (fields left out keep their stored value),
  * profiles() (admins), stats(isoDate) -> {avgAge, nAge, avgYos, nYos} or null, canAdmin().
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
@@ -70,6 +71,13 @@
     });
     return out;
   }
+  // A profile write: the fields given replace the stored ones; the others (dates, class) are kept.
+  function mergeProfile(dates, cur) {
+    cur = cur || {};
+    function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
+    return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
+  }
+  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -162,10 +170,11 @@
           },
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
-            return db.collection("profiles").doc(key).set({ birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso() });
+            var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
+            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
-            return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+            return Promise.resolve(records.profiles.map(profileOut));
           },
           stats: function (isoDate) { return Promise.resolve(editable ? averages(records.profiles, isoDate) : null); },
           endCover: function (id, end) {
@@ -407,7 +416,7 @@
             setStaffing: function (company, n) { return thenRefresh(call("PUT", "api/staffing/" + encodeURIComponent(company), { required: n })); },
             setProfile: function (key, dates) {
               return call("PUT", "api/profiles/" + encodeURIComponent(key), dates).then(function (j) {
-                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate };
+                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate, classNo: j.classNo == null ? null : j.classNo };
                 return j;
               });
             },
@@ -680,14 +689,17 @@
       // Admins set anyone's dates; a member sets their own (the key is their linked position).
       setProfile: function (key, dates) {
         if (!admin() && !(active() && key === me.pos)) return Promise.reject(new Error(NO_EDIT));
-        var rec = { birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso(), updatedBy: user.uid };
-        return w(fs.collection("profiles").doc(key).set(rec)).then(function () {
-          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate };
-          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate };
+        // A merge write: fields left out (the class, when a member saves their dates) stay as stored.
+        var cur = records.profiles.filter(function (x) { return x.id === key; })[0] || (key === me.pos ? me.profile : null);
+        var rec = Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso(), updatedBy: user.uid }), patch = { updatedAt: rec.updatedAt, updatedBy: rec.updatedBy };
+        ["birthDate", "hireDate", "classNo"].forEach(function (k) { if (k in dates) patch[k] = rec[k]; });
+        return w(fs.collection("profiles").doc(key).set(patch, { merge: true })).then(function () {
+          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
+          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
         });
       },
       profiles: function () {
-        return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+        return Promise.resolve(records.profiles.map(profileOut));
       },
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },

@@ -863,6 +863,20 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .frozen-banner a { color: inherit; font-weight: 600; }
 
+/* Compare with fir-db1 */
+.fir-card { margin: 0; }
+.fir-steps { margin: 0 0 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
+.fir-steps input[type="file"] { max-width: 100%; }
+.fir-script { width: 100%; min-height: 120px; font: 0.75rem var(--font-data); background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+.fir-result { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.fir-result p { margin: 0; }
+.fir-sec > summary { cursor: pointer; padding: 6px 0; }
+.fir-sec .n { font-family: var(--font-data); color: var(--muted); }
+table.fir-t td { white-space: normal; vertical-align: top; }
+.fir-form { border-top: 0; padding-top: 0; margin-top: 0; }
+.fir-who > summary, .fir-person > summary { cursor: pointer; padding: 6px 0; }
+.fir-list { max-height: 50vh; overflow: auto; }
+.fir-person { border-top: 1px solid var(--line); }
 /* Sign-in: cell number first, Google second */
 .phone-in { border-top: 0; margin-top: 0; padding-top: 0; }
 .phone-in input[type="tel"], .phone-in input[type="text"] { font-size: 1.1rem; min-height: 46px; }
@@ -1410,6 +1424,12 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   }
   // +14155550100 -> (415) 555-0100, for showing.
   function showCell(c) { var n = normCell(c); return n ? "(" + n.slice(2, 5) + ") " + n.slice(5, 8) + "-" + n.slice(8) : c || ""; }
+  // Academy class 137 -> "137th" (121st, 122nd, 113th), or "" when unknown.
+  function classLabel(n) {
+    if (!n) return "";
+    var t = n % 100, u = n % 10;
+    return n + (t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
+  }
   /* Search that takes words in any order: "david lester", "lester d", "dave lester" and "Lester,D" all match
      "Lester,D". Each word of q must start a word of text (or, from 3 letters, appear inside one, for position numbers),
      or be a first name whose initial is a one-letter word there ("david" -> "D"); and at least one word must match
@@ -1425,7 +1445,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
   }
 
   var api = {
-    normCell: normCell, showCell: showCell, wordsMatch: wordsMatch,
+    normCell: normCell, showCell: showCell, classLabel: classLabel, wordsMatch: wordsMatch,
     seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
@@ -1501,7 +1521,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
  * Adapter: {mode, canEdit(), editorName(), needsSignIn(), signOut(), addStatus(rec), addTourChange(rec),
  *           addCover(rec), endCover(id, end), addPerson(rec), remove(kind, id)}
  *   kind = "statuses" | "tourChanges" | "covers" | "people".
- * Both add staffing overrides and personal dates: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate}),
+ * Both add staffing overrides and personal details: setStaffing(company, n|null), setProfile(key, {birthDate, hireDate, classNo})
+ * (fields left out keep their stored value),
  * profiles() (admins), stats(isoDate) -> {avgAge, nAge, avgYos, nYos} or null, canAdmin().
  * The server adapter adds accounts: me(), isActive(), isAdmin(), contacts(), claim(), rosterNames(),
  * saveContact(), adminUsers(), adminAction().
@@ -1560,6 +1581,13 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     });
     return out;
   }
+  // A profile write: the fields given replace the stored ones; the others (dates, class) are kept.
+  function mergeProfile(dates, cur) {
+    cur = cur || {};
+    function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
+    return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
+  }
+  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -1652,10 +1680,11 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
           },
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
-            return db.collection("profiles").doc(key).set({ birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso() });
+            var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
+            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
-            return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+            return Promise.resolve(records.profiles.map(profileOut));
           },
           stats: function (isoDate) { return Promise.resolve(editable ? averages(records.profiles, isoDate) : null); },
           endCover: function (id, end) {
@@ -1897,7 +1926,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
             setStaffing: function (company, n) { return thenRefresh(call("PUT", "api/staffing/" + encodeURIComponent(company), { required: n })); },
             setProfile: function (key, dates) {
               return call("PUT", "api/profiles/" + encodeURIComponent(key), dates).then(function (j) {
-                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate };
+                if (me && me.pos === key) me.profile = { birthDate: j.birthDate, hireDate: j.hireDate, classNo: j.classNo == null ? null : j.classNo };
                 return j;
               });
             },
@@ -2170,14 +2199,17 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       // Admins set anyone's dates; a member sets their own (the key is their linked position).
       setProfile: function (key, dates) {
         if (!admin() && !(active() && key === me.pos)) return Promise.reject(new Error(NO_EDIT));
-        var rec = { birthDate: dates.birthDate || null, hireDate: dates.hireDate || null, updatedAt: nowIso(), updatedBy: user.uid };
-        return w(fs.collection("profiles").doc(key).set(rec)).then(function () {
-          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate };
-          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate };
+        // A merge write: fields left out (the class, when a member saves their dates) stay as stored.
+        var cur = records.profiles.filter(function (x) { return x.id === key; })[0] || (key === me.pos ? me.profile : null);
+        var rec = Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso(), updatedBy: user.uid }), patch = { updatedAt: rec.updatedAt, updatedBy: rec.updatedBy };
+        ["birthDate", "hireDate", "classNo"].forEach(function (k) { if (k in dates) patch[k] = rec[k]; });
+        return w(fs.collection("profiles").doc(key).set(patch, { merge: true })).then(function () {
+          if (key === me.pos) me.profile = { birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
+          return { key: key, birthDate: rec.birthDate, hireDate: rec.hireDate, classNo: rec.classNo };
         });
       },
       profiles: function () {
-        return Promise.resolve(records.profiles.map(function (x) { return { key: x.id, birthDate: x.birthDate, hireDate: x.hireDate }; }));
+        return Promise.resolve(records.profiles.map(profileOut));
       },
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
@@ -5324,10 +5356,463 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
+/* Compare with fir-db1 (admins, Employee cards screen).
+ * fir-db1 is the department's time system (Oracle APEX, city VPN only). Page 2 shows time entries either for one employee
+ * (P2_WHICH=Empl: a run of days from a date) or for a company on a date (P2_WHICH=Co: everyone assigned there, with TRC "H" for
+ * those off that day). Nothing here talks to fir-db1. The admin picks a rank level; the tool lists the people it has questions
+ * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
+ * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
+ * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
+ * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan),
+ * parseCsv(text), compare(rows, api)}. A list (e.g. cleanup/records-in-question.csv) can stand in for the tool's own questions.
+ *
+ * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
+ * which the tool doesn't track); anything else with hours (VA, IDV, FH, DP, WC…) is leave. The Status column (EMPL_CLASS: DP
+ * disability, WC workers' comp) is the person's class, shown on every row; on a scheduled day it means off their seat, even
+ * where a future day still reads REG.
+ */
+(function (root) {
+  "use strict";
+
+  var COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag"];
+  // Rank levels, worked top-down (fewer people at the top). Ranks are the tool's names (schedule.js RANK_LEVEL).
+  var LEVELS = [
+    { id: "H40", label: "H40 · Battalion Chief", ranks: ["Battalion Chief"] },
+    { id: "H30", label: "H30 · Captain, Rescue Captain", ranks: ["Captain", "Rescue Captain"] },
+    { id: "H20", label: "H20 · Lieutenant", ranks: ["Lieutenant"] },
+    { id: "H3", label: "H3 · FF/Paramedic", ranks: ["FF/Paramedic"] },
+    { id: "H2", label: "H2 · Firefighter", ranks: ["Firefighter"] },
+    { id: "other", label: "Other · ISS, Pilot, Marine Engineer", ranks: ["ISS", "Pilot", "Marine Engineer"] },
+  ];
+  var UNSURE = /not known|unknown|assumed|confirm|may vary|unofficial|not set|\?/i;
+
+  /* The people at one rank level the tool has questions about, each with reasons. all: everyone at the level.
+     api: {people(), recs(), byPos(), byName(key), today(), iso(d), coverOf(pos, d), statusFor(pos, d), home(p), kindWord(c)}.
+     Returns [{p, reasons: [text]}], people with questions first. */
+  function targets(api, levelId, all) {
+    var lv = LEVELS.filter(function (l) { return l.id === levelId; })[0];
+    if (!lv) return [];
+    var t = api.today(), ti = api.iso(t), recs = api.recs(), M = root.TourMath;
+    var fixes = recs.corrections || [];
+    return api.people().filter(function (p) { return lv.ranks.indexOf(p.rank) !== -1; }).map(function (p) {
+      var why = [], moved = M.movedTo(p.pos, t, recs.covers || []);
+      if (!p.emplId) why.push("No Employee ID (checked by company)");
+      if (p.added && !moved) why.push(p.company ? "Added, not on the vacancy list" : "Added, no seat or company");
+      if (p.open && !moved) why.push("Own seat is open for bid");
+      (recs.covers || []).forEach(function (c) {
+        if (c.tradeId || (c.end && c.end < ti)) return;
+        var mine = c.coverKey === p.pos, onSeat = c.targetPos === p.pos;
+        if (!mine && !onSeat) return;
+        var isMove = M.isMove(c), seat = api.byPos()[c.targetPos];
+        if (mine && !isMove && c.start <= ti) why.push(api.kindWord(c) + " " + (seat ? seat.title : c.targetPos) + (UNSURE.test(c.note || "") ? " (note: " + shortNote(c.note) + ")" : ""));
+        else if (mine && isMove && UNSURE.test(c.note || "")) why.push("Own seat " + c.targetPos + " (note: " + shortNote(c.note) + ")");
+        else if (onSeat && !isMove && c.start <= ti && !mine) why.push("Someone else is in their seat (" + (c.coverName || c.coverKey) + ")");
+      });
+      var st = api.statusFor(p.pos, t);
+      if (st === "D" || st === "WE") why.push(st === "D" ? "On disability" : "Working elsewhere");
+      if (fixes.some(function (x) { return x.aboutKey === p.pos && x.state === "open"; })) why.push("Open correction");
+      if ((api.byName(p.name) || []).length > 1) why.push("Same name as someone else");
+      return { p: p, reasons: why };
+    }).filter(function (x) { return all || x.reasons.length; }).sort(function (a, b) {
+      return (b.reasons.length ? 1 : 0) - (a.reasons.length ? 1 : 0) || a.p.name.localeCompare(b.p.name);
+    });
+  }
+  function shortNote(n) { n = String(n || ""); return n.length > 60 ? n.slice(0, 57) + "…" : n; }
+
+  /* The console script for a plan: {date: "MM/DD/YYYY" or "", to: "MM/DD/YYYY" (optional range end), people: [{id, name, co}],
+     companies: [codes], label, concurrency (pages at once, default 1), resumeKey (keep progress across a sign-out), fileName}.
+     Employee pages for people with IDs (14 days from the date); company pages (100 rows) for the companies listed. */
+  function script(plan) {
+    return "/* Tour schedule: fir-db1 pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(async () => {\n" +
+      "  const PLAN = " + JSON.stringify({ date: plan.date || "", to: plan.to || "", people: plan.people || [], companies: plan.companies || [],
+        concurrency: plan.concurrency || 1, resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ";\n" +
+      "  const COLS = " + JSON.stringify(COLS) + ";\n" +
+      "  const m = /[?&]p=(\\d+):\\d+:(\\d+)/.exec(location.href);\n" +
+      "  if (!m) return alert('Open a fir-db1 page first (signed in), then run this again.');\n" +
+      "  const app = '1022', session = m[2]; // Time Entry is app 1022, page 2; the session is shared with the 1021 menu\n" +
+      "  let date = PLAN.date;\n" +
+      "  if (!date) { const t = new Date(); date = (prompt('Date to pull (MM/DD/YYYY)', (t.getMonth() + 1) + '/' + t.getDate() + '/' + t.getFullYear()) || '').trim(); }\n" +
+      "  if (!/^\\d{1,2}\\/\\d{1,2}\\/\\d{4}$/.test(date)) return alert('Use a date like 10/20/2026.');\n" +
+      "  const base = location.origin + location.pathname + '?p=' + app + ':2:' + session + ':::RP,2:';\n" +
+      "  // A range (PLAN.to): an employee page shows about 14 days, from 9 days before its date to 4 after, so ask at\n" +
+      "  // several dates and keep each day once. Without PLAN.to: one page at the date.\n" +
+      "  const md = (d) => (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear();\n" +
+      "  const dt = (s) => { const x = s.split('/'); return new Date(+(x[2].length === 2 ? '20' + x[2] : x[2]), x[0] - 1, +x[1]); };\n" +
+      "  const add = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);\n" +
+      "  const anchors = [];\n" +
+      "  if (PLAN.to) { const end = dt(PLAN.to); for (let a = add(dt(date), 9); ; a = add(a, 14)) { anchors.push(md(a)); if (add(a, 4) >= end) break; } } else anchors.push(date);\n" +
+      "  const inRange = (s) => !PLAN.to || (s && dt(s) >= dt(date) && dt(s) <= dt(PLAN.to));\n" +
+      "  const enc = (v) => encodeURIComponent(v || '');\n" +
+      "  const val = (td) => {\n" +
+      "    if (!td) return '';\n" +
+      "    const c = td.cloneNode(true);\n" +
+      "    c.querySelectorAll('script, noscript, label, .u-VisuallyHidden').forEach((x) => x.remove());\n" +
+      "    const box = c.querySelector('input[type=checkbox]');\n" +
+      "    if (box) return box.hasAttribute('checked') ? 'Y' : '';\n" +
+      "    const f = c.querySelector('input:not([type=hidden]), select, textarea');\n" +
+      "    if (f && f.tagName === 'SELECT') { const o = f.querySelector('option[selected]'); return o ? o.textContent.trim() : ''; }\n" +
+      "    if (f) return (f.getAttribute('value') || '').trim();\n" +
+      "    return c.textContent.replace(/\\s+/g, ' ').trim();\n" +
+      "  };\n" +
+      "  // Read the Time Entry table by column id (td headers=...), falling back to the heading text.\n" +
+      "  const read = (html) => {\n" +
+      "    const doc = new DOMParser().parseFromString(html, 'text/html');\n" +
+      "    const table = doc.querySelector('table[aria-label=\"Time Entry\"], table.t-Report-report') ||\n" +
+      "      [...doc.querySelectorAll('table')].find((tb) => /TRC/.test(tb.textContent) && /Position/.test(tb.textContent) && tb.querySelector('th'));\n" +
+      "    if (!table) return null;\n" +
+      "    const label = {};\n" +
+      "    table.querySelectorAll('th').forEach((th) => { if (th.id) label[th.id] = th.textContent.replace(/\\s+/g, ' ').trim(); });\n" +
+      "    const pick = (o, ids, labels) => { for (const k of ids) if (o.id[k] != null) return o.id[k]; for (const l of labels) if (o.lb[l] != null) return o.lb[l]; return ''; };\n" +
+      "    return [...table.querySelectorAll('tr')].map((tr) => {\n" +
+      "      const o = { id: {}, lb: {} };\n" +
+      "      [...tr.querySelectorAll('td')].forEach((td) => { const h = td.getAttribute('headers'); if (!h) return; const v = val(td); o.id[h] = v; if (label[h] && o.lb[label[h]] == null) o.lb[label[h]] = v; });\n" +
+      "      return { emplId: pick(o, ['ORDER_BY', 'EMPLID'], ['Empl']), name: pick(o, ['DATE_NAME', 'NAME'], ['Name']), date: pick(o, ['SCHD_DATE', 'SCHD_DT'], ['Date']),\n" +
+      "        day: pick(o, [], ['Day']), co: pick(o, ['SCHD_COMPANY'], ['Co']), trc: pick(o, ['TIME_RPTG_CD'], ['TRC']), position: pick(o, ['POSITION_NBR'], ['Position']),\n" +
+      "        role: pick(o, ['SCHD_ROLE_CD'], ['Role']), hours: pick(o, ['HOURS'], []), status: pick(o, ['EMPL_CLASS'], ['Status']) };\n" +
+      "    }).filter((r) => r.trc || r.position || /^[A-Z]{2}\\d{4}$/.test(r.emplId));\n" +
+      "  };\n" +
+      "  const out = [], wait = () => new Promise((r) => setTimeout(r, 400));\n" +
+      "  const get = async (url) => { const h = await (await fetch(url, { credentials: 'same-origin' })).text();\n" +
+      "    if (!/Time Entry/.test(h) && /type=\"password\"/i.test(h)) throw new Error('signed-out'); return h; };\n" +
+      "  const total = PLAN.people.length + PLAN.companies.length;\n" +
+      "  // Resume (PLAN.resumeKey): finished people and their rows are kept in this browser, so after a sign-out the\n" +
+      "  // same script picks up where it stopped. Cleared once the file is downloaded.\n" +
+      "  const RK = PLAN.resumeKey ? 'tour-schedule:' + PLAN.resumeKey : null;\n" +
+      "  let saved = { done: [], rows: [] };\n" +
+      "  try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || 'null') || saved; } catch (e) { }\n" +
+      "  const done = new Set(saved.done);\n" +
+      "  saved.rows.forEach((v) => { const r = {}; COLS.forEach((c, i) => { r[c] = v[i]; }); out.push(r); });\n" +
+      "  const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out.map((r) => COLS.map((c) => r[c] == null ? '' : r[c])) })); } catch (e) { console.warn('Could not save progress: ' + e.message); } };\n" +
+      "  if (done.size) console.log('fir pull: resuming, ' + done.size + ' already done.');\n" +
+      "  let n = done.size, stop = null;\n" +
+      "  const pullPerson = async (p) => {\n" +
+      "    let rows = null; const seen = {};\n" +
+      "    for (const a of anchors) {\n" +
+      "      const got = read(await get(base + 'P2_WHICH,P2_EMPLID,P2_COMPANY,P2_SCHD_DT:Empl,' + enc(p.id) + ',' + enc(p.co) + ',' + enc(a)));\n" +
+      "      if (!got) continue;\n" +
+      "      rows = rows || [];\n" +
+      "      got.forEach((r) => { const k = r.date || JSON.stringify(r); if (!seen[k] && inRange(r.date)) { seen[k] = 1; rows.push(r); } });\n" +
+      "      if (anchors.length > 1) await wait();\n" +
+      "    }\n" +
+      "    if (!rows) return [{ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'no-table' }];\n" +
+      "    if (!rows.length) return [{ mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name, flag: 'empty' }];\n" +
+      "    return rows.map((r) => Object.assign(r, { mode: 'empl', pulledFor: date, query: p.id, emplId: p.id, name: p.name }));\n" +
+      "  };\n" +
+      "  try {\n" +
+      "    // PLAN.concurrency workers (default 1) take people from one queue.\n" +
+      "    const queue = PLAN.people.filter((p) => !done.has(p.id));\n" +
+      "    const worker = async () => {\n" +
+      "      while (queue.length && !stop) {\n" +
+      "        const p = queue.shift();\n" +
+      "        try { const rows = await pullPerson(p); rows.forEach((r) => out.push(r)); done.add(p.id); }\n" +
+      "        catch (e) { stop = e; queue.unshift(p); break; }\n" +
+      "        if (++n % 25 === 0) save();\n" +
+      "        console.log('fir pull ' + n + '/' + total + ': ' + p.name + ' ' + p.id);\n" +
+      "        await wait();\n" +
+      "      }\n" +
+      "    };\n" +
+      "    await Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker));\n" +
+      "    if (stop) throw stop;\n" +
+      "    for (const co of PLAN.companies) {\n" +
+      "      if (done.has('co:' + co)) continue;\n" +
+      "      console.log('fir pull ' + (++n) + '/' + total + ': company ' + co);\n" +
+      "      done.add('co:' + co);\n" +
+      "      let rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH,P2_NUM_ROWS:' + enc(co) + ',' + enc(date) + ',Co,100'));\n" +
+      "      if (!rows) rows = read(await get(base + 'P2_COMPANY,P2_SCHD_DT,P2_WHICH:' + enc(co) + ',' + enc(date) + ',Co'));\n" +
+      "      if (!rows) out.push({ mode: 'co', pulledFor: date, query: co, flag: 'no-table' });\n" +
+      "      else if (!rows.length) out.push({ mode: 'co', pulledFor: date, query: co, flag: 'empty' });\n" +
+      "      else rows.forEach((r) => out.push(Object.assign(r, { mode: 'co', pulledFor: date, query: co, date: date })));\n" +
+      "      await wait();\n" +
+      "    }\n" +
+      "  } catch (e) {\n" +
+      "    if (RK) { save(); return alert(e.message === 'signed-out' ? 'fir-db1 signed you out after ' + done.size + ' of ' + total + '. Sign in again, then paste and run this script again: it carries on where it stopped.' : 'The pull stopped (' + e.message + ') after ' + done.size + ' of ' + total + '. Paste and run it again to carry on.'); }\n" +
+      "    if (e.message === 'signed-out') alert('fir-db1 signed you out. Sign in again and rerun; the rows so far are in the file.'); else console.error(e);\n" +
+      "  }\n" +
+      "  if (RK) try { localStorage.removeItem(RK); } catch (e) { }\n" +
+      "  const q = (v) => { v = v == null ? '' : String(v); return /[\",\\n]/.test(v) ? '\"' + v.replace(/\"/g, '\"\"') + '\"' : v; };\n" +
+      "  const csv = [COLS.join(',')].concat(out.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\\n');\n" +
+      "  const a = document.createElement('a');\n" +
+      "  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));\n" +
+      "  a.download = PLAN.fileName || 'fir-' + date.replace(/\\//g, '-') + (PLAN.to ? '_to_' + PLAN.to.replace(/\\//g, '-') : '') + '.csv';\n" +
+      "  document.body.appendChild(a); a.click(); a.remove();\n" +
+      "  console.log('fir pull done: ' + out.length + ' rows.');\n" +
+      "})();\n";
+  }
+
+  /* Phone numbers (admins; cleanup/fir-pull-phones-*.js): fir-db1's employee page (app 1021, page 2) carries the Phone
+     numbers pop-up (region PHONE_NUMBERS) in its HTML, so a fetch of that page per Employee ID reads it. plan: {people:
+     [{id, name, key}], label, concurrency, resumeKey, fileName}. Downloads key, emplId, name, type, number, flag rows; flag is
+     "none" (no numbers), "mismatch" (the page showed someone else), "unchecked" (no Employee ID on the page) or
+     "no-region". The file stays on the admin's computer. phoneMain runs in the fir-db1 tab (built with toString). */
+  function phoneMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:2:" + m[2] + ":::RP,2:P2_EMPLID:";
+    const COLS = ["key", "emplId", "name", "type", "number", "flag"];
+    const PHONE = /\b([A-Z][A-Z]{2,11})\s*(\(?\d{3}\)?[\/\s.\-]*\d{3}[\s.\-]*\d{4})/g;
+    const read = (html, id) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const field = doc.getElementById("P2_EMPLID");
+      const shown = field ? (field.getAttribute("value") || field.textContent || "").trim().toUpperCase() : "";
+      if (shown && shown !== id) return { flag: "mismatch", phones: [] };
+      const reg = doc.getElementById("PHONE_NUMBERS");
+      if (!reg) return { flag: "no-region", phones: [] };
+      // Form fields show their value; every element boundary becomes a space so "CELL" and the number stay apart.
+      reg.querySelectorAll("input, select, textarea").forEach((f) => {
+        const v = f.tagName === "SELECT" ? ((f.querySelector("option[selected]") || {}).textContent || "") : (f.type === "hidden" ? "" : f.getAttribute("value") || "");
+        f.replaceWith(doc.createTextNode(" " + v + " "));
+      });
+      const parts = [], walk = doc.createTreeWalker(reg, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) parts.push(walk.currentNode.nodeValue);
+      const text = parts.join(" ").replace(/\s+/g, " "), phones = [], seen = {};
+      let x;
+      PHONE.lastIndex = 0;
+      while ((x = PHONE.exec(text))) { const k = x[1] + x[2]; if (!seen[k] && !/^PHONE|TYPE$/.test(x[1])) { seen[k] = 1; phones.push({ type: x[1], number: x[2] }); } }
+      return { flag: phones.length ? (shown ? "" : "unchecked") : "none", phones };
+    };
+    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
+      if (/type="password"/i.test(h) && !/PHONE_NUMBERS/.test(h)) throw new Error("signed-out"); return h; };
+    const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
+    let saved = { done: [], rows: [] };
+    try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const done = new Set(saved.done), out = saved.rows.slice();
+    const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { console.warn("Could not save progress: " + e.message); } };
+    if (done.size) console.log("phone pull: resuming, " + done.size + " already done.");
+    const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
+    let n = done.size, stop = null;
+    const worker = async () => {
+      while (queue.length && !stop) {
+        const p = queue.shift();
+        try {
+          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
+          if (!r.phones.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+          r.phones.forEach((ph) => out.push([p.key, p.id, p.name, ph.type, ph.number, r.flag]));
+          done.add(p.id);
+        } catch (e) { stop = e; queue.unshift(p); break; }
+        if (++n % 25 === 0) save();
+        console.log("phone pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        await wait();
+      }
+    };
+    return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      if (stop) {
+        save();
+        return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped."
+          : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on.");
+      }
+      if (RK) try { localStorage.removeItem(RK); } catch (e) { }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || "fir-phones.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      console.log("phone pull done: " + total + " people, " + out.filter((r) => r[4]).length + " numbers.");
+    });
+  }
+  function phoneScript(plan) {
+    return "/* Tour schedule: fir-db1 phone pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + phoneMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+  }
+
+  /* A list to check, e.g. cleanup/records-in-question.csv: any CSV with an employee_id (or emplId) column; rank_group,
+     name, category and suggested_check are used when present. Returns {rows, groups}. */
+  function parseList(text) {
+    var rows = csvRows(text), head = rows.shift() || [];
+    var idCol = head.indexOf("employee_id") !== -1 ? "employee_id" : head.indexOf("emplId") !== -1 ? "emplId" : null;
+    if (!idCol) throw new Error("The list needs an employee_id column.");
+    var out = rows.filter(function (r) { return r.length > 1; }).map(function (r) {
+      var o = {};
+      head.forEach(function (h, k) { o[h] = (r[k] || "").trim(); });
+      o.id = (o[idCol] || "").toUpperCase();
+      return o;
+    });
+    var groups = [], order = ["H 40", "H 30", "H 20", "H 10", "H 3", "H 2"];
+    out.forEach(function (o) { if (o.rank_group && groups.indexOf(o.rank_group) === -1) groups.push(o.rank_group); });
+    groups.sort(function (a, b) { return ((order.indexOf(a) + 99) % 99) - ((order.indexOf(b) + 99) % 99); }); // top ranks first
+    return { rows: out, groups: groups };
+  }
+  // The people in a list (one rank group, or all) as targets: [{p, id, name, reasons}]; p is the tool's person or null.
+  function targetsFromList(list, api, group) {
+    var byId = {}, byShort = {}, seen = {}, out = [];
+    // "Last,First M" and "Last,F" both reduce to last + first initial; used only when it picks out one person.
+    var short = function (n) { var m = /^([^,]+),\s*(\S)/.exec(String(n || "")); return m ? (m[1] + "," + m[2]).toLowerCase().replace(/[^a-z,]/g, "") : ""; };
+    api.people().forEach(function (p) {
+      if (p.emplId) byId[p.emplId.toUpperCase()] = p;
+      var k = short(p.name);
+      if (k) (byShort[k] = byShort[k] || []).push(p);
+    });
+    list.rows.forEach(function (r) {
+      if (group && r.rank_group !== group) return;
+      var key = /^[A-Z]{2}\d{4}$/.test(r.id) ? r.id : "name:" + r.name;
+      var why = [r.category, r.suggested_check].filter(Boolean).join(": ");
+      if (seen[key]) { if (why && seen[key].reasons.indexOf(why) === -1) seen[key].reasons.push(why); return; }
+      var nm = byShort[short(r.name)] || [];
+      var t = seen[key] = { p: byId[r.id] || (!byId[r.id] && nm.length === 1 && !(nm[0].emplId && /^[A-Z]{2}\d{4}$/.test(r.id)) ? nm[0] : null), id: /^[A-Z]{2}\d{4}$/.test(r.id) ? r.id : "", name: r.name || r.id, reasons: why ? [why] : [] };
+      out.push(t);
+    });
+    return out;
+  }
+
+  function csvRows(text) {
+    var rows = [], row = [], f = "", q = false, i, c;
+    text = String(text || "").replace(/^\ufeff/, "");
+    for (i = 0; i < text.length; i++) {
+      c = text[i];
+      if (q) {
+        if (c === '"' && text[i + 1] === '"') { f += '"'; i++; } else if (c === '"') q = false; else f += c;
+      } else if (c === '"') q = true;
+      else if (c === ",") { row.push(f); f = ""; }
+      else if (c === "\n" || c === "\r") {
+        if (c === "\r" && text[i + 1] === "\n") i++;
+        row.push(f); rows.push(row); row = []; f = "";
+      } else f += c;
+    }
+    if (f || row.length) { row.push(f); rows.push(row); }
+    return rows;
+  }
+
+  // CSV text -> rows (objects keyed by the header). Dates (MM/DD/YY or MM/DD/YYYY) become ISO.
+  function parseCsv(text) {
+    var rows = csvRows(text);
+    var head = rows.shift() || [];
+    if (head.indexOf("emplId") === -1 || head.indexOf("trc") === -1) throw new Error("This isn't a fir-db1 pull from this tool (no emplId / trc columns).");
+    return rows.filter(function (r) { return r.length > 1; }).map(function (r) {
+      var o = {};
+      head.forEach(function (h, k) { o[h] = (r[k] || "").trim(); });
+      o.date = isoOf(o.date) || isoOf(o.pulledFor);
+      o.emplId = (o.emplId || "").toUpperCase();
+      return o;
+    });
+  }
+  function isoOf(s) {
+    var m = /^(\d{1,2})\/(\d{1,2})\/(\d{2}|\d{4})$/.exec(s || "");
+    if (!m) return /^\d{4}-\d{2}-\d{2}$/.test(s || "") ? s : "";
+    return (m[3].length === 2 ? "20" + m[3] : m[3]) + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2);
+  }
+  function shortIso(iso) { return +iso.slice(5, 7) + "/" + +iso.slice(8, 10); }
+  function nameKey(n) { return String(n || "").toLowerCase().replace(/[^a-z,]/g, ""); }
+
+  // fir-db1's side of one row: working (REG, no Status), off (H: not their day) or leave (another TRC, or a Status like DP).
+  function firState(f) {
+    var trc = (f.trc || "").toUpperCase();
+    if (trc === "H" || (!trc && !f.position)) return { kind: "off" };
+    if (f.status) return { kind: "leave", code: f.status };
+    if (trc === "REG") return { kind: "work" };
+    if (trc === "WDO") return { kind: "extra" };
+    return { kind: "leave", code: trc };
+  }
+
+  /* Compare pulled rows with the tool, day by day. api: {dayRows(d), people(), fromIso, apparatus(co)}.
+     Returns {dates, flags, people: [{key, p, name, emplId, days, issues: [{date, fir, tool, note}], notes: [text]}], toolOnly,
+     unknown}. Notes are things that agree but are worth knowing (a different leave code, an extra shift, working elsewhere). */
+  function compare(rows, api) {
+    var app = api.apparatus, flags = rows.filter(function (r) { return r.flag; });
+    var data = rows.filter(function (r) { return !r.flag && r.date && (r.emplId || r.name); });
+    if (!data.length) throw new Error(flags.length ? "The file only has flags (" + flags.map(function (f) { return f.query + " " + f.flag; }).join(", ") + ")." : "The file has no rows.");
+    var peopleById = {}, peopleByName = {};
+    api.people().forEach(function (p) {
+      if (p.emplId) peopleById[p.emplId.toUpperCase()] = p;
+      (peopleByName[nameKey(p.name)] = peopleByName[nameKey(p.name)] || []).push(p);
+    });
+    var dayCache = {};
+    function toolDay(iso) {
+      if (dayCache[iso]) return dayCache[iso];
+      var byKey = {};
+      api.dayRows(api.fromIso(iso)).forEach(function (r) {
+        if (!r.name || !r.who) return;
+        var e = { co: app(r.co), seat: r.slot.pos, status: r.status || null, off: !!r.off, away: !!r.away, kind: r.kind || null };
+        var old = byKey[r.who.pos];
+        if (!old || (old.off && !e.off)) byKey[r.who.pos] = e;
+      });
+      return (dayCache[iso] = byKey);
+    }
+    var byPerson = {}, unknown = {}, pulledCo = {}, known = null;
+    if (api.companies) { known = {}; api.companies().forEach(function (c) { known[app(c)] = 1; }); }
+    // A person's own employee page wins over a company page for the same day.
+    var hasEmpl = {};
+    data.forEach(function (f) { if (f.mode === "empl") hasEmpl[f.emplId + "|" + f.date] = 1; });
+    data.forEach(function (f) {
+      if (f.mode === "co") pulledCo[f.date + "|" + app(f.query)] = 1;
+      if (f.mode === "co" && f.emplId && hasEmpl[f.emplId + "|" + f.date]) return;
+      var p = (f.emplId && peopleById[f.emplId]) || null, how = "id";
+      if (!p) { var nm = peopleByName[nameKey(f.name)] || []; if (nm.length === 1 && !nm[0].emplId) { p = nm[0]; how = "name"; } }
+      if (!p) { var u = unknown[f.emplId || f.name] = unknown[f.emplId || f.name] || { emplId: f.emplId, name: f.name, rows: [] }; u.rows.push(f); return; }
+      var rec = byPerson[p.pos] = byPerson[p.pos] || { key: p.pos, p: p, name: p.name, emplId: f.emplId || p.emplId, how: how, days: 0, issues: [], notes: [], dateFix: {} };
+      var fs = firState(f), t = toolDay(f.date)[p.pos] || null, note = "";
+      var toolKind = !t ? "off" : t.off ? "leave" : "work";
+      var firCo = app(f.co || (f.mode === "co" ? f.query : ""));
+      var addNote = function (n) { if (rec.notes.indexOf(n) === -1) rec.notes.push(n); };
+      var offRoster = firCo && known && !known[firCo];
+      // Status from the records too: someone on WE with no seat (it moved to someone else) has no row in the day.
+      var toolSt = (t && t.status) || (api.statusFor ? api.statusFor(p.pos, api.fromIso(f.date)) : null);
+      if (fs.kind === "extra") {
+        rec.days++;
+        if (!(toolKind === "work" && (!f.position || f.position === t.seat))) addNote("Extra shift (WDO) " + shortIso(f.date) + " at " + [firCo, f.position].filter(Boolean).join(" ") + " (overtime; the tool doesn't track it)");
+        return;
+      }
+      // Someone the tool has as WE (working elsewhere) who fir-db1 shows working at a non-roster unit (CD3, DTA…) agrees.
+      if (toolSt === "WE" && toolKind !== "work" && (fs.kind !== "work" || offRoster)) {
+        rec.days++;
+        if (offRoster) addNote("Works at " + firCo + "; WE in the tool");
+        return;
+      }
+      if (fs.kind === "leave" && toolKind === "leave" && toolSt && toolSt !== fs.code) addNote("fir-db1 codes it " + fs.code + "; the tool has " + toolSt);
+      // Status first, dates later: fir-db1 leave before the tool's matching record starts is a start date to update, not a difference.
+      if (fs.kind === "leave") {
+        var later = (api.recs ? api.recs().statuses || [] : []).filter(function (x) { return x.pos === p.pos && !x.tradeId && x.start > f.date; })
+          .sort(function (a, b) { return a.start.localeCompare(b.start); })[0];
+        if (later) {
+          var fx = rec.dateFix[later.id] = rec.dateFix[later.id] || { rec: later, from: f.date, code: fs.code };
+          if (f.date < fx.from) fx.from = f.date;
+          rec.days++;
+          return;
+        }
+      }
+      if (fs.kind === "work" && toolKind === "work") {
+        if (firCo && firCo !== t.co) note = "Different company";
+        else if (f.position && f.position !== t.seat) note = "Different position";
+      } else if (fs.kind === "work") note = toolKind === "off" ? "fir-db1 has them working; the tool has them off that day (tour?)" : "fir-db1 has them working; the tool has them " + (t.status || (t.away ? "away" : "covered"));
+      else if (toolKind === "work") note = fs.kind === "off" ? "The tool has them working; fir-db1 has them off that day (tour?)" : "fir-db1 has them on " + fs.code + "; the tool has them working";
+      else if (fs.kind === "leave" && toolKind === "off") note = "fir-db1 has them on " + fs.code + " on a day the tool has them off";
+      rec.days++;
+      if (note) rec.issues.push({ date: f.date, fir: f, tool: t, note: note + (how === "name" ? " · matched by name" : "") });
+    });
+    // Company pulls: people the tool has working at that company who aren't on fir-db1's list.
+    var toolOnly = [];
+    Object.keys(pulledCo).forEach(function (k) {
+      var iso = k.split("|")[0], co = k.split("|")[1], day = toolDay(iso);
+      var listed = {};
+      data.forEach(function (f) { if (f.date === iso && f.mode === "co") { var p = (f.emplId && peopleById[f.emplId]) || null; if (p) listed[p.pos] = 1; } });
+      Object.keys(day).forEach(function (pos) {
+        var e = day[pos];
+        if (!e.off && e.co === co && !listed[pos]) toolOnly.push({ date: iso, co: co, p: api.byPos ? api.byPos()[pos] : null, key: pos, tool: e });
+      });
+    });
+    Object.keys(byPerson).forEach(function (k) {
+      var r = byPerson[k];
+      Object.keys(r.dateFix).forEach(function (id) {
+        var fx = r.dateFix[id];
+        r.notes.unshift("Start date to update: " + fx.rec.code + " starts " + shortIso(fx.rec.start) + " in the tool; fir-db1 shows " + fx.code + " from " + shortIso(fx.from) + " or earlier");
+      });
+    });
+    var dates = {};
+    data.forEach(function (f) { dates[f.date] = 1; });
+    var people = Object.keys(byPerson).map(function (k) { return byPerson[k]; }).sort(function (a, b) { return b.issues.length - a.issues.length || a.name.localeCompare(b.name); });
+    return { dates: Object.keys(dates).sort(), flags: flags, people: people, toolOnly: toolOnly,
+      unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
+  }
+
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
 /* Employee card: one back-office screen where an admin finds a person and edits their whole record.
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
- * Sections: identity (name, rank, Employee ID), own seat and moves, current assignment, leave, tour changes, cell number
+ * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
  * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
@@ -5340,7 +5825,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     /* key: the person shown; edit: "section|kind|id" of the record whose edit form is open; undo: a removed claim
        ({key, member} on the shared page, {key, accountId} on the server). */
     var ui = { key: null, q: "", edit: null, undo: null, users: null, usersLoading: false,
-      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false, profiles: null };
+      rank: "", sort: { key: "name", dir: 1 }, page: 0, per: 25, cols: null, chooser: false };
 
     function backend() { return api.backend(); }
     function byPos() { return api.byPos(); }
@@ -5419,7 +5904,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     var PAGE_SIZES = [25, 50, 100, 0]; // 0 = all
     var STATUS_OPTS = [["", "Full duty"], ["VA", "VA · Vacation"], ["S", "S · Sick"], ["D", "D · Disabled"], ["WE", "WE · Working elsewhere"]];
     function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
-    function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
+    function profile(p) { return (api.profiles() || {})[p.pos] || {}; }
     function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
     function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? root.TourMath.showCell(c.phoneMobile) : ""; }
     function claimed(p) {
@@ -5461,19 +5946,10 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       }
       return COLUMNS.filter(function (c) { return ui.cols.indexOf(c.key) !== -1; });
     }
-    // Profiles and (on the server) accounts load only when a column that needs them is shown.
+    // Profiles (shared with the person page, app.js) and (on the server) accounts load only when a column that needs them is shown.
     function loadNeeds(cols) {
-      var b = backend();
       cols.forEach(function (c) {
-        if (c.needs === "profiles" && !ui.profiles && !ui.profilesLoading) {
-          ui.profilesLoading = true;
-          b.profiles().then(function (list) {
-            ui.profiles = {};
-            list.forEach(function (x) { ui.profiles[x.key] = x; });
-            ui.profilesLoading = false;
-            drawRoster();
-          }, function () { ui.profiles = {}; ui.profilesLoading = false; });
-        }
+        if (c.needs === "profiles") api.loadProfiles();
         if (c.needs === "users" && serverMode() && !ui.users) linkedUsers("");
       });
     }
@@ -5544,7 +6020,168 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         COLUMNS.map(function (c) {
           return '<label class="chk"><input type="checkbox" data-ccol="' + c.key + '"' + (ui.cols.indexOf(c.key) !== -1 ? " checked" : "") + "> " + esc(c.label) + "</label>";
         }).join("") + btn("Reset to default", 'id="card-cols-reset"') + "</div>" +
-        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>';
+        '<p class="rsum" id="card-sum"></p><div class="table-wrap rwrap" id="card-table"></div><div class="rpager" id="card-pager"></div></div>' +
+        firHtml();
+    }
+
+    /* ---------- Compare with fir-db1 (fir.js) ----------
+       Pick a rank level; the tool lists the people it has questions about (or everyone at that level) with the reasons, and
+       builds a console script for just them. Run it in a signed-in fir-db1 tab, then choose the CSV it downloads here. The
+       file is read in this browser and kept in memory only. */
+    function firPlan() {
+      var F = root.FirCompare, f = ui.fir, d = f.date ? api.fromIso(f.date) : api.today();
+      var md = function (x) { return (x.getMonth() + 1) + "/" + x.getDate() + "/" + x.getFullYear(); };
+      var date = md(d), to = f.to && f.to > (f.date || "") ? md(api.fromIso(f.to)) : "";
+      if (f.source === "list" && f.list) {
+        // A loaded list: people by the list's Employee IDs; rows without one can't be pulled.
+        var lt = F.targetsFromList(f.list, api, f.group);
+        return { list: lt, label: f.list.name + (f.group ? ", " + f.group : ""), skipped: lt.filter(function (x) { return !x.id; }).length,
+          people: lt.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.p ? x.p.name : x.name, co: x.p ? api.home(x.p) || "" : "" }; }),
+          companies: [], date: date, to: to };
+      }
+      var list = F.targets(api, f.level, f.all).map(function (x) { return { p: x.p, id: x.p.emplId || "", name: x.p.name, reasons: x.reasons }; });
+      var people = list.filter(function (x) { return x.id; }).map(function (x) { return { id: x.id, name: x.name, co: api.home(x.p) || "" }; });
+      var cos = {};
+      list.forEach(function (x) { if (!x.id && api.home(x.p)) cos[api.home(x.p)] = 1; });
+      var lv = F.LEVELS.filter(function (l) { return l.id === f.level; })[0];
+      return { list: list, label: lv.label + (f.all ? ", everyone" : ", questions only"), people: people, companies: Object.keys(cos), date: date, to: to };
+    }
+    function firHtml() {
+      var F = root.FirCompare;
+      if (!F || !api.dayRows) return "";
+      ui.fir = ui.fir || { level: "H40", all: false, date: api.iso(api.today()) };
+      var f = ui.fir, plan = firPlan(), r = f.result;
+      var asked = plan.list.filter(function (x) { return x.reasons.length; }).length;
+      return '<details class="card fold fir-card" id="fir-card"' + (f.open ? " open" : "") + "><summary><h3>Check with fir-db1</h3>" +
+        '<span class="fold-sum">' + (r ? r.people.filter(function (x) { return x.issues.length; }).length + " of " + r.people.length + " people differ" : "positions the tool isn't sure about") + "</span></summary>" +
+        '<form class="edit fir-form" id="fir-form" novalidate><div class="row">' +
+        '<label>Who<select id="fir-source"><option value="tool"' + (f.source !== "list" ? " selected" : "") + ">People this tool has questions about</option>" +
+        '<option value="list"' + (f.source === "list" ? " selected" : "") + ">People on a list (CSV)</option></select></label>" +
+        '<label>From date<input type="date" id="fir-date" value="' + esc(f.date) + '"></label>' +
+        '<label>To date (optional)<input type="date" id="fir-to" value="' + esc(f.to || "") + '"></label></div>' +
+        (f.source === "list"
+          ? '<div class="row"><label>List<input type="file" id="fir-list" accept=".csv,text/csv"></label>' +
+            (f.list && f.list.groups.length ? '<label>Rank group<select id="fir-group"><option value="">All groups</option>' + f.list.groups.map(function (g) {
+              return '<option value="' + esc(g) + '"' + (g === f.group ? " selected" : "") + ">" + esc(g) + "</option>"; }).join("") + "</select></label>" : "") + "</div>" +
+            '<p class="hint">' + (f.list ? "Loaded <b>" + esc(f.list.name) + "</b> (" + f.list.rows.length + " rows). " : "") +
+            "Any CSV with an <code>employee_id</code> column, e.g. <code>cleanup/records-in-question.csv</code>. Read in this browser only.</p>"
+          : '<div class="row"><label>Rank level<select id="fir-level">' + F.LEVELS.map(function (l) { return '<option value="' + l.id + '"' + (l.id === f.level ? " selected" : "") + ">" + esc(l.label) + "</option>"; }).join("") + "</select></label></div>" +
+            '<label class="chk"><input type="checkbox" id="fir-all"' + (f.all ? " checked" : "") + "> Everyone at this level, not just the ones with questions</label>") + "</form>" +
+        '<details class="fir-who"><summary><b>' + plan.list.length + "</b> to check" + (f.all ? " (" + asked + " with questions)" : "") +
+        " · " + plan.people.length + " employee pages" + (plan.companies.length ? " + " + plan.companies.length + " company pages (no Employee ID)" : "") +
+        (plan.skipped ? " · " + plan.skipped + " without an Employee ID (not pulled)" : "") + "</summary>" +
+        (plan.list.length ? '<ul class="tlist fir-list">' + plan.list.map(function (x) {
+          return "<li><div>" + (x.p ? '<button type="button" class="linkish" data-ckey="' + esc(x.p.pos) + '">' + esc(x.p.name) + '</button> <span class="hint">' + esc(x.p.title)
+            : esc(x.name) + ' <span class="hint">not in the tool') + (x.id ? " · " + esc(x.id) : "") + "</span>" +
+            (x.reasons.length ? '<div class="hint">' + esc(x.reasons.join(" · ")) + "</div>" : "") + "</div></li>";
+        }).join("") + "</ul>" : '<p class="hint">' + (f.source === "list" ? (f.list ? "Nobody in this group." : "Choose a list file above.") : 'Nobody at this level has open questions. Tick "Everyone" to check them all anyway.') + "</p>") + "</details>" +
+        '<ol class="fir-steps"><li>On the city VPN, open fir-db1 and sign in (any page).</li>' +
+        "<li>" + btn("Copy pull script", 'id="fir-copy"' + (plan.people.length + plan.companies.length ? "" : " disabled"), "primary") +
+        " then in that tab open the console (F12 → Console; type <code>allow pasting</code> if Chrome asks), paste and press Enter. " +
+        "It opens each person's time page (" + (plan.to ? "every day from " + esc(plan.date) + " to " + esc(plan.to) : "14 days around the date") + ") and downloads <code>fir-&lt;date&gt;" + (plan.to ? "_to_&lt;date&gt;" : "") + ".csv</code>.</li>" +
+        '<li>Choose that file here: <input type="file" id="fir-file" accept=".csv,text/csv"> <span class="msg" id="fir-msg" role="status">' + esc(f.error || "") + "</span></li></ol>" +
+        '<textarea id="fir-script" class="fir-script" readonly hidden></textarea>' +
+        '<p class="hint">The script only reads pages your fir-db1 login can already see, one at a time. The file stays on this computer; nothing is saved to the tool.</p>' +
+        (r ? firResult(r) : "") + "</details>";
+    }
+    function firCell(f) {
+      if (!f) return '<span class="hint">—</span>';
+      var st = root.FirCompare.firState(f);
+      return esc([f.co || (f.mode === "co" ? f.query : ""), f.position, f.role, f.trc].filter(Boolean).join(" · ")) + (f.status && f.status !== f.trc ? " " + api.statusPill(f.status) : "") +
+        (st.kind === "off" ? ' <span class="hint">off</span>' : "");
+    }
+    function toolCell(e) {
+      if (!e) return '<span class="hint">off that day</span>';
+      var bits = [e.co, e.seat];
+      if (e.kind) bits.push((api.KIND[e.kind] || api.KIND.cover)[0]);
+      return esc(bits.join(" · ")) + (e.status ? " " + api.statusPill(e.status) : e.off ? ' <span class="tag tag-away">' + (e.away ? "away" : "covered") + "</span>" : "");
+    }
+    function firResult(r) {
+      var diff = r.people.filter(function (x) { return x.issues.length; }), same = r.people.filter(function (x) { return !x.issues.length; });
+      var span = r.dates.length ? api.shortDate(api.fromIso(r.dates[0])) + (r.dates.length > 1 ? " – " + api.shortDate(api.fromIso(r.dates[r.dates.length - 1])) : "") : "";
+      var flags = r.flags.filter(function (x) { return x.flag !== "empty"; });
+      var row = function (x) {
+        return '<details class="fir-person"><summary><button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button> " +
+          '<span class="hint mono">' + esc(x.emplId || "") + "</span> · " + x.issues.length + " of " + x.days + " days differ" +
+          '<div class="hint">' + esc(firstNotes(x.issues)) + "</div>" + (x.notes.length ? '<div class="hint">' + esc(x.notes.join(" · ")) + "</div>" : "") + "</summary>" +
+          '<div class="table-wrap"><table class="list fir-t"><thead><tr><th>Date</th><th>fir-db1</th><th>This tool</th><th>Note</th></tr></thead><tbody>' +
+          x.issues.map(function (it) {
+            return "<tr><td>" + esc(api.shortDate(api.fromIso(it.date))) + "</td><td>" + firCell(it.fir) + "</td><td>" + toolCell(it.tool) + "</td><td>" + esc(it.note) + "</td></tr>";
+          }).join("") + "</tbody></table></div></details>";
+      };
+      return '<div class="fir-result"><p><b>' + esc(span) + "</b> · " + r.people.length + " people checked · <b>" + diff.length + "</b> with differences · " + same.length + " agree on every day</p>" +
+        (flags.length ? '<p class="hint err">Couldn\'t read: ' + esc(flags.map(function (x) { return x.query + " (" + x.flag + ")"; }).join(", ")) + "</p>" : "") +
+        (diff.length ? diff.map(row).join("") : '<p class="hint">No differences.</p>') +
+        (r.unknown.length ? '<details class="fir-sec" open><summary><b>On fir-db1, not in the tool</b> <span class="n">' + r.unknown.length + "</span></summary><ul class=\"tlist\">" +
+          r.unknown.map(function (u) {
+            var w = u.rows.filter(function (f) { return f.position; })[0] || u.rows[0];
+            return "<li><div>" + esc(u.name) + ' <span class="hint mono">' + esc(u.emplId) + "</span> · " + firCell(w) + "</div></li>";
+          }).join("") + "</ul><p class=\"hint\">Add them with <b>Not on the list? Add a person</b> on the Schedule tab if they belong.</p></details>" : "") +
+        (r.toolOnly.length ? '<details class="fir-sec"><summary><b>Working there in the tool, not on fir-db1\'s company list</b> <span class="n">' + r.toolOnly.length + "</span></summary><ul class=\"tlist\">" +
+          r.toolOnly.map(function (t) {
+            return "<li><div>" + (t.p ? '<button type="button" class="linkish" data-ckey="' + esc(t.key) + '">' + esc(t.p.name) + "</button>" : esc(t.key)) + " · " + esc(api.shortDate(api.fromIso(t.date))) + " · " + toolCell(t.tool) + "</div></li>";
+          }).join("") + "</ul></details>" : "") +
+        (same.length ? '<details class="fir-sec" open><summary><b>Agree on every day</b> <span class="n">' + same.length + "</span></summary><p>" +
+          same.map(function (x) { return '<button type="button" class="linkish" data-ckey="' + esc(x.key) + '">' + esc(x.name) + "</button>" + (x.notes.length ? ' <span class="hint">(' + esc(x.notes.join(" · ")) + ")</span>" : ""); }).join("<br>") + "</p></details>" : "") + "</div>";
+    }
+    function firstNotes(issues) {
+      var seen = {}, out = [];
+      issues.forEach(function (i) { var n = i.note.split(" · ")[0]; if (!seen[n]) { seen[n] = 1; out.push(n); } });
+      return out.join(" · ");
+    }
+    function wireFir() {
+      var F = root.FirCompare, card = $("fir-card");
+      if (!F || !card) return;
+      card.addEventListener("toggle", function () { ui.fir.open = card.open; });
+      $("fir-source").onchange = function () { ui.fir.source = this.value; render(); };
+      if ($("fir-level")) $("fir-level").onchange = function () { ui.fir.level = this.value; render(); };
+      if ($("fir-all")) $("fir-all").onchange = function () { ui.fir.all = this.checked; render(); };
+      if ($("fir-group")) $("fir-group").onchange = function () { ui.fir.group = this.value; render(); };
+      if ($("fir-list")) $("fir-list").onchange = function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            var l = F.parseList(rd.result);
+            l.name = file.name;
+            ui.fir.list = l;
+            ui.fir.group = l.groups[0] || "";
+            ui.fir.error = "";
+          } catch (er) { ui.fir.error = er.message; }
+          render();
+        };
+        rd.readAsText(file);
+      };
+      $("fir-date").onchange = function () { if (this.value) { ui.fir.date = this.value; render(); } };
+      $("fir-to").onchange = function () { ui.fir.to = this.value; render(); };
+      $("fir-form").onsubmit = function (e) { e.preventDefault(); };
+      $("fir-copy").onclick = function () {
+        var text = F.script(firPlan()), ta = $("fir-script"), b = this;
+        ta.value = text;
+        var shown = function () { ta.hidden = false; ta.focus(); ta.select(); api.say($("fir-msg"), "Copy the script from the box above (it's selected).", false); };
+        try {
+          navigator.clipboard.writeText(text).then(function () { b.textContent = "Copied"; setTimeout(function () { b.textContent = "Copy pull script"; }, 2000); }, shown);
+        } catch (e) { shown(); }
+      };
+      $("fir-file").onchange = function () {
+        var file = this.files && this.files[0];
+        if (!file) return;
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            ui.fir.result = F.compare(F.parseCsv(rd.result), api);
+            ui.fir.error = "";
+          } catch (er) { ui.fir.result = null; ui.fir.error = er.message; }
+          ui.fir.open = true;
+          render();
+        };
+        rd.readAsText(file);
+      };
+      card.addEventListener("click", function (e) {
+        var k = e.target.closest("[data-ckey]");
+        if (k) { e.preventDefault(); open(k.dataset.ckey); }
+      });
     }
     // Redraws just the counts, table and pager, so typing in the search box keeps focus.
     function drawRoster() {
@@ -5573,6 +6210,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     }
     function wireRoster() {
       var el = $("card-detail");
+      wireFir();
       $("card-q").oninput = function () { ui.q = this.value; ui.page = 0; drawRoster(); };
       $("card-search").onsubmit = function (e) { e.preventDefault(); };
       $("card-per").onchange = function () { ui.per = +this.value; ui.page = 0; drawRoster(); };
@@ -5631,6 +6269,7 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         drawRoster();
         return;
       }
+      loadNeeds([{ needs: "profiles" }]); // the academy class in the identity section
       el.innerHTML = '<div class="card-back">' + btn("‹ Back to roster", 'id="card-back"') + "</div>" + cardHtml(p);
       $("card-back").onclick = function () { ui.key = null; ui.edit = null; render(); el.scrollIntoView({ block: "start" }); };
       wire(p);
@@ -5647,7 +6286,8 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       var nowLine = st ? api.statusPill(st) + " " + esc(api.STATUS_LABEL[st]) : s ? (s.acting ? esc(api.kindWord(s.acting)) + " at " : "Working at ") + esc(s.co || api.home(p)) : "Off today";
 
       var head = '<div class="card card-head"><div><h2>' + esc(p.name) + "</h2>" +
-        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") + "</div>" +
+        '<div class="hint">' + esc(p.title) + (p.added ? "" : " · " + esc(key)) + (tour ? " · Tour " + tour : "") + (p.emplId ? " · " + esc(p.emplId) : "") +
+          (profile(p).classNo ? " · " + esc(root.TourMath.classLabel(profile(p).classNo)) + " class" : "") + "</div>" +
         "<div>Today: " + nowLine + "</div></div>" +
         '<div class="acts">' + btn("Schedule page", 'data-cgo="' + esc(key) + '"') + "</div></div>";
 
@@ -5657,7 +6297,9 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       var idBody = '<form class="edit" id="ci-form" novalidate>' +
         '<div class="row"><label>Name<input type="text" id="ci-name" maxlength="80" value="' + esc(p.name) + '"></label>' +
         "<label>Rank<select id=\"ci-rank\">" + api.RANKS.map(function (r) { return "<option" + (r === p.rank ? " selected" : "") + ">" + esc(r) + "</option>"; }).join("") + "</select></label>" +
-        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label></div>' +
+        '<label>Employee ID<input type="text" id="ci-id" maxlength="6" placeholder="e.g. LE1234" autocomplete="off" value="' + esc(p.emplId || "") + '"></label>' +
+        '<label>Class<input type="number" id="ci-class" min="1" max="999" inputmode="numeric" placeholder="' + (api.profiles() ? "e.g. 137" : "Loading…") + '"' +
+          (api.profiles() ? "" : " disabled") + ' value="' + esc(profile(p).classNo || "") + '"></label></div>' +
         (p.added ? '<div class="row"><label>Apparatus<input type="text" id="ci-co" maxlength="6" placeholder="e.g. E10, or blank" value="' + esc(p.company || "") + '"></label>' +
           '<label>Tour<select id="ci-tour"><option value="">No tour</option>' + api.tourOptions(p.tour || 0) + "</select></label></div>" +
           '<p class="hint">Added person, not on the vacancy list. Give both an apparatus and a tour, or neither.</p>'
@@ -5854,18 +6496,27 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
         if (empl && !api.ID_RE.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
         var other = empl && (api.byId()[empl] || []).filter(function (o) { return o.pos !== key; })[0];
         if (other) return api.say(msg, "Employee ID " + empl + " is already on " + other.name + " (" + other.title + ").", true);
+        var cls = $("ci-class").value.trim();
+        if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return api.say(msg, "Class is the academy class number, e.g. 137.", true);
         api.say(msg, "Saving…");
         var done = function () { rerender(); api.say($("ci-msg"), "Saved."); }, err = function (er) { api.say($("ci-msg"), er.message, true); };
+        // The class lives in the person's profile (admins only), saved first; the dates there are kept.
+        var classNo = cls ? +cls : null, first = Promise.resolve();
+        if (api.profiles() && classNo !== (profile(p).classNo || null)) {
+          first = b.setProfile(key, { classNo: classNo }).then(function () {
+            api.profiles()[key] = Object.assign({ key: key, birthDate: null, hireDate: null }, api.profiles()[key], { classNo: classNo });
+          });
+        }
         if (p.added) {
           var co = $("ci-co").value.trim().toUpperCase(), tour = $("ci-tour").value;
           if (co && !api.companyOk(co)) return api.say(msg, "Apparatus must be a company on the roster, like E10.", true);
           if (!co !== !tour) return api.say(msg, "Pick both an apparatus and a tour, or neither.", true);
-          return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }).then(done, err);
+          return first.then(function () { return b.update("people", key.slice(7), { name: name, rank: rank, emplId: empl || null, company: co || null, tour: tour ? +tour : null }); }).then(done, err);
         }
         // Roster seat: keep only what differs from the files, tied to the holder it was made for.
         var o0 = api.orig(key);
         var o = { name: name !== o0.name ? name : null, rank: rank !== o0.rank ? rank : null, emplId: empl && empl !== o0.emplId ? empl : null, forName: o0.name };
-        b.setOverride(key, o.name || o.rank || o.emplId ? o : null).then(done, err);
+        first.then(function () { return b.setOverride(key, o.name || o.rank || o.emplId ? o : null); }).then(done, err);
       };
     }
 
@@ -6632,39 +7283,45 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
       '<div class="tile"><span class="k">Empl ID</span><span class="v mono">' + esc(p.emplId || "—") + "</span></div></div>";
   }
 
-  /* ---------- Birth and hire dates (admins) ---------- */
+  /* ---------- Personal details: academy class, birth and hire dates (admins) ---------- */
+  // One cache, by person key, for this card and the Employee card (card.js), loaded on first use.
   var profilesCache = null, profilesLoading = false;
+  function loadProfiles() {
+    if (profilesCache || profilesLoading || !backend) return;
+    profilesLoading = true;
+    backend.profiles().then(function (list) {
+      profilesCache = {};
+      list.forEach(function (x) { profilesCache[x.key] = x; });
+      profilesLoading = false;
+      if (state.view === "person" || state.view === "card") renderAll(true);
+    }, function () { profilesLoading = false; profilesCache = {}; });
+  }
   function datesCard(p) {
     if (!backend || !backend.canAdmin()) return "";
     if (!profilesCache) {
-      if (!profilesLoading) {
-        profilesLoading = true;
-        backend.profiles().then(function (list) {
-          profilesCache = {};
-          list.forEach(function (x) { profilesCache[x.key] = x; });
-          profilesLoading = false;
-          if (state.view === "person") renderAll();
-        }, function () { profilesLoading = false; profilesCache = {}; });
-      }
-      return '<div class="card"><h3>Personal dates</h3><p class="hint">Loading…</p></div>';
+      loadProfiles();
+      return '<div class="card"><h3>Personal details</h3><p class="hint">Loading…</p></div>';
     }
     var pf = profilesCache[p.pos] || {};
-    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal dates</h3>' +
-      '<p class="hint">Admins only. Used for the dashboard\'s average age and years of service.</p>' +
-      '<div class="row"><label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
+    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal details</h3>' +
+      '<p class="hint">Admins only. The dates feed the dashboard\'s average age and years of service.</p>' +
+      '<div class="row"><label>Class<input type="number" id="pd-class" min="1" max="999" inputmode="numeric" placeholder="e.g. 137" value="' + esc(pf.classNo || "") + '"></label>' +
+      '<label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
       '<label>Hire date<input type="date" id="pd-hire" value="' + esc(pf.hireDate || "") + '"></label></div>' +
-      '<div class="row"><button class="btn primary" type="submit">Save dates</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
+      '<div class="row"><button class="btn primary" type="submit">Save details</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
   }
   function wireDates(p) {
     var f = $("pd-form");
     if (!f) return;
     f.onsubmit = function (e) {
       e.preventDefault();
-      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null;
+      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null, cls = $("pd-class").value.trim();
+      if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return say($("pd-msg"), "Class is the academy class number, e.g. 137.", true);
       if (bd && hd && hd <= bd) return say($("pd-msg"), "The hire date must be after the birth date.", true);
       say($("pd-msg"), "Saving…");
-      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd };
+      var classNo = cls ? +cls : null;
+      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
+        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -7390,7 +8047,17 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
     statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    profiles: function () { return profilesCache; }, loadProfiles: loadProfiles,
     Organization: window.Organization, store: store, recall: recall,
+    byName: function (n) { return byName[nameKey(n)] || []; },
+    dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },
+    // Companies to pull from fir-db1: every roster company plus the rescue captains.
+    companies: function () {
+      var seen = {};
+      data.forEach(function (p) { if (p.company) seen[p.company] = 1; });
+      ["RC1", "RC2", "RC3", "RC4"].forEach(function (c) { seen[c] = 1; });
+      return Object.keys(seen).sort(function (a, b) { return coKey(a).localeCompare(coKey(b)); });
+    },
     show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
   });
 

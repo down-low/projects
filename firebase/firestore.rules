@@ -76,7 +76,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /profiles/{key} {
-      allow read, write: if isAdmin() || (myPos() != null && key == myPos());
+      allow read: if isAdmin() || (myPos() != null && key == myPos());
+      // A member sets their own dates; the academy class (classNo) is set by admins.
+      allow write: if isAdmin() || (myPos() != null && key == myPos() &&
+        request.resource.data.get('classNo', null) == (resource == null ? null : resource.data.get('classNo', null)));
     }
     // The claude.ai page's "This is me" records, kept for reference after the import.
     match /members/{id} {

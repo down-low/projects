@@ -154,6 +154,7 @@ def main():
         f"<script>\n{read('awards.js')}</script>\n"
         f"<script>\n{read('corrections.js')}</script>\n"
         f"<script>\n{read('feedback.js')}</script>\n"
+        f"<script>\n{read('fir.js')}</script>\n"
         f"<script>\n{read('card.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )

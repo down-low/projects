@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/fir.js": "fir.js", "/style.css": "style.css"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
 STATUS_CODES = CODES | {TRADED}
@@ -54,6 +54,7 @@ PERSON_PREFIX = "person:"
 COMPANY_RE = re.compile(r"^[A-Z]{1,3}\d{1,2}$")
 EMPL_ID_RE = re.compile(r"^[A-Z]{2}\d{4}$")  # SFFD employee ID, e.g. LE1234
 MIGRATIONS = [  # columns added after the first release; applied when missing
+    ("profiles", "classNo", "INTEGER"),
     ("users", "claim_request", "TEXT"),
     ("people", "company", "TEXT"),
     ("people", "tour", "INTEGER"),
@@ -728,14 +729,19 @@ class App:
         return {"company": company, "required": req}
 
     def profile(self, key):
-        row = self.one("SELECT birthDate, hireDate FROM profiles WHERE key = ?", (key,))
-        return row or {"birthDate": None, "hireDate": None}
+        row = self.one("SELECT birthDate, hireDate, classNo FROM profiles WHERE key = ?", (key,))
+        return row or {"birthDate": None, "hireDate": None, "classNo": None}
 
     def set_profile(self, key, body, who):
         if not self.lookup(key):
             raise BadRequest("Unknown person")
-        birth = valid_date(body.get("birthDate"), "birthDate", required=False)
-        hire = valid_date(body.get("hireDate"), "hireDate", required=False)
+        # Fields left out keep their stored value (saving dates keeps the academy class, and the other way round).
+        cur = self.profile(key)
+        birth = valid_date(body.get("birthDate"), "birthDate", required=False) if "birthDate" in body else cur["birthDate"]
+        hire = valid_date(body.get("hireDate"), "hireDate", required=False) if "hireDate" in body else cur["hireDate"]
+        cls = body.get("classNo", cur["classNo"])
+        if cls is not None and (not isinstance(cls, int) or isinstance(cls, bool) or not 1 <= cls <= 999):
+            raise BadRequest("classNo must be a whole number from 1 to 999")
         today = dt.date.today()
         if birth:
             age = (today - dt.date.fromisoformat(birth)).days / 365.25
@@ -745,10 +751,11 @@ class App:
             raise BadRequest("Hire date can't be in the future")
         if birth and hire and hire <= birth:
             raise BadRequest("Hire date must be after the birth date")
-        self.write("INSERT INTO profiles (key, birthDate, hireDate, updatedAt, updatedBy) VALUES (?,?,?,?,?) "
+        self.write("INSERT INTO profiles (key, birthDate, hireDate, classNo, updatedAt, updatedBy) VALUES (?,?,?,?,?,?) "
                    "ON CONFLICT(key) DO UPDATE SET birthDate = excluded.birthDate, hireDate = excluded.hireDate, "
-                   "updatedAt = excluded.updatedAt, updatedBy = excluded.updatedBy", (key, birth, hire, now(), who))
-        return {"key": key, "birthDate": birth, "hireDate": hire}
+                   "classNo = excluded.classNo, updatedAt = excluded.updatedAt, updatedBy = excluded.updatedBy",
+                   (key, birth, hire, cls, now(), who))
+        return {"key": key, "birthDate": birth, "hireDate": hire, "classNo": cls}
 
     def stats(self, on):
         """Averages only: individual dates never leave the server except to admins and their owner."""
@@ -1154,7 +1161,7 @@ def make_handler(app):
                 return self.send_json(200, app.stats(valid_date(on, "date", required=False)))
             if path == "/api/admin/profiles":
                 self.require("admin")
-                return self.send_json(200, app.all("SELECT key, birthDate, hireDate FROM profiles"))
+                return self.send_json(200, app.all("SELECT key, birthDate, hireDate, classNo FROM profiles"))
             m = re.fullmatch(r"/docs/([A-Za-z0-9-]+\.pdf)", path)
             if m:
                 self.require("active")
@@ -1354,7 +1361,10 @@ def make_handler(app):
                 key = m.group(1)
                 if u["role"] != "admin" and key != u["pos"]:
                     raise HttpError(403, "You can only change your own dates")
-                rec = app.set_profile(key, self.body(), u["display_name"] or u["google_email"])
+                body = self.body()
+                if u["role"] != "admin":
+                    body.pop("classNo", None)  # the academy class is set by admins
+                rec = app.set_profile(key, body, u["display_name"] or u["google_email"])
                 app.audit(u, "profile", {"key": key})
                 return self.send_json(200, rec)
             raise HttpError(404, "Not found")

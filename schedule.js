@@ -262,6 +262,12 @@
   }
   // +14155550100 -> (415) 555-0100, for showing.
   function showCell(c) { var n = normCell(c); return n ? "(" + n.slice(2, 5) + ") " + n.slice(5, 8) + "-" + n.slice(8) : c || ""; }
+  // Academy class 137 -> "137th" (121st, 122nd, 113th), or "" when unknown.
+  function classLabel(n) {
+    if (!n) return "";
+    var t = n % 100, u = n % 10;
+    return n + (t >= 11 && t <= 13 ? "th" : u === 1 ? "st" : u === 2 ? "nd" : u === 3 ? "rd" : "th");
+  }
   /* Search that takes words in any order: "david lester", "lester d", "dave lester" and "Lester,D" all match
      "Lester,D". Each word of q must start a word of text (or, from 3 letters, appear inside one, for position numbers),
      or be a first name whose initial is a one-letter word there ("david" -> "D"); and at least one word must match
@@ -277,7 +283,7 @@
   }
 
   var api = {
-    normCell: normCell, showCell: showCell, wordsMatch: wordsMatch,
+    normCell: normCell, showCell: showCell, classLabel: classLabel, wordsMatch: wordsMatch,
     seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
