@@ -2,6 +2,9 @@
 # (<project>-admin.web.app, or ADMIN_SITE), rules, functions, roster files and PDFs to Storage.
 # Setup (FIREBASE_SETUP.md): secret FIREBASE_SERVICE_ACCOUNT (the deploy key), variables FIREBASE_PROJECT_ID and
 # ADMIN_EMAILS, optional ALLOWED_DOMAINS and ADMIN_SITE. Until FIREBASE_PROJECT_ID is set the deploy job is skipped.
+# Trade alerts (optional; each channel is off until its settings are there): variable FIREBASE_VAPID_KEY (app
+# notifications), secrets GMAIL_USER and GMAIL_APP_PASSWORD (email), TWILIO_SID, TWILIO_TOKEN and TWILIO_FROM (texts),
+# ALERT_KEY (signs one-tap links; also used by daily-alerts.yml).
 name: Firebase
 
 on:
@@ -34,8 +37,8 @@ jobs:
           java-version: "21"
       - name: Python tests
         run: python3 -m unittest discover -s tests
-      - name: Account logic tests
-        run: node --test firebase/functions/accounts.test.js
+      - name: Account and alert logic tests
+        run: node --test firebase/functions/accounts.test.js firebase/functions/alerts.test.js
       - name: Syntax check
         run: for f in *.js firebase/functions/*.js firebase/tests/*.js; do node --check "$f"; done
       - name: Install rules test tools
@@ -68,12 +71,25 @@ jobs:
         run: |
           ADMIN_SITE="${ADMIN_SITE:-$PROJECT-admin}"
           echo "ADMIN_SITE=$ADMIN_SITE" >> "$GITHUB_ENV"
-          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app"
+          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY"
+        env:
+          VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
       - name: Function settings
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}
           ALLOWED_DOMAINS: ${{ vars.ALLOWED_DOMAINS }}
-        run: printf 'ADMIN_EMAILS=%s\nALLOWED_DOMAINS=%s\n' "$ADMIN_EMAILS" "$ALLOWED_DOMAINS" > firebase/functions/.env
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          TWILIO_SID: ${{ secrets.TWILIO_SID }}
+          TWILIO_TOKEN: ${{ secrets.TWILIO_TOKEN }}
+          TWILIO_FROM: ${{ secrets.TWILIO_FROM }}
+          ALERT_KEY: ${{ secrets.ALERT_KEY }}
+        run: |
+          # Values go in quoted so spaces (a Gmail app password has them) survive.
+          for k in ADMIN_EMAILS ALLOWED_DOMAINS GMAIL_USER GMAIL_APP_PASSWORD TWILIO_SID TWILIO_TOKEN TWILIO_FROM ALERT_KEY; do
+            printf '%s="%s"\n' "$k" "${!k}"
+          done > firebase/functions/.env
+          printf 'APP_URL="https://%s.web.app"\n' "$PROJECT" >> firebase/functions/.env
       - name: Install function packages
         working-directory: firebase/functions
         run: npm install --omit=dev --no-audit --no-fund

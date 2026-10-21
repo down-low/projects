@@ -58,7 +58,8 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Security rules (never break these)
 
-- **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase, rule `read, write: if isAdmin()`). Never put them in this repo, the view-only link, a member-readable collection, logs, or chat output. They move to Firebase only through the backup file the admin downloads and imports themselves; don't read `contacts` with ArtifactData.
+- **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase, rule `read, write: if isAdmin()`). Never put them in this repo, the view-only link, a member-readable collection, logs, or chat output. One exception (the user's call, Oct 2026): on Firebase, `createInvite` hands a trade's poster the cell of each person they sent the trade to who isn't on the tool yet, so Messages opens addressed to them; each one handed out is logged in `audit` (`inviteCell`). They move to Firebase only through the backup file the admin downloads and imports themselves; don't read `contacts` with ArtifactData.
+- **The staff-list cell is also an identity on Firebase** (the user's call, Oct 2026): signing in with a cell and its texted code links the account to the one seat with that staff-list cell, with no other check. Keep `staffCells` admin-only and accurate; a wrong cell there would let the wrong person in. Each link is audited (`cellLink`).
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
 

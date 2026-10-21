@@ -95,7 +95,7 @@
     function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
     function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
     function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
-    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? c.phoneMobile : ""; }
+    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? root.TourMath.showCell(c.phoneMobile) : ""; }
     function claimed(p) {
       if (serverMode()) return (ui.users || []).some(function (u) { return u.pos === p.pos; });
       return (recs().members || []).some(function (m) { return m.key === p.pos; });
@@ -531,7 +531,7 @@
       var c = api.contacts()[key] || {};
       var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
         (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
-        '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? c.phoneMobile : "") + '"></label></div>' +
+        '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? root.TourMath.showCell(c.phoneMobile) : "") + '"></label></div>' +
         '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
 
       // 7. "This is me" claim
@@ -710,8 +710,9 @@
       if (!f) return;
       f.onsubmit = function (e) {
         e.preventDefault();
-        var cell = $("cc-cell").value.trim(), msg = $("cc-msg");
-        if (cell.replace(/\D/g, "").length < 10) return api.say(msg, "Enter a 10-digit number.", true);
+        // Saved as +14155550100 (TourMath.normCell), so invites and cell sign-in match it.
+        var cell = root.TourMath.normCell($("cc-cell").value), msg = $("cc-msg");
+        if (!cell) return api.say(msg, "Enter a 10-digit number.", true);
         api.say(msg, "Saving…");
         b.setCell(key, cell).then(function () { rerender(); api.say($("cc-msg"), "Saved."); }, function (er) { api.say($("cc-msg"), er.message, true); });
       };

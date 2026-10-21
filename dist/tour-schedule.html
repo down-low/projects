@@ -645,6 +645,7 @@ s.held + .st { margin-left: 2px; }
 .cal .d.off.st-TR { border-color: var(--tr); background: repeating-linear-gradient(135deg, var(--tr-soft) 0 6px, var(--surface) 6px 12px); }
 .cal .d.off.st-TR .w { color: var(--tr); }
 .tag-st-open { background: var(--accent-soft); color: var(--accent); }
+.tag-st-pending { background: var(--swing-soft); color: var(--swing); }
 .tag-st-cancelled, .tag-st-expired { background: var(--line); color: var(--muted); font-weight: 500; }
 .trade-link { font-family: var(--font-body); font-size: 0.8rem; color: var(--accent); margin-left: 6px; }
 
@@ -854,6 +855,20 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .fir-who > summary, .fir-person > summary { cursor: pointer; padding: 6px 0; }
 .fir-list { max-height: 50vh; overflow: auto; }
 .fir-person { border-top: 1px solid var(--line); }
+/* Sign-in: cell number first, Google second */
+.phone-in { border-top: 0; margin-top: 0; padding-top: 0; }
+.phone-in input[type="tel"], .phone-in input[type="text"] { font-size: 1.1rem; min-height: 46px; }
+.gate-or { text-align: center; margin: 4px 0; }
+/* Invite people (admin) */
+.launch-filters { grid-template-columns: repeat(4, 1fr); }
+@media (max-width: 640px) { .launch-filters { grid-template-columns: 1fr 1fr; } .launch-filters label:last-child { grid-column: auto; } }
+.launch textarea { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+.launch label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.launch label.chk { flex-direction: row; align-items: center; gap: 8px; font-size: 0.9rem; color: var(--fg); margin-top: 6px; }
+.launch-count { margin: 10px 0 6px; }
+.launch-groups .hint { font-size: 0.8rem; }
+.launch-groups li { align-items: flex-start; }
+.empty.loading { text-align: center; }
 </style>
 
 <div class="page">
@@ -930,7 +945,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       <label class="toggle"><input type="checkbox" id="date-vacant" /> Show vacancies</label>
     </div>
     <div class="summary" id="date-summary"></div>
-    <div id="date-results"></div>
+    <div id="date-results"><div class="empty loading" role="status">Loading the schedule…</div></div>
   </section>
 
   <section class="view" id="view-person" role="tabpanel" aria-labelledby="tab-person" hidden>
@@ -958,7 +973,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       <div class="row"><button class="btn primary" type="submit">Add person</button><span class="msg" id="ap-msg" role="status"></span></div>
     </form>
     <div class="card fix-applying" id="fix-applying" role="status" hidden></div>
-    <div id="person-detail"></div>
+    <div id="person-detail"><div class="empty loading" role="status">Loading the schedule…</div></div>
   </section>
 
   <section class="view" id="view-rank" role="tabpanel" aria-labelledby="tab-rank" hidden>
@@ -1304,7 +1319,62 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     return out;
   }
 
+  function fromIsoDate(s) { var a = s.split("-"); return new Date(+a[0], a[1] - 1, +a[2]); }
+  // The seat person p works on d (their own, or the one they cover), or null when they're off or marked off.
+  function seatWorked(p, d, opts) {
+    var s = dayFor(p.pos, ownSeat(p), d, opts);
+    return s && !s.status ? (s.acting ? s.acting.targetPos : p.pos) : null;
+  }
+  /* The records a pick sets, shared by the page and the alert functions: the taker covers the poster's seat and the
+     poster is TR; for a swap, the same the other way on the swap day. trade: {posterKey, seatPos, date}; reply:
+     {takerKey, proposal}; ctx: {byPos, opts, today (ISO date)}. Returns [{kind: "covers"|"statuses", rec}], or a
+     sentence saying why the trade no longer works. */
+  function pickLegs(trade, reply, ctx) {
+    var poster = ctx.byPos[trade.posterKey], taker = ctx.byPos[reply.takerKey], d = fromIsoDate(trade.date), opts = ctx.opts;
+    if (!poster || !taker) return "That person is no longer on the roster.";
+    if (trade.date < ctx.today) return "That day has passed.";
+    if (seatWorked(poster, d, opts) !== trade.seatPos) return "Your schedule for that day has changed. Cancel this trade and post it again.";
+    if (!eligibleTakers(d, poster, { people: [taker], opts: opts }).length) return taker.name + " now works that day or is marked off.";
+    var leg = function (cov, off, seat, day) {
+      return [{ kind: "covers", rec: { coverKey: cov.pos, coverName: cov.name, targetPos: seat, start: day, end: day, note: "Shift trade" } },
+        { kind: "statuses", rec: { pos: off.pos, name: off.name, code: "TR", start: day, end: day, note: "Shift trade" } }];
+    };
+    var writes = leg(taker, poster, trade.seatPos, trade.date), sw = reply.proposal && reply.proposal.swapDate;
+    if (sw) {
+      var sd = fromIsoDate(sw), seat = seatWorked(taker, sd, opts);
+      if (sw < ctx.today || sw === trade.date) return "The swap day has to be a later day, not the traded day.";
+      if (!seat) return taker.name + " doesn't work " + sw + ".";
+      if (dayFor(poster.pos, ownSeat(poster), sd, opts) || statusFor(poster.pos, sd, opts && opts.statuses)) return poster.name + " isn't free on " + sw + ".";
+      writes = writes.concat(leg(poster, taker, seat, sw));
+    }
+    return writes;
+  }
+
+  /* Cell numbers as typed on the staff list ("(415) 555-0100", "1-415-555-0100", "cell 415.555.0100 / home …") become
+     +14155550100: the first US number in the text, or null. Same as normCell in firebase/functions/accounts.js. */
+  function normCell(s) {
+    var m = /(?:\+?1[\s.\-]*)?\(?(\d{3})\)?[\s.\-]*(\d{3})[\s.\-]*(\d{4})(?!\d)/.exec(String(s || ""));
+    return m ? "+1" + m[1] + m[2] + m[3] : null;
+  }
+  // +14155550100 -> (415) 555-0100, for showing.
+  function showCell(c) { var n = normCell(c); return n ? "(" + n.slice(2, 5) + ") " + n.slice(5, 8) + "-" + n.slice(8) : c || ""; }
+  /* Search that takes words in any order: "david lester", "lester d", "dave lester" and "Lester,D" all match
+     "Lester,D". Each word of q must start a word of text (or, from 3 letters, appear inside one, for position numbers),
+     or be a first name whose initial is a one-letter word there ("david" -> "D"); and at least one word must match
+     more than an initial, so "lester" alone doesn't find everyone with the initial L. */
+  function wordsMatch(q, text) {
+    var words = String(q || "").toLowerCase().split(/[\s,]+/).filter(Boolean);
+    var tokens = String(text || "").toLowerCase().split(/[\s,.()·]+/).filter(Boolean);
+    var full = function (w) { return tokens.some(function (t) { return t.indexOf(w) === 0 || (w.length >= 3 && t.indexOf(w) !== -1); }); };
+    // A first name stands for an initial only next to a real last-name match ("david lester", not "lester d" -> Diaz,L).
+    var lastName = words.some(function (w) { return w.length >= 2 && tokens[0] && tokens[0].indexOf(w) === 0; });
+    var initial = function (w) { return lastName && w.length > 1 && tokens.some(function (t) { return t.length === 1 && w[0] === t; }); };
+    return words.length > 0 && words.every(function (w) { return full(w) || initial(w); }) && words.some(full);
+  }
+
   var api = {
+    normCell: normCell, showCell: showCell, wordsMatch: wordsMatch,
+    seatWorked: seatWorked, pickLegs: pickLegs, fromIsoDate: fromIsoDate,
     RANK_GROUPS: RANK_GROUPS, rankGroup: rankGroup, eligibleTakers: eligibleTakers, adjacentWork: adjacentWork, worksOn: worksOn,
     sharedWatches: sharedWatches, holidayFor: holidayFor,
     watchFor: watchFor, tourWorks: tourWorks, toursOn: toursOn, shiftFor: shiftFor,
@@ -1387,6 +1457,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
+ * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
+ * answerInvite(code, proposal, note), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
  * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
  * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
@@ -1803,9 +1875,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var fb = root.firebase;
     if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
-    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false;
+    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
+    var phoneVerifier = null, phoneConfirm = null;
+    var PHONE_ERRORS = {
+      "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
+      "auth/code-expired": "That code has expired. Ask for a new one.",
+      "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
+      "auth/invalid-phone-number": "Enter your 10-digit cell number.",
+      "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
+      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/captcha-check-failed": "The page check failed. Reload and try again.",
+    };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -1815,6 +1897,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       });
     }
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
+    // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
+    function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -1871,8 +1955,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
-      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
+      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
+      // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
+      var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
+      loadOnTool();
+      setInterval(function () { if (!document.hidden) loadOnTool(); }, 600000);
     }
     // Approval, a role change or a new roster link (made by an admin) reloads the page with the new access.
     function watchAccount() {
@@ -1890,7 +1978,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function write(kind, rec) { return guard(editable()) || w(addRec(COLLECTIONS[kind], rec)); }
     // Files that hold names (roster, IDs, PDFs) are in Cloud Storage, readable by active accounts only (storage.rules).
+    var early = {}; // path -> download started during sign-in (prefetch), handed out once
     function fetchData(path) {
+      if (early[path]) {
+        var p = early[path];
+        delete early[path];
+        // If it was refused (access changed since the last visit), ask again with the fresh sign-in.
+        return p.then(function (r) { return r.ok ? r : fetchData(path); }, function () { return fetchData(path); });
+      }
       var bucket = fb.app().options.storageBucket;
       return user.getIdToken().then(function (t) {
         return fetch("https://firebasestorage.googleapis.com/v0/b/" + encodeURIComponent(bucket) + "/o/" + encodeURIComponent(path) + "?alt=media",
@@ -1927,9 +2022,48 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         });
       },
       signOut: function () { return auth.signOut().then(function () { location.href = location.pathname; }); },
-      claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+      /* Cell-number sign-in (Firebase Auth phone provider): sendCode(cell, buttonId) texts a 6-digit code, behind an
+         invisible reCAPTCHA on that button; confirmCode(code) signs in. A staff-list cell links the account at once (syncMe). */
+      phoneSignIn: true,
+      sendCode: function (cell, buttonId) {
+        var digits = String(cell || "").replace(/[^0-9]/g, "");
+        if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+        if (digits.length !== 10) return Promise.reject(new Error("Enter your 10-digit cell number."));
+        if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
+        return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
+          if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+        });
+      },
+      confirmCode: function (code) {
+        if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
+        return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+        });
+      },
+      // With the Employee ID on file for that position, the account is approved at once (functions: claim).
+      claim: function (pos, note, emplId) { return call("claim", { pos: pos, note: note, emplId: emplId || null }).then(function (j) { me = j; return j; }); },
       claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
       rosterNames: function () { return call("rosterNames"); },
+      /* Launch invites (admins, Admin → Invite people): the staff-list cells (contacts()), who's on the tool (onTool),
+         who was already texted (launchSent: pos -> {via, sentAt}), marking texts sent from the admin's own phone, the
+         contact-card download log, and texts from the department number once Twilio is set up. */
+      launchSent: function () { var o = {}; records.launchInvites.forEach(function (d) { o[d.id] = d; }); return o; },
+      launchMark: function (keys, via) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch(), at = nowIso();
+        keys.forEach(function (k) { batch.set(fs.collection("launchInvites").doc(k), { via: via, sentAt: at, by: user.uid }); });
+        return w(batch.commit());
+      },
+      launchUnmark: function (key) { return admin() ? w(fs.collection("launchInvites").doc(key).delete()) : Promise.reject(new Error(NO_EDIT)); },
+      launchStatus: function () { return call("launchInvites", { action: "status" }); },
+      launchAudit: function (count) { return call("launchInvites", { action: "audit", count: count }); },
+      launchSend: function (keys, text) { return call("launchInvites", { action: "send", keys: keys, text: text }); },
+      // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
+      createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
+      inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
+      answerInvite: function (code, proposal, note) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "" }); },
+      redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
           phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
@@ -1966,22 +2100,41 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
       myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
-      onTool: function () { return null; },
+      onTool: function (key) { return onTool ? onTool.indexOf(key) !== -1 : null; },
       setAlerts: function (a) {
         var alerts = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" };
         return w(fs.collection("users").doc(user.uid).update({ alerts: alerts })).then(function () { me.alerts = alerts; return me; });
       },
       postTrade: function (rec) {
         rec.status = "open";
-        return w(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
+        return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
-      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })); },
-      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)); },
+      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
+      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
+      // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
       pickReply: function (trade, reply, writes) {
-        return w(fs.collection("trades").doc(trade.id).update({ status: "set", replyId: reply.id, takerKey: reply.takerKey,
-          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }));
+        return w(fs.collection("trades").doc(trade.id).update({ status: reply.via === "link" && !reply.verified ? "pending" : "set", replyId: reply.id, takerKey: reply.takerKey,
+          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }))
+          .then(function () { notify("trade", trade.id); });
       },
-      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })); },
+      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
+      // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
+      alertsLive: true,
+      canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
+      registerPush: function () {
+        if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
+        return Notification.requestPermission().then(function (p) {
+          if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
+            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
+          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        }).then(function (reg) {
+          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+        }).then(function (token) {
+          if (!token) throw new Error("This browser didn't give a notification token.");
+          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+        });
+      },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
       suggest: function (rec) {
@@ -2064,7 +2217,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         (cols.contacts || []).forEach(function (d) {
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
-            if (d.cells[k]) { writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+            // Standardized to +14155550100 when the text holds a number; kept as written otherwise (Invite people lists those).
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
         var say = onProgress || function () {};
@@ -2108,6 +2262,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }).then(function (u) {
       if (!u) return adapter;
       user = u;
+      // Already approved (from the last visit's token): start the roster downloads now, alongside the account check.
+      u.getIdTokenResult().then(function (r) {
+        if (r.claims.active !== true) return;
+        ["data/positions.json", "data/required-staffing.json", "data/employee-ids.json", "data/vacancy-awards-2027.json"].forEach(function (path) {
+          if (!early[path]) early[path] = fetchData(path);
+        });
+      }, function () {});
       return syncMe().then(function () {
         watchAccount();
         listen();
@@ -2222,21 +2383,141 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
 
   root.AccountViews = function (api) {
-    var $ = api.$, esc = api.esc;
+    var $ = api.$, esc = api.esc, M = root.TourMath;
     var roster = null, claimPick = null, adminFilter = "", adminUsersCache = [];
+
+    /* ---------- Trade invite links (?t=<code>, Firebase) ----------
+       Before sign-in: the trade and an answer form (answerInvite). Signed in and not yet approved: the Employee ID that
+       proves it's the invited person (redeemInvite), which links and approves the account. The code survives sign-in. */
+    function inviteCode() {
+      try {
+        var c = new URLSearchParams(location.search).get("t");
+        if (c) sessionStorage.setItem("tradeInvite", c);
+        return c || sessionStorage.getItem("tradeInvite");
+      } catch (e) { return null; }
+    }
+    function dropInvite() {
+      try { sessionStorage.removeItem("tradeInvite"); history.replaceState(null, "", location.pathname); } catch (e) { /* old browser */ }
+    }
+    function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
+    function signInButton() {
+      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
+        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+    }
+    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
+       once; anyone else lands on the claim screen. */
+    function phoneHtml() {
+      return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
+        '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
+        '<div id="ph-code-row" hidden><label>The 6-digit code we texted you<input type="text" id="ph-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+        '<div class="row"><button class="btn primary big" type="button" id="ph-ok">Sign in</button><button class="linkish" type="button" id="ph-again">Send a new code</button></div></div>' +
+        '<span class="msg" id="ph-msg" role="status"></span></form>';
+    }
+    function wirePhone() {
+      var f = $("ph-form");
+      if (!f) return;
+      var msg = $("ph-msg"), b = api.backend();
+      var send = function () {
+        api.say(msg, "Sending…");
+        b.sendCode($("ph-cell").value, "ph-send").then(function (num) {
+          $("ph-code-row").hidden = false;
+          api.say(msg, "Code sent to " + num.replace(/^\+1(\d{3})(\d{3})(\d{4})$/, "($1) $2-$3") + ".");
+          $("ph-code").focus();
+        }, function (er) { api.say(msg, er.message, true); });
+      };
+      f.onsubmit = function (e) { e.preventDefault(); send(); };
+      $("ph-again").onclick = send;
+      var ok = function () {
+        api.say(msg, "Signing in…");
+        b.confirmCode($("ph-code").value).catch(function (er) { api.say(msg, er.message, true); });
+      };
+      $("ph-ok").onclick = ok;
+      $("ph-code").oninput = function () { if (/^\d{6}$/.test(this.value.trim())) ok(); };
+    }
+    function wireSignIn(el) {
+      wirePhone();
+      if ($("gate-in")) $("gate-in").onclick = function () {
+        api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
+      };
+    }
+    function renderInviteAnswer(el, code) {
+      el.innerHTML = '<div class="card gate-card"><h2>Shift trade</h2><p class="hint" id="inv-body">Loading…</p></div>';
+      api.backend().inviteInfo(code).then(function (info) {
+        var card = el.querySelector(".gate-card");
+        if (info.error) {
+          card.innerHTML = "<h2>Shift trade</h2><p>" + esc(info.error) + ". Sign in to see the trade board.</p>" + signInButton();
+          dropInvite();
+          return wireSignIn(el);
+        }
+        var said = info.answer ? (info.answer.later ? "pay back later" : "they work your " + niceDate(info.answer.swapDate)) : "";
+        card.innerHTML = "<h2>Shift trade</h2>" +
+          "<p><b>" + esc(info.posterName) + "</b>" + (info.posterRank ? " (" + esc(info.posterRank) + ")" : "") + " wants to trade <b>" +
+          esc(niceDate(info.date)) + "</b>, a 24-hr shift" + (info.station ? " at " + esc(info.station) : "") + ".</p>" +
+          (info.note ? '<p class="trade-note">' + esc(info.note) + "</p>" : "") +
+          (info.forName ? '<p class="hint">This link is for ' + esc(info.forName) + ".</p>" : "") +
+          (said ? "<p>You answered: <b>" + esc(said) + "</b>. You can change it below.</p>" : "") +
+          (info.open
+            ? '<form class="edit" id="inv-form" novalidate><fieldset class="choice"><legend>I\'m interested</legend>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="later" checked> Pay me back later</label>' +
+              '<label class="chk"><input type="radio" name="inv-kind" value="swap"> Swap: they work one of my shifts</label>' +
+              '<label class="indent">My day they\'d work<input type="date" id="inv-swap" disabled></label></fieldset>' +
+              '<label>Note (optional)<input type="text" id="inv-note" maxlength="300"></label>' +
+              '<div class="row"><button class="btn primary" type="submit">Send my answer</button><span class="msg" id="inv-msg" role="status"></span></div></form>'
+            : "<p>This trade is no longer open.</p>") +
+          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. If they pick you, sign in with Google and your Employee ID to confirm it's you.") + "</p>" +
+          signInButton();
+        wireSignIn(el);
+        var f = $("inv-form");
+        if (!f) return;
+        var swap = $("inv-swap");
+        f.querySelectorAll("[name=inv-kind]").forEach(function (r) { r.onchange = function () { swap.disabled = f.querySelector("[name=inv-kind]:checked").value !== "swap"; }; });
+        f.onsubmit = function (e) {
+          e.preventDefault();
+          var msg = $("inv-msg"), later = f.querySelector("[name=inv-kind]:checked").value === "later";
+          if (!later && !swap.value) return api.say(msg, "Pick the day they'd work for you.", true);
+          api.say(msg, "Sending…");
+          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim())
+            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it; you'll confirm it's you if they pick you."); },
+              function (er) { api.say(msg, er.message, true); });
+        };
+      }, function (er) {
+        el.querySelector(".gate-card").innerHTML = "<h2>Shift trade</h2><p class=\"msg err\">" + esc(er.message) + "</p>" + signInButton();
+        wireSignIn(el);
+      });
+    }
+    function renderInviteRedeem(el, code, me) {
+      el.innerHTML = '<div class="card gate-card"><h2>Confirm it\'s you</h2>' +
+        '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
+        "<p>Enter your Employee ID. If it matches the person this trade invite was sent to, your account is set up right away.</p>" +
+        '<form class="edit claim-form" id="inv-redeem" novalidate><label>Employee ID<input type="text" id="inv-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters"></label>' +
+        '<div class="row"><button class="btn primary" type="submit">Confirm</button><span class="msg" id="inv-rmsg" role="status"></span></div></form>' +
+        '<p><button class="linkish" type="button" id="inv-skip">Not you? Find yourself on the roster instead</button></p></div>';
+      $("gate-out").onclick = function () { api.backend().signOut(); };
+      $("inv-skip").onclick = function () { dropInvite(); renderGate(); };
+      $("inv-redeem").onsubmit = function (e) {
+        e.preventDefault();
+        var id = $("inv-id").value.trim().toUpperCase(), msg = $("inv-rmsg");
+        if (!/^[A-Z]{2}\d{4}$/.test(id)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        api.say(msg, "Checking…");
+        api.backend().redeemInvite(code, id).then(function () { dropInvite(); location.reload(); }, function (er) { api.say(msg, er.message, true); });
+      };
+    }
 
     /* ---------- Sign-in and claim screen ---------- */
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
       api.gate(true);
+      var code = api.backend().inviteInfo ? inviteCode() : null;
+      if (code && !me.signedIn) return renderInviteAnswer(el, code);
+      if (code && !me.wrongSite && me.status === "pending") return renderInviteRedeem(el, code, me);
       var err = null;
       try { err = new URLSearchParams(location.search).get("auth_error"); } catch (e) { /* old browser */ }
       var errHtml = err ? '<p class="msg err" role="alert">' + esc(AUTH_ERRORS[err] || "Sign-in failed. Try again.") + "</p>" : "";
 
       if (!me.signedIn) {
         var how = me.google && api.backend().signIn
-          ? '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>'
+          ? signInButton()
           : me.google
           ? '<a class="btn primary big" href="auth/login">Sign in with Google</a>'
           : '<p class="hint">' + esc(AUTH_ERRORS.not_configured) + "</p>";
@@ -2245,12 +2526,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             '<div class="row"><input type="email" id="dev-email" name="email" required placeholder="name@example.org">' +
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
-        el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members. ' +
-          "Sign in with your Google account to see who's working, your own tour, and to share contact info for shift swaps.</p>" +
+        el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
+          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
-        if ($("gate-in")) $("gate-in").onclick = function () {
-          api.backend().signIn().catch(function (er) { el.querySelector(".gate-card").insertAdjacentHTML("beforeend", '<p class="msg err" role="alert">' + esc(er.message) + "</p>"); });
-        };
+        wireSignIn(el);
         return;
       }
 
@@ -2276,15 +2555,20 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         : "";
       el.innerHTML = '<div class="card gate-card"><h2>Claim your record</h2>' +
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
+        (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
-        "<p>Find yourself on the roster so the schedule knows which position is yours. An admin approves each request.</p>" +
+        "<p>Find yourself on the roster so the schedule knows which position is yours.</p>" +
         '<label for="claim-q">Your name or position number</label>' +
-        '<input type="search" id="claim-q" autocomplete="off" placeholder="Start typing your last name">' +
+        '<input type="search" id="claim-q" autocomplete="off" placeholder="First and last name, e.g. Dave Lester">' +
         '<ul class="pick" id="claim-list"></ul>' +
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
+        (api.backend().hosted === "firebase"
+          ? '<div id="claim-id-row" hidden><label for="claim-id">Your Employee ID</label><input type="text" id="claim-id" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters" autocomplete="off">' +
+            '<p class="hint">If it matches the one on file, you\'re in right away. Otherwise an admin approves your request.</p></div>'
+          : "") +
         '<label for="claim-note">Note for the admin (optional)</label><input type="text" id="claim-note" maxlength="300" placeholder="e.g. Captain E33, Tour 12">' +
-        '<div class="row"><button class="btn primary" type="submit">Send request</button><span class="msg" id="claim-msg" role="status"></span></div>' +
+        '<div class="row"><button class="btn primary" type="submit" id="claim-go">Continue</button><span class="msg" id="claim-msg" role="status"></span></div>' +
         '<p><button class="linkish" type="button" id="not-listed">I\'m not on the list</button></p>' +
         "</form>" +
         '<form class="edit claim-form" id="req-form" hidden novalidate>' +
@@ -2323,32 +2607,52 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
+      // Names in any order ("dave lester", "lester d"); when only one name matches, it's picked for you.
       function showMatches() {
-        var q = $("claim-q").value.trim().toLowerCase();
+        var q = $("claim-q").value.trim();
         if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
-        var hits = roster.filter(function (r) {
-          return r.name.toLowerCase().indexOf(q) !== -1 || r.pos.toLowerCase().indexOf(q) !== -1;
-        }).slice(0, 12);
+        var hits = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + r.title + " " + r.pos); }).slice(0, 12);
+        if (hits.length === 1) return pick(hits[0]);
+        if (claimPick) unpick();
         listEl.innerHTML = hits.length ? hits.map(function (r) {
           return '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '"><b>' + esc(r.name) + "</b> " +
             '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span></button></li>";
         }).join("") : '<li class="hint">No unclaimed roster entry matches. Check the spelling or ask an admin.</li>';
       }
+      function pick(r) {
+        claimPick = r.pos;
+        $("claim-chosen").hidden = false;
+        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
+          ' <button class="linkish" type="button" id="claim-not-me">Not me</button>';
+        $("claim-not-me").onclick = function () { $("claim-q").value = ""; unpick(); $("claim-q").focus(); };
+        listEl.innerHTML = "";
+        if ($("claim-id-row")) { $("claim-id-row").hidden = false; $("claim-id").focus(); }
+      }
+      function unpick() {
+        claimPick = null;
+        $("claim-chosen").hidden = true;
+        if ($("claim-id-row")) $("claim-id-row").hidden = true;
+      }
       $("claim-q").oninput = showMatches;
       listEl.onclick = function (e) {
         var b = e.target.closest("button[data-pos]");
         if (!b) return;
-        claimPick = b.dataset.pos;
-        var r = roster.filter(function (x) { return x.pos === claimPick; })[0];
-        $("claim-chosen").hidden = false;
-        $("claim-chosen").innerHTML = "Selected: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos);
-        listEl.innerHTML = "";
+        pick(roster.filter(function (x) { return x.pos === b.dataset.pos; })[0]);
       };
       $("claim-form").onsubmit = function (e) {
         e.preventDefault();
-        if (!claimPick) return api.say($("claim-msg"), "Pick your name from the list first.", true);
-        api.say($("claim-msg"), "Sending…");
-        api.backend().claim(claimPick, $("claim-note").value.trim()).then(renderGate, function (er) { api.say($("claim-msg"), er.message, true); });
+        var msg = $("claim-msg");
+        if (!claimPick) return api.say(msg, "Pick your name from the list first.", true);
+        var empl = $("claim-id") ? $("claim-id").value.trim().toUpperCase() : "";
+        if (empl && !/^[A-Z]{2}\d{4}$/.test(empl)) return api.say(msg, "Employee ID is two letters and four digits, e.g. LE1234.", true);
+        api.say(msg, empl ? "Checking…" : "Sending…");
+        api.backend().claim(claimPick, $("claim-note").value.trim(), empl || null).then(function (me) {
+          // A matching Employee ID approves the account: reload into the schedule.
+          if (me && me.status === "active") { location.reload(); return; }
+          renderGate();
+          var wait = document.querySelector("#gate .claim-wait");
+          if (empl && wait) wait.insertAdjacentHTML("afterbegin", '<p class="msg err" role="status">That Employee ID didn\'t match the one on file for that position.</p>');
+        }, function (er) { api.say(msg, er.message, true); });
       };
       if (!roster) api.backend().rosterNames().then(function (r) {
         roster = r.sort(function (a, b) { return a.name.localeCompare(b.name); });
@@ -2451,7 +2755,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>" + (api.backend().importBackup ? importHtml() : "");
+          }).join("") + "</datalist>" + (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
+          (api.backend().importBackup ? importHtml() : "");
         if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
@@ -2464,6 +2769,166 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         drawPending();
         drawUsers();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
+      if ($("launch")) drawLaunch();
+    }
+
+    /* ---------- Invite people (Firebase admin site): the launch text with the sign-up link ----------
+       Group texts from the admin's own phone, 10 people each, with their staff-list cells filled in; or one by one; or,
+       once Twilio is approved, one personal text each from the department number. Contact cards (.vcf) for the chosen
+       people, logged. Sent marks live in launchInvites/{pos}. */
+    var launch = { dv: "", bt: "", co: "", grp: "", notOn: true, hideSent: true, msg: null, run: null, twilio: null, open: false };
+    var GROUP = 10;
+    function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
+    function launchMsg() {
+      return launch.msg != null ? launch.msg
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+    }
+    function launchSms(cells, body) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = cells.map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    function where(p) { return Organization.locate(p.company || p.title) || null; }
+    // Everyone matching the filters: [{p, cell, on, sent}], in station order.
+    function launchPeople() {
+      var b = api.backend(), cells = b.contacts ? b.contacts() : {}, sent = b.launchSent(), M = root.TourMath;
+      return api.people().filter(function (p) {
+        var o = where(p);
+        if (launch.dv && (!o || o.division.id !== launch.dv)) return false;
+        if (launch.bt && (!o || o.battalion.id !== launch.bt)) return false;
+        if (launch.co && (p.company || "") !== launch.co) return false;
+        if (launch.grp && M.rankGroup(p.rank) !== launch.grp) return false;
+        return true;
+      }).map(function (p) {
+        var c = cells[p.pos];
+        var raw = c && c.staffList ? c.phoneMobile : null;
+        return { p: p, cell: M.normCell(raw), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
+      }).filter(function (x) { return !(launch.notOn && x.on); })
+        .sort(function (a, c) { return Organization.order(a.p.company || a.p.title) - Organization.order(c.p.company || c.p.title) || a.p.name.localeCompare(c.p.name); });
+    }
+    function drawLaunch() {
+      var el = $("launch"), b = api.backend();
+      if (launch.twilio === null && b.launchStatus) { launch.twilio = false; b.launchStatus().then(function (r) { launch.twilio = !!r.twilio; drawLaunch(); }, function () {}); }
+      var all = launchPeople(), todo = all.filter(function (x) { return x.cell && !(launch.hideSent && x.sent); });
+      var groups = [];
+      for (var i = 0; i < todo.length; i += GROUP) groups.push(todo.slice(i, i + GROUP));
+      var opts = function (list, cur) { return list.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === cur ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join(""); };
+      var dvs = [], bts = [];
+      Organization.DIVISIONS.forEach(function (dv) {
+        if (dv.hidden) return;
+        dvs.push([dv.id, dv.name]);
+        dv.battalions.forEach(function (bt) { if (!launch.dv || launch.dv === dv.id) bts.push([bt.id, bt.name]); });
+      });
+      var cos = Array.from(new Set(api.people().filter(function (p) {
+        var o = where(p); return p.company && (!launch.bt || (o && o.battalion.id === launch.bt)) && (!launch.dv || (o && o.division.id === launch.dv));
+      }).map(function (p) { return p.company; }))).sort(function (a, c) { return Organization.order(a) - Organization.order(c); });
+      var grps = Array.from(new Set(api.people().map(function (p) { return root.TourMath.rankGroup(p.rank); }))).sort();
+      var noCell = all.filter(function (x) { return !x.cell; }).length, sentN = all.filter(function (x) { return x.sent; }).length;
+      // Cells on file that aren't a phone number (fix them on the person's Employee card).
+      var bad = all.filter(function (x) { return x.badCell; });
+      var run = launch.run;
+      el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
+        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
+        '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
+        '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
+        '<label>Rank group<select data-l="grp"><option value="">All</option>' + opts(grps.map(function (g) { return [g, g]; }), launch.grp) + "</select></label></div>" +
+        '<label class="chk"><input type="checkbox" data-l="notOn"' + (launch.notOn ? " checked" : "") + "> Only people not on the tool yet</label>" +
+        '<label class="chk"><input type="checkbox" data-l="hideSent"' + (launch.hideSent ? " checked" : "") + "> Hide people already texted</label>" +
+        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
+        (bad.length ? '<p class="msg err">' + bad.length + (bad.length === 1 ? " cell on file isn't" : " cells on file aren't") + " a phone number: " +
+          esc(bad.slice(0, 8).map(function (x) { return x.p.name; }).join(", ")) + (bad.length > 8 ? "…" : "") + ". Fix them on their Employee cards.</p>" : "") +
+        '<label>Message<textarea id="launch-msg" rows="3" maxlength="600">' + esc(launchMsg()) + "</textarea></label>" +
+        (run
+          ? (run.i < run.list.length
+            ? '<div class="invite-run"><span class="hint">' + (run.i + 1) + " of " + run.list.length + "</span> <b>" + esc(run.list[run.i].p.name) + '</b> <span class="hint">' + esc(run.list[run.i].p.title) + "</span>" +
+              '<div class="row"><a class="btn small primary" target="_blank" rel="noopener" data-l1="send" href="' + esc(launchSms([run.list[run.i].cell], launchMsg())) + '">Text ' + esc(run.list[run.i].p.name) + "</a>" +
+              '<button class="btn small" data-l1="skip">Skip</button><button class="btn small" data-l1="stop">Done</button></div></div>'
+            : '<div class="row"><span class="hint">All done.</span><button class="btn small" data-l1="stop">Close</button></div>')
+          : (groups.length
+            ? '<p class="hint">Group texts from your phone, ' + GROUP + " people each. Everyone in a group sees the others' replies; use <b>One by one</b> to avoid that.</p>" +
+              '<ul class="tlist launch-groups">' + groups.map(function (g, gi) {
+                return "<li><div><b>Group " + (gi + 1) + " of " + groups.length + "</b> · " + g.length + ' people<div class="hint">' + esc(g.map(function (x) { return x.p.name; }).join(", ")) + "</div></div>" +
+                  '<div class="row"><a class="btn small primary" target="_blank" rel="noopener" data-lg="' + gi + '" href="' + esc(launchSms(g.map(function (x) { return x.cell; }), launchMsg())) + '">Open in Messages</a>' +
+                  '<button class="btn small" data-lmark="' + gi + '">Mark sent</button></div></li>';
+              }).join("") + "</ul>" +
+              '<div class="row"><button class="btn small" data-l1="start">One by one (' + todo.length + ")</button>" +
+              '<button class="btn small" data-l1="vcf">Download contact cards (' + todo.length + ")</button>" +
+              (launch.twilio ? '<button class="btn small" data-l1="twilio">Send from department number (' + todo.length + ")</button>" : "") + "</div>"
+            : '<p class="hint">Nobody left to text with these filters.</p>')) +
+        '<span class="msg" id="launch-say" role="status"></span></details>';
+      el._groups = groups; el._todo = todo;
+      wireLaunch(el);
+    }
+    function wireLaunch(el) {
+      var b = api.backend(), say = function (t, bad) { api.say($("launch-say"), t, bad); };
+      $("launch-fold").addEventListener("toggle", function () { launch.open = this.open; });
+      el.querySelectorAll("[data-l]").forEach(function (c) {
+        c.onchange = function () {
+          var k = c.dataset.l;
+          launch[k] = c.type === "checkbox" ? c.checked : c.value;
+          if (k === "dv") { launch.bt = ""; launch.co = ""; }
+          if (k === "bt") launch.co = "";
+          launch.run = null;
+          drawLaunch();
+        };
+      });
+      $("launch-msg").onchange = function () { launch.msg = this.value; drawLaunch(); };
+      el.querySelectorAll("[data-lmark]").forEach(function (x) {
+        x.onclick = function () {
+          var g = el._groups[+x.dataset.lmark];
+          b.launchMark(g.map(function (y) { return y.p.pos; }), "group").then(function () { say("Marked " + g.length + " as texted."); drawLaunch(); }, function (er) { say(er.message, true); });
+        };
+      });
+      el.querySelectorAll("[data-lg]").forEach(function (a) {
+        a.addEventListener("click", function () { say("After you send it, tap Mark sent."); });
+      });
+      el.querySelectorAll("[data-l1]").forEach(function (x) {
+        var act = x.dataset.l1;
+        if (act === "send") {
+          x.addEventListener("click", function () {
+            var cur = launch.run.list[launch.run.i];
+            launch.run.i++;
+            b.launchMark([cur.p.pos], "single").catch(function () {});
+            setTimeout(drawLaunch, 400);
+          });
+          return;
+        }
+        x.onclick = function () {
+          if (act === "start") { launch.run = { list: el._todo.slice(), i: 0 }; drawLaunch(); }
+          else if (act === "skip") { launch.run.i++; drawLaunch(); }
+          else if (act === "stop") { launch.run = null; drawLaunch(); }
+          else if (act === "vcf") downloadCards(el._todo, say);
+          else if (act === "twilio") {
+            if (x.dataset.confirm !== "1") { x.dataset.confirm = "1"; x.textContent = "Confirm: text " + el._todo.length + " people"; x.classList.add("danger"); return; }
+            x.disabled = true;
+            say("Sending…");
+            b.launchSend(el._todo.map(function (y) { return y.p.pos; }), launchMsg()).then(function (r) {
+              say("Sent " + r.sent + (r.failed ? ", " + r.failed + " failed" : "") + ".");
+              drawLaunch();
+            }, function (er) { x.disabled = false; say(er.message, true); });
+          }
+        };
+      });
+    }
+    // Contact cards for the chosen people (name, rank and station, cell), saved on this device; the download is logged.
+    function downloadCards(list, say) {
+      var withCell = list.filter(function (x) { return x.cell; });
+      if (!withCell.length) return say("No cells to save.", true);
+      var vesc = function (t) { return String(t).replace(/[\\;,]/g, function (c) { return "\\" + c; }); };
+      var cards = withCell.map(function (x) {
+        var parts = x.p.name.split(","), last = parts[0].trim(), first = (parts[1] || "").trim();
+        return ["BEGIN:VCARD", "VERSION:3.0", "N:" + vesc(last) + ";" + vesc(first) + ";;;", "FN:" + vesc((first ? first + " " : "") + last),
+          "ORG:SFFD", "TITLE:" + vesc(x.p.rank + (x.p.company ? " " + x.p.company : "")), "TEL;TYPE=CELL:" + x.cell, "END:VCARD"].join("\r\n");
+      }).join("\r\n");
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([cards + "\r\n"], { type: "text/vcard" }));
+      a.download = "sffd-contacts.vcf";
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 2000);
+      api.backend().launchAudit(withCell.length).catch(function () {});
+      say("Saved " + withCell.length + " contact cards. The file has cell numbers: delete it once they're imported.");
     }
 
     /* Cut-over (Firebase only, CUTOVER.md): the backup file saved on the claude.ai page (Download backup) is loaded straight
@@ -2558,7 +3023,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var rows = adminUsersCache.filter(function (u) {
         if (!adminFilter) return true;
         var p = u.pos && api.byPos()[u.pos];
-        return [u.name, u.googleEmail, u.pos, p && p.name, u.role, u.status].join(" ").toLowerCase().indexOf(adminFilter) !== -1;
+        return M.wordsMatch(adminFilter, [u.name, u.googleEmail, u.pos, p && p.name, u.role, u.status].join(" "));
       });
       $("admin-users").innerHTML = rows.length ? rows.map(function (u) {
         var self = u.id === meId;
@@ -3293,7 +3758,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -3367,15 +3832,22 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
     // My open or set trade for that day, or null.
     function tradeFor(pos, dIso) {
-      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set" || x.status === "pending"); })[0] || null;
     }
-    function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
+    /* Who can post a trade for pos: that person, or an admin for anyone (on Firebase and the shared page; server.py's
+       trade routes only take the signed-in person). An admin's post records postedBy and shows who it's for. */
+    function tradeAdmin() {
+      var b = backend();
+      return visible() && !!b.canAdmin && b.canAdmin() && (b.hosted === "firebase" || b.mode === "db");
+    }
+    function canTradeFor(pos) { return visible() && !!pos && ((pos === myKey() && backend().canTrade()) || (!!byPos()[pos] && tradeAdmin())); }
+    function forSomeone(pos) { return pos !== myKey(); }
     function tradeLink(p, d) {
       if (!canTradeFor(p.pos)) return "";
       var dIso = api.iso(d), t = tradeFor(p.pos, dIso);
       if (dIso < todayIso()) return "";
       if (t) return '<span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
-      return '<button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
+      return '<button class="linkish trade-link" data-trade-day="' + dIso + '" data-trade-pos="' + esc(p.pos) + '">Trade</button>';
     }
     // Owed shifts and the "This is me" link for a person's page.
     function personExtras(p) {
@@ -3400,7 +3872,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var mine = me();
       if (!mine) {
         out.innerHTML = '<div class="trades">' + (b.mode === "server" ? '<div class="card"><h3>Shift trades</h3><p class="hint">Your account isn\'t linked to a roster position yet. Ask an admin to link it on the Admin page.</p></div>'
-          : claimHtml()) + adminClaimsHtml() + "</div>";
+          : claimHtml()) + forOthersHtml(null) + adminClaimsHtml() + "</div>";
         wireClaim();
         wireTab();
         return;
@@ -3438,7 +3910,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
           '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
-        adminClaimsHtml() + "</div>";
+        forOthersHtml(key) + adminClaimsHtml() + "</div>";
       wireTab();
     }
     // Demo page: say nothing is saved, and let the viewer switch who they are.
@@ -3450,6 +3922,16 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           var p = byPos()[k] || {};
           return '<option value="' + esc(k) + '"' + (k === d.as() ? " selected" : "") + ">" + esc((p.name || k) + " · " + (p.rank || "") + " · " + (p.company || p.title || "")) + "</option>";
         }).join("") + "</select></label></div>";
+    }
+    // Admins: trades posted for other people (by any admin), so someone not on the tool still gets answers picked.
+    function forOthersHtml(key) {
+      if (!tradeAdmin()) return "";
+      var t0 = todayIso();
+      var list = trades().filter(function (t) {
+        return t.postedBy && t.posterKey !== key && t.date >= t0 && ["open", "pending", "set"].indexOf(statusOf(t)) !== -1;
+      }).sort(byDate);
+      return section("Admin: trades posted for others", list.map(ownCard).join("") ||
+        '<p class="hint">None. To post one for someone, open their page and tap the day.</p>');
     }
     function byDate(a, b) { return a.date.localeCompare(b.date) || String(a.createdAt).localeCompare(String(b.createdAt)); }
     function section(title, body) { return '<section class="card trade-sec"><h3>' + esc(title) + "</h3>" + body + "</section>"; }
@@ -3487,12 +3969,18 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
     // One of my posts: responses with their terms, Pick, Cancel, Widen.
     function ownCard(t) {
-      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] };
-      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + '</span><span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
+      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] }, other = t.posterKey !== myKey();
+      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
+        (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>" +
+        (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
-      if (st === "set") {
-        body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + " works your shift. " + esc(terms(t.proposal, true)) + ".</p>" +
+      if (st === "pending") {
+        body = '<p class="trade-terms">You picked ' + esc(nameOf(t.takerKey)) + ". " + esc(terms(t.proposal, true)) + ".</p>" +
+          '<p class="hint">Waiting for them to sign in from their link with their Employee ID; then the trade is set.</p>' +
+          '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
+      } else if (st === "set") {
+        body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + (other ? " works their shift. " : " works your shift. ") + esc(terms(t.proposal, true)) + ".</p>" +
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
         body = '<p class="hint">' + [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ") +
@@ -3500,6 +3988,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + (r.via === "poster" ? ' <span class="tag">Added by you</span>' : "") +
+              (r.via === "link" ? ' <span class="tag">' + (r.verified ? "From their link" : "From their link · not verified") + "</span>" : "") +
               '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
               '<button class="btn small primary" data-pick="' + esc(r.id) + '" data-trade="' + esc(t.id) + '">Pick</button></li>';
           }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') + inviteHtml(t) +
@@ -3519,15 +4008,36 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    function inviteText(t) {
-      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos], link = pageLink();
+    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    function inviteText(t, k) {
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
+      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
       return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
-    // iPhones and Macs take "sms:&body=", Android "sms:?body=".
-    function smsHref(body) {
-      return "sms:" + (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?") + "body=" + encodeURIComponent(body);
+    /* A Messages link, addressed to `cells` (staff-list numbers from createInvite) when there are any. iPhones and Macs
+       take "sms:<n>&body=" and "sms:/open?addresses=<a>,<b>&body=" for a group; Android "sms:<a>,<b>?body=". */
+    function smsHref(body, cells) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = (cells || []).map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    /* Personal links (Firebase): createInvite makes one code per person not on the tool, with their staff-list cell.
+       Fetched once per trade; until then (or elsewhere) the general link and no number. */
+    function inviteFor(t, k) { var l = ui.links[t.id]; return l && l.byKey ? l.byKey[k] || null : null; }
+    function loadLinks(t, keys) {
+      var b = backend();
+      // Personal links are the poster's own (createInvite checks); an admin texting for someone sends the general link.
+      if (!b.createInvite || ui.links[t.id] || forSomeone(t.posterKey)) return;
+      ui.links[t.id] = { loading: true };
+      b.createInvite(t.id, keys).then(function (rows) {
+        var by = {};
+        (rows || []).forEach(function (r) { by[r.key] = r; });
+        ui.links[t.id] = { byKey: by };
+        renderTrades();
+      }, function (er) { ui.links[t.id] = { error: er.message }; renderTrades(); });
     }
     function notOnTool(t) {
       var b = backend();
@@ -3535,7 +4045,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
     function smsLink(t, k, label, cls, run) {
-      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
+      var mine = inviteFor(t, k);
+      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
         esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
     }
     // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
@@ -3556,8 +4067,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
       }
-      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      loadLinks(t, keys);
+      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
+      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
+        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
+        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -3570,8 +4086,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
             smsLink(t, k, "Invite") + "</li>";
         }).join("") + "</ul>" +
-          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
+          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
+            '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
@@ -3611,8 +4129,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
           return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
         }).join("") + "</select></label>" +
-        '<p class="hint">Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the ' +
-        "details and a one-tap reply, so there's no need to open the page.</p></details>";
+        '<p class="hint">' + (backend().alertsLive
+          ? "Trades sent to you, answers to yours and picks always alert you on the ways you switch on, with the details and a one-tap answer. " +
+            "Texts start once the department's texting number is approved."
+          : "Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the details and a one-tap reply, so there's no need to open the page.") +
+        '</p><span class="msg" id="alert-msg" role="status"></span></details>';
     }
 
     function wireTab() {
@@ -3627,7 +4148,16 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         c.onchange = function () {
           var vals = {};
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
-          backend().setAlerts(vals).catch(function () { if (c.tagName !== "SELECT") c.checked = !c.checked; });
+          var b = backend(), msg = $("alert-msg");
+          // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
+          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          ready.then(function () {
+            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
+            return b.setAlerts(vals);
+          }).catch(function (er) {
+            if (c.tagName !== "SELECT") c.checked = !c.checked;
+            if (msg) api.say(msg, er.message, true);
+          });
         };
       });
       out.querySelectorAll("[data-reply]").forEach(function (b) {
@@ -3758,24 +4288,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     /* The records a pick sets (on the shared page they are kept on the trade; the server writes its own): the taker covers the
        poster's seat and the poster is TR; for a swap the same the other way on the swap day. An error string when the trade
        no longer works. */
-    function pickWrites(t, r) {
-      var poster = byPos()[t.posterKey], taker = byPos()[r.takerKey], d = api.fromIso(t.date);
-      if (!poster || !taker) return "That person is no longer on the roster.";
-      if (t.date < todayIso()) return "That day has passed.";
-      if (seatOn(poster, d) !== t.seatPos) return "Your schedule for that day has changed. Cancel this trade and post it again.";
-      if (!canTake(taker, t)) return taker.name + " now works that day or is marked off.";
-      var leg = function (cov, off, seat, day) {
-        return [{ kind: "covers", rec: { coverKey: cov.pos, coverName: cov.name, targetPos: seat, start: day, end: day, note: "Shift trade" } },
-          { kind: "statuses", rec: { pos: off.pos, name: off.name, code: "TR", start: day, end: day, note: "Shift trade" } }];
-      };
-      var writes = leg(taker, poster, t.seatPos, t.date);
-      if (r.proposal.swapDate) {
-        var why = swapProblem(t, taker, r.proposal.swapDate);
-        if (why) return why;
-        writes = writes.concat(leg(poster, taker, seatOn(taker, api.fromIso(r.proposal.swapDate)), r.proposal.swapDate));
-      }
-      return writes;
-    }
+    function pickWrites(t, r) { return M.pickLegs(t, r, { byPos: byPos(), opts: api.opts(), today: todayIso() }); }
 
     /* ---------- "This is me" (shared page) ---------- */
     function claimHtml() {
@@ -3898,12 +4411,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function locked(key) { return !!(wiz.widen && (wiz.widen.audience.to || []).indexOf(key) !== -1); }
     function drawWizard() {
       var w = wiz, body = $("trade-body"), d = api.fromIso(w.date), seat = byPos()[w.seat];
-      $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + api.shortDate(d);
+      $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + (forSomeone(w.poster.pos) ? w.poster.name + " · " : "") + api.shortDate(d);
       // Steps: 2 = who, 3 = post. The poster doesn't offer a payback day; whoever is interested suggests one.
       var steps = '<ol class="wiz-steps">' + ["Who", "Post"].map(function (s, i) {
         return '<li class="' + (w.step === i + 2 ? "on" : w.step > i + 2 ? "done" : "") + '">' + s + "</li>";
       }).join("") + "</ol>";
-      var html = steps + '<p class="hint">Your 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
+      var html = steps + '<p class="hint">' + (forSomeone(w.poster.pos) ? esc(w.poster.name) + "'s" : "Your") + ' 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
       if (w.step === 2) {
         var gs = groups(), all = w.el.length && w.el.every(function (e) { return w.sel[e.p.pos]; });
         html += w.el.length
@@ -3985,8 +4498,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var aud = { board: !!w.board, to: to };
       var p = w.widen
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
-        : backend().postTrade({ posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          note: w.note, audience: aud });
+        : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
+          note: w.note, audience: aud }));
       p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
@@ -3995,14 +4508,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !sh.hidden) closeWizard(); });
       document.addEventListener("click", function (e) {
         var b = e.target.closest("[data-trade-day]");
-        if (b && myKey()) { openWizard(myKey(), b.dataset.tradeDay); return; }
+        if (b && (b.dataset.tradePos || myKey())) { openWizard(b.dataset.tradePos || myKey(), b.dataset.tradeDay); return; }
         var c = e.target.closest("[data-claim]");
         if (c) { ui.claimPick = c.dataset.claim; api.showTrades(); }
       });
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);
 </script>
@@ -5025,7 +5538,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function org(p) { return api.Organization ? api.Organization.locate(api.home(p)) : null; }
     function profile(p) { return (ui.profiles || {})[p.pos] || {}; }
     function yearsSince(isoStr) { return isoStr ? Math.floor((api.today() - api.fromIso(isoStr)) / (365.25 * 864e5) * 10) / 10 : null; }
-    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? c.phoneMobile : ""; }
+    function cellOf(p) { var c = api.contacts()[p.pos]; return c && c.staffList ? root.TourMath.showCell(c.phoneMobile) : ""; }
     function claimed(p) {
       if (serverMode()) return (ui.users || []).some(function (u) { return u.pos === p.pos; });
       return (recs().members || []).some(function (m) { return m.key === p.pos; });
@@ -5461,7 +5974,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var c = api.contacts()[key] || {};
       var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
         (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
-        '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? c.phoneMobile : "") + '"></label></div>' +
+        '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? root.TourMath.showCell(c.phoneMobile) : "") + '"></label></div>' +
         '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
 
       // 7. "This is me" claim
@@ -5640,8 +6153,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       if (!f) return;
       f.onsubmit = function (e) {
         e.preventDefault();
-        var cell = $("cc-cell").value.trim(), msg = $("cc-msg");
-        if (cell.replace(/\D/g, "").length < 10) return api.say(msg, "Enter a 10-digit number.", true);
+        // Saved as +14155550100 (TourMath.normCell), so invites and cell sign-in match it.
+        var cell = root.TourMath.normCell($("cc-cell").value), msg = $("cc-msg");
+        if (!cell) return api.say(msg, "Enter a 10-digit number.", true);
         api.say(msg, "Saving…");
         b.setCell(key, cell).then(function () { rerender(); api.say($("cc-msg"), "Saved."); }, function (er) { api.say($("cc-msg"), er.message, true); });
       };
@@ -5749,7 +6263,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     if ((m = /^(?:tour|t\.)\s*(\d{1,2})$/.exec(q))) return function (f) { return f.tour === +m[1]; };
     if (/^\d{1,2}[a-z]{2,4}\d{2,3}m$/.test(q)) return function (f) { return (f.pos || "").toLowerCase() === q; };
-    return function (f) { return [f.name, f.title, f.id, f.extra].join(" ").toLowerCase().indexOf(q) !== -1; };
+    // Names: words in any order, first or last ("david lester", "lester d").
+    return function (f) { return M.wordsMatch(q, [f.name, f.title, f.id, f.extra].join(" ")); };
   }
   function statusPill(code) {
     return code ? '<span class="st st-' + esc(code) + '" title="' + esc(STATUS_LABEL[code] || code) + '">' + esc(code) + "</span>" : "";
@@ -6041,9 +6556,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     items[suggestIdx].scrollIntoView({ block: "nearest" });
     $("person-input").setAttribute("aria-activedescendant", items[suggestIdx].id);
   }
+  var pickedThisVisit = false;
   function choosePerson(pos) {
     var p = byPos[pos];
     if (!p) return;
+    pickedThisVisit = true;
     state.personPos = pos;
     state.personMonth = new Date(state.date.getFullYear(), state.date.getMonth(), 1);
     $("person-input").value = p.name || "";
@@ -6227,7 +6744,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var acts = [];
     if (s && !s.status && dIso >= t && Trades.canTradeFor(p.pos)) {
       acts.push(trade ? '<button type="button" data-day-act="trades">' + (trade.status === "set" ? "Traded" : "Trade posted") + '<span class="hint">See it on the Trades tab</span></button>'
-        : '<button type="button" data-day-act="trade">Trade this shift<span class="hint">Send it to people who are off, or post it to the board</span></button>');
+        : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
     if (s && !s.status && backend && backend.canEdit()) {
@@ -6554,6 +7071,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var bits = [];
     if (c.email) bits.push('<a href="mailto:' + esc(c.email) + '">' + esc(c.email) + '</a> <button class="btn tiny" data-copy="' + esc(c.email) + '">Copy</button>');
     [[c.staffList ? "" : "Mobile", c.phoneMobile], ["Other", c.phoneOther]].forEach(function (ph) {
+      if (ph[1] && M.normCell(ph[1])) ph[1] = M.showCell(ph[1]); // shown as (415) 555-0100
       if (ph[1]) bits.push(esc(ph[0]) + ' <a href="tel:' + esc(ph[1].replace(/[^0-9+x]/gi, "")) + '">' + esc(ph[1]) + '</a> <button class="btn tiny" data-copy="' + esc(ph[1]) + '">Copy</button>');
     });
     return '<div class="kv contact-kv"><span class="k">' + (c.staffList ? "Cell · staff list, admins only" : "Contact for swaps" + (c.shared ? "" : " · not shared, admins only")) + '</span><span class="v contact-v">' +
@@ -6637,6 +7155,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
   /* ---------- Boot ---------- */
   var byPos = {};
+  var openTrades = false; // opened from a trade alert link (?trade=)
   var addedWithTour = [];
   var byId = {}, byName = {}; // employee ID -> people, name -> people (more than one means a duplicate)
   function nameKey(n) { return String(n || "").toLowerCase().replace(/\s+/g, ""); }
@@ -6814,14 +7333,15 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }, function (err) { say(msg, err.message, true); });
     };
 
-    var savedPerson = recall("person");
+    // The Schedule tab opens on you when your account is linked to the roster, else on the last person searched.
+    var savedPerson = myPos() || recall("person");
     if (savedPerson && byPos[savedPerson] && byPos[savedPerson].name) {
       state.personPos = savedPerson;
       $("person-input").value = byPos[savedPerson].name;
     }
     booted = true;
     applyAccountUi();
-    var v = recall("view");
+    var v = openTrades ? "trades" : recall("view");
     setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
   }
   function selectText(el) {
@@ -6857,6 +7377,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   // The employee card: admins on the shared page (Editor access) or on the server; never viewers, members or snapshots.
   function isCardAdmin() { return !!(backend && backend.update && backend.canAdmin && backend.canAdmin()); }
   function serverMode() { return backend && backend.mode === "server"; }
+  // The roster position this account is linked to (Firebase, server, or "This is me" on the shared page), or null.
+  function myPos() {
+    if (!backend || backend.mode === "snapshot" || !backend.myKey) return null; // the demo's "viewing as" isn't you
+    var k = backend.myKey();
+    return k && byPos[k] ? k : null;
+  }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
     if (v === "me") return serverMode() && backend.isActive();
@@ -7064,26 +7590,43 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   if (window.POSITIONS) {
     // Single-file build: show the schedule at once, then light up editing when the page database answers.
     boot(window.POSITIONS);
-    window.ScheduleStore.connect(onRecords).then(function (b) { backend = b; applyAccountUi(); renderAll(true); });
+    window.ScheduleStore.connect(onRecords).then(function (b) {
+      backend = b;
+      // Linked with "This is me": open on yourself, unless someone was already picked this visit.
+      if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
+      applyAccountUi();
+      renderAll(true);
+    });
   } else {
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
+      // The roster and the three smaller files download together (Firebase may have started them during sign-in).
+      var json = function (url) {
+        return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
+      };
+      var others = Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")]);
       return getFile("data/positions.json").then(function (r) {
         if (!r.ok) throw new Error("HTTP " + r.status);
         return r.json();
       }).then(function (rows) {
-        if (location.search.indexOf("auth_error") !== -1) history.replaceState(null, "", location.pathname);
-        var json = function (url) {
-          return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });
-        };
-        return Promise.all([json("data/required-staffing.json"), json("data/employee-ids.json"), json("data/vacancy-awards-2027.json")])
-          .then(function (got) {
-            requiredData = got[0]; emplIds = got[1]; recsVersion++;
-            window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
-            window.AWARDS_2027 = window.AWARDS_2027 || got[2];
-            boot(rows);
-          });
+        // ?trade=<id>: opened from a trade alert, so start on the Trades tab.
+        openTrades = /[?&]trade=/.test(location.search);
+        var linkCode = (/[?&]t=([^&]+)/.exec(location.search) || [])[1];
+        if (/[?&](auth_error|t|trade)=/.test(location.search)) history.replaceState(null, "", location.pathname);
+        // A trade invite link opened by someone already approved: when they're the person it was for (signed in with
+        // that person's staff-list cell), it confirms their answer from the link. Otherwise it's just dropped.
+        try {
+          var inviteCode = sessionStorage.getItem("tradeInvite") || linkCode;
+          sessionStorage.removeItem("tradeInvite");
+          if (inviteCode && backend.redeemInvite) backend.redeemInvite(decodeURIComponent(inviteCode), "").catch(function () {});
+        } catch (e) { /* storage unavailable */ }
+        return others.then(function (got) {
+          requiredData = got[0]; emplIds = got[1]; recsVersion++;
+          window.EMPLOYEE_IDS = window.EMPLOYEE_IDS || got[1];
+          window.AWARDS_2027 = window.AWARDS_2027 || got[2];
+          boot(rows);
+        });
       });
     }).catch(loadError);
   }

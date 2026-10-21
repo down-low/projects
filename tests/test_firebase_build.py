@@ -82,6 +82,18 @@ class FirebaseBuild(unittest.TestCase):
                 self.assertIn("match /staffCells/{key}", rules)
             self.assertIn("match /" + col + "/", rules, col)
 
+    def test_push_worker_only_with_a_key(self):
+        self.assertNotIn("firebase-messaging-sw.js", os.listdir(self.app))
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_firebase.py"), tmp, "--app-url", "https://demo.web.app",
+                            "--vapid-key", "BKEY"], check=True, capture_output=True)
+            app = os.path.join(tmp, "public-app")
+            self.assertIn("firebase-messaging-sw.js", os.listdir(app))
+            self.assertIn('window.FIREBASE_VAPID_KEY = "BKEY"', self.read(app, "index.html"))
+            self.assertIn("firebase-messaging-compat.js", self.read(app, "index.html"))
+            self.assertNotIn("BKEY", self.read(os.path.join(tmp, "public-admin"), "index.html"))
+        self.assertTrue(os.path.exists(os.path.join(ROOT, "firebase", "functions", "lib", "schedule.js")))
+
     def test_cells_stay_admin_only(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()

@@ -11,7 +11,7 @@
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -85,15 +85,22 @@
     // "Trade" on one of my upcoming shifts, or the trade already posted for that day.
     // My open or set trade for that day, or null.
     function tradeFor(pos, dIso) {
-      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set"); })[0] || null;
+      return trades().filter(function (x) { return x.posterKey === pos && x.date === dIso && (statusOf(x) === "open" || x.status === "set" || x.status === "pending"); })[0] || null;
     }
-    function canTradeFor(pos) { return visible() && !!pos && pos === myKey() && backend().canTrade(); }
+    /* Who can post a trade for pos: that person, or an admin for anyone (on Firebase and the shared page; server.py's
+       trade routes only take the signed-in person). An admin's post records postedBy and shows who it's for. */
+    function tradeAdmin() {
+      var b = backend();
+      return visible() && !!b.canAdmin && b.canAdmin() && (b.hosted === "firebase" || b.mode === "db");
+    }
+    function canTradeFor(pos) { return visible() && !!pos && ((pos === myKey() && backend().canTrade()) || (!!byPos()[pos] && tradeAdmin())); }
+    function forSomeone(pos) { return pos !== myKey(); }
     function tradeLink(p, d) {
       if (!canTradeFor(p.pos)) return "";
       var dIso = api.iso(d), t = tradeFor(p.pos, dIso);
       if (dIso < todayIso()) return "";
       if (t) return '<span class="tag tag-trade">' + (t.status === "set" ? "Traded" : "Trade posted") + "</span>";
-      return '<button class="linkish trade-link" data-trade-day="' + dIso + '">Trade</button>';
+      return '<button class="linkish trade-link" data-trade-day="' + dIso + '" data-trade-pos="' + esc(p.pos) + '">Trade</button>';
     }
     // Owed shifts and the "This is me" link for a person's page.
     function personExtras(p) {
@@ -118,7 +125,7 @@
       var mine = me();
       if (!mine) {
         out.innerHTML = '<div class="trades">' + (b.mode === "server" ? '<div class="card"><h3>Shift trades</h3><p class="hint">Your account isn\'t linked to a roster position yet. Ask an admin to link it on the Admin page.</p></div>'
-          : claimHtml()) + adminClaimsHtml() + "</div>";
+          : claimHtml()) + forOthersHtml(null) + adminClaimsHtml() + "</div>";
         wireClaim();
         wireTab();
         return;
@@ -156,7 +163,7 @@
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
           '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
-        adminClaimsHtml() + "</div>";
+        forOthersHtml(key) + adminClaimsHtml() + "</div>";
       wireTab();
     }
     // Demo page: say nothing is saved, and let the viewer switch who they are.
@@ -168,6 +175,16 @@
           var p = byPos()[k] || {};
           return '<option value="' + esc(k) + '"' + (k === d.as() ? " selected" : "") + ">" + esc((p.name || k) + " · " + (p.rank || "") + " · " + (p.company || p.title || "")) + "</option>";
         }).join("") + "</select></label></div>";
+    }
+    // Admins: trades posted for other people (by any admin), so someone not on the tool still gets answers picked.
+    function forOthersHtml(key) {
+      if (!tradeAdmin()) return "";
+      var t0 = todayIso();
+      var list = trades().filter(function (t) {
+        return t.postedBy && t.posterKey !== key && t.date >= t0 && ["open", "pending", "set"].indexOf(statusOf(t)) !== -1;
+      }).sort(byDate);
+      return section("Admin: trades posted for others", list.map(ownCard).join("") ||
+        '<p class="hint">None. To post one for someone, open their page and tap the day.</p>');
     }
     function byDate(a, b) { return a.date.localeCompare(b.date) || String(a.createdAt).localeCompare(String(b.createdAt)); }
     function section(title, body) { return '<section class="card trade-sec"><h3>' + esc(title) + "</h3>" + body + "</section>"; }
@@ -205,12 +222,18 @@
 
     // One of my posts: responses with their terms, Pick, Cancel, Widen.
     function ownCard(t) {
-      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] };
-      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + '</span><span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>";
+      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] }, other = t.posterKey !== myKey();
+      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
+        (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>" +
+        (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
-      if (st === "set") {
-        body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + " works your shift. " + esc(terms(t.proposal, true)) + ".</p>" +
+      if (st === "pending") {
+        body = '<p class="trade-terms">You picked ' + esc(nameOf(t.takerKey)) + ". " + esc(terms(t.proposal, true)) + ".</p>" +
+          '<p class="hint">Waiting for them to sign in from their link with their Employee ID; then the trade is set.</p>' +
+          '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
+      } else if (st === "set") {
+        body = '<p class="trade-terms">' + esc(nameOf(t.takerKey)) + (other ? " works their shift. " : " works your shift. ") + esc(terms(t.proposal, true)) + ".</p>" +
           '<div class="row"><button class="btn small" data-cancel="' + esc(t.id) + '">Cancel trade</button></div>';
       } else if (st === "open") {
         body = '<p class="hint">' + [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ") +
@@ -218,6 +241,7 @@
           (reps.length ? '<ul class="tlist">' + reps.map(function (r) {
             var p = byPos()[r.takerKey] || { name: r.takerName || r.takerKey, rank: "", title: "" };
             return "<li><div>" + who(p) + (r.via === "poster" ? ' <span class="tag">Added by you</span>' : "") +
+              (r.via === "link" ? ' <span class="tag">' + (r.verified ? "From their link" : "From their link · not verified") + "</span>" : "") +
               '<div class="trade-terms">' + esc(terms(r.proposal, true)) + (r.note ? " · " + esc(r.note) : "") + "</div></div>" +
               '<button class="btn small primary" data-pick="' + esc(r.id) + '" data-trade="' + esc(t.id) + '">Pick</button></li>';
           }).join("") + "</ul>" : '<p class="hint">No responses yet.</p>') + inviteHtml(t) +
@@ -237,15 +261,36 @@
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    function inviteText(t) {
-      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos], link = pageLink();
+    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    function inviteText(t, k) {
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
+      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
       return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
-    // iPhones and Macs take "sms:&body=", Android "sms:?body=".
-    function smsHref(body) {
-      return "sms:" + (/iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent) ? "&" : "?") + "body=" + encodeURIComponent(body);
+    /* A Messages link, addressed to `cells` (staff-list numbers from createInvite) when there are any. iPhones and Macs
+       take "sms:<n>&body=" and "sms:/open?addresses=<a>,<b>&body=" for a group; Android "sms:<a>,<b>?body=". */
+    function smsHref(body, cells) {
+      var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
+      var nums = (cells || []).map(function (c) { return String(c).replace(/[^0-9+]/g, ""); }).filter(Boolean);
+      if (ios && nums.length > 1) return "sms:/open?addresses=" + nums.join(",") + "&body=" + enc;
+      return "sms:" + nums.join(",") + (ios ? "&" : "?") + "body=" + enc;
+    }
+    /* Personal links (Firebase): createInvite makes one code per person not on the tool, with their staff-list cell.
+       Fetched once per trade; until then (or elsewhere) the general link and no number. */
+    function inviteFor(t, k) { var l = ui.links[t.id]; return l && l.byKey ? l.byKey[k] || null : null; }
+    function loadLinks(t, keys) {
+      var b = backend();
+      // Personal links are the poster's own (createInvite checks); an admin texting for someone sends the general link.
+      if (!b.createInvite || ui.links[t.id] || forSomeone(t.posterKey)) return;
+      ui.links[t.id] = { loading: true };
+      b.createInvite(t.id, keys).then(function (rows) {
+        var by = {};
+        (rows || []).forEach(function (r) { by[r.key] = r; });
+        ui.links[t.id] = { byKey: by };
+        renderTrades();
+      }, function (er) { ui.links[t.id] = { error: er.message }; renderTrades(); });
     }
     function notOnTool(t) {
       var b = backend();
@@ -253,7 +298,8 @@
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
     function smsLink(t, k, label, cls, run) {
-      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t))) + '" target="_blank" rel="noopener" data-invite="' +
+      var mine = inviteFor(t, k);
+      return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
         esc(t.id) + '" data-key="' + esc(k) + '"' + (run ? " data-run" : "") + ">" + esc(label) + "</a>";
     }
     // Inside the claude.ai page (a frame) a Messages link can't open, so the text is shown to copy and paste instead.
@@ -274,8 +320,13 @@
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
       }
-      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null;
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in; pick them from your contacts.</p>";
+      loadLinks(t, keys);
+      var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
+      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
+        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
+        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -288,8 +339,10 @@
           return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
             smsLink(t, k, "Invite") + "</li>";
         }).join("") + "</ul>" +
-          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" : "") +
+          '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
+            '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
@@ -329,8 +382,11 @@
         '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
           return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
         }).join("") + "</select></label>" +
-        '<p class="hint">Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the ' +
-        "details and a one-tap reply, so there's no need to open the page.</p></details>";
+        '<p class="hint">' + (backend().alertsLive
+          ? "Trades sent to you, answers to yours and picks always alert you on the ways you switch on, with the details and a one-tap answer. " +
+            "Texts start once the department's texting number is approved."
+          : "Saved now; alerts start at launch. Trades sent to you and responses to yours always alert you, with the details and a one-tap reply, so there's no need to open the page.") +
+        '</p><span class="msg" id="alert-msg" role="status"></span></details>';
     }
 
     function wireTab() {
@@ -345,7 +401,16 @@
         c.onchange = function () {
           var vals = {};
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
-          backend().setAlerts(vals).catch(function () { if (c.tagName !== "SELECT") c.checked = !c.checked; });
+          var b = backend(), msg = $("alert-msg");
+          // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
+          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          ready.then(function () {
+            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
+            return b.setAlerts(vals);
+          }).catch(function (er) {
+            if (c.tagName !== "SELECT") c.checked = !c.checked;
+            if (msg) api.say(msg, er.message, true);
+          });
         };
       });
       out.querySelectorAll("[data-reply]").forEach(function (b) {
@@ -476,24 +541,7 @@
     /* The records a pick sets (on the shared page they are kept on the trade; the server writes its own): the taker covers the
        poster's seat and the poster is TR; for a swap the same the other way on the swap day. An error string when the trade
        no longer works. */
-    function pickWrites(t, r) {
-      var poster = byPos()[t.posterKey], taker = byPos()[r.takerKey], d = api.fromIso(t.date);
-      if (!poster || !taker) return "That person is no longer on the roster.";
-      if (t.date < todayIso()) return "That day has passed.";
-      if (seatOn(poster, d) !== t.seatPos) return "Your schedule for that day has changed. Cancel this trade and post it again.";
-      if (!canTake(taker, t)) return taker.name + " now works that day or is marked off.";
-      var leg = function (cov, off, seat, day) {
-        return [{ kind: "covers", rec: { coverKey: cov.pos, coverName: cov.name, targetPos: seat, start: day, end: day, note: "Shift trade" } },
-          { kind: "statuses", rec: { pos: off.pos, name: off.name, code: "TR", start: day, end: day, note: "Shift trade" } }];
-      };
-      var writes = leg(taker, poster, t.seatPos, t.date);
-      if (r.proposal.swapDate) {
-        var why = swapProblem(t, taker, r.proposal.swapDate);
-        if (why) return why;
-        writes = writes.concat(leg(poster, taker, seatOn(taker, api.fromIso(r.proposal.swapDate)), r.proposal.swapDate));
-      }
-      return writes;
-    }
+    function pickWrites(t, r) { return M.pickLegs(t, r, { byPos: byPos(), opts: api.opts(), today: todayIso() }); }
 
     /* ---------- "This is me" (shared page) ---------- */
     function claimHtml() {
@@ -616,12 +664,12 @@
     function locked(key) { return !!(wiz.widen && (wiz.widen.audience.to || []).indexOf(key) !== -1); }
     function drawWizard() {
       var w = wiz, body = $("trade-body"), d = api.fromIso(w.date), seat = byPos()[w.seat];
-      $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + api.shortDate(d);
+      $("trade-title").textContent = (w.widen ? "Send to more · " : "Trade · ") + (forSomeone(w.poster.pos) ? w.poster.name + " · " : "") + api.shortDate(d);
       // Steps: 2 = who, 3 = post. The poster doesn't offer a payback day; whoever is interested suggests one.
       var steps = '<ol class="wiz-steps">' + ["Who", "Post"].map(function (s, i) {
         return '<li class="' + (w.step === i + 2 ? "on" : w.step > i + 2 ? "done" : "") + '">' + s + "</li>";
       }).join("") + "</ol>";
-      var html = steps + '<p class="hint">Your 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
+      var html = steps + '<p class="hint">' + (forSomeone(w.poster.pos) ? esc(w.poster.name) + "'s" : "Your") + ' 24-hour shift' + (seat ? " at " + esc(api.home(seat)) : "") + " on " + esc(api.longDate(d)) + ".</p>";
       if (w.step === 2) {
         var gs = groups(), all = w.el.length && w.el.every(function (e) { return w.sel[e.p.pos]; });
         html += w.el.length
@@ -703,8 +751,8 @@
       var aud = { board: !!w.board, to: to };
       var p = w.widen
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
-        : backend().postTrade({ posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          note: w.note, audience: aud });
+        : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
+          note: w.note, audience: aud }));
       p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
@@ -713,13 +761,13 @@
       document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !sh.hidden) closeWizard(); });
       document.addEventListener("click", function (e) {
         var b = e.target.closest("[data-trade-day]");
-        if (b && myKey()) { openWizard(myKey(), b.dataset.tradeDay); return; }
+        if (b && (b.dataset.tradePos || myKey())) { openWizard(b.dataset.tradePos || myKey(), b.dataset.tradeDay); return; }
         var c = e.target.closest("[data-claim]");
         if (c) { ui.claimPick = c.dataset.claim; api.showTrades(); }
       });
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
   };
 })(window);

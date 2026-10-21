@@ -120,6 +120,10 @@ test("accounts: read your own, change only alerts and tabs", async () => {
   await assertFails(db(MEMBER).collection("users").get());
   await assertSucceeds(db(MEMBER).doc("users/mem1").update({ alerts: { text: true, app: false, email: false, board: "off" } }));
   await assertFails(db(MEMBER).doc("users/mem1").update({ role: "admin" }));
+  await assertSucceeds(db(MEMBER).doc("users/mem1").update({ pushTokens: ["tok1"] }));
+  await assertFails(db(OTHER).doc("users/mem1").update({ pushTokens: ["tok2"] }));
+  await assertFails(db(MEMBER).doc("alertState/mem1").get());
+  await assertFails(db(MEMBER).doc("alertLog/t1").get());
   await assertFails(db(MEMBER).doc("users/mem1").update({ status: "active", pos: "11ENL01M" }));
   await assertFails(db(PENDING).doc("users/pend1").set({ status: "active", role: "admin" }));
 });
@@ -134,10 +138,31 @@ test("trades: post as yourself, reply as yourself, only the poster sets or cance
   await assertSucceeds(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "poster", proposal: { later: true } }));
   await assertFails(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", proposal: { later: true } }));
   await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "poster", proposal: { later: true } }));
+  // answers from an invite link, and invites themselves, are the functions' only
+  await assertFails(db(MEMBER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL02M", via: "link", proposal: { later: true } }));
+  await assertFails(db(OTHER).collection("tradeReplies").add({ tradeId: "t1", takerKey: "11ENL01M", verified: true, proposal: { later: true } }));
+  await assertFails(db(MEMBER).doc("tradeInvites/abc").get());
+  await assertFails(db(MEMBER).doc("launchInvites/11ENL01M").get());
+  await assertFails(db(MEMBER).doc("launchInvites/11ENL01M").set({ via: "group" }));
+  await assertSucceeds(db(ADMIN).doc("launchInvites/11ENL01M").set({ via: "group", sentAt: "x" }));
+  await assertFails(db(MEMBER).doc("tradeInvites/abc").set({ tradeId: "t1", recipientKey: "11ENL02M" }));
+  // the poster can mark a trade picked but waiting for the person to sign in
+  await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "pending", replyId: "link_x", takerKey: "11ENL02M", proposal: { later: true }, legs: [] }));
   await assertFails(db(OTHER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M" }));
   await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M", replyId: "r1", setAt: "x", legs: [] }));
   await assertFails(db(MEMBER).doc("trades/t1").update({ posterKey: "11ENL01M" }));
   await assertFails(db(MEMBER).doc("trades/t1").update({ date: "2026-12-01" }));
+});
+
+test("admins post a trade for someone, record answers and pick; members can't post for others", async () => {
+  const rec = { posterKey: "11ENL01M", posterName: "Other", seatPos: "11ENL01M", date: "2026-12-10", note: "", status: "open",
+    audience: { board: true, to: [] }, postedBy: "admin", createdBy: "admin1", createdAt: "x" };
+  await assertFails(db(MEMBER).doc("trades/a1").set(rec));
+  await assertSucceeds(db(ADMIN).doc("trades/a1").set(rec));
+  await assertSucceeds(db(ADMIN).collection("tradeReplies").add({ tradeId: "a1", takerKey: "10EOC03M", via: "poster", proposal: { later: true } }));
+  await assertSucceeds(db(ADMIN).doc("trades/a1").update({ status: "set", takerKey: "10EOC03M", replyId: "r1", setAt: "x", legs: [] }));
+  // the person it's for can still manage it once they're on the tool
+  await assertSucceeds(db(OTHER).doc("trades/a1").update({ status: "cancelled", cancelledAt: "x" }));
 });
 
 test("corrections: each member their own; editors and admins all", async () => {

@@ -70,7 +70,8 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Private: staff-list cell numbers (admins only, never members), birth and hire dates (owner and admins).
+    // Private: staff-list cell numbers (admins only; a trade's poster gets their invitees' cells through createInvite,
+    // audited), birth and hire dates (owner and admins).
     match /staffCells/{key} {
       allow read, write: if isAdmin();
     }
@@ -90,10 +91,11 @@ service cloud.firestore {
       allow delete: if (signedIn() && uid == request.auth.uid) || isAdmin();
     }
 
-    // Accounts: created and changed by the functions; a person reads their own and sets their own alerts and tabs.
+    // Accounts: created and changed by the functions; a person reads their own and sets their own alerts, tabs and
+    // app-notification tokens. (alertLog, alertState and alertTokens, used by the alert functions, match no rule.)
     match /users/{uid} {
       allow read: if (signedIn() && uid == request.auth.uid) || isAdmin();
-      allow update: if signedIn() && uid == request.auth.uid && only(['alerts', 'prefs']);
+      allow update: if signedIn() && uid == request.auth.uid && only(['alerts', 'prefs', 'pushTokens']);
     }
 
     // Shift trades. As on the claude.ai page, every approved member can read them; the page shows each person only
@@ -108,9 +110,21 @@ service cloud.firestore {
     match /tradeReplies/{id} {
       allow read: if active();
       // Your own answer, or (via "poster") an answer the poster got by text and records for someone on their trade.
-      allow create: if isAdmin() || (myPos() != null && (data().takerKey == myPos() ||
+      // Answers from an invite link (via "link", verified) are written only by the functions.
+      allow create: if isAdmin() || (myPos() != null && !('verified' in data()) && data().get('via', null) != 'link' &&
+          (data().takerKey == myPos() ||
           (data().via == 'poster' && get(/databases/$(database)/documents/trades/$(data().tradeId)).data.posterKey == myPos())));
       allow update, delete: if isAdmin();
+    }
+
+    // Launch invites: who an admin has texted the sign-up link to (Admin → Invite people).
+    match /launchInvites/{pos} {
+      allow read, write: if isAdmin();
+    }
+
+    // Trade invites (personal links): made and read only by the functions (createInvite, inviteInfo, redeemInvite).
+    match /tradeInvites/{code} {
+      allow read, write: if false;
     }
 
     // Corrections: one record per member (corrections/<uid>), read and written by that member; editors and admins

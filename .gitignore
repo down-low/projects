@@ -9,3 +9,4 @@ firebase/functions/.env
 firebase/tests/node_modules/
 firebase/*.log
 cleanup/.sync-*/
+firebase/functions/lib/

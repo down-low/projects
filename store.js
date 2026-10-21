@@ -19,6 +19,8 @@
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
+ * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
+ * answerInvite(code, proposal, note), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
  * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
  * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
@@ -435,9 +437,19 @@
     var fb = root.firebase;
     if (!root.FIREBASE_HOSTED || !fb || !fb.apps || !fb.apps.length) return Promise.resolve(null);
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
-    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false;
+    var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
+    var phoneVerifier = null, phoneConfirm = null;
+    var PHONE_ERRORS = {
+      "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
+      "auth/code-expired": "That code has expired. Ask for a new one.",
+      "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
+      "auth/invalid-phone-number": "Enter your 10-digit cell number.",
+      "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
+      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/captcha-check-failed": "The page check failed. Reload and try again.",
+    };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -447,6 +459,8 @@
       });
     }
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
+    // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
+    function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -503,8 +517,12 @@
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
-      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); }
+      if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
+      // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
+      var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
+      loadOnTool();
+      setInterval(function () { if (!document.hidden) loadOnTool(); }, 600000);
     }
     // Approval, a role change or a new roster link (made by an admin) reloads the page with the new access.
     function watchAccount() {
@@ -522,7 +540,14 @@
     }
     function write(kind, rec) { return guard(editable()) || w(addRec(COLLECTIONS[kind], rec)); }
     // Files that hold names (roster, IDs, PDFs) are in Cloud Storage, readable by active accounts only (storage.rules).
+    var early = {}; // path -> download started during sign-in (prefetch), handed out once
     function fetchData(path) {
+      if (early[path]) {
+        var p = early[path];
+        delete early[path];
+        // If it was refused (access changed since the last visit), ask again with the fresh sign-in.
+        return p.then(function (r) { return r.ok ? r : fetchData(path); }, function () { return fetchData(path); });
+      }
       var bucket = fb.app().options.storageBucket;
       return user.getIdToken().then(function (t) {
         return fetch("https://firebasestorage.googleapis.com/v0/b/" + encodeURIComponent(bucket) + "/o/" + encodeURIComponent(path) + "?alt=media",
@@ -559,9 +584,48 @@
         });
       },
       signOut: function () { return auth.signOut().then(function () { location.href = location.pathname; }); },
-      claim: function (pos, note) { return call("claim", { pos: pos, note: note }).then(function (j) { me = j; return j; }); },
+      /* Cell-number sign-in (Firebase Auth phone provider): sendCode(cell, buttonId) texts a 6-digit code, behind an
+         invisible reCAPTCHA on that button; confirmCode(code) signs in. A staff-list cell links the account at once (syncMe). */
+      phoneSignIn: true,
+      sendCode: function (cell, buttonId) {
+        var digits = String(cell || "").replace(/[^0-9]/g, "");
+        if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+        if (digits.length !== 10) return Promise.reject(new Error("Enter your 10-digit cell number."));
+        if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
+        return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
+          if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+        });
+      },
+      confirmCode: function (code) {
+        if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
+        return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
+          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+        });
+      },
+      // With the Employee ID on file for that position, the account is approved at once (functions: claim).
+      claim: function (pos, note, emplId) { return call("claim", { pos: pos, note: note, emplId: emplId || null }).then(function (j) { me = j; return j; }); },
       claimRequest: function (req) { return call("claim", { request: req }).then(function (j) { me = j; return j; }); },
       rosterNames: function () { return call("rosterNames"); },
+      /* Launch invites (admins, Admin → Invite people): the staff-list cells (contacts()), who's on the tool (onTool),
+         who was already texted (launchSent: pos -> {via, sentAt}), marking texts sent from the admin's own phone, the
+         contact-card download log, and texts from the department number once Twilio is set up. */
+      launchSent: function () { var o = {}; records.launchInvites.forEach(function (d) { o[d.id] = d; }); return o; },
+      launchMark: function (keys, via) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch(), at = nowIso();
+        keys.forEach(function (k) { batch.set(fs.collection("launchInvites").doc(k), { via: via, sentAt: at, by: user.uid }); });
+        return w(batch.commit());
+      },
+      launchUnmark: function (key) { return admin() ? w(fs.collection("launchInvites").doc(key).delete()) : Promise.reject(new Error(NO_EDIT)); },
+      launchStatus: function () { return call("launchInvites", { action: "status" }); },
+      launchAudit: function (count) { return call("launchInvites", { action: "audit", count: count }); },
+      launchSend: function (keys, text) { return call("launchInvites", { action: "send", keys: keys, text: text }); },
+      // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
+      createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
+      inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
+      answerInvite: function (code, proposal, note) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "" }); },
+      redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
           phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
@@ -598,22 +662,41 @@
       canTrade: function () { return active() && !!me.pos; },
       myKey: function () { return active() ? me.pos || null : null; },
       myMember: function () { return active() && me.pos ? { key: me.pos, alerts: me.alerts || {} } : null; },
-      onTool: function () { return null; },
+      onTool: function (key) { return onTool ? onTool.indexOf(key) !== -1 : null; },
       setAlerts: function (a) {
         var alerts = { text: !!a.text, app: !!a.app, email: !!a.email, board: BOARD_ALERTS.indexOf(a.board) !== -1 ? a.board : "off" };
         return w(fs.collection("users").doc(user.uid).update({ alerts: alerts })).then(function () { me.alerts = alerts; return me; });
       },
       postTrade: function (rec) {
         rec.status = "open";
-        return w(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
+        return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
-      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })); },
-      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)); },
+      widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
+      replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
+      // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
       pickReply: function (trade, reply, writes) {
-        return w(fs.collection("trades").doc(trade.id).update({ status: "set", replyId: reply.id, takerKey: reply.takerKey,
-          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }));
+        return w(fs.collection("trades").doc(trade.id).update({ status: reply.via === "link" && !reply.verified ? "pending" : "set", replyId: reply.id, takerKey: reply.takerKey,
+          proposal: reply.proposal, setAt: nowIso(), legs: writes.map(function (x) { return Object.assign({ kind: x.kind }, x.rec); }) }))
+          .then(function () { notify("trade", trade.id); });
       },
-      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })); },
+      cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
+      // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
+      alertsLive: true,
+      canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
+      registerPush: function () {
+        if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
+        return Notification.requestPermission().then(function (p) {
+          if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
+            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
+          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
+        }).then(function (reg) {
+          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+        }).then(function (token) {
+          if (!token) throw new Error("This browser didn't give a notification token.");
+          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+        });
+      },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
       suggest: function (rec) {
@@ -696,7 +779,8 @@
         (cols.contacts || []).forEach(function (d) {
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
-            if (d.cells[k]) { writes.push(["staffCells", k, { cell: String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+            // Standardized to +14155550100 when the text holds a number; kept as written otherwise (Invite people lists those).
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
         var say = onProgress || function () {};
@@ -740,6 +824,13 @@
     }).then(function (u) {
       if (!u) return adapter;
       user = u;
+      // Already approved (from the last visit's token): start the roster downloads now, alongside the account check.
+      u.getIdTokenResult().then(function (r) {
+        if (r.claims.active !== true) return;
+        ["data/positions.json", "data/required-staffing.json", "data/employee-ids.json", "data/vacancy-awards-2027.json"].forEach(function (path) {
+          if (!early[path]) early[path] = fetchData(path);
+        });
+      }, function () {});
       return syncMe().then(function () {
         watchAccount();
         listen();
