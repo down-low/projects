@@ -64,6 +64,7 @@ MIGRATIONS = [  # columns added after the first release; applied when missing
     ("users", "alert_board", "TEXT NOT NULL DEFAULT 'off'"),
     ("covers", "tradeId", "TEXT"),
     ("statuses", "tradeId", "TEXT"),
+    ("statuses", "self", "INTEGER"),  # 1: a member marked one of their own days VA or S (from the day drawer)
     ("covers", "kind", "TEXT"),
     ("covers", "move", "INTEGER"),
     ("trade_replies", "via", "TEXT"),  # "poster": the poster recorded an answer they got by text (Add their answer)
@@ -614,6 +615,25 @@ class App:
         self.write('INSERT INTO statuses (id,pos,name,code,start,"end",note,createdAt,createdBy) '
                    'VALUES (:id,:pos,:name,:code,:start,:end,:note,:createdAt,:createdBy)', rec)
         return rec
+
+    def add_own_status(self, u, body):
+        """A member marks one of their own days VA or S: their linked seat, one day only."""
+        if not u["pos"]:
+            raise HttpError(403, "Your account isn't linked to a roster position yet.")
+        code = body.get("code")
+        if code not in ("VA", "S"):
+            raise BadRequest("code must be VA or S")
+        day = valid_date(body.get("day"), "day")
+        pos, name = self._person_or_position(u["pos"])
+        rec = {"id": uuid.uuid4().hex, "pos": pos, "name": name, "code": code, "start": day, "end": day, "note": None,
+               "createdAt": now(), "createdBy": u["display_name"] or u["google_email"], "self": 1}
+        self.write('INSERT INTO statuses (id,pos,name,code,start,"end",note,createdAt,createdBy,self) '
+                   'VALUES (:id,:pos,:name,:code,:start,:end,:note,:createdAt,:createdBy,:self)', rec)
+        return rec
+
+    def delete_own_status(self, u, rec_id):
+        if not u["pos"] or not self.write("DELETE FROM statuses WHERE id = ? AND pos = ? AND self = 1", (rec_id, u["pos"])):
+            raise HttpError(404, "No such record of yours")
 
     def add_tour_change(self, body, who):
         pos, name = self._position(body)
@@ -1252,6 +1272,11 @@ def make_handler(app):
                     raise HttpError(409, "Your account is already set up. Ask an admin to change your roster link.")
                 app.claim(u, self.body())
                 return self.send_json(200, app.me_json(self.user()))
+            if path == "/api/me/statuses":
+                u = self.require("active")
+                rec = app.add_own_status(u, self.body())
+                app.audit(u, "mark own day", {"id": rec["id"], "code": rec["code"], "day": rec["start"]})
+                return self.send_json(201, rec)
             adders = {"/api/statuses": app.add_status, "/api/tour-changes": app.add_tour_change,
                       "/api/covers": app.add_cover, "/api/people": app.add_person}
             if path in adders:
@@ -1370,6 +1395,12 @@ def make_handler(app):
                 if not app.write("DELETE FROM corrections WHERE id = ?", (m.group(1),)):
                     raise HttpError(404, "No such correction")
                 app.audit(u, "delete correction", {"id": m.group(1)})
+                return self.send_json(200, {"deleted": m.group(1)})
+            m = re.fullmatch(r"/api/me/statuses/([0-9a-f]{32})", self.path_only())
+            if m:
+                u = self.require("active")
+                app.delete_own_status(u, m.group(1))
+                app.audit(u, "unmark own day", {"id": m.group(1)})
                 return self.send_json(200, {"deleted": m.group(1)})
             m = re.fullmatch(r"/api/(statuses|tour-changes|covers|people)/([0-9a-f]{32})", self.path_only())
             if not m:
