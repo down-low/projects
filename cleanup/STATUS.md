@@ -11,7 +11,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
   4. **H 2:** 87 people. Trim this list before pulling.
 
 ## Academy class (PX narrative rating report, 09/02/2026)
-- **Field:** Class is on the Employee card (identity section, plus a roster column) and on the person page under **Personal details**. Admins only. Published in v59.
+- **Field:** Class is on the Employee card (identity section) and on the person page under **Personal details**. Admins only. Published in v60.
 - **What's used:** only the class number, ID and name. Nothing else from the report goes into the tool or the repo.
 - **Match:** 399 of 421 IDs match a tool record. Rosas RO1790 is listed in both the 129th and the 130th; the tool uses the 129th.
 - **Written 10/21:** 399 class numbers in the page's `profiles` (one new doc per person, `{classNo}`; checked against the match after a re-dump).
@@ -34,5 +34,5 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 129th: Cardenas,Alejandra CA1668; Del Castillo Haas,Daniela DE2773; Murphy,Evin MU2715; Nguyen,Kamal NG1179 (resigned)
 
 ## Next step
-1. Settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
+1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
 2. When the VPN is back, run the H 30 pull.

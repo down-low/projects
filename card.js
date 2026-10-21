@@ -117,8 +117,6 @@
       { key: "status", label: "Status", get: function (p) { return api.statusFor(p.pos, api.today()) || ""; }, on: true, phone: true, html: statusCell },
       { key: "asg", label: "Assignment", get: function (p) { var c = current(p); return c ? api.kindWord(c) + " " + ((byPos()[c.targetPos] || {}).company || c.targetPos) : ""; } },
       { key: "cell", label: "Cell", get: cellOf },
-      { key: "class", label: "Class", get: function (p) { return profile(p).classNo || null; }, num: true, needs: "profiles",
-        html: function (p) { return esc(root.TourMath.classLabel(profile(p).classNo)); } },
       { key: "birth", label: "Birth date", get: function (p) { return profile(p).birthDate || ""; }, needs: "profiles" },
       { key: "age", label: "Age", get: function (p) { return yearsSince(profile(p).birthDate); }, num: true, needs: "profiles" },
       { key: "hire", label: "Hire date", get: function (p) { return profile(p).hireDate || ""; }, needs: "profiles" },
