@@ -171,6 +171,14 @@ td.co { font-weight: 500; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
 .ident { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; }
 .ident h2 { font-family: var(--font-display); font-weight: 700; font-size: 2rem; margin: 0; line-height: 1; text-transform: uppercase; }
+/* Person card: two rows up top, everything else under Details */
+.ident-more { flex-basis: 100%; border-top: 1px solid var(--line); padding-top: 8px; }
+.ident-more > summary { cursor: pointer; min-height: 36px; display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; color: var(--muted); list-style: none; }
+.ident-more > summary::-webkit-details-marker { display: none; }
+.ident-more > summary::before { content: "▸"; font-size: 0.8em; transition: transform 0.15s; }
+.ident-more[open] > summary::before { transform: rotate(90deg); }
+.ident-more > summary .hint { font-weight: 400; }
+.ident-body { display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; padding-top: 8px; }
 .kv { display: flex; flex-direction: column; gap: 2px; }
 .kv .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .kv .v { font-family: var(--font-data); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
@@ -569,6 +577,10 @@ s.held + .st { margin-left: 2px; }
 .sheet-list button:hover, .sheet-list a:hover, .sheet-list button:focus-visible, .sheet-list a:focus-visible { background: var(--accent-soft); }
 .sheet-list a .hint { font-size: 0.78rem; }
 .sheet-list .danger { color: var(--accent); }
+.sheet-theme { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 20px; }
+.theme-seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.sheet-list .theme-seg button { width: auto; min-height: 36px; padding: 4px 14px; border-radius: 999px; align-items: center; font-size: 0.9rem; }
+.sheet-list .theme-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .sheet-mode:empty { display: none; }
 .sheet-list .sheet-mode { border-top: 0; }
 .sheet-mode { padding: 12px 20px; color: var(--muted); font-size: 0.9rem; }

@@ -112,7 +112,7 @@ A green dot marks holidays on a person's calendar (with that month's holidays li
 
 Screens 640px wide or narrower get a phone layout: a slim header (date and watch, ☰ menu) and a bottom tab bar with **Schedule**, **Projection**, **Trades** (when you can trade), **Staffing** and **More**. Schedule opens first. The tabs have the same names on desktop.
 
-- **Schedule**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top; next shifts, history and the editing forms fold away.
+- **Schedule**: search by name, ID or company. Each result says whether the person is on today ("On · E09") or off, with their next shift. A person's page shows Tour, Next shift and Employee ID up top, then rank and position (and today's leave, if any); everything else on that card (position number, works watches, covers, acting, tour changes, Verify my info) sits under **Details**, closed by default, with a hint when something notable is in it. Next shifts, history and the editing forms fold away.
 - **Projection**: everyone working that day, grouped by rank as on desktop, one row per person (company, name, position, tour, leave and cover tags). The filter narrows it by name, ID, company or tour.
 - **Staffing**: Required / On duty / Open tiles, then division → battalion → apparatus → people with on duty / needed (tap to drill down), and the stats and Balance-report cards below.
 - **More** (or ☰): 6 of 9, the rank month grid, Open seats (editors), the documents, My page, Admin and Sign out. Menu items carry `data-need` (member, editor, admin, signed-in) and are hidden from people who can't use them.
@@ -120,6 +120,8 @@ Screens 640px wide or narrower get a phone layout: a slim header (date and watch
 On wider screens the layout is unchanged; the editing forms on a person's page sit behind one **Edit** row everywhere.
 
 **Members** (anyone who can't edit, so everyone on the employee app) get a simpler set, on phones and desktop alike: **Schedule** (opens on your own page), **Crew**, **Projection**, **Trades** and **More**. Staffing, the rank month grid, 6 of 9, the documents and My page are under More (`data-need="simple"` marks the Staffing item). **Crew** lists who is on your apparatus on each of your next four shifts, with the same leave and cover tags as Projection; it needs your account linked to your roster spot. Editors and admins keep every tab as before. Plan and mock-ups: `docs/ui-simplification.md`.
+
+**Theme** (More › Account): **Phone** follows the phone's light or dark setting (the default); **Light** or **Dark** always uses that one. The choice is remembered on that device.
 
 ## Signing up when you're not on the vacancy list
 
