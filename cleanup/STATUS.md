@@ -37,14 +37,19 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - `missing-cells.md`: 499 of 1,230 people in the tool have no staff-list cell (Firefighter 408, most of them added people from the 2027 awards and new classes). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
 - `fir-phone-probe.js` (run 10/21): the Phone numbers pop-up is on app 1021 page 2 and is in the page HTML, so it can be fetched per Employee ID.
 - `fir-pull-phones-01-…09-*.js`: one script per rank, top ranks first (`node tools/make_phone_pull.js <missing.json>`). Each downloads `fir-phones-<rank>.csv` (key, ID, name, type, number, flag) and resumes after a sign-out. Load rule: CELL, else HOME; never overwrite a cell already on file; ask before the write.
-- Loaded 10/21: Battalion Chief file (Cannon,M CA5637 CELL). Staff list now 733 cells.
+- **Loaded 10/21:**
+  - Battalion Chief file: Cannon,M.
+  - New-IDs file: both Chins, Dumont,Christopher, Suhr and Clarke.
+    - The cell on 21EOE08M was Christopher's, so it moved to 11TOF15M.
+    - Dumont,Catherine has no phone in fir-db1.
+  - Rescue Captain file: Pendergast, Byrne,M, Warren,J.
+  - Staff list now 740 cells (version 4).
 - `fir-pull-noid.js` run 10/21. Results:
   - **WE, confirmed by the user, written 10/21** (open-ended, from 1/1/2026): Alba,K 3FBOL07M; Louie,T 31EOE15M; Dickerson,C 10TOE29M.
   - **Written 10/21 (user OK):**
     - Seat IDs: 14TOT10M CH1575 (Chin,Bradford), 18TOD21M CH1466 (Chin,Brett), 11TOF15M DU2026 (Dumont,Christopher), 21EOE08M DU2621 (Dumont,Catherine), 20EOE28M SU6506 (Suhr), 35EOE23M CL1125 (Clarke).
     - Duplicates x-CH1575 and x-CH1466 deleted.
     - Classes: 21EOE08M 131st, 20EOE28M 129th, 35EOE23M 130th.
-    - `fir-pull-phones-00-new-ids.js` pulls their phones. The cell already on 21EOE08M probably came from Christopher's staff-list row: check it against the pull.
   - **WE written 10/21 (user OK; per Vacancy Awards 26 A-082):**
     - 42EOL22M Lopez,R from 9/27. Promoted H30 Captain, now x-LO6430. Seat goes to Jebe JE3282 on 1/17/2027.
     - 36EOE02M Joyce,S from 8/29. Promoted H20 Lt, now x-JO3145. Seat goes to Mui MU2796 on 1/17/2027.
