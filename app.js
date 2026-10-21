@@ -1301,12 +1301,19 @@
     kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
+  // What to call someone in a text: the first name from the staff list ("Doe,Jane Q" -> Jane), else "J. Doe".
+  function firstName(pos) {
+    var e = emplIds && emplIds.ids && emplIds.ids[pos], parts = String((e && e.name) || (byPos[pos] || {}).name || "").split(",");
+    var last = parts[0].trim(), first = (parts[1] || "").trim().split(/\s+/)[0];
+    return first.length > 1 ? first : first ? first + ". " + last : last;
+  }
   var Trades = window.TradeViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, byPos: function () { return byPos; },
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
     afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+    firstName: firstName,
   });
 
   var Fix = window.CorrectionViews({
