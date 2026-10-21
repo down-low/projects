@@ -45,8 +45,10 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - Duplicates x-CH1575 and x-CH1466 deleted.
     - Classes: 21EOE08M 131st, 20EOE28M 129th, 35EOE23M 130th.
     - `fir-pull-phones-00-new-ids.js` pulls their phones. The cell already on 21EOE08M probably came from Christopher's staff-list row: check it against the pull.
-  - **Asked:** do Lopez (42EOL22M, now x-LO6430 Captain) and Joyce (36EOE02M, now x-JO3145 Lt) still own those seats?
-- Not pullable (no Employee ID): Lieutenant Alba,K FB3, Lopez,R E42; Firefighter Chin,B T14, Chin,B T18, Clarke,K E35, Dickerson,C T10, Dumont,C T11, Joyce,S E36, Louie,T E31, Suhr,M E20.
+  - **WE written 10/21 (user OK; per Vacancy Awards 26 A-082):**
+    - 42EOL22M Lopez,R from 9/27. Promoted H30 Captain, now x-LO6430. Seat goes to Jebe JE3282 on 1/17/2027.
+    - 36EOE02M Joyce,S from 8/29. Promoted H20 Lt, now x-JO3145. Seat goes to Mui MU2796 on 1/17/2027.
+- Still no Employee ID (all WE): Alba,K 3FBOL07M, Louie,T 31EOE15M, Dickerson,C 10TOE29M.
 
 ## Next step
 1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
