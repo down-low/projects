@@ -37,13 +37,12 @@ On the Employee cards screen, **Check with fir-db1 → Who: People on a list (CS
 
 `fir-sap2-station-rosters.js` pulls every station's roster (ST01–ST51) in one go. Open any station roster report on fir-sap2 (the `open.jsp` link, signed in on the city VPN), paste the script in that tab's console, and it downloads `station-rosters-<date>.csv`: station, Employee ID, name, reason (OWN owns a seat here, VR vacancy relief, OSE owns a seat elsewhere, blank no seat), rank (H class) and company. It asks the report for Excel output and reads the files in the browser; nothing is sent anywhere else. Attach the CSV in the chat to compare it with the tool. If fir-sap2 won't hand the files to the script, it offers to download each station's Excel file instead (51 files, about 3 seconds apart; allow multiple downloads when Chrome asks). Attach those files, or a zip of them.
 
-## The routine (when needed)
+## The routine (one rank at a time)
 
-Two scripts on your side, one numbered list on mine.
+Priorities: H 30, then H 20, H 3, H 2. Only people the station rosters leave in question are pulled.
 
-1. **Station rosters.** On fir-sap2, open any station roster report (the `open.jsp` link), paste `fir-sap2-station-rosters.js` in the console, and click OK to download every station's Excel file (about 2½ minutes; allow multiple downloads). Zip them and attach the zip in the chat.
-2. **Say "sweep".** Claude dumps the live records and regenerates `fir-sweep.js` from them and the new rosters (`node tools/make_sweep.js --db <dump> --rosters <csv>`).
-3. **fir-db1 sweep.** On any signed-in fir-db1 page, paste `fir-sweep.js` in the console and press Enter. It asks for the date (today by default; the page shows 9 days before to 4 after), then reads about 1,200 employee time pages, three at a time (about 10 minutes). If fir-db1 signs you out, sign in, paste it again and give the same date: it carries on where it stopped. Attach the CSV it downloads.
-4. **One list.** Claude runs `tools/reconcile/reconcile.js` and posts `sync-<date>.md`: numbered proposals (Employee IDs, people to add, D/WE statuses and their ends, covers, covers to end), each with its evidence, plus what's for information only. Reply once ("all", "all except 4, 9", "1-20", plus anything you know), and Claude applies it with `tools/reconcile/pick.js`.
+1. **Station rosters** (when they may have changed): on fir-sap2, run `fir-sap2-station-rosters.js`, download every station, zip and attach. Claude checks them against the tool and keeps a short list of open questions per rank (a seat code the tool can't match, someone missing, someone in the tool on no roster without a WE/D status).
+2. **One rank's questions:** Claude sends a small `fir-pull-<rank>.js` with only those people (H 30 had 7). Paste it on any signed-in fir-db1 page; it asks for the date and downloads one CSV. Attach it.
+3. **One list:** Claude runs `tools/reconcile/reconcile.js` on that CSV and posts numbered proposals with their evidence. Reply once ("all", "all except 2", plus anything you know).
 
 Rules the list follows: the roster's H class includes acting; OWN owns a seat there, VR vacancy relief, OSE owns a seat elsewhere; DP shows only on the day itself, so a run of DP days is disability from at least the first one, and REG after it ends it; trades (TRO/TRW) and extra shifts (WDO) are ignored; a position that isn't on the vacancy list is working elsewhere; the seat someone works on 3+ of their REG days (or every REG day, if 2+) is a standing cover, and one day is a fill.
