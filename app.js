@@ -506,14 +506,14 @@
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       identTiles(p, tourNow, next) +
-      // Two rows up top (tiles, then rank and position, plus today's leave); the rest folds under a small More link.
-      // (Not "Details": in the department a detail is an assignment to another station.)
+      // Two rows up top: the tiles, then one full row of data (rank, position, today's leave) ending in a › that opens
+      // the rest. The row never wraps; values shorten instead. No label: not "Details", since in the department a
+      // detail is an assignment to another station.
+      '<div class="ident-row">' +
       kv("Rank", p.rank) +
       (p.added ? kv("Roster", "Added, not on the vacancy list") + (p.tour ? kv("Apparatus", p.company) : "") : kv("Position", p.title)) +
       (p.added && !p.tour ? "" : '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>") +
       (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      Trades.personExtras(p) +
-      foldOpen("ident", '<details class="ident-more" data-fold="ident"', ">") + '<summary><span class="im-closed">' +
       (function () {
         var notes = [];
         if (actingNow) notes.push(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow));
@@ -521,8 +521,14 @@
         if (coveredNow) notes.push("Covered");
         if (upcoming) notes.push("Tour change");
         if (p.open) notes.push("Open for bid");
-        return notes.length ? '<span class="hint">' + esc(notes.join(" · ")) + " · </span>" : "";
-      })() + 'More ›</span><span class="im-open">Less ‹</span></summary><div class="ident-body">' +
+        var open = !!state.folds.ident;
+        return '<button type="button" class="ident-toggle' + (notes.length ? " has-notes" : "") + '" id="ident-toggle" aria-controls="ident-body" aria-expanded="' + open +
+          '" aria-label="' + esc((open ? "Show less" : "Show more") + (notes.length ? " (" + notes.join(", ") + ")" : "")) + '"' +
+          (notes.length ? ' title="' + esc(notes.join(" · ")) + '"' : "") +
+          '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+          Trades.personExtras(p) +
+          '<div class="ident-body" id="ident-body"' + (open ? "" : " hidden") + ">";
+      })() +
       kv("Employee ID", p.emplId || "Not on file", "kv-id") +
       (p.added ? "" : kv("Position no.", p.pos)) +
       (p.added && !p.tour ? "" : (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
@@ -535,7 +541,7 @@
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
       twinsHtml(p) + contactHtml(p) + Fix.link(p) +
       (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") +
-      "</div></details></div>" +
+      "</div></div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -560,6 +566,13 @@
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
+    $("ident-toggle").onclick = function () {
+      var open = $("ident-body").hidden;
+      state.folds.ident = open;
+      $("ident-body").hidden = !open;
+      this.setAttribute("aria-expanded", open);
+      this.setAttribute("aria-label", this.getAttribute("aria-label").replace(open ? "Show more" : "Show less", open ? "Show less" : "Show more"));
+    };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -649,7 +662,7 @@
   function foldOpen(key, head, tail) {
     var open = state.folds[key];
     // On phones, your own Next shifts start open when you can trade, so the Trade links show.
-    if (open == null) open = key === "edit" || key === "moves" || key === "ident" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
+    if (open == null) open = key === "edit" || key === "moves" ? false : !isPhone() || (key === "next" && Trades.canTradeFor(state.personPos));
     return head + (open ? " open" : "") + tail;
   }
   // Holiday marker (a dot) and the month's holidays listed under a calendar.
