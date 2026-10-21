@@ -41,6 +41,9 @@ CAPABILITIES = {
         # Corrections: each member writes and reads only their own record; admins read and update all.
         {"path": "corrections", "read": "admin", "write": "admin"},
         {"path": "corrections/{self}", "read": "interact", "write": "interact"},
+        # Feedback about the app: the same shape as corrections.
+        {"path": "feedback", "read": "admin", "write": "admin"},
+        {"path": "feedback/{self}", "read": "interact", "write": "interact"},
         # Employee card: a roster seat's name, rank or Employee ID over the files. Everyone reads (IDs are on the page
         # anyway); only admins write.
         {"path": "rosterOverrides", "read": "view", "write": "admin"},
@@ -69,7 +72,7 @@ def fold_trades(records):
             rec.update({"id": f"trade:{t.get('id')}:{i}", "tradeId": t.get("id"), "createdAt": t.get("setAt") or t.get("createdAt")})
             records.setdefault(leg.get("kind"), []).append(rec)
     # Private records never go into a view-only page (cell numbers, corrections, personal dates).
-    for k in ("tradeReplies", "members", "contacts", "corrections", "profiles"):
+    for k in ("tradeReplies", "members", "contacts", "corrections", "feedback", "profiles"):
         records.pop(k, None)
 
 
@@ -150,6 +153,7 @@ def main():
         f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('awards.js')}</script>\n"
         f"<script>\n{read('corrections.js')}</script>\n"
+        f"<script>\n{read('feedback.js')}</script>\n"
         f"<script>\n{read('card.js')}</script>\n"
         f"<script>\n{read('app.js')}</script>\n"
     )

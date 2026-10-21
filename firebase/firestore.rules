@@ -134,6 +134,12 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
+    // Feedback about the app: the same shape and access as corrections.
+    match /feedback/{uid} {
+      allow read: if isEditor() || (active() && uid == request.auth.uid);
+      allow write: if isEditor() || (active() && uid == request.auth.uid);
+    }
+
     // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).
     match /settings/{doc} {
       allow read: if active();

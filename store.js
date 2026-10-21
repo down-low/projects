@@ -33,7 +33,7 @@
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -87,13 +87,14 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
+          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
+          feedback: flattenFixes(records.feedback) });
       }
       // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
       // Editors (platformEdit) can still save the backup.
@@ -217,6 +218,33 @@
             var parts = String(id).split("/"), item = {};
             item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
             return db.collection("corrections").doc(parts[0]).update({ items: item });
+          },
+          /* Feedback about the app, stored like corrections (feedback/<user id>); admins read, answer and delete all. */
+          userId: function () { return uid; },
+          canFeedback: function () { return tradeOk(); },
+          sendFeedback: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            var m = myMember(), item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            item[k] = Object.assign(rec, { state: "open", byKey: m ? m.key : null, createdAt: nowIso(), createdBy: uid });
+            var ref = db.collection("feedback").doc(uid);
+            return tw(ref.get().then(function (s) { return s.exists ? ref.update({ items: item }) : ref.set({ items: item }); }));
+          },
+          handleFeedback: function (id, state, reply) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), item = {};
+            item[parts[1]] = { state: state, handledBy: uid, handledAt: nowIso() };
+            if (reply !== undefined) item[parts[1]].reply = reply;
+            return db.collection("feedback").doc(parts[0]).update({ items: item });
+          },
+          deleteFeedback: function (id) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), ref = db.collection("feedback").doc(parts[0]);
+            return ref.get().then(function (s) {
+              if (!s.exists) return;
+              var d = s.data(), items = Object.assign({}, d.items);
+              delete items[parts[1]];
+              return ref.set(Object.assign({}, d, { items: items }));
+            });
           },
           setVerified: function () {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
@@ -429,7 +457,7 @@
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
-    "corrections", "assignments", "rosterOverrides"];
+    "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
   function firebaseAdapter(onChange) {
@@ -449,7 +477,7 @@
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -500,7 +528,8 @@
         covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
-        corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
+        corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
+        feedback: flattenFixes(records.feedback) });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -517,6 +546,7 @@
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
+      watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
@@ -713,6 +743,32 @@
       deleteCorrection: function (id) {
         if (!admin()) return Promise.reject(new Error(NO_EDIT));
         var parts = String(id).split("/"), ref = fs.collection("corrections").doc(parts[0]);
+        return w(ref.get().then(function (s) {
+          if (!s.exists) return;
+          var d = s.data(), items = Object.assign({}, d.items);
+          delete items[parts[1]];
+          return ref.set(Object.assign({}, d, { items: items }));
+        }));
+      },
+      // Feedback about the app: one record per member, feedback/<uid> = {items: {<id>: feedback}}, like corrections.
+      userId: function () { return user ? user.uid : null; },
+      canFeedback: function () { return active(); },
+      sendFeedback: function (rec) {
+        if (!active()) return Promise.reject(new Error("Sign in first."));
+        var item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        item[k] = Object.assign(rec, { state: "open", byKey: me.pos || null, byName: me.name || null, site: SITE, createdAt: nowIso(), createdBy: user.uid });
+        return w(fs.collection("feedback").doc(user.uid).set({ items: item }, { merge: true }));
+      },
+      handleFeedback: function (id, state, reply) {
+        if (!editable()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), item = {};
+        item[parts[1]] = { state: state, handledBy: user.uid, handledAt: nowIso() };
+        if (reply !== undefined) item[parts[1]].reply = reply;
+        return w(fs.collection("feedback").doc(parts[0]).set({ items: item }, { merge: true }));
+      },
+      deleteFeedback: function (id) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), ref = fs.collection("feedback").doc(parts[0]);
         return w(ref.get().then(function (s) {
           if (!s.exists) return;
           var d = s.data(), items = Object.assign({}, d.items);

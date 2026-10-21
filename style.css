@@ -882,3 +882,12 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .crew-days { display: flex; flex-wrap: wrap; gap: 8px; }
 .crew-days .btn.small { min-height: 40px; padding: 6px 14px; }
 .crew-head { margin: 10px 0; }
+
+/* Feedback (feedback.js): the form's text box and the admin list's reply box */
+.fb-form textarea, .fb-reply input { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.fb-form textarea { resize: vertical; }
+.fb-reply { margin-top: 6px; max-width: 520px; }
+.fb-list li > div:first-child { min-width: 0; flex: 1 1 auto; }
+.fb-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+#feedback-detail .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#feedback-detail .seg { margin: 8px 0 4px; }
