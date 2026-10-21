@@ -4,7 +4,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 ## Priorities, in order
 
-1. **Firebase launch.** Built (both sites). Next:
+1. **Firebase launch.** Built (both sites). Next: Launch is **without Twilio texts** (app notifications, email, texts from the poster's own phone); the text opt-in page is planned in `RELEASES.md`, Shift-trade alerts.
    - the user's setup, in their own Google account (`FIREBASE_SETUP.md`);
    - an optional test beta on test data (`BETA.md`);
    - cut-over (`CUTOVER.md`).
