@@ -152,6 +152,18 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
+    // Announcements (Admin → Send announcement): written only by the announce function; admins read the history.
+    match /announcements/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    // What each person sees in the app: notices/<uid> = {items, dismissed}. Items come only from the function; the owner
+    // reads them and marks them dismissed.
+    match /notices/{uid} {
+      allow read: if isAdmin() || (active() && uid == request.auth.uid);
+      allow update: if active() && uid == request.auth.uid && only(['dismissed']) && data().dismissed is map;
+    }
+
     // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).
     match /settings/{doc} {
       allow read: if active();

@@ -35,6 +35,7 @@ STUBS = {
 ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#b3261e"/>
 <text x="32" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">TS</text></svg>
 """  # placeholder until there is a department-approved icon
+TOUCH_ICON = os.path.join(ROOT, "tools", "apple-touch-icon.png")  # the same mark as a PNG: iPhone's Home Screen icon
 MANIFEST = """{
   "name": "SFFD Tour Schedule",
   "short_name": "Tours",
@@ -85,8 +86,12 @@ def build_site(out, site, urls):
         html = html.replace("<title>SFFD Tour Schedule</title>", "<title>SFFD Tour Schedule · Admin</title>", 1)
         extra = '  <meta name="robots" content="noindex" />\n'
     else:
+        # iPhone: the Home Screen icon and full-screen launch (app notifications only work from the Home Screen there).
         extra = ('  <link rel="manifest" href="manifest.json" />\n  <link rel="icon" href="icon.svg" type="image/svg+xml" />\n'
+                 '  <link rel="apple-touch-icon" href="apple-touch-icon.png" />\n'
+                 '  <meta name="apple-mobile-web-app-capable" content="yes" />\n  <meta name="apple-mobile-web-app-title" content="Tours" />\n'
                  '  <meta name="theme-color" content="#b3261e" />\n')
+        shutil.copy(TOUCH_ICON, os.path.join(out, "apple-touch-icon.png"))
         with open(os.path.join(out, "manifest.json"), "w") as f:
             f.write(MANIFEST)
         with open(os.path.join(out, "icon.svg"), "w") as f:

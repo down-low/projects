@@ -489,7 +489,7 @@
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -501,6 +501,16 @@
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
     // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
     function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
+    // App notifications: register the service worker (firebase-messaging-sw.js) and save this device's token on the account.
+    var HOME_SCREEN = "On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), open it from there, then turn this on.";
+    function pushToken() {
+      return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function (reg) {
+        return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+      }).then(function (token) {
+        if (!token) throw new Error("This browser didn't give a notification token.");
+        return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+      });
+    }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -561,6 +571,7 @@
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
+      watch("notices", fs.collection("notices").doc(user.uid));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
       var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
       loadOnTool();
@@ -736,17 +747,49 @@
       alertsLive: true,
       canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
       registerPush: function () {
+        // Checked first: Safari has no notifications at all outside the Home Screen app.
+        if (root.FIREBASE_VAPID_KEY && adapter.needsHomeScreen()) return Promise.reject(new Error(HOME_SCREEN));
         if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
         return Notification.requestPermission().then(function (p) {
           if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
-            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
-          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        }).then(function (reg) {
-          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
-        }).then(function (token) {
-          if (!token) throw new Error("This browser didn't give a notification token.");
-          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+            (/iPhone|iPad/.test(navigator.userAgent) ? " " + HOME_SCREEN : ""));
+          return pushToken();
         });
+      },
+      // iPhone and iPad allow app notifications only in the app opened from the Home Screen (Apple's rule for web apps).
+      needsHomeScreen: function () {
+        var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        var standalone = navigator.standalone === true || !!(root.matchMedia && root.matchMedia("(display-mode: standalone)").matches);
+        return ios && !standalone;
+      },
+      // "Send me a test notification": the pushTest function sends one to this account's registered devices.
+      pushTest: function () { return call("pushTest"); },
+      // Alerts that arrive while the app is open (the phone shows them only when it's in the background).
+      onPush: function (cb) {
+        if (!adapter.canPush()) return;
+        try {
+          fb.messaging().onMessage(function (m) { var n = (m && m.notification) || {}; cb(n.title || "", n.body || ""); });
+        } catch (e) { /* this browser has no push support */ }
+      },
+      /* Announcements (Admin → Send announcement; function announce): sent by admins, stored in announcements/{id};
+         each recipient's copy is in notices/<uid> until they dismiss it. */
+      announce: function (rec) { return admin() ? call("announce", rec) : Promise.reject(new Error(NO_EDIT)); },
+      announcements: function () {
+        if (!admin()) return Promise.resolve([]);
+        return w(fs.collection("announcements").orderBy("at", "desc").limit(20).get()).then(docs);
+      },
+      notices: function () {
+        var d = records.notices[0];
+        if (!d || !d.items) return [];
+        var gone = d.dismissed || {};
+        return Object.keys(d.items).filter(function (k) { return !gone[k]; })
+          .map(function (k) { return Object.assign({ id: k }, d.items[k]); })
+          .sort(function (a, b) { return String(b.at || "").localeCompare(String(a.at || "")); });
+      },
+      dismissNotice: function (id) {
+        var gone = {};
+        gone[id] = true;
+        return w(fs.collection("notices").doc(user.uid).set({ dismissed: gone }, { merge: true }));
       },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
@@ -911,6 +954,10 @@
       return syncMe().then(function () {
         watchAccount();
         listen();
+        // Tokens change now and then: with app alerts on and permission already given, save this device's current one.
+        if (active() && me.alerts && me.alerts.app && adapter.canPush() && Notification.permission === "granted") {
+          pushToken().catch(function (e) { if (root.console) console.warn("push: " + e.message); });
+        }
         return adapter;
       });
     }).catch(function (e) {

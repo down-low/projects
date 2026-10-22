@@ -1418,6 +1418,7 @@
       document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
         "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
     } else if (mode !== "test" && el) el.remove();
+    noticeCards();
     var fb = $("frozen-backup");
     if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
       fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
@@ -1431,6 +1432,39 @@
         }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
       };
     }
+  }
+  /* Announcements from the admins (Firebase, notices/<uid>): each shows as a card at the top until it's dismissed.
+     App notifications that arrive while the app is open show the same way, for this visit only. */
+  var livePush = [], noticesDrawn = "";
+  function noticeCards() {
+    var list = livePush.concat(backend && backend.notices ? backend.notices() : []), el = $("notices");
+    var key = JSON.stringify(list.map(function (n) { return n.id; }));
+    if (key === noticesDrawn && (el || !list.length)) return;
+    noticesDrawn = key;
+    if (!list.length) { if (el) el.remove(); return; }
+    if (!el) {
+      var after = $("site-banner");
+      (after || document.querySelector(".page")).insertAdjacentHTML(after ? "afterend" : "afterbegin", '<div class="notices" id="notices" role="status"></div>');
+      el = $("notices");
+    }
+    el.innerHTML = list.map(function (n) {
+      return '<div class="notice"><div class="notice-body"><b>' + esc(n.title) + "</b><p>" + esc(n.message) + "</p>" +
+        (n.link ? '<a class="linkish" href="' + esc(n.link) + '" target="_blank" rel="noopener">Open link</a>' : "") +
+        '</div><button class="btn small" type="button" data-notice="' + esc(n.id) + '">Dismiss</button></div>';
+    }).join("");
+    el.querySelectorAll("[data-notice]").forEach(function (x) {
+      x.onclick = function () {
+        var id = x.dataset.notice;
+        livePush = livePush.filter(function (n) { return n.id !== id; });
+        if (id.indexOf("push-") === 0) return noticeCards();
+        x.disabled = true;
+        backend.dismissNotice(id).then(noticeCards, function () { x.disabled = false; });
+      };
+    });
+  }
+  function showPush(title, body) {
+    livePush.unshift({ id: "push-" + Date.now(), title: title || "Notification", message: body || "", link: null });
+    noticeCards();
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -1547,6 +1581,7 @@
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
+      if (backend.onPush) backend.onPush(showPush);
       // The roster and the three smaller files download together (Firebase may have started them during sign-in).
       var json = function (url) {
         return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });

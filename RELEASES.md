@@ -2,6 +2,17 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
+### App notifications test and announcements
+**Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
+- **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.
+- **iPhone:** notifications only work from the Home Screen app. On an iPhone in Safari, Trades → Alerts says so (Share → Add to Home Screen, open it from there, then turn them on) instead of asking for a permission Safari can't give. The app has a Home Screen icon and opens full screen.
+- **Small fixes:** a device's token is saved again on each visit (tokens change); alerts that arrive while the app is open show as a card at the top.
+- **Admin → Send announcement** (back office): title (80 characters), short message (300), optional `https://` link; to everyone with an account or to picked people; a preview and a confirm step.
+  - Everyone it goes to sees it as a card at the top of the app until they dismiss it; people with app notifications on also get it on their phone.
+  - Function `announce` (admins only) checks it, refuses anything that looks like a phone number (cells never go out), keeps it in `announcements/{id}` (admins read; only the function writes) and each person's copy in `notices/{uid}` (the owner reads it and may only mark it dismissed). Audited (`announce`).
+  - Sent announcements are listed under the form with how many people got them and how many by app notification.
+- **First use:** announcing sick and vacation accrual tracking. Accrual itself is a separate feature: it needs its own spec and a consent record first.
+
 ### Invite a coworker
 - **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
 - **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.

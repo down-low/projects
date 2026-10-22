@@ -395,7 +395,8 @@
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>" + (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
+          }).join("") + "</datalist>" + (api.backend().announce ? '<div class="card" id="announce"></div>' : "") +
+          (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
           (api.backend().importBackup ? importHtml() : "");
         if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
@@ -408,8 +409,95 @@
         adminUsersCache = users;
         drawPending();
         drawUsers();
+        // Not while the admin is typing in it (the Admin page refreshes when records change).
+        if ($("announce") && !$("announce").contains(document.activeElement)) drawAnnounce();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
       if ($("launch")) drawLaunch();
+    }
+
+    /* ---------- Send announcement (Firebase admin site; function announce) ----------
+       Title, short message and an optional link, to everyone or picked people. Everyone it goes to sees it in the app
+       until they dismiss it; people with app notifications on also get one on their phone. Kept in announcements/{id}. */
+    var ann = { open: false, title: "", message: "", link: "", audience: "all", picked: {}, q: "", confirm: false, history: null };
+    function annPeople() {
+      return adminUsersCache.filter(function (u) { return u.status === "active"; })
+        .sort(function (a, c) { return String(a.posName || a.name || "").localeCompare(String(c.posName || c.name || "")); });
+    }
+    function annCount() { return ann.audience === "all" ? annPeople().length : Object.keys(ann.picked).filter(function (k) { return ann.picked[k]; }).length; }
+    function annList() {
+      var q = ann.q.toLowerCase();
+      var list = annPeople().filter(function (u) { return !q || [u.posName, u.name, u.googleEmail].join(" ").toLowerCase().indexOf(q) !== -1; });
+      return list.length ? list.map(function (u) {
+        return '<label class="chk"><input type="checkbox" data-ann-pick="' + esc(u.id) + '"' + (ann.picked[u.id] ? " checked" : "") + "> " +
+          esc(u.posName || u.name || u.googleEmail || u.id) + (u.alerts && u.alerts.app ? ' <span class="hint">· app notifications on</span>' : "") + "</label>";
+      }).join("") : '<p class="hint">No one matches.</p>';
+    }
+    function drawAnnounce() {
+      var el = $("announce"), b = api.backend();
+      if (ann.history === null && b.announcements) {
+        ann.history = [];
+        b.announcements().then(function (h) { ann.history = h; drawAnnounce(); }, function () {});
+      }
+      var n = annCount();
+      el.innerHTML = '<details class="fold"' + (ann.open ? " open" : "") + ' id="ann-fold"><summary><h3>Send announcement</h3><span class="fold-sum">To everyone or picked people</span></summary>' +
+        '<p class="hint">Everyone it goes to sees it at the top of the app until they dismiss it. People who turned on app notifications also get it on their phone. Never put cell numbers in it.</p>' +
+        '<label>Title<input id="ann-title" maxlength="80" value="' + esc(ann.title) + '"></label>' +
+        '<label>Message <span class="hint" id="ann-left"></span><textarea id="ann-message" rows="3" maxlength="300">' + esc(ann.message) + "</textarea></label>" +
+        '<label>Link (optional)<input id="ann-link" type="url" placeholder="https://" value="' + esc(ann.link) + '"></label>' +
+        '<div class="row"><label class="chk"><input type="radio" name="ann-aud" value="all"' + (ann.audience === "all" ? " checked" : "") + "> Everyone with an account</label>" +
+        '<label class="chk"><input type="radio" name="ann-aud" value="picked"' + (ann.audience === "picked" ? " checked" : "") + "> Pick people</label></div>" +
+        (ann.audience === "picked" ? '<input type="search" id="ann-q" placeholder="Filter by name or email" aria-label="Filter people" value="' + esc(ann.q) + '">' +
+          '<div class="ann-people" id="ann-people">' + annList() + "</div>" : "") +
+        '<div class="ann-preview" id="ann-preview"></div>' +
+        '<div class="row"><button class="btn small primary' + (ann.confirm ? " danger" : "") + '" type="button" id="ann-send">' +
+          (ann.confirm ? "Confirm: send to " + n + (n === 1 ? " person" : " people") : "Send to " + n + (n === 1 ? " person" : " people")) + "</button>" +
+          (ann.confirm ? '<button class="btn small" type="button" id="ann-cancel">Cancel</button>' : "") + "</div>" +
+        '<span class="msg" id="ann-say" role="status"></span>' +
+        (ann.history && ann.history.length ? '<h3 class="sub-h">Sent</h3><ul class="hist">' + ann.history.map(function (h) {
+          var c = h.counts || {};
+          return "<li><b>" + esc(h.title) + '</b> <span class="hint">' + esc(String(h.at || "").slice(0, 10)) + " · " + (h.audience === "picked" ? "picked people" : "everyone") +
+            " · " + (c.recipients || 0) + " people, " + (c.pushed || 0) + " by app notification</span></li>";
+        }).join("") + "</ul>" : "") + "</details>";
+      wireAnnounce(el);
+    }
+    function annPreview() {
+      var left = 300 - ann.message.length;
+      $("ann-left").textContent = "(" + left + " left)";
+      $("ann-preview").innerHTML = ann.title || ann.message ? '<div class="notice"><div class="notice-body"><b>' + esc(ann.title) + "</b><p>" + esc(ann.message) + "</p>" +
+        (ann.link ? '<span class="linkish">Open link</span>' : "") + '</div><span class="hint">Preview</span></div>' : "";
+    }
+    function wireAnnounce(el) {
+      var b = api.backend(), say = function (t, bad) { api.say($("ann-say"), t, bad); };
+      $("ann-fold").addEventListener("toggle", function () { ann.open = this.open; });
+      [["ann-title", "title"], ["ann-message", "message"], ["ann-link", "link"]].forEach(function (f) {
+        $(f[0]).oninput = function () { ann[f[1]] = this.value; if (ann.confirm) { ann.confirm = false; drawAnnounce(); return; } annPreview(); };
+      });
+      el.querySelectorAll("[name=ann-aud]").forEach(function (r) { r.onchange = function () { ann.audience = r.value; ann.confirm = false; drawAnnounce(); }; });
+      if ($("ann-q")) $("ann-q").oninput = function () { ann.q = this.value.trim(); $("ann-people").innerHTML = annList(); };
+      if ($("ann-people")) $("ann-people").addEventListener("change", function (e) {
+        var id = e.target.dataset && e.target.dataset.annPick;
+        if (!id) return;
+        ann.picked[id] = e.target.checked;
+        ann.confirm = false;
+        var n = annCount();
+        $("ann-send").textContent = "Send to " + n + (n === 1 ? " person" : " people");
+      });
+      if ($("ann-cancel")) $("ann-cancel").onclick = function () { ann.confirm = false; drawAnnounce(); };
+      $("ann-send").onclick = function () {
+        if (!ann.title.trim() || !ann.message.trim()) return say("Write a title and a message first.", true);
+        if (!annCount()) return say("Pick at least one person.", true);
+        if (!ann.confirm) { ann.confirm = true; drawAnnounce(); return; }
+        var x = this;
+        x.disabled = true;
+        say("Sending…");
+        var uids = Object.keys(ann.picked).filter(function (k) { return ann.picked[k]; });
+        b.announce({ title: ann.title, message: ann.message, link: ann.link, audience: ann.audience, uids: ann.audience === "picked" ? uids : [] }).then(function (r) {
+          ann = { open: true, title: "", message: "", link: "", audience: "all", picked: {}, q: "", confirm: false, history: null };
+          drawAnnounce();
+          say("Sent to " + r.recipients + (r.recipients === 1 ? " person" : " people") + "; " + r.pushed + " by app notification. The others see it when they open the app.");
+        }, function (er) { ann.confirm = false; drawAnnounce(); say(er.message, true); });
+      };
+      annPreview();
     }
 
     /* ---------- Invite people (Firebase admin site): the launch text with the sign-up link ----------

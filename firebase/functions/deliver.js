@@ -66,14 +66,15 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
     if (!r.ok) console.warn("Twilio " + r.status + ": " + (await r.text()).slice(0, 200));
     return r.ok;
   }
+  // m: {uid, pushTokens}; msg: {subject, text}. Returns how many devices took it (0 when none).
   async function sendPush(m, msg, link) {
-    if (!m.pushTokens.length) return false;
+    if (!m.pushTokens.length) return 0;
     const res = await admin.messaging().sendEachForMulticast({ tokens: m.pushTokens,
       notification: { title: msg.subject, body: msg.text.slice(0, 300) }, webpush: { fcmOptions: { link } } });
     // Drop tokens the browser has retired.
     const dead = res.responses.map((x, i) => (!x.success && /registration-token-not-registered|invalid-argument/.test((x.error && x.error.code) || "") ? m.pushTokens[i] : null)).filter(Boolean);
     if (dead.length) await db.doc("users/" + m.uid).update({ pushTokens: admin.firestore.FieldValue.arrayRemove(...dead) });
-    return res.successCount > 0;
+    return res.successCount;
   }
   function link(uid, kind, tradeId, replyId) {
     if (!env("ALERT_KEY") || !project()) return null;
@@ -176,5 +177,5 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
     return pending ? "Picked " + name + ". It's set once they sign in from their invite link." : "Picked " + name + ". The trade is on the schedule.";
   }
 
-  return { trade, reply, daily, answer, pick, members, appUrl, fnUrl, sendText };
+  return { trade, reply, daily, answer, pick, members, appUrl, fnUrl, sendText, sendPush };
 };
