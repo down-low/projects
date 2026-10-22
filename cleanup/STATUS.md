@@ -58,9 +58,11 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - Still no Employee ID (all WE): Alba,K 3FBOL07M, Louie,T 31EOE15M, Dickerson,C 10TOE29M.
 
 ## Next step
-1. **H 30 pull:** `fir-pull-H30.js`, sent again 10/22. Compare the CSV, propose fixes, write after OK.
-2. **H 20, then H 3:** re-check each list against a fresh dump before sending.
-3. **H 2 (trim first):** include the leftover class matches.
+1. **H 30: done 10/22.**
+   - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
+   - Truppa: cover on 3FBOC08M written, 12/6/2025 to 1/15/2027 (start per user).
+2. **H 20:** `fir-pull-H20.js` with 18 people. The "OSE at own company" flags are dropped (H 30 showed they're fine). Then H 3 (17).
+3. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
    - Hausel: HA2634 is right, so set the 131st on his card.
    - Lui: report says LU1896, tool says LU1898.
    - The 16 report names not in the tool.
