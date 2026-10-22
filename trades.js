@@ -230,7 +230,7 @@
       var head = '<summary class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
         { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
-        (gist ? '<span class="hint trade-gist">' + esc(gist) + "</span>" : "") + "</summary>" +
+        (gist ? '<span class="' + (st === "open" && reps.length ? "trade-gist due" : "hint trade-gist") + '">' + esc(gist + (st === "open" && reps.length ? " · pick one" : "")) + "</span>" : "") + "</summary>" +
         (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
       if (st === "pending") {
@@ -532,6 +532,8 @@
           backend().unclaim(b.dataset.unclaim).then(function () { api.renderAll(true); }, function (er) { b.textContent = er.message; });
         };
       });
+      var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
+      if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
       out.querySelectorAll("details[data-own]").forEach(function (d) {
         d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });
@@ -768,7 +770,12 @@
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
           note: w.note, audience: aud }));
-      p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
+      // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
+      p.then(function (r) {
+        var id = w.widen ? w.widen.id : r && r.id;
+        if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
+        closeWizard(); api.showTrades();
+      }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");

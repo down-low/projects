@@ -680,6 +680,7 @@ details.trade > summary.trade-head::-webkit-details-marker { display: none; }
 details.trade > summary.trade-head::before { content: "▸"; color: var(--muted); width: 0.8em; }
 details.trade[open] > summary.trade-head::before { content: "▾"; }
 details.trade:not([open]) { padding-bottom: 6px; }
+.trade-gist.due { font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 .trade-date { font-weight: 600; font-variant-numeric: tabular-nums; }
 .trade-who .hint { font-size: 0.82rem; }
 .trade-terms { margin: 0; font-size: 0.88rem; }
