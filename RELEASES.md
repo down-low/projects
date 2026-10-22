@@ -15,6 +15,22 @@
 - **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
 - **Later:** admins use Want OT days to fill shortages.
 
+### Personalized admin invites
+- **Where:** back office, Admin → Invite people (already sends the app link from the admin's phone, one at a time or 10 per group text, with staff-list cells filled in, and marks who was sent).
+- **Add:** each text opens with the person's first name ("Hi David,"), so one-by-one texts read as personal; group texts keep the general wording.
+- **Optional:** a personal link that opens the app with their name already chosen (they still sign in with their own cell number; the link only skips "find yourself").
+
+### App notifications test and announcements (own chat)
+- Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
+- **First test:** Lester and Goforth (the records editor prepares them). iPhone users must add the app to the Home Screen first.
+- **First real use:** announcing sick and vacation accrual tracking, which needs its own spec and a saved consent record before any balances are stored.
+
+### Divisions kept separate (Airport, HQ, EMS)
+- **Not in the main roster now.** No real records for these divisions are added to the SFFD database; cleanup stays limited to Suppression.
+- **Demos:** the demo generator (`claude/demo-app`) gets one template per division with made-up people, so each department sees its own world and no one else's records.
+- **A real pilot later:** each division runs as its own Firebase project from the same code, with its own roster files; every record carries a `division` tag so merging into one database later is an import, not a cleanup.
+- **In code:** a `division` setting decides which data files, screens and words load (part of the organization settings in `HANDOFF.md`, Design principles).
+
 ## Upcoming: December 2026 rollout
 
 ### Apply the 2027 vacancy awards (26 A-082)
@@ -187,6 +203,8 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
     3. **Microsoft Graph app (needs IT admin consent):** an app registered in the city tenant with read-only access to that one library (Sites.Selected), read by a daily scheduled function. Never store a member's or admin's own refresh token on the server instead: that is a stored credential.
     4. **fir-db1 OT hours:** cloud flows can't reach it. Only Power Automate Desktop on a city PC, signed in on the network, could read the page and send the numbers, with IT's approval. Otherwise the two-weekly paste script stays.
     5. **Reading the PDFs:** a PDF text reader is enough if they are text (order, name, Employee ID). Use the Claude API only if they are scans, and only with approval, since that sends city data to another outside service.
+
+- **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
 - Feedback button (Oct 2026): members send problems, ideas and questions about the app; admins answer, close and copy them from the Feedback view.
