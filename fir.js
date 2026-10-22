@@ -277,10 +277,11 @@
     for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(md(d));
     const COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag", "station", "battalion", "with", "mark"];
     const ID = /^[A-Z]{2}\d{4}$/, ROLE = /^[A-Z][A-Z\/]{1,5}$/;
-    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M" };
+    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M", "Hose Tender": "HT", "Mobile Air": "MA" };
     const ROMAN = { I: 1, II: 2, III: 3, IV: 4 };
     const coCode = (label) => {
-      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic)\s+(\d+)/.exec(label);
+      if (/^Bureau of Equipment/.test(label)) return "BE";
+      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic|Hose Tender|Mobile Air)\s+(\d+)/.exec(label);
       if (u) return UNIT[u[1]] + (/^(E|T|B)$/.test(UNIT[u[1]]) ? ("0" + u[2]).slice(-2) : u[2]);
       const dv = /^Division\s+([IV]+)/.exec(label);
       return dv ? "D" + ROMAN[dv[1]] : label.replace(/\s+-\s+\d+\/\d+.*$/, "");

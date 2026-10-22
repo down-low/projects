@@ -1464,7 +1464,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
-/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026).
+/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026), and the station each
+ * apparatus runs from (STATIONS), from fir-db1's Roster by Station for all 10 battalions (10/21/2026).
  * ALIASES map roster company names to the report's apparatus codes. Divisions marked hidden are left off the dashboard.
  */
 (function (root) {
@@ -1488,6 +1489,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       { id: "AO", name: "AO", apparatus: ["VR03", "VR10", "VR20", "VR30", "VR33", "VR40", "VR50"] },
     ] },
   ];
+  // Fire station → apparatus housed there (Bureau of Equipment, BE, has no station).
+  var STATIONS = {
+    1: ["E01", "T01", "RS1"], 2: ["B01", "E02", "T02"], 3: ["E03", "T03"], 4: ["E04", "T04"], 5: ["D2", "E05", "T05"],
+    6: ["E06", "T06"], 7: ["D3", "E07", "T07", "RS2"], 8: ["B03", "E08", "T08"], 9: ["B10", "E09", "T09"], 10: ["E10", "T10"],
+    11: ["B06", "E11", "T11", "RC3"], 12: ["E12", "T12"], 13: ["E13", "T13", "RC1"], 14: ["E14", "T14"], 15: ["B09", "E15", "T15"],
+    16: ["E16", "T16"], 17: ["E17", "T17"], 18: ["E18", "T18"], 19: ["E19", "T19"], 20: ["E20", "MA1"], 21: ["B05", "E21"],
+    22: ["E22"], 23: ["E23"], 24: ["E24"], 25: ["E25"], 26: ["E26"], 28: ["E28"], 29: ["E29"], 31: ["B07", "E31", "RC2"],
+    32: ["E32"], 33: ["E33"], 34: ["E34"], 35: ["E35", "FB3"], 36: ["B02", "E36"], 37: ["E37"], 38: ["B04", "E38"],
+    39: ["E39"], 40: ["B08", "E40"], 41: ["E41"], 42: ["E42"], 43: ["E43", "RC4"], 44: ["E44"], 48: ["E48", "T48", "HT48"],
+    51: ["E51"],
+  };
+  var stationOf = {};
+  Object.keys(STATIONS).forEach(function (n) { STATIONS[n].forEach(function (co) { stationOf[co] = +n; }); });
   var ALIASES = {
     "Rescue Captain 1": "RC1", "Rescue Captain 2": "RC2", "Rescue Captain 3": "RC3", "Rescue Captain 4": "RC4",
     "Pilot of Fire Boats": "FB3", "Marine Engineer of Fire Boats": "FB3",
@@ -1503,8 +1517,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     DIVISIONS: DIVISIONS,
     // The report's apparatus code for a roster company (or title), e.g. "Rescue Captain 1" -> "RC1".
     apparatus: function (co) { return ALIASES[co] || co; },
-    // {division, battalion} for an apparatus code, or null when it isn't in the report.
-    locate: function (co) { return where[ALIASES[co] || co] || null; },
+    STATIONS: STATIONS,
+    // {division, battalion, station (number or null)} for an apparatus code, or null when it isn't in the report.
+    locate: function (co) {
+      var c = ALIASES[co] || co, w = where[c];
+      return w ? { division: w.division, battalion: w.battalion, station: stationOf[c] || null } : null;
+    },
+    // Fire station number an apparatus runs from (E05 -> 5), or null.
+    station: function (co) { return stationOf[ALIASES[co] || co] || null; },
     // Sort key for an apparatus code in report order (division, battalion, apparatus); unknown codes last.
     order: function (co) { return orderOf[ALIASES[co] || co] != null ? orderOf[ALIASES[co] || co] : 1e6; },
   };
@@ -5648,10 +5668,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(md(d));
     const COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag", "station", "battalion", "with", "mark"];
     const ID = /^[A-Z]{2}\d{4}$/, ROLE = /^[A-Z][A-Z\/]{1,5}$/;
-    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M" };
+    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M", "Hose Tender": "HT", "Mobile Air": "MA" };
     const ROMAN = { I: 1, II: 2, III: 3, IV: 4 };
     const coCode = (label) => {
-      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic)\s+(\d+)/.exec(label);
+      if (/^Bureau of Equipment/.test(label)) return "BE";
+      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic|Hose Tender|Mobile Air)\s+(\d+)/.exec(label);
       if (u) return UNIT[u[1]] + (/^(E|T|B)$/.test(UNIT[u[1]]) ? ("0" + u[2]).slice(-2) : u[2]);
       const dv = /^Division\s+([IV]+)/.exec(label);
       return dv ? "D" + ROMAN[dv[1]] : label.replace(/\s+-\s+\d+\/\d+.*$/, "");
@@ -6088,7 +6109,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var COLUMNS = [
       { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
       { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
-      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "stn", label: "Station", get: function (p) { var o = org(p); return o && o.station ? o.station : null; }, num: true, on: true,
+        html: function (p) { var o = org(p); return o && o.station ? "Sta " + o.station : ""; } },
+      // Key kept as "station" so column choices saved in browsers still find it.
+      { key: "station", label: "Company", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
       { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
         html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
       { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,

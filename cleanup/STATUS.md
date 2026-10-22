@@ -60,7 +60,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 ## New pulls (10/22)
 - `fir-pull-battalions.js` reads Roster by Station (1021:11): 10 battalions × the dates asked. It gives one day's crews, with role, ID, TRC and trade partner, in the company-page CSV format, so the Employee card's fir-db1 comparison reads it. About 10 consecutive days cover every tour.
 - `fir-pull-balance.js`: run on the balance report page; it reads the status table (DP/IDV/SP/SPI/TC/VA/WC/WDO by OFF/PM/FF) and the hires table for a date range.
-- `fir-licenses-probe.js`: one paste on the employee page (like the phone probe).
+- `fir-licenses-probe.js` (run 10/22): the Licenses and Certs rows are in the employee page HTML, like phones, so they can be pulled per Employee ID when wanted.
+- **Battalion roster 10/21 (all 10):** the companies and their battalion/division match organization.js exactly (81 apparatus). Stations were added from it (`Organization.STATIONS`, `station(co)`), and there's a Station column on the Employee card list. One day is enough for now (user).
 
 ## Next step
 1. **H 30: done 10/22.**

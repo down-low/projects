@@ -105,7 +105,10 @@
     var COLUMNS = [
       { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
       { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
-      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "stn", label: "Station", get: function (p) { var o = org(p); return o && o.station ? o.station : null; }, num: true, on: true,
+        html: function (p) { var o = org(p); return o && o.station ? "Sta " + o.station : ""; } },
+      // Key kept as "station" so column choices saved in browsers still find it.
+      { key: "station", label: "Company", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
       { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
         html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
       { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,
