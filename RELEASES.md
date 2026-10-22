@@ -15,21 +15,24 @@
 - **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
 - **Later:** admins use Want OT days to fill shortages.
 
-### Personalized admin invites
-- **Where:** back office, Admin → Invite people (already sends the app link from the admin's phone, one at a time or 10 per group text, with staff-list cells filled in, and marks who was sent).
-- **Add:** each text opens with the person's first name ("Hi David,"), so one-by-one texts read as personal; group texts keep the general wording.
-- **Optional:** a personal link that opens the app with their name already chosen (they still sign in with their own cell number; the link only skips "find yourself").
+### Invite one person from the back office
+- **Where:** the Employee card (back office, admins) gets **Invite to the app**; the same action sits on each person in Admin → Invite people's list.
+- **Message:** opens Messages on the admin's phone, addressed to the person's staff-list cell, starting "Hi <first name>," with the app link.
+- **Reuses, doesn't change:** the launch-invite helpers in `admin.js` (`launchMsg`, `launchSms`) and the sent marks in `launchInvites/{pos}` (`store.js` `launchMark` / `launchSent`), so the card shows "Invited Oct 22" and the bulk list skips them.
+- **Trade invites stay exactly as they are:** `trades.js` (Invite, Copy text), the `tradeInvites` collection and the `createInvite` / `inviteInfo` / `answerFromInvite` / `redeemInvite` functions are not touched; the build checks trade invites still work.
+- **No cell on file:** the button reads "No cell on file" and points to adding one on the card.
 
 ### App notifications test and announcements (own chat)
 - Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
 - **First test:** Lester and Goforth (the records editor prepares them). iPhone users must add the app to the Home Screen first.
 - **First real use:** announcing sick and vacation accrual tracking, which needs its own spec and a saved consent record before any balances are stored.
 
-### Divisions kept separate (Airport, HQ, EMS)
-- **Not in the main roster now.** No real records for these divisions are added to the SFFD database; cleanup stays limited to Suppression.
-- **Demos:** the demo generator (`claude/demo-app`) gets one template per division with made-up people, so each department sees its own world and no one else's records.
-- **A real pilot later:** each division runs as its own Firebase project from the same code, with its own roster files; every record carries a `division` tag so merging into one database later is an import, not a cleanup.
-- **In code:** a `division` setting decides which data files, screens and words load (part of the organization settings in `HANDOFF.md`, Design principles).
+### Divisions with their own real data (Airport, EMS, HQ)
+- **Real data, one Firebase project per division:** clone the Suppression project's setup into a new project (Airport, then EMS, then HQ). Same repo and code; GitHub deploys to each project as its own target.
+- **Each division's own files:** roster, Employee IDs and staffing are loaded and cleaned on their own; the Suppression database is never touched.
+- **Every record carries a `division` tag,** so merging into one database later is an import, not a cleanup.
+- **In code:** a `division` setting picks the data files, screens and terminology (the seam in `HANDOFF.md`, Design principles).
+- **Cleanup:** one division at a time, in its own records chat, with the same routine (`cleanup/README.md`).
 
 ## Upcoming: December 2026 rollout
 
