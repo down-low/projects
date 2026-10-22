@@ -1,5 +1,20 @@
 # Release list
 
+## Next release (specced, not built; build one at a time: Invite first, then Overtime)
+
+### Invite a coworker
+- **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
+- **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
+- **No server work:** signing up already works from the plain app address. The QR is drawn in the page (a small QR library: a pinned version, or vendored into the repo for Firebase).
+- On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
+
+### Overtime days on my calendar
+- **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
+- **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
+- **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
+- **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
+- **Later:** admins use Want OT days to fill shortages.
+
 ## Upcoming: December 2026 rollout
 
 ### Apply the 2027 vacancy awards (26 A-082)
