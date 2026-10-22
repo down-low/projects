@@ -879,6 +879,10 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .page.simple .tab-more { display: flex; }
 .page.simple #tab-person { order: 1; } .page.simple #tab-crew { order: 2; } .page.simple #tab-date { order: 3; }
 .page.simple #tab-trades { order: 4; } .page.simple .tab-more { order: 5; }
-.crew-days { display: flex; flex-wrap: wrap; gap: 8px; }
-.crew-days .btn.small { min-height: 40px; padding: 6px 14px; }
+.crew-days { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+.crew-days .btn.icon { flex: 0 0 44px; width: 44px; min-height: 44px; }
+.crew-days .btn.icon:disabled { opacity: 0.35; cursor: default; }
+.crew-days .crew-day { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.crew-day .cd-dow { font-size: 0.75rem; opacity: 0.8; }
+.crew-day .cd-date { font-weight: 600; white-space: nowrap; }
 .crew-head { margin: 10px 0; }

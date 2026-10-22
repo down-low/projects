@@ -65,6 +65,24 @@ test("members read records but can't edit them", async () => {
   await assertFails(db(MEMBER).doc("rosterOverrides/10EOC03M").set({ name: "X" }));
 });
 
+test("members mark one of their own days VA or S, and remove only that", async () => {
+  const own = (extra) => Object.assign({ pos: "10EOC03M", name: "Me,A", code: "VA", start: "2026-11-05", end: "2026-11-05", note: "",
+    self: true, createdBy: "mem1", createdAt: "2026-10-21T00:00:00Z" }, extra);
+  const ref = await assertSucceeds(db(MEMBER).collection("statuses").add(own()));
+  await assertSucceeds(db(MEMBER).collection("statuses").add(own({ code: "S" })));
+  await assertFails(db(MEMBER).collection("statuses").add(own({ pos: "11ENL01M" })));        // someone else's seat
+  await assertFails(db(MEMBER).collection("statuses").add(own({ code: "D" })));              // only VA or S
+  await assertFails(db(MEMBER).collection("statuses").add(own({ code: "WE" })));
+  await assertFails(db(MEMBER).collection("statuses").add(own({ end: "2026-11-06" })));      // one day only
+  await assertFails(db(MEMBER).collection("statuses").add(own({ self: false })));
+  await assertFails(db(MEMBER).collection("statuses").add(own({ createdBy: "mem2" })));
+  await assertFails(db(MEMBER).collection("statuses").add(own({ tradeId: "t1" })));          // no other fields
+  await assertFails(db(OTHER).doc(ref.path).delete());                                       // not theirs
+  await assertFails(db(MEMBER).doc(ref.path).update({ code: "S" }));                         // remove and re-add instead
+  await assertSucceeds(db(MEMBER).doc(ref.path).delete());
+  await assertFails(db(PENDING).collection("statuses").add(own()));
+});
+
 test("editors write records with valid fields only; admins skip the checks", async () => {
   await assertSucceeds(db(EDITOR).collection("statuses").add(status()));
   await assertFails(db(EDITOR).collection("statuses").add(status({ code: "XX" })));
