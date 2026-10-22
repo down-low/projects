@@ -61,9 +61,21 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
    - Truppa: cover on 3FBOC08M written, 12/6/2025 to 1/15/2027 (start per user).
-2. **H 20:** `fir-pull-H20.js` with 18 people. The "OSE at own company" flags are dropped (H 30 showed they're fine). Then H 3 (17).
-3. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
+2. **H 20: done 10/22.** `fir-pull-H20.js` covered 18 people. 10 already matched.
+   - **Written (start dates per user):**
+     - Jebe 42ETL30M (E42 Lt swing), 8/15/26 to 1/16/27.
+     - Nielsen 03EOL23M, 7/13/26 to 1/17/27.
+     - Melton 09ETL10M, 1/29/26 to 1/17/27.
+     - Anderson,D: 17TOT13M covers 05ENL21M from 8/17/26.
+     - Tokuda: 03EOD25M covers 21EOL03M from 6/12/26.
+     - Atkinson 11ENL31M from 1/19/26.
+     - Dekelaita: 26ETX03M covers 18ETL27M from 4/28/26.
+     - Dresser D from 9/27/26.
+   - **Swing seats:** the tool already follows the rotation from the vacancy list (`swing` tables in data/positions.json), so one cover per person is enough.
+   - **Open:** Price, whom fir-db1 has on DP on 22EOL22M (Truong's seat on the vacancy list); Moreno, with fir-db1 codes TC and OE.
+3. **H 3 (17):** re-check against a fresh dump, then send.
+4. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
    - Hausel: HA2634 is right, so set the 131st on his card.
    - Lui: report says LU1896, tool says LU1898.
    - The 16 report names not in the tool.
-4. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
+5. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
