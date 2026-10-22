@@ -100,4 +100,5 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
    - Hausel: HA2634 is right, so set the 131st on his card.
    - Lui: report says LU1896, tool says LU1898.
    - The 16 report names not in the tool.
-5. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
+5. **Baum,M BA1130 (10/22, user OK):** "03DFF" in fir-db1 = Division 3 firefighter slot (not on the vacancy list; like 02BFF at B02). She's H-2, VR at D3, tour 29, working as the Division 3 aide; one REG day was coded to 03DO029M (ISS D3, tour 29, vacant). Cover written: 03DO029M from 4/24/2026 (user) to 1/15/2027; Regalado takes the seat and Baum moves to 48TTX29M on 1/16/2027.
+6. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
