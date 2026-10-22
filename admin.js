@@ -579,10 +579,12 @@
       var mode = api.backend().siteMode ? api.backend().siteMode() : null;
       return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
         '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Refresh records (keep trades)</b>, while people test: this site's schedule records match the file; trades and answers made here are kept, and the page's trades are added if they're new. " +
         "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
         "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<div class="row"><button class="btn primary" type="button" id="import-refresh">Refresh records (keep trades)</button>' +
+        '<button class="btn" type="submit" id="import-test">Import as test copy</button>' +
         '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
         '<span class="msg" id="import-msg" role="status"></span></div>' +
         '<div class="table-wrap" id="import-counts" hidden></div>' +
@@ -595,6 +597,7 @@
     }
     function wireImport() {
       $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-refresh").onclick = function () { runImport(true, true); };
       $("import-replace").onclick = function () {
         if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
         this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
@@ -612,23 +615,24 @@
         }, function (er) { api.say($("mode-msg"), er.message, true); });
       };
     }
-    function runImport(replace) {
+    function runImport(replace, keepTrades) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
+        return api.backend().importBackup(data, { replace: replace, keepTrades: !!keepTrades }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return !counts[k].kept && counts[k].backup !== counts[k].firestore; });
         api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
           : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
         $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
           keys.map(function (k) {
             var c = counts[k], ok = c.backup === c.firestore;
-            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" +
+              (c.kept ? '<span class="hint">kept</span>' : ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
           }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }
