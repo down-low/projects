@@ -1,7 +1,7 @@
 """Daily balance report (fir-sap2 Excel exports) to one CSV: python3 -I tools/reconcile/balance_xlsx.py <folder or .zip> <out.csv>.
 Reads the two bottom tables of each file: status counts (DP, IDV, SP, … by OFF, PM, FF) and overtime hired by rank
 (Voluntary, Mandatory, Advance Hire, Total). The date comes from the report's "As of Date:" cell. Same logic and columns as
-cleanup/fir-pull-balance.js: date (YYYY-MM-DD), table (status or overtime), code, OFF, PM, FF, rank, voluntary, mandatory,
+cleanup/fir-pull-balance.js: date (YYYY-MM-DD), table (status or overtime), group, code, OFF, PM, FF, rank, voluntary, mandatory,
 advance, total."""
 import sys, os, re, io, csv, zipfile, xml.etree.ElementTree as ET
 M = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
@@ -23,7 +23,9 @@ def rows_of(data):
             if val: cells[col(c.get('r'))] = val
         out.append((int(row.get('r')), cells))
     return out
-COLS = ['date', 'table', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total']
+COLS = ['date', 'table', 'group', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total']
+# Groups (user, 10/22/2026); WDO is an extra shift on a day off (overtime worked), kept apart from people off.
+GROUP = {'SL': 'sick', 'SP': 'sick', 'SPI': 'sick', 'VA': 'vacation', 'IDV': 'vacation', 'TC': 'vacation', 'DP': 'disability', 'WC': 'disability', 'WDO': 'overtime'}
 NAME = {'Voluntary': 'voluntary', 'Mandatory': 'mandatory', 'Advance Hire': 'advance', 'Advance': 'advance', 'Total': 'total'}
 def iso(d):
     m = re.fullmatch(r'(\d{1,2})/(\d{1,2})/(\d{4})', d or '')
@@ -49,12 +51,12 @@ def balance(rows):
         s_key = next((k for k in ks if k < r_col and re.fullmatch(r'[A-Z]{1,4}', c[k])), None)
         r_key = next((k for k in ks if r_col < 10**9 and abs(k - r_col) <= 1 and re.fullmatch(r'H\s*\d+|Total', c[k])), None)
         if s_key is not None and s_heads:
-            r = {'date': date, 'table': 'status', 'code': c[s_key]}
+            r = {'date': date, 'table': 'status', 'group': GROUP.get(c[s_key], 'other'), 'code': c[s_key]}
             for k in ks:
                 if k > s_key and (r_key is None or k < r_key) and re.fullmatch(r'-?\d+', c[k]): r[NAME.get(head[near(k, s_heads)], head[near(k, s_heads)])] = c[k]
             out.append(r)
         if r_key is not None and r_heads:
-            r = {'date': date, 'table': 'overtime', 'rank': re.sub(r'\s+', ' ', c[r_key])}
+            r = {'date': date, 'table': 'overtime', 'group': 'hired', 'rank': re.sub(r'\s+', ' ', c[r_key])}
             for k in ks:
                 if k > r_key and re.fullmatch(r'-?\d+', c[k]): r[NAME.get(head[near(k, r_heads)], head[near(k, r_heads)])] = c[k]
             out.append(r)

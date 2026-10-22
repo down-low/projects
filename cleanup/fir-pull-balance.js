@@ -1,9 +1,10 @@
 /* Tour schedule: daily balance report counts from fir-sap2 in one CSV.
  * Open the Daily Balance Report (the /rpt/open.jsp link, any date) on fir-sap2, then paste this in that tab's console
- * (F12 → Console). It asks for a first and last date, asks the same report for each day as an Excel file and reads its two
+ * (F12 → Console). It asks for the dates (one or more ranges), asks the same report for each day as an Excel file and reads its two
  * bottom tables: status counts (DP, IDV, PB, SP, SPI, TC, VA, WC, WDO… by OFF, PM, FF) and overtime hired by rank
- * (Voluntary, Mandatory, Advance Hire, Total). Downloads balance_bottom.csv (date YYYY-MM-DD, table status|overtime, code,
- * OFF, PM, FF, rank, voluntary, mandatory, advance, total) and, if any day failed, balance_failed.txt.
+ * (Voluntary, Mandatory, Advance Hire, Total). Downloads balance_bottom.csv (date YYYY-MM-DD, table status|overtime, group,
+ * code, OFF, PM, FF, rank, voluntary, mandatory, advance, total) and, if any day failed, balance_failed.txt. OFF = officers,
+ * PM = paramedics, FF = firefighters. Groups: sick SL/SP/SPI, vacation VA/IDV/TC, disability DP/WC, overtime WDO, other.
  * The full reports are read in this browser's memory and never saved. Nothing is sent anywhere else. If fir-sap2 won't hand the Excel files to the script, it offers to download each day's
  * file instead; attach those (or a zip) in the chat. */
 (async () => {
@@ -12,11 +13,19 @@
     return alert('Open the Daily Balance Report on fir-sap2 first (the open.jsp link), then run this again.');
   }
   const md = (d) => (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear(), t = new Date();
-  const from = (prompt('First date (MM/DD/YYYY)', '10/1/2025') || '').trim(), to = (prompt('Last date (MM/DD/YYYY)', '12/31/2025') || '').trim();
-  if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(from) || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(to)) return alert('Use dates like 10/22/2026.');
-  const dt = (x) => { const a = x.split('/'); return new Date(+a[2], a[0] - 1, +a[1]); };
-  const dates = [];
-  for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(d);
+  // One or more ranges, e.g. "10/1/2025-10/31/2025, 10/1/2026-10/22/2026" (a single date works too).
+  const spec = (prompt('Dates to pull: ranges separated by commas', '10/1/2025-10/31/2025, 10/1/2026-' + md(t)) || '').trim();
+  const D = /^\d{1,2}\/\d{1,2}\/\d{4}$/, dt = (x) => { const a = x.split('/'); return new Date(+a[2], a[0] - 1, +a[1]); };
+  const dates = [], seenDay = new Set();
+  for (const part of spec.split(',').map((x) => x.trim()).filter(Boolean)) {
+    const [a, b] = part.split('-').map((x) => x.trim());
+    if (!D.test(a) || (b && !D.test(b))) return alert('Use dates like 10/1/2025-10/31/2025, 10/1/2026-10/22/2026.');
+    for (let d = dt(a); d <= dt(b || a); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+      const k = d.toDateString();
+      if (!seenDay.has(k)) { seenDay.add(k); dates.push(d); }
+    }
+  }
+  if (!dates.length) return;
   // The report's date parameter is Date(year,month,day) with month 1-12, as in the link fir-db1 opens.
   const urlFor = (d) => { const u = new URL(here.href); u.searchParams.set('lsSFROMDT', 'Date(' + d.getFullYear() + ',' + (d.getMonth() + 1) + ',' + d.getDate() + ')'); u.searchParams.set('sOutputFormat', 'E'); return u.href; };
   const wait = () => new Promise((r) => setTimeout(r, 400));
@@ -62,6 +71,9 @@
   // Each value goes to the nearest header column of its block, since exported cells don't always line up under headers.
   // Same logic as tools/reconcile/balance_xlsx.py.
   const NAME = { Voluntary: 'voluntary', Mandatory: 'mandatory', 'Advance Hire': 'advance', Advance: 'advance', Total: 'total' };
+  // Groups (user, 10/22/2026): sick SL/SP/SPI; vacation VA/IDV/TC; disability DP/WC. WDO is an extra shift on a day off
+  // (people working overtime, close to the overtime Total), so it is kept apart from the people-off groups.
+  const GROUP = { SL: 'sick', SP: 'sick', SPI: 'sick', VA: 'vacation', IDV: 'vacation', TC: 'vacation', DP: 'disability', WC: 'disability', WDO: 'overtime' };
   const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   function balance(rows, date) {
     const out = [], hi = rows.findIndex(([, c]) => Object.values(c).includes('Status') && Object.values(c).includes('OFF'));
@@ -77,12 +89,12 @@
       const sKey = ks.filter((k) => k < rCol && /^[A-Z]{1,4}$/.test(c[k]))[0];
       const rKey = rCol < 1e9 ? ks.filter((k) => Math.abs(k - rCol) <= 1 && /^(H\s*\d+|Total)$/.test(c[k]))[0] : undefined;
       if (sKey != null && sHeads.length) {
-        const r = { date, table: 'status', code: c[sKey] };
+        const r = { date, table: 'status', group: GROUP[c[sKey]] || 'other', code: c[sKey] };
         ks.filter((k) => k > sKey && (rKey == null || k < rKey) && /^-?\d+$/.test(c[k])).forEach((k) => { r[nm(head[near(k, sHeads)])] = c[k]; });
         out.push(r);
       }
       if (rKey != null && rHeads.length) {
-        const r = { date, table: 'overtime', rank: c[rKey].replace(/\s+/g, ' ') };
+        const r = { date, table: 'overtime', group: 'hired', rank: c[rKey].replace(/\s+/g, ' ') };
         ks.filter((k) => k > rKey && /^-?\d+$/.test(c[k])).forEach((k) => { r[nm(head[near(k, rHeads)])] = c[k]; });
         out.push(r);
         if (c[rKey] === 'Total') break;
@@ -143,7 +155,7 @@
   }
   if (!all.length) return alert('Nothing read. Failed: ' + failed.join(', '));
   all.sort((a, b) => a.date.localeCompare(b.date) || (a.table === 'status' ? 0 : 1) - (b.table === 'status' ? 0 : 1));
-  const COLS = ['date', 'table', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total'];
+  const COLS = ['date', 'table', 'group', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total'];
   const q = (v) => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
   const save = (text, name, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
   save([COLS.join(',')].concat(all.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\n'), 'balance_bottom.csv', 'text/csv');
