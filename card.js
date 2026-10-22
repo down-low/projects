@@ -2,7 +2,7 @@
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
  * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
- * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
+ * (staff list), licenses and certifications (from fir-db1), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
 (function (root) {
@@ -76,6 +76,24 @@
     }
     function coverer(c) { return byPos()[c.coverKey] || { pos: c.coverKey, name: c.coverName || c.coverKey }; }
     function list(rows, empty) { return rows.length ? '<ul class="hist card-list">' + rows.join("") + "</ul>" : '<p class="hint">' + empty + "</p>"; }
+    // Licenses and certifications (profiles, loaded from fir-db1 by admins): name and expiration, never the number.
+    function mdy(isoStr) { var a = String(isoStr).slice(0, 10).split("-"); return a.length === 3 ? +a[1] + "/" + +a[2] + "/" + a[0] : String(isoStr); }
+    function licDays(x) { return x.expires ? Math.round((api.fromIso(x.expires) - api.today()) / 864e5) : null; }
+    function licSummary(p) {
+      if (!api.profiles()) return "Loading…";
+      var l = profile(p).licenses || [];
+      if (!l.length) return "None on file";
+      var out = l.filter(function (x) { var d = licDays(x); return d != null && d < 0; }).length;
+      return l.length + " on file" + (out ? ' · <span class="err">' + out + " expired</span>" : "");
+    }
+    function licBody(p) {
+      var pf = profile(p), l = (pf.licenses || []).slice().sort(function (a, b) { return String(a.expires || "9").localeCompare(String(b.expires || "9")); });
+      if (!l.length) return '<p class="hint">None on file. They are loaded from fir-db1 (Licenses and Certs) by an admin.</p>';
+      return '<ul class="hist">' + l.map(function (x) {
+        var d = licDays(x), tag = d == null ? "" : d < 0 ? ' <span class="tag tag-away">Expired</span>' : d <= 90 ? ' <span class="tag">Expires in ' + d + " days</span>" : "";
+        return "<li><span>" + esc(x.name) + tag + '</span><span class="hint">' + (x.expires ? "expires " + esc(mdy(x.expires)) : "no expiration") + "</span></li>";
+      }).join("") + "</ul>" + (pf.licensesAsOf ? '<p class="hint">From fir-db1, as of ' + esc(mdy(pf.licensesAsOf)) + ". Admins only.</p>" : "");
+    }
     function section(id, title, sum, body, openDefault) {
       var open = ui.folds && id in ui.folds ? ui.folds[id] : openDefault !== false;
       return '<details class="card fold card-sec" data-cfold="' + id + '"' + (open ? " open" : "") + "><summary><h3>" + esc(title) + "</h3>" +
@@ -105,7 +123,10 @@
     var COLUMNS = [
       { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
       { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
-      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "stn", label: "Station", get: function (p) { var o = org(p); return o && o.station ? o.station : null; }, num: true, on: true,
+        html: function (p) { var o = org(p); return o && o.station ? "Sta " + o.station : ""; } },
+      // Key kept as "station" so column choices saved in browsers still find it.
+      { key: "station", label: "Company", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
       { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
         html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
       { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,
@@ -556,6 +577,7 @@
         section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
         section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
         section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("lic", "Licenses and certifications", licSummary(p), licBody(p), !api.isPhone()) +
         section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +
         section("fixes", "Corrections", fx.filter(function (x) { return x.state === "open"; }).length + " open of " + fx.length, fixBody, !api.isPhone()) +
         section("hist", "History", hist.length + (hist.length === 1 ? " record" : " records"), histBody, !api.isPhone());

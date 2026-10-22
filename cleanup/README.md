@@ -1,5 +1,7 @@
 # Records in question
 
+Every script and tool, and how to reuse it: `SCRIPTS.md`.
+
 `records-in-question.csv`: one row per person whose position, status or Employee ID is in question. For the Employee cards (admin records editor) chat to work through and script.
 
 **As of 10/17/2026.** Check each row against the live records before writing anything; some are already fixed (for example Choy, back in 01BT204M from 10/15).

@@ -5,7 +5,7 @@
  * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
  * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
  * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
- * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan),
+ * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan), licenseScript(plan), battalionScript(plan),
  * parseCsv(text), compare(rows, api)}. A list (e.g. cleanup/records-in-question.csv) can stand in for the tool's own questions.
  *
  * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
@@ -259,6 +259,172 @@
         resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
   }
 
+  /* Licenses and certifications (admins; cleanup/fir-pull-licenses-*.js): the Licenses and Certs pop-up (region
+     LICENSES_AND_CERTS) is in the HTML of fir-db1's employee page (app 1021, page 2), like phone numbers. plan: {people:
+     [{id, name, key}], label, concurrency, resumeKey, fileName}. Downloads key, emplId, name, description, expires, flag;
+     license numbers are never read into the file. Flags as phoneMain ("none", "mismatch", "unchecked", "no-region"). */
+  function licenseMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:2:" + m[2] + ":::RP,2:P2_EMPLID:";
+    const COLS = ["key", "emplId", "name", "description", "expires", "flag"], DATE = /\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}-[A-Z]{3}-\d{2,4})\b/i;
+    const val = (c) => {
+      const k = c.cloneNode(true);
+      k.querySelectorAll("input, select, textarea").forEach((f) => {
+        const v = f.tagName === "SELECT" ? ((f.querySelector("option[selected]") || {}).textContent || "") : (f.type === "hidden" ? "" : f.getAttribute("value") || "");
+        f.replaceWith(c.ownerDocument.createTextNode(" " + v + " "));
+      });
+      return k.textContent.replace(/\s+/g, " ").trim();
+    };
+    const read = (html, id) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const field = doc.getElementById("P2_EMPLID");
+      const shown = field ? (field.getAttribute("value") || field.textContent || "").trim().toUpperCase() : "";
+      if (shown && shown !== id) return { flag: "mismatch", items: [] };
+      const reg = doc.getElementById("LICENSES_AND_CERTS");
+      if (!reg) return { flag: "no-region", items: [] };
+      // Rows of the innermost tables: description, license number (skipped), expiration (the cell that is a date).
+      const items = [], seen = {};
+      [...reg.querySelectorAll("tr")].filter((tr) => !tr.querySelector("table")).forEach((tr) => {
+        const cells = [...tr.children].filter((c) => /^T[DH]$/.test(c.tagName)).map(val);
+        if (!cells.length || /^Description$/i.test(cells[0]) || !cells[0]) return;
+        const d = cells.slice(1).map((c) => DATE.exec(c)).filter(Boolean)[0];
+        const k = cells[0] + "|" + (d ? d[1] : "");
+        if (seen[k]) return;
+        seen[k] = 1;
+        items.push({ description: cells[0], expires: d ? d[1] : "" });
+      });
+      return { flag: items.length ? (shown ? "" : "unchecked") : "none", items };
+    };
+    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
+      if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out"); return h; };
+    const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
+    let saved = { done: [], rows: [] };
+    try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const done = new Set(saved.done), out = saved.rows.slice();
+    const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { } };
+    const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
+    let n = done.size, stop = null;
+    const worker = async () => {
+      while (queue.length && !stop) {
+        const p = queue.shift();
+        try {
+          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
+          if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+          r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
+          done.add(p.id);
+        } catch (e) { stop = e; queue.unshift(p); break; }
+        if (++n % 25 === 0) save();
+        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        await wait();
+      }
+    };
+    return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      if (stop) { save(); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
+      if (RK) try { localStorage.removeItem(RK); } catch (e) { }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || "fir-licenses.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      console.log("license pull done: " + total + " people, " + out.filter((r) => r[3]).length + " licenses.");
+    });
+  }
+  function licenseScript(plan) {
+    return "/* Tour schedule: fir-db1 licenses and certifications pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + licenseMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+  }
+
+  /* Battalion rosters (admins; cleanup/fir-pull-battalions.js): fir-db1's Roster by Station (app 1021, page 11) lists one
+     day's crews for a battalion: station, company, role, name, Employee ID, TRC and trade partner. plan: {from, to
+     (MM/DD/YYYY), battalions: ["BT01", ...], fileName}. Rows use the COLS of script() with mode "co" and the company as
+     query, so the Employee card's fir-db1 comparison reads the file like company pages; station, battalion, with (trade
+     partner) and mark (the margin note, e.g. DP) are extra columns. A page with no rows downloads a structure note. */
+  function battalionMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:11:" + m[2] + "::NO::P11_FROMDT,P11_BATTALION:";
+    const ask = (q, d) => (prompt(q, d) || "").trim();
+    const t = new Date(), md = (d) => (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
+    const from = PLAN.from || ask("First date (MM/DD/YYYY)", md(t)), to = PLAN.to || ask("Last date (MM/DD/YYYY)", from);
+    const dt = (x) => { const a = x.split("/"); return new Date(+a[2], a[0] - 1, +a[1]); };
+    if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(from) || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(to)) return alert("Use dates like 10/22/2026.");
+    const dates = [];
+    for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(md(d));
+    const COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag", "station", "battalion", "with", "mark"];
+    const ID = /^[A-Z]{2}\d{4}$/, ROLE = /^[A-Z][A-Z\/]{1,5}$/;
+    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M", "Hose Tender": "HT", "Mobile Air": "MA" };
+    const ROMAN = { I: 1, II: 2, III: 3, IV: 4 };
+    const coCode = (label) => {
+      if (/^Bureau of Equipment/.test(label)) return "BE";
+      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic|Hose Tender|Mobile Air)\s+(\d+)/.exec(label);
+      if (u) return UNIT[u[1]] + (/^(E|T|B)$/.test(UNIT[u[1]]) ? ("0" + u[2]).slice(-2) : u[2]);
+      const dv = /^Division\s+([IV]+)/.exec(label);
+      return dv ? "D" + ROMAN[dv[1]] : label.replace(/\s+-\s+\d+\/\d+.*$/, "");
+    };
+    const cellText = (c) => { const k = c.cloneNode(true); k.querySelectorAll("script, noscript").forEach((x) => x.remove()); return k.textContent.replace(/\s+/g, " ").trim(); };
+    const read = (html, date, bt) => {
+      const doc = new DOMParser().parseFromString(html, "text/html"), rows = [], done = new Set();
+      let station = "", co = "";
+      const walk = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        const node = walk.currentNode, txt = node.nodeValue.replace(/\s+/g, " ").trim();
+        if (!txt) continue;
+        const tr = node.parentElement && node.parentElement.closest("tr");
+        const st = /^Fire Station\s+(\w+)/.exec(txt), unit = /^(.+?)\s+-\s+\d+\/\d+\b/.exec(txt);
+        if (st && !(tr && done.has(tr))) { station = st[1]; continue; }
+        if (unit && !(tr && done.has(tr))) { co = coCode(unit[1]); continue; }
+        if (!tr || done.has(tr)) continue;
+        const cells = [...tr.children].filter((c) => /^T[DH]$/.test(c.tagName)).map(cellText);
+        let i = cells.findIndex((c) => ID.test(c) || /\s[A-Z]{2}\d{4}$/.test(c));
+        if (i < 0) continue;
+        done.add(tr);
+        let name = "", id = cells[i];
+        const glued = /^(.*\S)\s+([A-Z]{2}\d{4})$/.exec(id);
+        if (glued) { name = glued[1]; id = glued[2]; } else name = cells[i - 1] || "";
+        const before = cells.slice(0, glued ? i : i - 1).filter(Boolean);
+        const role = before.length && ROLE.test(before[before.length - 1]) ? before.pop() : "";
+        const after = cells.slice(i + 1).filter(Boolean), trc = after.length && /^[A-Z]{1,4}$/.test(after[0]) ? after[0] : "";
+        const tw = after.map((c) => /\b(TR[OW])\s*([A-Z]{2}\d{4})\b/.exec(c)).filter(Boolean)[0];
+        rows.push({ mode: "co", pulledFor: date, date, query: co, emplId: id, name: name.replace(/\s*-ND$/, ""), co, trc, position: "", role,
+          hours: "", status: "", flag: "", station, battalion: bt, with: tw ? tw[1] + " " + tw[2] : "", mark: before.join(" ") });
+      }
+      if (!rows.length) {
+        const shape = [...doc.querySelectorAll("table")].slice(0, 5).map((tb) => tb.querySelectorAll("tr").length + " rows: " + cellText(tb).slice(0, 120)).join(" | ");
+        rows.push({ mode: "co", pulledFor: date, date, query: bt, flag: /type="password"/i.test(html) ? "signed-out" : "no-rows", name: shape.slice(0, 600), battalion: bt });
+      }
+      return rows;
+    };
+    const out = [], jobs = [];
+    dates.forEach((d) => PLAN.battalions.forEach((b) => jobs.push([d, b])));
+    const wait = () => new Promise((r) => setTimeout(r, 400));
+    return (async () => {
+      for (let k = 0; k < jobs.length; k++) {
+        const [d, b] = jobs[k];
+        const html = await (await fetch(base + encodeURIComponent(d) + "," + b, { credentials: "same-origin" })).text();
+        const rows = read(html, d, b);
+        if (rows[0].flag === "signed-out") { alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in and run again (the file has what came in so far)."); out.push(...rows); break; }
+        rows.forEach((r) => out.push(r));
+        console.log("battalion pull " + (k + 1) + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people)");
+        await wait();
+      }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => COLS.map((c) => q(r[c])).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || ("fir-battalions-" + from.replace(/\//g, "-") + (to !== from ? "_to_" + to.replace(/\//g, "-") : "") + ".csv");
+      document.body.appendChild(a); a.click(); a.remove();
+      console.log("battalion pull done: " + out.filter((r) => !r.flag).length + " rows.");
+    })();
+  }
+  function battalionScript(plan) {
+    return "/* Tour schedule: fir-db1 battalion roster pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "",
+        battalions: plan.battalions || ["BT01", "BT02", "BT03", "BT04", "BT05", "BT06", "BT07", "BT08", "BT09", "BT10"] }) + ");\n";
+  }
+
   /* A list to check, e.g. cleanup/records-in-question.csv: any CSV with an employee_id (or emplId) column; rank_group,
      name, category and suggested_check are used when present. Returns {rows, groups}. */
   function parseList(text) {
@@ -447,5 +613,5 @@
       unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
   }
 
-  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, licenseScript: licenseScript, battalionScript: battalionScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
 })(typeof window !== "undefined" ? window : globalThis);

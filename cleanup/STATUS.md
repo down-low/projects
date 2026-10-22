@@ -4,11 +4,11 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 ## Where it stands (10/21/2026)
 - **Station rosters (fir-sap2, 10/20):** 931 of 1,128 roster rows agree with the tool. The 5 missing are Assistant Chiefs, which are skipped.
-- **Paused:** the fir-db1 pulls are waiting on VPN access. They run one rank at a time and pull only people with open questions.
+- **Position pulls** (VPN back 10/21), one rank at a time, questions only. Re-checked against the live records 10/22:
   1. **H 30:** 7 people, using `fir-pull-H30.js` (already sent).
   2. **H 20:** 29 people.
   3. **H 3:** 17 people.
-  4. **H 2:** 87 people. Trim this list before pulling.
+  4. **H 2:** 83 people (4 settled by the 10/21 fixes). Trim further before pulling.
 
 ## Academy class (PX narrative rating report, 09/02/2026)
 - **Field:** Class is on the Employee card (identity section) and on the person page under **Personal details**. Admins only. Published in v60.
@@ -34,7 +34,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 129th: Cardenas,Alejandra CA1668; Del Castillo Haas,Daniela DE2773; Murphy,Evin MU2715; Nguyen,Kamal NG1179 (resigned)
 
 ## Cell numbers (10/21)
-- `missing-cells.md`: 499 of 1,230 people in the tool have no staff-list cell (Firefighter 408, most of them added people from the 2027 awards and new classes). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
+- `missing-cells.md`: 407 of 1,228 people still have no cell (Firefighter 402: their pull is held; Lt 2 and FF 3 are WE seats with no ID; Pilot 2 and Marine Engineer 1 are scripts 08 and 09). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
 - `fir-phone-probe.js` (run 10/21): the Phone numbers pop-up is on app 1021 page 2 and is in the page HTML, so it can be fetched per Employee ID.
 - `fir-pull-phones-01-…09-*.js`: one script per rank, top ranks first (`node tools/make_phone_pull.js <missing.json>`). Each downloads `fir-phones-<rank>.csv` (key, ID, name, type, number, flag) and resumes after a sign-out. Load rule: CELL, else HOME; never overwrite a cell already on file; ask before the write.
 - **Loaded 10/21:**
@@ -57,6 +57,47 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 36EOE02M Joyce,S from 8/29. Promoted H20 Lt, now x-JO3145. Seat goes to Mui MU2796 on 1/17/2027.
 - Still no Employee ID (all WE): Alba,K 3FBOL07M, Louie,T 31EOE15M, Dickerson,C 10TOE29M.
 
+## New pulls (10/22)
+- `fir-pull-battalions.js` reads Roster by Station (1021:11): 10 battalions × the dates asked. It gives one day's crews, with role, ID, TRC and trade partner, in the company-page CSV format, so the Employee card's fir-db1 comparison reads it. About 10 consecutive days cover every tour.
+- `fir-pull-balance.js` (rebuilt 10/22): the balance report is a fir-sap2 BusinessObjects report (open.jsp, `lsSFROMDT=Date(y,m,d)`), so the script asks it for each day as Excel (`sOutputFormat=E`) and reads the status table (DP/IDV/PB/SP/SPI/TC/VA/WC/WDO by OFF/PM/FF) and the hires table. If fir-sap2 won't hand the files over, it downloads one file per day; parse those with `python3 -I tools/reconcile/balance_xlsx.py <folder or zip> balance_bottom.csv`. Output (both): date, table (status|overtime), group, code, OFF, PM, FF, rank, voluntary, mandatory, advance, total; checked against the real 10/22/2026 Excel and the 10/20 screenshot.
+  - Columns: OFF = officers, PM = paramedics, FF = firefighters.
+  - Groups (user): sick SL/SP/SPI; vacation VA/IDV/TC; disability DP/WC; overtime WDO (an extra shift on a day off, close to the overtime Total); other (OP, RLP, PB, …).
+  - `python3 -I tools/reconcile/balance_summary.py balance_bottom.csv summary.csv` gives one row per date with group totals, plus the same weekday a year earlier (364 days before) and sick_change.
+  - Runs: October 2025 and October 2026 first (the script's default), then Nov–Dec 2025, then 1/1/2026 to present.
+  - **October 2025 + 10/1–10/22/2026 parsed 10/22** (53 days, 980 rows, no failures). Dashboard "SFFD Leave and Overtime" (https://claude.ai/artifact/X6Sqz6SkHTimZ29xKhj9mj, private until shared) shows them. Paired with the same weekday a year earlier: sick +33%, overtime hired +81%, vacation −3%, disability +20%. Sick vs hired r = 0.64. WDO reads 0 on days with hires, so hires Total is the overtime measure. Code OS stops after 10/9/2026.
+  - **Nov–Dec 2025 parsed 10/22** (61 days, 1,074 rows, no failures). The dashboard now holds 114 days. Per day, sick / hired / mandatory: Oct 25 18.1 / 20.7 / 3.7; Nov 25 15.6 / 25.5 / 1.8; Dec 25 22.2 / 34.2 / 6.7; Oct 26 24.5 / 37.8 / 6.0. Holidays: low sick but heavy mandatory hires (Thanksgiving 50 hired, 22 mandatory).
+  - **Chart work moved** to the "Analyze staffing data and overtime patterns" chat (user, 10/22), with a handoff brief sent. This chat keeps uploads and cleanups.
+  - Still to add: 10/23–10/31/2026 actuals, 1/1/2026 to present. A `balanceDays` table in the tool is proposed, not built.
+- `fir-licenses-probe.js` (run 10/22): the Licenses and Certs rows are in the employee page HTML, like phones, so they can be pulled per Employee ID when wanted.
+- **Licenses test (Stations 1, 7, 36): loaded 10/22 (user OK).** 731 licenses for 126 people are in `profiles` (106 new docs; 20 updated, keeping their class). 79 expired (CDL-Health Questionnaire 40, HazMat Relief List 12, …); 35 expire within 90 days. Checked with a re-dump. `fir-pull-licenses-st01-07-36.js` covers 126 people (Joyce's old seat has no ID). The file has description and expiration, never license numbers. They load into each person's profile (`licenses: [{name, expires}]`, `licensesAsOf`, admin-only) and show in **Licenses and certifications** on the Employee card. Saving class or dates keeps them.
+- **Balance pull 10/22: not-found.** The probe showed the report is a fir-sap2 PDF in a frame, not an fir-db1 page, so the pull was rebuilt (above).
+- **Battalion roster 10/21 (all 10):** the companies and their battalion/division match organization.js exactly (81 apparatus). Stations were added from it (`Organization.STATIONS`, `station(co)`), and there's a Station column on the Employee card list. One day is enough for now (user).
+
 ## Next step
-1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
-2. When the VPN is back, run the H 30 pull and the phone pulls (Battalion Chief first).
+1. **H 30: done 10/22.**
+   - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
+   - Truppa: cover on 3FBOC08M written, 12/6/2025 to 1/15/2027 (start per user).
+2. **H 20: done 10/22.** `fir-pull-H20.js` covered 18 people. 10 already matched.
+   - **Written (start dates per user):**
+     - Jebe 42ETL30M (E42 Lt swing), 8/15/26 to 1/16/27.
+     - Nielsen 03EOL23M, 7/13/26 to 1/17/27.
+     - Melton 09ETL10M, 1/29/26 to 1/17/27.
+     - Anderson,D: 17TOT13M covers 05ENL21M from 8/17/26.
+     - Tokuda: 03EOD25M covers 21EOL03M from 6/12/26.
+     - Atkinson 11ENL31M from 1/19/26.
+     - Dekelaita: 26ETX03M covers 18ETL27M from 4/28/26.
+     - Dresser D from 9/27/26.
+   - **Swing seats:** the tool already follows the rotation from the vacancy list (`swing` tables in data/positions.json), so one cover per person is enough.
+   - **Settled:** Price — Truong owns 22EOL22M, and Price is already D. Moreno — TC = time coming, OE = overtime earned; day-to-day relief at T09, so no cover.
+3. **H 3 (17): pulled 10/22. Paused until 10/23 (user).**
+   - 6 match: Fartash, Lopez,E, Steward, Deaner, Levesque, Hausel (VR fills) and Feerick (owns 03EOA05M).
+   - Proposed, waiting on dates and answers:
+     - Covers: Mah to 44EOA30M; Hanley,Joseph to 35EOA26M; Wiltshire to 29EOA13M; Wu to 36EOA15M; Alvarado to swing 17ETA03M; Summers to 01EOA07M; Huynh to 20EOA30M (less certain); Garavaglia to 25EOA02M (already D).
+     - Nunnery D. Le covers 44EOA31M and is D.
+     - Fix: the 2027 award move into 35EOA26M (HA6250) sits on 05ETX14M, which is Hanley,James HA5462. It should be on Joseph's record.
+   - Questions: start dates; Summers at E01 now?; Rios SPI on 25EOA03M — D or S?
+4. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
+   - Hausel: HA2634 is right, so set the 131st on his card.
+   - Lui: report says LU1896, tool says LU1898.
+   - The 16 report names not in the tool.
+5. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
