@@ -72,8 +72,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
      - Dekelaita: 26ETX03M covers 18ETL27M from 4/28/26.
      - Dresser D from 9/27/26.
    - **Swing seats:** the tool already follows the rotation from the vacancy list (`swing` tables in data/positions.json), so one cover per person is enough.
-   - **Open:** Price, whom fir-db1 has on DP on 22EOL22M (Truong's seat on the vacancy list); Moreno, with fir-db1 codes TC and OE.
-3. **H 3 (17):** re-check against a fresh dump, then send.
+   - **Settled:** Price — Truong owns 22EOL22M, and Price is already D. Moreno — TC = time coming, OE = overtime earned; day-to-day relief at T09, so no cover.
+3. **H 3 (17):** `fir-pull-H3.js` sent 10/22 (still 17 after the re-check).
 4. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
    - Hausel: HA2634 is right, so set the 131st on his card.
    - Lui: report says LU1896, tool says LU1898.
