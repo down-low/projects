@@ -44,6 +44,7 @@ test.beforeEach(async () => {
     await d.doc("users/mem1").set({ email: "m@x.org", status: "active", role: "member", pos: "10EOC03M" });
     await d.doc("trades/t1").set({ posterKey: "10EOC03M", date: "2026-11-05", status: "open", audience: { board: true, to: [] } });
     await d.doc("corrections/mem1").set({ items: { a: { state: "open" } } });
+    await d.doc("feedback/mem1").set({ items: { a: { state: "open", kind: "idea", text: "x" } } });
     await d.doc("audit/a1").set({ action: "x" });
   });
 });
@@ -189,6 +190,15 @@ test("corrections: each member their own; editors and admins all", async () => {
   await assertFails(db(OTHER).doc("corrections/mem1").get());
   await assertFails(db(OTHER).collection("corrections").get());
   await assertSucceeds(db(EDITOR).collection("corrections").get());
+});
+
+test("feedback: each member their own; editors and admins all", async () => {
+  await assertSucceeds(db(MEMBER).doc("feedback/mem1").get());
+  await assertSucceeds(db(MEMBER).doc("feedback/mem1").set({ items: { b: { state: "open", kind: "problem", text: "y" } } }, { merge: true }));
+  await assertFails(db(OTHER).doc("feedback/mem1").get());
+  await assertFails(db(OTHER).collection("feedback").get());
+  await assertFails(db(PENDING).doc("feedback/mem1").get());
+  await assertSucceeds(db(EDITOR).collection("feedback").get());
 });
 
 test("site mode: everyone approved reads it, only admins set it", async () => {

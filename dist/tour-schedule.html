@@ -175,6 +175,21 @@ td.co { font-weight: 500; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; min-width: 0; }
 .ident { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; }
 .ident h2 { font-family: var(--font-display); font-weight: 700; font-size: 2rem; margin: 0; line-height: 1; text-transform: uppercase; }
+/* Person card: the tiles, then one full row of data ending in a › that opens the rest. The row never wraps; values shorten. */
+.ident-row { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: nowrap; align-items: flex-end; gap: 28px; }
+.ident-row .kv { min-width: 0; }
+.ident-row .kv .v { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ident-toggle {
+  position: relative; flex: 0 0 auto; margin-left: auto; align-self: center; width: 44px; height: 44px; padding: 0;
+  display: flex; align-items: center; justify-content: center; border: 1px solid var(--line); border-radius: 50%;
+  background: none; color: var(--fg); cursor: pointer;
+}
+.ident-toggle:hover { border-color: var(--muted); }
+.ident-toggle svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; transition: transform 0.15s; }
+.ident-toggle[aria-expanded="true"] svg { transform: rotate(90deg); }
+.ident-toggle.has-notes::after { content: ""; position: absolute; top: 5px; right: 5px; width: 9px; height: 9px; border-radius: 50%; background: var(--accent); }
+@media (prefers-reduced-motion: reduce) { .ident-toggle svg { transition: none; } }
+.ident-body { flex-basis: 100%; display: flex; flex-wrap: wrap; gap: 10px 28px; align-items: flex-end; border-top: 1px solid var(--line); padding-top: 10px; }
 .kv { display: flex; flex-direction: column; gap: 2px; }
 .kv .k { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); }
 .kv .v { font-family: var(--font-data); font-size: 0.95rem; font-variant-numeric: tabular-nums; }
@@ -573,6 +588,10 @@ s.held + .st { margin-left: 2px; }
 .sheet-list button:hover, .sheet-list a:hover, .sheet-list button:focus-visible, .sheet-list a:focus-visible { background: var(--accent-soft); }
 .sheet-list a .hint { font-size: 0.78rem; }
 .sheet-list .danger { color: var(--accent); }
+.sheet-theme { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 52px; padding: 6px 20px; }
+.theme-seg { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--bg); border: 1px solid var(--line); }
+.sheet-list .theme-seg button { width: auto; min-height: 36px; padding: 4px 14px; border-radius: 999px; align-items: center; font-size: 0.9rem; }
+.sheet-list .theme-seg button[aria-pressed="true"] { background: var(--fg); color: var(--bg); }
 .sheet-mode:empty { display: none; }
 .sheet-list .sheet-mode { border-top: 0; }
 .sheet-mode { padding: 12px 20px; color: var(--muted); font-size: 0.9rem; }
@@ -613,6 +632,7 @@ s.held + .st { margin-left: 2px; }
   .suggest .who > span:first-child { font-weight: 600; font-size: 1rem; }
 
   .ident { gap: 10px 20px; }
+  .ident-row { flex-basis: 100%; gap: 16px; }
   .tiles { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; width: 100%; }
   .tile { display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; min-width: 0; }
   .tile .k { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 600; }
@@ -682,6 +702,8 @@ ul.tlist.plain li { display: block; }
 .invite-box a.btn { text-decoration: none; display: inline-flex; align-items: center; }
 .invite-run { display: flex; flex-direction: column; gap: 6px; }
 .invite-copy { width: 100%; font: inherit; font-size: 0.85rem; color: var(--fg); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+ul.tlist li.invite-one { flex-direction: column; align-items: stretch; }
+li.invite-one .invite-copy { margin-top: 6px; }
 form.add-form { margin-top: 0; }
 fieldset.choice { border: 0; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 fieldset.choice legend { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); font-weight: 600; margin-bottom: 6px; padding: 0; }
@@ -869,6 +891,28 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .launch-groups .hint { font-size: 0.8rem; }
 .launch-groups li { align-items: flex-start; }
 .empty.loading { text-align: center; }
+
+/* Members (anyone who can't edit): Schedule, Crew, Projection, Trades, More; Staffing and By rank move to More */
+.page.simple #tab-dash, .page.simple #tab-rank, .page.simple #tab-me { display: none !important; }
+.page.simple .tab-more { display: flex; }
+.page.simple #tab-person { order: 1; } .page.simple #tab-crew { order: 2; } .page.simple #tab-date { order: 3; }
+.page.simple #tab-trades { order: 4; } .page.simple .tab-more { order: 5; }
+.crew-days { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; }
+.crew-days .btn.icon { flex: 0 0 44px; width: 44px; min-height: 44px; }
+.crew-days .btn.icon:disabled { opacity: 0.35; cursor: default; }
+.crew-days .crew-day { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 4px 2px; display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1.2; }
+.crew-day .cd-dow { font-size: 0.75rem; opacity: 0.8; }
+.crew-day .cd-date { font-weight: 600; white-space: nowrap; }
+.crew-head { margin: 10px 0; }
+
+/* Feedback (feedback.js): the form's text box and the admin list's reply box */
+.fb-form textarea, .fb-reply input { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.fb-form textarea { resize: vertical; }
+.fb-reply { margin-top: 6px; max-width: 520px; }
+.fb-list li > div:first-child { min-width: 0; flex: 1 1 auto; }
+.fb-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+#feedback-detail .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#feedback-detail .seg { margin: 8px 0 4px; }
 </style>
 
 <div class="page">
@@ -887,6 +931,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         <button class="hdr-link" id="awards-link" type="button" aria-controls="view-awards" hidden>2027 awards</button>
         <button class="hdr-link" id="fixes-link" type="button" aria-controls="view-fixes" hidden>Corrections</button>
         <button class="hdr-link" id="card-link" type="button" aria-controls="view-card" hidden>Employee cards</button>
+        <button class="hdr-link" id="feedback-link" type="button" hidden>Feedback</button>
       </div>
       <div class="today" id="today-chip"></div>
       <div class="edit-chip" id="edit-chip" hidden></div>
@@ -900,11 +945,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     <button class="tab" role="tab" id="tab-dash" data-view="dash" aria-controls="view-dash"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 20V11M12 20V5M18 20v-6M3 20h18"/></svg><span class="lbl-wide">Staffing</span><span class="lbl-phone">Staffing</span></button>
     <button class="tab" role="tab" id="tab-date" data-view="date" aria-controls="view-date"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><span class="lbl-wide">Projection</span><span class="lbl-phone">Projection</span></button>
     <button class="tab" role="tab" id="tab-person" data-view="person" aria-controls="view-person"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="lbl-wide">Schedule</span><span class="lbl-phone">Schedule</span></button>
+    <button class="tab" role="tab" id="tab-crew" data-view="crew" aria-controls="view-crew" hidden><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17" cy="9" r="2.6"/><path d="M16.5 14.6c2.6.2 4.4 2 5 4.9"/></svg><span class="lbl-wide">Crew</span><span class="lbl-phone">Crew</span></button>
     <button class="tab" role="tab" id="tab-trades" data-view="trades" aria-controls="view-trades" hidden><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg><span class="lbl-wide">Trades</span><span class="lbl-phone">Trades</span></button>
     <button class="tab" role="tab" id="tab-rank" data-view="rank" aria-controls="view-rank">By rank</button>
     <button class="tab" role="tab" id="tab-me" data-view="me" aria-controls="view-me" hidden>My page</button>
     <button class="tab" role="tab" id="tab-admin" data-view="admin" aria-controls="view-admin" hidden>Admin</button>
-    <button class="tab tab-more" id="tab-more" type="button" aria-haspopup="dialog" aria-controls="more-sheet"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span class="lbl-phone">More</span></button>
+    <button class="tab tab-more" id="tab-more" type="button" aria-haspopup="dialog" aria-controls="more-sheet"><svg class="tab-ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.2"/><circle cx="12" cy="12" r="1.2"/><circle cx="19" cy="12" r="1.2"/></svg><span class="lbl-wide">More</span><span class="lbl-phone">More</span></button>
   </nav>
 
   <section class="gate" id="gate" hidden></section>
@@ -976,6 +1022,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     <div id="person-detail"><div class="empty loading" role="status">Loading the schedule…</div></div>
   </section>
 
+  <section class="view" id="view-crew" role="tabpanel" aria-labelledby="tab-crew" hidden>
+    <div id="crew-detail"></div>
+  </section>
+
   <section class="view" id="view-rank" role="tabpanel" aria-labelledby="tab-rank" hidden>
     <div class="controls">
       <select id="rank-select" aria-label="Rank"></select>
@@ -994,6 +1044,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
   <section class="view" id="view-fixes" role="region" aria-label="Corrections" hidden>
     <div id="fixes-detail"></div>
+  </section>
+
+  <section class="view" id="view-feedback" role="region" aria-label="Feedback (admins)" hidden>
+    <div id="feedback-detail"></div>
   </section>
 
   <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
@@ -1029,6 +1083,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       </div>
       <h3 class="sheet-sec">Tools</h3>
       <ul class="sheet-list">
+        <li data-need="simple"><button type="button" data-go="dash">Staffing</button></li>
         <li><button type="button" data-go="six">6 of 9 tours</button></li>
         <li><button type="button" data-go="rank">Rank month grid</button></li>
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
@@ -1040,6 +1095,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       <ul class="sheet-list" id="sheet-docs"></ul>
       <h3 class="sheet-sec">Account</h3>
       <ul class="sheet-list">
+        <li class="sheet-theme"><span id="theme-lbl">Theme</span>
+          <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
+            <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
+          </div></li>
+        <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
         <li data-need="admin"><button type="button" data-go="admin">Admin</button></li>
         <li data-need="signed-in"><button type="button" class="danger" data-go="signout">Sign out</button></li>
@@ -1079,6 +1139,16 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
       </div>
       <div class="trade-body" id="fix-body"></div>
+    </section>
+  </div>
+  <div class="sheet" id="feedback-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
+      <div class="sheet-head">
+        <h2 id="feedback-title">Feedback</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body" id="feedback-body"></div>
     </section>
   </div>
   <div class="sheet" id="trade-sheet" hidden>
@@ -1465,7 +1535,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
- * answerInvite(code, proposal, note), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
+ * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
  * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
  * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
@@ -1478,7 +1548,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -1539,13 +1609,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
-          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
+          corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
+          feedback: flattenFixes(records.feedback) });
       }
       // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
       // Editors (platformEdit) can still save the backup.
@@ -1670,6 +1741,33 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             var parts = String(id).split("/"), item = {};
             item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
             return db.collection("corrections").doc(parts[0]).update({ items: item });
+          },
+          /* Feedback about the app, stored like corrections (feedback/<user id>); admins read, answer and delete all. */
+          userId: function () { return uid; },
+          canFeedback: function () { return tradeOk(); },
+          sendFeedback: function (rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            var m = myMember(), item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+            item[k] = Object.assign(rec, { state: "open", byKey: m ? m.key : null, createdAt: nowIso(), createdBy: uid });
+            var ref = db.collection("feedback").doc(uid);
+            return tw(ref.get().then(function (s) { return s.exists ? ref.update({ items: item }) : ref.set({ items: item }); }));
+          },
+          handleFeedback: function (id, state, reply) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), item = {};
+            item[parts[1]] = { state: state, handledBy: uid, handledAt: nowIso() };
+            if (reply !== undefined) item[parts[1]].reply = reply;
+            return db.collection("feedback").doc(parts[0]).update({ items: item });
+          },
+          deleteFeedback: function (id) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var parts = String(id).split("/"), ref = db.collection("feedback").doc(parts[0]);
+            return ref.get().then(function (s) {
+              if (!s.exists) return;
+              var d = s.data(), items = Object.assign({}, d.items);
+              delete items[parts[1]];
+              return ref.set(Object.assign({}, d, { items: items }));
+            });
           },
           setVerified: function () {
             if (!myMember()) return Promise.reject(new Error("Pick yourself first."));
@@ -1826,6 +1924,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             adminUsers: function () { return getJson("api/admin/users"); },
             adminAction: function (id, body) { return thenRefresh(call("POST", "api/admin/users/" + encodeURIComponent(id), body)); },
             addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
+            // A member marks one of their own days VA or S (the server allows only their linked seat, one day).
+            addOwnStatus: function (code, day) { return thenRefresh(call("POST", "api/me/statuses", { code: code, day: day })); },
+            removeOwnStatus: function (id) { return thenRefresh(call("DELETE", "api/me/statuses/" + encodeURIComponent(id))); },
             addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
             addCover: function (rec) { return thenRefresh(call("POST", "api/covers", rec)); },
             canAdmin: function () { return active() && me.role === "admin"; },
@@ -1882,7 +1983,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
-    "corrections", "assignments", "rosterOverrides"];
+    "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
   function firebaseAdapter(onChange) {
@@ -1902,7 +2003,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -1953,7 +2054,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
-        corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides });
+        corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
+        feedback: flattenFixes(records.feedback) });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -1970,6 +2072,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
+      watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
@@ -2077,7 +2180,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
       createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
       inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
-      answerInvite: function (code, proposal, note) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "" }); },
+      answerInvite: function (code, proposal, note, emplId) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "", emplId: emplId || "" }); },
       redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
@@ -2091,6 +2194,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
       addStatus: function (rec) { return write("statuses", rec); },
+      // A member marks one of their own days VA or S (the rules allow only that: own seat, one day, self: true).
+      addOwnStatus: function (code, day, name) {
+        if (!active() || !me.pos) return Promise.reject(new Error(NO_EDIT));
+        return w(addRec("statuses", { pos: me.pos, name: name || "", code: code, start: day, end: day, note: "", self: true }));
+      },
+      removeOwnStatus: function (id) { return active() ? w(fs.collection("statuses").doc(id).delete()) : Promise.reject(new Error(NO_EDIT)); },
       addTourChange: function (rec) { return write("tourChanges", rec); },
       addCover: function (rec) { return write("covers", rec); },
       addPerson: function (rec) { return write("people", rec); },
@@ -2169,6 +2278,32 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       deleteCorrection: function (id) {
         if (!admin()) return Promise.reject(new Error(NO_EDIT));
         var parts = String(id).split("/"), ref = fs.collection("corrections").doc(parts[0]);
+        return w(ref.get().then(function (s) {
+          if (!s.exists) return;
+          var d = s.data(), items = Object.assign({}, d.items);
+          delete items[parts[1]];
+          return ref.set(Object.assign({}, d, { items: items }));
+        }));
+      },
+      // Feedback about the app: one record per member, feedback/<uid> = {items: {<id>: feedback}}, like corrections.
+      userId: function () { return user ? user.uid : null; },
+      canFeedback: function () { return active(); },
+      sendFeedback: function (rec) {
+        if (!active()) return Promise.reject(new Error("Sign in first."));
+        var item = {}, k = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+        item[k] = Object.assign(rec, { state: "open", byKey: me.pos || null, byName: me.name || null, site: SITE, createdAt: nowIso(), createdBy: user.uid });
+        return w(fs.collection("feedback").doc(user.uid).set({ items: item }, { merge: true }));
+      },
+      handleFeedback: function (id, state, reply) {
+        if (!editable()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), item = {};
+        item[parts[1]] = { state: state, handledBy: user.uid, handledAt: nowIso() };
+        if (reply !== undefined) item[parts[1]].reply = reply;
+        return w(fs.collection("feedback").doc(parts[0]).set({ items: item }, { merge: true }));
+      },
+      deleteFeedback: function (id) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var parts = String(id).split("/"), ref = fs.collection("feedback").doc(parts[0]);
         return w(ref.get().then(function (s) {
           if (!s.exists) return;
           var d = s.data(), items = Object.assign({}, d.items);
@@ -2468,21 +2603,26 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return wireSignIn(el);
         }
         var said = info.answer ? (info.answer.later ? "pay back later" : "they work your " + niceDate(info.answer.swapDate)) : "";
+        var forWho = info.forName ? esc(info.forName) : "";
         card.innerHTML = "<h2>Shift trade</h2>" +
+          (forWho ? "<p>Hi " + forWho + ", this trade invite is for you.</p>" : "") +
           "<p><b>" + esc(info.posterName) + "</b>" + (info.posterRank ? " (" + esc(info.posterRank) + ")" : "") + " wants to trade <b>" +
           esc(niceDate(info.date)) + "</b>, a 24-hr shift" + (info.station ? " at " + esc(info.station) : "") + ".</p>" +
           (info.note ? '<p class="trade-note">' + esc(info.note) + "</p>" : "") +
-          (info.forName ? '<p class="hint">This link is for ' + esc(info.forName) + ".</p>" : "") +
+          (forWho ? '<p class="hint">Not ' + forWho + "? Don't answer here; ask " + esc(info.posterName) + " to send you your own link.</p>" : "") +
           (said ? "<p>You answered: <b>" + esc(said) + "</b>. You can change it below.</p>" : "") +
-          (info.open
+          (info.open && info.needsSignIn ? "<p>Sign in to answer.</p>" : "") +
+          (info.open && !info.needsSignIn
             ? '<form class="edit" id="inv-form" novalidate><fieldset class="choice"><legend>I\'m interested</legend>' +
               '<label class="chk"><input type="radio" name="inv-kind" value="later" checked> Pay me back later</label>' +
               '<label class="chk"><input type="radio" name="inv-kind" value="swap"> Swap: they work one of my shifts</label>' +
               '<label class="indent">My day they\'d work<input type="date" id="inv-swap" disabled></label></fieldset>' +
               '<label>Note (optional)<input type="text" id="inv-note" maxlength="300"></label>' +
+              '<label>Your Employee ID<input type="text" id="inv-empl" maxlength="6" placeholder="e.g. LE1234" autocapitalize="characters" autocomplete="off"></label>' +
+              '<p class="hint">So only ' + (forWho || "the person this was sent to") + " can answer.</p>" +
               '<div class="row"><button class="btn primary" type="submit">Send my answer</button><span class="msg" id="inv-msg" role="status"></span></div></form>'
-            : "<p>This trade is no longer open.</p>") +
-          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. If they pick you, sign in with Google and your Employee ID to confirm it's you.") + "</p>" +
+            : info.open ? "" : "<p>This trade is no longer open.</p>") +
+          '<p class="hint">' + (info.used ? "Sign in to see it on the trade board." : "No account needed to answer. Sign in to see the whole trade board.") + "</p>" +
           signInButton();
         wireSignIn(el);
         var f = $("inv-form");
@@ -2493,9 +2633,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           e.preventDefault();
           var msg = $("inv-msg"), later = f.querySelector("[name=inv-kind]:checked").value === "later";
           if (!later && !swap.value) return api.say(msg, "Pick the day they'd work for you.", true);
+          var empl = $("inv-empl").value.trim().toUpperCase();
+          if (!/^[A-Z]{2}\d{4}$/.test(empl)) return api.say(msg, "Enter your Employee ID: two letters and four digits, e.g. LE1234.", true);
           api.say(msg, "Sending…");
-          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim())
-            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it; you'll confirm it's you if they pick you."); },
+          api.backend().answerInvite(code, later ? { later: true } : { swapDate: swap.value }, $("inv-note").value.trim(), empl)
+            .then(function () { api.say(msg, "Sent. " + info.posterName + " will see it."); },
               function (er) { api.say(msg, er.message, true); });
         };
       }, function (er) {
@@ -4030,7 +4172,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function inviteText(t, k) {
       var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
       var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
-      return p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
+      return (k ? "Hi " + api.firstName(k) + ", " : "") + p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
     }
@@ -4062,6 +4204,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       if (!b.onTool) return [];
       return ((t.audience && t.audience.to) || []).filter(function (k) { return byPos()[k] && b.onTool(k) === false; });
     }
+    // Who a text goes to, and the staff-list number Messages will open to, so the poster knows before sending.
+    function sendTo(t, k) {
+      var mine = inviteFor(t, k);
+      return mine && mine.cell ? '<p class="hint">Opens to ' + esc(M.showCell(mine.cell)) + "</p>" : "";
+    }
     function smsLink(t, k, label, cls, run) {
       var mine = inviteFor(t, k);
       return '<a class="btn small' + (cls ? " " + cls : "") + '" href="' + esc(smsHref(inviteText(t, k), mine && mine.cell ? [mine.cell] : [])) + '" target="_blank" rel="noopener" data-invite="' +
@@ -4074,13 +4221,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       if (!keys.length) return "";
       var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy the text once and send it from Messages" +
-          (keys.length === 1 ? "." : " to each of them, or as one group text. It's the same text for everyone.") + "</p>" +
-          '<textarea class="invite-copy" readonly rows="5" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" +
-          '<div class="row"><button class="btn small primary" data-invite-copy="' + esc(t.id) + '">Copy text</button><span class="msg" data-copy-msg="' + esc(t.id) + '"></span></div>' +
+        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy each person's text and send it to them from Messages.</p>" +
           '<ul class="tlist">' + keys.map(function (k) {
-            var done = ui.invited[t.id + "/" + k];
-            return "<li><div>" + who(byPos()[k]) + "</div>" + '<div class="row">' +
+            var done = ui.invited[t.id + "/" + k], id = t.id + "/" + k, name = api.firstName(k);
+            return '<li class="invite-one"><div>' + who(byPos()[k]) +
+              '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(id) + '">' + esc(inviteText(t, k)) + "</textarea>" +
+              '<span class="msg" data-copy-msg="' + esc(id) + '"></span></div>' + '<div class="row">' +
+              '<button class="btn small primary" data-invite-copy="' + esc(id) + '">Copy ' + esc(name) + "'s text</button>" +
               '<button class="btn small' + (done ? " tag-st-set" : "") + '" data-mark="' + esc(t.id) + '" data-key="' + esc(k) + '">' +
               (done ? "Texted ✓" : "Mark texted") + "</button></div></li>";
           }).join("") + "</ul></div>";
@@ -4096,18 +4243,18 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         var k = run.keys[run.i];
         html += k
           ? '<div class="invite-run"><span class="hint">' + (run.i + 1) + " of " + run.keys.length + "</span> " + who(byPos()[k]) +
-            '<div class="row">' + smsLink(t, k, "Text " + byPos()[k].name, "primary", true) +
+            sendTo(t, k) + '<div class="row">' + smsLink(t, k, "Text " + api.firstName(k), "primary", true) +
             '<button class="btn small" data-invite-skip>Skip</button><button class="btn small" data-invite-stop>Done</button></div></div>'
           : '<div class="row"><span class="hint">All done.</span><button class="btn small" data-invite-stop>Close</button></div>';
       } else {
         html += '<ul class="tlist">' + keys.map(function (k) {
-          return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + "</div>" +
-            smsLink(t, k, "Invite") + "</li>";
+          return "<li><div>" + who(byPos()[k]) + (ui.invited[t.id + "/" + k] ? ' <span class="tag tag-st-set">Texted</span>' : "") + sendTo(t, k) + "</div>" +
+            smsLink(t, k, "Text " + api.firstName(k)) + "</li>";
         }).join("") + "</ul>" +
           '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
             '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
-          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
@@ -5079,6 +5226,145 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
     return { link: link, wireLinks: wireLinks, open: open, openVerify: openVerify, render: render, prefill: prefill, saved: saved,
       count: count, afterClaim: afterClaim, wire: wire, canSuggest: canSuggest, summary: summary, apply: apply };
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* Feedback about the app itself (problems, ideas, questions), separate from "Something wrong?" (schedule data).
+ * window.FeedbackViews(api) -> {open, refresh, render, count, canSend, isAdmin, wire}. `api` comes from app.js.
+ * - Anyone who can send (backend().sendFeedback, canFeedback()) opens a short form from the header link or the More sheet;
+ *   it can carry what they were looking at (tab, date or person, site, screen width; never contact details). Their own
+ *   feedback, with its state and any reply, shows below the form.
+ * - Admins (backend().handleFeedback) see everything on the Feedback view: Done / Reopen with a reply the sender sees,
+ *   Delete, and Copy all open (plain text to paste to Claude).
+ * Stored like corrections, one record per member (`feedback/<user id>` = {items: {<id>: feedback}}): members read and
+ * write their own, admins read and update all.
+ */
+(function (root) {
+  "use strict";
+
+  root.FeedbackViews = function (api) {
+    var $ = api.$, esc = api.esc;
+    var KINDS = [["problem", "Problem"], ["idea", "Idea"], ["question", "Question"]];
+    var KIND_LABEL = { problem: "Problem", idea: "Idea", question: "Question" };
+    var MAX = 2000;
+    var ui = { kind: "problem", show: "open", sent: false };
+
+    function backend() { return api.backend(); }
+    function canSend() { var b = backend(); return !!(b && b.sendFeedback && (!b.canFeedback || b.canFeedback())); }
+    function isAdmin() { var b = backend(); return !!(b && b.handleFeedback && b.canEdit && b.canEdit()); }
+    function list() { return (api.recs().feedback || []).slice().sort(function (a, b) { return String(b.createdAt).localeCompare(String(a.createdAt)); }); }
+    function mine() { var b = backend(), uid = b && b.userId ? b.userId() : null; return list().filter(function (f) { return f.owner === uid; }); }
+    function count() { return list().filter(function (f) { return f.state === "open"; }).length; }
+    function when(isoTs) { var d = new Date(isoTs); return isNaN(d) ? "" : api.shortDate(d); }
+    function who(f) { var p = f.byKey && api.byPos()[f.byKey]; return f.byName || (p ? p.name : "A member"); }
+
+    // ---------- The form (sheet) ----------
+    function open() {
+      ui.sent = false;
+      draw();
+      $("feedback-sheet").hidden = false;
+      var t = $("fb-text");
+      if (t) t.focus();
+    }
+    function close() { $("feedback-sheet").hidden = true; }
+    // Records changed: once something was sent, redraw so it shows under "Your feedback" (the text box is empty then).
+    function refresh() { if (ui.sent && !$("feedback-sheet").hidden) draw(); }
+    function draw() {
+      var own = mine();
+      $("feedback-body").innerHTML = (ui.sent ? '<p class="msg">Thanks, sent to the admins.</p>' : "") +
+        '<form class="edit fb-form" id="fb-form" novalidate>' +
+        '<p class="hint">Tell us what isn\'t working or what would help. For a wrong seat, leave or tour, use <b>Something wrong?</b> on the person\'s page instead.</p>' +
+        '<div class="seg" role="group" aria-label="Kind">' + KINDS.map(function (k) {
+          return '<button class="btn small' + (ui.kind === k[0] ? " primary" : "") + '" type="button" data-fbkind="' + k[0] + '" aria-pressed="' +
+            (ui.kind === k[0]) + '">' + k[1] + "</button>";
+        }).join("") + "</div>" +
+        '<label>What happened, or what would help?<textarea id="fb-text" rows="5" maxlength="' + MAX + '"></textarea></label>' +
+        '<label class="chk"><input type="checkbox" id="fb-ctx" checked> Include what I was looking at</label>' +
+        '<p class="hint" id="fb-ctx-text">' + esc(api.context()) + "</p>" +
+        '<div class="row"><button class="btn primary" type="submit">Send</button><span class="msg" id="fb-msg" role="status"></span></div></form>' +
+        (own.length ? '<h3 class="sub-h">Your feedback</h3><ul class="tlist fb-list">' + own.map(function (f) {
+          return "<li><div><span class=\"tag\">" + esc(KIND_LABEL[f.kind] || f.kind) + "</span> " + esc(when(f.createdAt)) +
+            " · " + esc(f.state === "open" ? "Open" : "Done") + "<div>" + esc(f.text) + "</div>" +
+            (f.reply ? '<div class="hint">Reply: “' + esc(f.reply) + "”</div>" : "") + "</div></li>";
+        }).join("") + "</ul>" : "");
+      $("feedback-body").querySelectorAll("[data-fbkind]").forEach(function (b) {
+        b.onclick = function () { ui.kind = b.dataset.fbkind; var t = $("fb-text").value; draw(); $("fb-text").value = t; };
+      });
+      $("fb-ctx").onchange = function () { $("fb-ctx-text").hidden = !this.checked; };
+      $("fb-form").onsubmit = function (e) { e.preventDefault(); send(); };
+    }
+    function send() {
+      var msg = $("fb-msg"), text = $("fb-text").value.trim();
+      if (!text) return api.say(msg, "Write a few words first.", true);
+      api.say(msg, "Sending…");
+      backend().sendFeedback({ kind: ui.kind, text: text.slice(0, MAX), context: $("fb-ctx").checked ? api.context() : null }).then(function () {
+        ui.sent = true;
+        draw();
+        api.renderAll();
+      }, function (er) { api.say(msg, er.message, true); });
+    }
+
+    // ---------- Admin list ----------
+    function plain(f) {
+      return "[" + (KIND_LABEL[f.kind] || f.kind) + "] " + when(f.createdAt) + " · " + who(f) + "\n" + f.text + (f.context ? "\n(" + f.context + ")" : "");
+    }
+    function render() {
+      var el = $("feedback-detail");
+      if (!isAdmin()) { el.innerHTML = '<div class="empty">Only admins see everyone\'s feedback.</div>'; return; }
+      var all = list(), shown = all.filter(function (f) { return ui.show === "all" ? true : ui.show === "open" ? f.state === "open" : f.state !== "open"; });
+      el.innerHTML = '<div class="card"><h2 class="view-title">Feedback</h2>' +
+        '<p class="hint">Sent by members from <b>Feedback</b>. Mark it done with a reply they\'ll see, or copy the open ones to paste to Claude.</p>' +
+        '<div class="row"><p>' + count() + ' open</p><button class="btn small" type="button" id="fb-new">Send feedback</button>' +
+        '<button class="btn small" type="button" id="fb-copy"' + (count() ? "" : " disabled") + '>Copy all open</button></div>' +
+        '<div class="seg" role="group" aria-label="Show">' + [["open", "Open"], ["done", "Done"], ["all", "All"]].map(function (s) {
+          return '<button class="btn small' + (ui.show === s[0] ? " primary" : "") + '" type="button" data-fbshow="' + s[0] + '">' + s[1] + "</button>";
+        }).join("") + "</div>" +
+        (shown.length ? '<ul class="tlist fb-list">' + shown.map(function (f) {
+          var open = f.state === "open";
+          return '<li><div><span class="tag">' + esc(KIND_LABEL[f.kind] || f.kind) + "</span> <b>" + esc(who(f)) + "</b> " +
+            '<span class="hint">' + esc(when(f.createdAt)) + (open ? "" : " · done") + "</span>" +
+            '<div class="fb-text">' + esc(f.text) + "</div>" + (f.context ? '<div class="hint">' + esc(f.context) + "</div>" : "") +
+            (f.reply ? '<div class="hint">Reply: “' + esc(f.reply) + "”</div>" : "") +
+            (open ? '<div class="row fb-reply"><input type="text" maxlength="500" placeholder="Reply (optional, the sender sees it)" data-fbreply="' + esc(f.id) + '"></div>' : "") +
+            '</div><div class="acts">' +
+            (open ? '<button class="btn small primary" type="button" data-fbdone="' + esc(f.id) + '">Done</button>'
+              : '<button class="btn small" type="button" data-fbreopen="' + esc(f.id) + '">Reopen</button>') +
+            (backend().deleteFeedback ? '<button class="btn small danger" type="button" data-fbdel="' + esc(f.id) + '">Delete</button>' : "") +
+            "</div></li>";
+        }).join("") + "</ul>" : '<p class="hint">Nothing here.</p>') + '<span class="msg" id="fbl-msg" role="status"></span></div>';
+      var fail = function (er) { api.say($("fbl-msg"), er.message, true); };
+      $("fb-new").onclick = open;
+      $("fb-copy").onclick = function () {
+        var text = all.filter(function (f) { return f.state === "open"; }).map(plain).join("\n\n");
+        var done = function () { api.say($("fbl-msg"), "Copied " + count() + " to the clipboard."); };
+        try { navigator.clipboard.writeText(text).then(done, function () { api.say($("fbl-msg"), "Couldn't copy here.", true); }); }
+        catch (e) { api.say($("fbl-msg"), "Couldn't copy here.", true); }
+      };
+      el.querySelectorAll("[data-fbshow]").forEach(function (b) { b.onclick = function () { ui.show = b.dataset.fbshow; render(); }; });
+      el.querySelectorAll("[data-fbdone]").forEach(function (b) {
+        b.onclick = function () {
+          var r = el.querySelector('[data-fbreply="' + b.dataset.fbdone + '"]');
+          backend().handleFeedback(b.dataset.fbdone, "done", r && r.value.trim() ? r.value.trim() : null).then(render, fail);
+        };
+      });
+      el.querySelectorAll("[data-fbreopen]").forEach(function (b) {
+        b.onclick = function () { backend().handleFeedback(b.dataset.fbreopen, "open").then(render, fail); };
+      });
+      el.querySelectorAll("[data-fbdel]").forEach(function (b) {
+        b.onclick = function () {
+          if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm delete"; return; }
+          backend().deleteFeedback(b.dataset.fbdel).then(render, fail);
+        };
+      });
+    }
+
+    function wire() {
+      $("feedback-sheet").addEventListener("click", function (e) { if (e.target.closest("[data-close]")) close(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("feedback-sheet").hidden) close(); });
+    }
+
+    return { open: open, refresh: refresh, render: render, count: count, canSend: canSend, isAdmin: isAdmin, wire: wire };
   };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
@@ -6484,7 +6770,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {} };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, crewIdx: 0, crewStart: 0 };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -6552,10 +6838,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   function store(k, v) { try { localStorage.setItem("tour-schedule:" + k, v); } catch (e) { /* storage unavailable */ } }
   function recall(k) { try { return localStorage.getItem("tour-schedule:" + k); } catch (e) { return null; } }
 
+  /* ---------- Theme: follow the phone, or always light or dark (remembered on this device) ---------- */
+  function applyTheme(v) {
+    if (v !== "light" && v !== "dark") v = "system";
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.themeSet === v ? "true" : "false"); });
+  }
+  applyTheme(recall("theme"));
+
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -6563,6 +6858,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     $("awards-link").classList.toggle("on", v === "awards");
     $("fixes-link").classList.toggle("on", v === "fixes");
     $("card-link").classList.toggle("on", v === "card");
+    $("feedback-link").classList.toggle("on", v === "feedback");
     store("view", v);
     render();
   }
@@ -6572,12 +6868,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     else if (state.view === "six") Dash.renderSix();
     else if (state.view === "date") renderDate();
     else if (state.view === "person") renderPerson();
+    else if (state.view === "crew") renderCrew();
     else if (state.view === "me") Accounts.renderMe();
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
+    else if (state.view === "feedback") Feedback.render();
     else renderRank();
   }
 
@@ -6673,7 +6971,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var offParts = OFF_CODES.filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " covering elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
-    var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
+    // Members see the total off; editors and admins also get the breakdown (D, WE, covering elsewhere, covered).
+    var offText = offTotal ? " · " + offTotal + " off" + (simpleUi() ? "" : " (" + offParts.join(" · ") + ")") : "";
     if (phone) {
       $("date-summary").innerHTML = '<div class="pt-sum">' + (M.holidayFor(d) ? holidayNote(d) + "<br>" : "") +
         "Tours " + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
@@ -6765,6 +7064,54 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
     if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">' + (/^2027 (award|assignment)/.test(x.moved.note || "") ? "2027 seat" : "Moved here") + "</span>");
     return tags;
+  }
+
+  /* ---------- Crew: who's on your apparatus on your next shifts (members) ---------- */
+  var RANK_SHORT = { "Battalion Chief": "BC", "Rescue Captain": "RC", Captain: "Capt", Lieutenant: "Lt", "FF/Paramedic": "FF/PM",
+    Firefighter: "FF", "Marine Engineer": "ME" };
+  function renderCrew() {
+    var out = $("crew-detail");
+    var me = byPos[myPos()];
+    if (!me) {
+      out.innerHTML = '<div class="empty">Link your account to your roster spot (Trades, This is me) to see your crew.</div>';
+      return;
+    }
+    // Your next 12 working shifts, three at a time between ‹ and ›.
+    var shifts = [], d = today();
+    for (var k = 0; k < 150 && shifts.length < 12; k++, d = addDays(d, 1)) {
+      var s = day(me, d);
+      if (s && !s.status) shifts.push({ d: d, co: s.co || home(me), k: k });
+    }
+    if (!shifts.length) { out.innerHTML = '<div class="empty">No shifts in the next 150 days.</div>'; return; }
+    var start = Math.max(0, Math.min(state.crewStart || 0, Math.floor((shifts.length - 1) / 3) * 3));
+    var i = Math.min(Math.max(state.crewIdx, start), Math.min(start + 2, shifts.length - 1)), cur = shifts[i];
+    var co = Organization.apparatus(cur.co);
+    var rows = mergeCovered(dayRows(cur.d)).filter(function (r) { return r.name && Organization.apparatus(r.co) === co; })
+      .sort(function (a, b) { return RANK_ORDER.indexOf(a.slot.rank) - RANK_ORDER.indexOf(b.slot.rank) || (a.name || "").localeCompare(b.name || ""); });
+    var on = rows.filter(function (r) { return !r.off; }).length;
+    out.innerHTML =
+      '<div class="crew-days" role="group" aria-label="Your next shifts">' +
+      '<button type="button" class="btn icon" data-crew-page="-3" aria-label="Earlier shifts"' + (start === 0 ? " disabled" : "") + ">&lsaquo;</button>" +
+      shifts.slice(start, start + 3).map(function (x, n) {
+        var j = start + n;
+        return '<button type="button" class="btn small crew-day' + (j === i ? " primary" : "") + '" data-crew="' + j + '" aria-pressed="' + (j === i) + '">' +
+          '<span class="cd-dow">' + (x.k === 0 ? "Today" : x.k === 1 ? "Tomorrow" : DOW[x.d.getDay()]) + "</span>" +
+          '<span class="cd-date">' + esc(MONTHS[x.d.getMonth()].slice(0, 3) + " " + x.d.getDate()) + "</span></button>";
+      }).join("") +
+      '<button type="button" class="btn icon" data-crew-page="3" aria-label="Later shifts"' + (start + 3 >= shifts.length ? " disabled" : "") + ">&rsaquo;</button></div>" +
+      '<p class="hint crew-head">' + esc(co) + " on " + esc(longDate(cur.d)) + " · " + on + " on duty</p>" +
+      '<div class="group"><ul class="plist">' + rows.map(function (x) {
+        return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(RANK_SHORT[x.slot.rank] || x.slot.rank) + "</span>" +
+          '<span class="pl-main"><span class="pl-names">' + nameCell(x) + (x.who && x.who.pos === me.pos ? ' <span class="tag">You</span>' : "") + "</span>" +
+          '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
+          '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
+      }).join("") + "</ul></div>";
+    out.querySelectorAll("[data-crew]").forEach(function (b) {
+      b.onclick = function () { state.crewIdx = +b.dataset.crew; renderCrew(); };
+    });
+    out.querySelectorAll("[data-crew-page]").forEach(function (b) {
+      b.onclick = function () { state.crewStart = start + +b.dataset.crewPage; state.crewIdx = state.crewStart; renderCrew(); };
+    });
   }
 
   /* ---------- Schedule: one person ---------- */
@@ -6894,7 +7241,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
-    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit());
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p);
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -6933,23 +7280,42 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       identTiles(p, tourNow, next) +
+      // Two rows up top: the tiles, then one full row of data (rank, position, today's leave) ending in a › that opens
+      // the rest. The row never wraps; values shorten instead. No label: not "Details", since in the department a
+      // detail is an assignment to another station.
+      '<div class="ident-row">' +
       kv("Rank", p.rank) +
+      (p.added ? kv("Roster", "Added, not on the vacancy list") + (p.tour ? kv("Apparatus", p.company) : "") : kv("Position", p.title)) +
+      (p.added && !p.tour ? "" : '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>") +
+      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
+      (function () {
+        var notes = [];
+        if (actingNow) notes.push(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow));
+        if (moveNext) notes.push("New seat");
+        if (coveredNow) notes.push("Covered");
+        if (upcoming) notes.push("Tour change");
+        if (p.open) notes.push("Open for bid");
+        var open = !!state.folds.ident;
+        return '<button type="button" class="ident-toggle' + (notes.length ? " has-notes" : "") + '" id="ident-toggle" aria-controls="ident-body" aria-expanded="' + open +
+          '" aria-label="' + esc((open ? "Show less" : "Show more") + (notes.length ? " (" + notes.join(", ") + ")" : "")) + '"' +
+          (notes.length ? ' title="' + esc(notes.join(" · ")) + '"' : "") +
+          '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+          Trades.personExtras(p) +
+          '<div class="ident-body" id="ident-body"' + (open ? "" : " hidden") + ">";
+      })() +
       kv("Employee ID", p.emplId || "Not on file", "kv-id") +
-      (p.added && !p.tour
-        ? kv("Roster", "Added, not on the vacancy list")
-        : (p.added ? kv("Roster", "Added, not on the vacancy list") + kv("Apparatus", p.company) : kv("Position", p.title) + kv("Position no.", p.pos)) +
-          '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
-          (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
-          kv("Works watches", watchesFor(tourNow).join(" "))) +
+      (p.added ? "" : kv("Position no.", p.pos)) +
+      (p.added && !p.tour ? "" : (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
+        kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
       (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow), slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
       (moveNext ? kv(moveNext.start > iso(t) ? "Own seat from " + shortDate(fromIso(moveNext.start)) : "Own seat", (byPos[moveNext.targetPos] || {}).title + " " + moveNext.targetPos +
         (actingNow && (!actingNow.end || actingNow.end >= moveNext.start) ? " · the cover above continues until it's ended" : "")) : "") +
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
-      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) +
-      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Fix.link(p) +
+      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") +
+      "</div></div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -6974,6 +7340,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
+    $("ident-toggle").onclick = function () {
+      var open = $("ident-body").hidden;
+      state.folds.ident = open;
+      $("ident-body").hidden = !open;
+      this.setAttribute("aria-expanded", open);
+      this.setAttribute("aria-label", this.getAttribute("aria-label").replace(open ? "Show more" : "Show less", open ? "Show less" : "Show more"));
+    };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -6988,7 +7361,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     });
   }
   /* ---------- One day's options (from the calendar or Next shifts) ----------
-     Trade the shift (your own page) or mark one day VA or S (editors; D and WE stay in the Edit forms).
+     Trade the shift (your own page) or mark one day VA or S (editors on anyone's page, members on their own, with Undo
+     for a day they marked; D and WE stay in the Edit forms).
      Days are only tappable for someone who can do one of those. */
   var dayOpener = null;
   function openDay(p, dIso, opener) {
@@ -7005,10 +7379,17 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
-    if (s && !s.status && backend && backend.canEdit()) {
+    var editor = !!(backend && backend.canEdit()), own = markOwnDay(p);
+    if (s && !s.status && (editor || own)) {
       leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S"].map(function (c) {
         return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
       }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
+    }
+    // A day you marked yourself (VA or S from this drawer) can be taken back here.
+    var mark = own && s && s.status ? recs.statuses.filter(function (r) { return r.self && r.pos === p.pos && r.start === dIso && r.end === dIso; })[0] : null;
+    if (mark) {
+      leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
+        '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
     if (!acts.length && !leave) return; // nothing to do on this day
     var hol = M.holidayFor(d);
@@ -7030,11 +7411,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       b.onclick = function () {
         var code = b.dataset.dayLeave;
         say($("day-msg"), "Saving…");
-        backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" })
+        (editor ? backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" }) : backend.addOwnStatus(code, dIso, p.name))
           .then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
       };
     });
+    $("day-body").querySelectorAll("[data-day-undo]").forEach(function (b) {
+      b.onclick = function () {
+        say($("day-msg"), "Saving…");
+        backend.removeOwnStatus(b.dataset.dayUndo).then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
+      };
+    });
   }
+  // Members mark their own days VA or S (one day at a time) from the day drawer.
+  function markOwnDay(p) { return !!(backend && backend.addOwnStatus && myPos() && p.pos === myPos()); }
   function closeDay() {
     if ($("day-sheet").hidden) return;
     $("day-sheet").hidden = true;
@@ -7498,6 +7887,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     wireSheet();
     wireList();
     Fix.wire();
+    Feedback.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -7551,6 +7941,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     $("awards-link").onclick = function () { setView("awards"); };
     $("fixes-link").onclick = function () { setView("fixes"); };
     $("card-link").onclick = function () { setView("card"); };
+    $("feedback-link").onclick = openFeedback;
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -7606,7 +7997,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     booted = true;
     applyAccountUi();
     var v = openTrades ? "trades" : recall("view");
-    setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
+    // Members start on their own schedule, or on one of their main tabs if they left it open last time.
+    if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(v) === -1) v = "person";
+    setView(tabAllowed(v) ? v : isPhone() || simpleUi() ? "person" : "dash");
   }
   function selectText(el) {
     if (!el) return;
@@ -7647,15 +8040,41 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var k = backend.myKey();
     return k && byPos[k] ? k : null;
   }
+  // The simpler member layout: anyone who can't edit (everyone on the employee app). Editors and admins keep every tab.
+  // Until the account is known (the single-file page boots first), keep today's layout.
+  function simpleUi() { return !!backend && !backend.canEdit(); }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
+    if (v === "crew") return simpleUi() && !!myPos();
     if (v === "me") return serverMode() && backend.isActive();
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
+    if (v === "feedback") return Feedback.isAdmin();
     return false;
+  }
+  // Feedback: admins get the list (with its own Send feedback); everyone else the form.
+  function openFeedback() { if (tabAllowed("feedback")) setView("feedback"); else Feedback.open(); }
+  function feedbackBadge() {
+    var n = Feedback.isAdmin() ? Feedback.count() : 0;
+    $("feedback-link").textContent = "Feedback" + (n ? " (" + n + ")" : "");
+    $("feedback-count").textContent = n ? n + " open" : "";
+    Feedback.refresh();
+  }
+  // What the sender was looking at, sent with feedback when they leave it ticked (no contact details).
+  function feedbackContext() {
+    var names = { dash: "Staffing", date: "Projection", person: "Schedule", crew: "My crew", rank: "Rank grid", six: "6 of 9", trades: "Trades",
+      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback" };
+    var v = state.view, bits = [names[v] || v];
+    if (v === "date") bits.push(iso(state.date));
+    if (v === "dash") bits.push(iso(state.dashDate));
+    if (v === "person" && state.personPos && byPos[state.personPos]) bits.push(byPos[state.personPos].name);
+    var site = !backend ? "page" : backend.mode === "db" ? "claude.ai page" : backend.mode === "snapshot" ? "view-only page"
+      : window.FIREBASE_SITE === "app" ? "employee app" : window.FIREBASE_SITE ? "back office" : backend.mode;
+    bits.push(site, (window.innerWidth || 0) + "px wide" + (isPhone() ? " (phone)" : ""));
+    return "Looking at: " + bits.join(" · ");
   }
   // Open corrections, on the header link and the menu item (admins).
   function fixesBadge() {
@@ -7665,16 +8084,21 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
+    document.querySelector(".page").classList.toggle("simple", simpleUi());
+    $("tab-crew").hidden = !tabAllowed("crew");
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
     $("card-link").hidden = !tabAllowed("card");
-    if (!tabAllowed(state.view) && booted) setView("dash");
+    $("feedback-link").hidden = !(Feedback.canSend() || tabAllowed("feedback"));
+    feedbackBadge();
+    if (!tabAllowed(state.view) && booted) setView(simpleUi() ? "person" : "dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
-    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -7707,11 +8131,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     $("tab-more").onclick = function () { openSheet(this); };
     $("more-sheet").addEventListener("click", function (e) {
       if (e.target.closest("[data-close]")) return closeSheet();
+      var th = e.target.closest("[data-theme-set]");
+      if (th) { store("theme", th.dataset.themeSet); applyTheme(th.dataset.themeSet); return; }
       var go = e.target.closest("[data-go]");
       if (go) {
         var to = go.dataset.go;
         closeSheet();
         if (to === "signout") return backend.signOut();
+        if (to === "feedback") return openFeedback();
         if (to === "seats") { state.seatsOpen = true; return setView("dash"); }
         if (to === "dash") state.seatsOpen = false;
         if (tabAllowed(to)) setView(to);
@@ -7782,12 +8209,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
+  // What to call someone in a text: the first name from the staff list ("Doe,Jane Q" -> Jane), else "J. Doe".
+  function firstName(pos) {
+    var e = emplIds && emplIds.ids && emplIds.ids[pos], parts = String((e && e.name) || (byPos[pos] || {}).name || "").split(",");
+    var last = parts[0].trim(), first = (parts[1] || "").trim().split(/\s+/)[0];
+    return first.length > 1 ? first : first ? first + ". " + last : last;
+  }
   var Trades = window.TradeViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, byPos: function () { return byPos; },
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
     afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+    firstName: firstName,
   });
 
   var Fix = window.CorrectionViews({
@@ -7795,6 +8229,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, home: home, tourOn: tourOn, day: day,
     statusFor: function (pos, d) { return M.statusFor(pos, d, recs.statuses); }, slotFromInput: slotFromInput, choosePerson: choosePerson,
     renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
+  });
+
+  var Feedback = window.FeedbackViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
   });
 
   var Card = window.CardViews({
@@ -7838,9 +8277,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [] };
     recsVersion++;
     fixesBadge();
+    feedbackBadge();
     if (r.contacts) contacts = r.contacts;
     siteBanner();
     if (booted) rebuildPeople();
@@ -7860,6 +8300,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       // Linked with "This is me": open on yourself, unless someone was already picked this visit.
       if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
       applyAccountUi();
+      // Members (now that we know) start on a main tab, as boot does on the other builds.
+      if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(state.view) === -1) return setView("person");
       renderAll(true);
     });
   } else {

@@ -1,5 +1,20 @@
 # Release list
 
+## Next release (specced, not built; build one at a time: Invite first, then Overtime)
+
+### Invite a coworker
+- **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
+- **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
+- **No server work:** signing up already works from the plain app address. The QR is drawn in the page (a small QR library: a pinned version, or vendored into the repo for Firebase).
+- On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
+
+### Overtime days on my calendar
+- **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
+- **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
+- **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
+- **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
+- **Later:** admins use Want OT days to fill shortages.
+
 ## Upcoming: December 2026 rollout
 
 ### Apply the 2027 vacancy awards (26 A-082)
@@ -174,6 +189,7 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
     5. **Reading the PDFs:** a PDF text reader is enough if they are text (order, name, Employee ID). Use the Claude API only if they are scans, and only with approval, since that sends city data to another outside service.
 
 ## Shipped
+- Feedback button (Oct 2026): members send problems, ideas and questions about the app; admins answer, close and copy them from the Feedback view.
 - **Academy class** on the Employee card (identity section) and under **Personal details** on a person's page (admins). Kept in the private profile with the birth and hire dates; filled from the PX narrative rating report of 09/02/2026 (classes 129th–137th).
 - Move log: every assignment-change notice row is kept per person (from/to seat, Last Reg, First Reg, ranks, source) and shown in a closed **Moves** fold on their page.
 - **Employee cards** (admins only; header link or More menu, and **Employee card** on a person's page): find anyone and edit their whole record in one place: name, rank and Employee ID (roster seats through `rosterOverrides`, added people on their record), own seat and moves, current cover and its type, leave, tour changes, the staff-list cell number, the "This is me" claim (remove, with Undo), their corrections (apply, dismiss, reopen, delete), and a history of every record touching them with Edit and Delete. Members and viewers never see it. The screen opens on a roster: rank tiles with headcounts that filter a sortable, paged table with a column chooser and a status quick edit. **Check with fir-db1**: by rank level, the people the tool has position questions about, a console script that pulls their fir-db1 employee time pages, and a day-by-day comparison with the tool, for one date or a From–To range (for example 12/26 to 1/27, which spans the January moves).

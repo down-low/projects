@@ -900,3 +900,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .crew-day .cd-dow { font-size: 0.75rem; opacity: 0.8; }
 .crew-day .cd-date { font-weight: 600; white-space: nowrap; }
 .crew-head { margin: 10px 0; }
+
+/* Feedback (feedback.js): the form's text box and the admin list's reply box */
+.fb-form textarea, .fb-reply input { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.fb-form textarea { resize: vertical; }
+.fb-reply { margin-top: 6px; max-width: 520px; }
+.fb-list li > div:first-child { min-width: 0; flex: 1 1 auto; }
+.fb-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+#feedback-detail .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#feedback-detail .seg { margin: 8px 0 4px; }

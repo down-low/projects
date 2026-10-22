@@ -21,6 +21,21 @@ Two front ends on one Firebase backend: a light **employee app** (schedule, trad
 
 `claude/demo-app` is a separate, fictional demo (2 battalions, ~200 made-up people, view-only). It holds no real data and **never merges into `main`**; don't merge `main` into it either without re-deleting the real data files.
 
+## Design principles (read before adding a feature)
+
+- **Employees first, no overload.** Every feature is a module (its own file, like `trades.js`, `corrections.js`, `feedback.js`) with one menu entry, a rule for who sees it (member, editor, admin) and its settings. Members start with the basics (their schedule, crew, trades); everything else is opt-in ("Choose my tabs" in `RELEASES.md`) or turned on by an admin. Admin tools never ship in the employee app.
+- **Built for SFFD now, other departments later.** Don't build multi-organization support yet, but keep three seams so a later version is configuration, not a rewrite:
+  - **Terminology:** words like "Battalion Chief" / "Commander", "Engineer" / "Driver", "watch" / "shift" go through one word list, not hard-coded in screens.
+  - **Rotation rules:** the 31-day, 9-watch pattern lives in settings, not only in `schedule.js`.
+  - **Organization data:** roster, ranks, units and staffing rules stay in data files, separate from code.
+  When SFFD is done, the general product starts as a new branch or project from this one, with an organization setup screen on top of these seams.
+- **Spec each feature before building** (`RELEASES.md`, "Next release"), one at a time, since features share the person page, the More menu and `store.js`.
+- **Back office later:** the "who covers which open spot" logic gets its own chat after the employee features.
+
+## Prior app (to compare later)
+
+The user built a similar, more complete but harder-to-use product earlier; its site still runs. When the user has its code (read-only export), start a new chat to write `FEATURES.md`: each old feature, who uses it, keep / simplify / drop, whether it exists here, and which module it belongs in. Business rules and edge cases come from the old code; screens are redesigned here. No comparison chat until the code is in hand.
+
 ## How we work
 
 - **Git is the only source of truth.** Every chat works on its own `claude/…` branch and merges to **`main`** with a pull request. Nobody edits code on the host.
