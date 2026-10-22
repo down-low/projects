@@ -77,7 +77,13 @@
     function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
     return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
   }
-  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
+  // Licenses and certifications from fir-db1 ({name, expires: ISO date or null}), loaded by admins; never license numbers.
+  function profileOut(x) {
+    return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo,
+      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null };
+  }
+  // What a profile save carries over untouched (set by imports, not the forms).
+  function profileKeep(cur) { return cur && Array.isArray(cur.licenses) ? { licenses: cur.licenses, licensesAsOf: cur.licensesAsOf || null } : {}; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -171,7 +177,7 @@
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
-            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
+            return db.collection("profiles").doc(key).set(Object.assign(profileKeep(cur), mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
             return Promise.resolve(records.profiles.map(profileOut));

@@ -1,4 +1,5 @@
-/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026).
+/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026), and the station each
+ * apparatus runs from (STATIONS), from fir-db1's Roster by Station for all 10 battalions (10/21/2026).
  * ALIASES map roster company names to the report's apparatus codes. Divisions marked hidden are left off the dashboard.
  */
 (function (root) {
@@ -22,6 +23,19 @@
       { id: "AO", name: "AO", apparatus: ["VR03", "VR10", "VR20", "VR30", "VR33", "VR40", "VR50"] },
     ] },
   ];
+  // Fire station → apparatus housed there (Bureau of Equipment, BE, has no station).
+  var STATIONS = {
+    1: ["E01", "T01", "RS1"], 2: ["B01", "E02", "T02"], 3: ["E03", "T03"], 4: ["E04", "T04"], 5: ["D2", "E05", "T05"],
+    6: ["E06", "T06"], 7: ["D3", "E07", "T07", "RS2"], 8: ["B03", "E08", "T08"], 9: ["B10", "E09", "T09"], 10: ["E10", "T10"],
+    11: ["B06", "E11", "T11", "RC3"], 12: ["E12", "T12"], 13: ["E13", "T13", "RC1"], 14: ["E14", "T14"], 15: ["B09", "E15", "T15"],
+    16: ["E16", "T16"], 17: ["E17", "T17"], 18: ["E18", "T18"], 19: ["E19", "T19"], 20: ["E20", "MA1"], 21: ["B05", "E21"],
+    22: ["E22"], 23: ["E23"], 24: ["E24"], 25: ["E25"], 26: ["E26"], 28: ["E28"], 29: ["E29"], 31: ["B07", "E31", "RC2"],
+    32: ["E32"], 33: ["E33"], 34: ["E34"], 35: ["E35", "FB3"], 36: ["B02", "E36"], 37: ["E37"], 38: ["B04", "E38"],
+    39: ["E39"], 40: ["B08", "E40"], 41: ["E41"], 42: ["E42"], 43: ["E43", "RC4"], 44: ["E44"], 48: ["E48", "T48", "HT48"],
+    51: ["E51"],
+  };
+  var stationOf = {};
+  Object.keys(STATIONS).forEach(function (n) { STATIONS[n].forEach(function (co) { stationOf[co] = +n; }); });
   var ALIASES = {
     "Rescue Captain 1": "RC1", "Rescue Captain 2": "RC2", "Rescue Captain 3": "RC3", "Rescue Captain 4": "RC4",
     "Pilot of Fire Boats": "FB3", "Marine Engineer of Fire Boats": "FB3",
@@ -37,8 +51,14 @@
     DIVISIONS: DIVISIONS,
     // The report's apparatus code for a roster company (or title), e.g. "Rescue Captain 1" -> "RC1".
     apparatus: function (co) { return ALIASES[co] || co; },
-    // {division, battalion} for an apparatus code, or null when it isn't in the report.
-    locate: function (co) { return where[ALIASES[co] || co] || null; },
+    STATIONS: STATIONS,
+    // {division, battalion, station (number or null)} for an apparatus code, or null when it isn't in the report.
+    locate: function (co) {
+      var c = ALIASES[co] || co, w = where[c];
+      return w ? { division: w.division, battalion: w.battalion, station: stationOf[c] || null } : null;
+    },
+    // Fire station number an apparatus runs from (E05 -> 5), or null.
+    station: function (co) { return stationOf[ALIASES[co] || co] || null; },
     // Sort key for an apparatus code in report order (division, battalion, apparatus); unknown codes last.
     order: function (co) { return orderOf[ALIASES[co] || co] != null ? orderOf[ALIASES[co] || co] : 1e6; },
   };

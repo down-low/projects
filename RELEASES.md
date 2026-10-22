@@ -2,10 +2,10 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
-### Invite a coworker
+### Invite a coworker (built Oct 22, 2026; on the Firebase sites; the claude.ai page shows it once it knows the app address)
 - **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
 - **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
-- **No server work:** signing up already works from the plain app address. The QR is drawn in the page (a small QR library: a pinned version, or vendored into the repo for Firebase).
+- **No server work:** signing up already works from the plain app address. The QR is drawn in the page from `vendor/qrcode.js` (Kazuhiko Arase's MIT QR encoder, bundled in the repo); `invite.js` holds the sheet.
 - On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
 
 ### Overtime days on my calendar
@@ -14,6 +14,25 @@
 - **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
 - **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
 - **Later:** admins use Want OT days to fill shortages.
+
+### Invite one person from the back office
+- **Where:** the Employee card (back office, admins) gets **Invite to the app**; the same action sits on each person in Admin → Invite people's list.
+- **Message:** opens Messages on the admin's phone, addressed to the person's staff-list cell, starting "Hi <first name>," with the app link.
+- **Reuses, doesn't change:** the launch-invite helpers in `admin.js` (`launchMsg`, `launchSms`) and the sent marks in `launchInvites/{pos}` (`store.js` `launchMark` / `launchSent`), so the card shows "Invited Oct 22" and the bulk list skips them.
+- **Trade invites stay exactly as they are:** `trades.js` (Invite, Copy text), the `tradeInvites` collection and the `createInvite` / `inviteInfo` / `answerFromInvite` / `redeemInvite` functions are not touched; the build checks trade invites still work.
+- **No cell on file:** the button reads "No cell on file" and points to adding one on the card.
+
+### App notifications test and announcements (own chat)
+- Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
+- **First test:** Lester and Goforth (the records editor prepares them). iPhone users must add the app to the Home Screen first.
+- **First real use:** announcing sick and vacation accrual tracking, which needs its own spec and a saved consent record before any balances are stored.
+
+### Divisions with their own real data (Airport, EMS, HQ)
+- **Real data, one Firebase project per division:** clone the Suppression project's setup into a new project (Airport, then EMS, then HQ). Same repo and code; GitHub deploys to each project as its own target.
+- **Each division's own files:** roster, Employee IDs and staffing are loaded and cleaned on their own; the Suppression database is never touched.
+- **Every record carries a `division` tag,** so merging into one database later is an import, not a cleanup.
+- **In code:** a `division` setting picks the data files, screens and terminology (the seam in `HANDOFF.md`, Design principles).
+- **Cleanup:** one division at a time, in its own records chat, with the same routine (`cleanup/README.md`).
 
 ## Upcoming: December 2026 rollout
 
@@ -187,6 +206,8 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
     3. **Microsoft Graph app (needs IT admin consent):** an app registered in the city tenant with read-only access to that one library (Sites.Selected), read by a daily scheduled function. Never store a member's or admin's own refresh token on the server instead: that is a stored credential.
     4. **fir-db1 OT hours:** cloud flows can't reach it. Only Power Automate Desktop on a city PC, signed in on the network, could read the page and send the numbers, with IT's approval. Otherwise the two-weekly paste script stays.
     5. **Reading the PDFs:** a PDF text reader is enough if they are text (order, name, Employee ID). Use the Claude API only if they are scans, and only with approval, since that sends city data to another outside service.
+
+- **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
 - Feedback button (Oct 2026): members send problems, ideas and questions about the app; admins answer, close and copy them from the Feedback view.
