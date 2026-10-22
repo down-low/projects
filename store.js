@@ -485,13 +485,19 @@
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
     var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
     var phoneVerifier = null, phoneConfirm = null;
+    /* Our wording for a Firebase sign-in error, plus Firebase's own reason in brackets: one error code covers several
+       setup problems (provider off, region policy, wrong project), and the reason tells them apart. */
+    function phoneError(e, fallback) {
+      var mine = PHONE_ERRORS[e && e.code], theirs = e && e.message ? String(e.message).replace(/^Firebase:\s*/, "") : "";
+      return mine ? mine + (theirs ? " (" + theirs + ")" : "") : theirs || fallback;
+    }
     var PHONE_ERRORS = {
       "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
       "auth/code-expired": "That code has expired. Ask for a new one.",
       "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
       "auth/invalid-phone-number": "Enter your 10-digit cell number.",
       "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
-      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/operation-not-allowed": "Firebase won't send a code to this number. Use Google for now and tell an admin.",
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
       "auth/invalid-app-credential": "The page check failed. Reload and try again.",
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
@@ -644,13 +650,13 @@
         if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
         return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
           if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+          throw new Error(phoneError(e, "Couldn't send the code."));
         });
       },
       confirmCode: function (code) {
         if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
         return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+          throw new Error(phoneError(e, "That code didn't work."));
         });
       },
       // With the Employee ID on file for that position, the account is approved at once (functions: claim).
