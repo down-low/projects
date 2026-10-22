@@ -4,11 +4,11 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 ## Where it stands (10/21/2026)
 - **Station rosters (fir-sap2, 10/20):** 931 of 1,128 roster rows agree with the tool. The 5 missing are Assistant Chiefs, which are skipped.
-- **Paused:** the fir-db1 pulls are waiting on VPN access. They run one rank at a time and pull only people with open questions.
+- **Position pulls** (VPN back 10/21), one rank at a time, questions only. Re-checked against the live records 10/22:
   1. **H 30:** 7 people, using `fir-pull-H30.js` (already sent).
   2. **H 20:** 29 people.
   3. **H 3:** 17 people.
-  4. **H 2:** 87 people. Trim this list before pulling.
+  4. **H 2:** 83 people (4 settled by the 10/21 fixes). Trim further before pulling.
 
 ## Academy class (PX narrative rating report, 09/02/2026)
 - **Field:** Class is on the Employee card (identity section) and on the person page under **Personal details**. Admins only. Published in v60.
@@ -34,7 +34,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 129th: Cardenas,Alejandra CA1668; Del Castillo Haas,Daniela DE2773; Murphy,Evin MU2715; Nguyen,Kamal NG1179 (resigned)
 
 ## Cell numbers (10/21)
-- `missing-cells.md`: 499 of 1,230 people in the tool have no staff-list cell (Firefighter 408, most of them added people from the 2027 awards and new classes). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
+- `missing-cells.md`: 407 of 1,228 people still have no cell (Firefighter 402: their pull is held; Lt 2 and FF 3 are WE seats with no ID; Pilot 2 and Marine Engineer 1 are scripts 08 and 09). Rebuild with `node tools/reconcile/missing_cells.js --db <dump with contacts>`.
 - `fir-phone-probe.js` (run 10/21): the Phone numbers pop-up is on app 1021 page 2 and is in the page HTML, so it can be fetched per Employee ID.
 - `fir-pull-phones-01-…09-*.js`: one script per rank, top ranks first (`node tools/make_phone_pull.js <missing.json>`). Each downloads `fir-phones-<rank>.csv` (key, ID, name, type, number, flag) and resumes after a sign-out. Load rule: CELL, else HOME; never overwrite a cell already on file; ask before the write.
 - **Loaded 10/21:**
@@ -58,5 +58,10 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - Still no Employee ID (all WE): Alba,K 3FBOL07M, Louie,T 31EOE15M, Dickerson,C 10TOE29M.
 
 ## Next step
-1. With the H 2 cleanup: settle the 6 likely and to-check class matches above (fix the ID on the right side, then set the class on the card).
-2. When the VPN is back, run the H 30 pull and the phone pulls (Battalion Chief first).
+1. **H 30 pull:** `fir-pull-H30.js`, sent again 10/22. Compare the CSV, propose fixes, write after OK.
+2. **H 20, then H 3:** re-check each list against a fresh dump before sending.
+3. **H 2 (trim first):** include the leftover class matches.
+   - Hausel: HA2634 is right, so set the 131st on his card.
+   - Lui: report says LU1896, tool says LU1898.
+   - The 16 report names not in the tool.
+4. **Phones:** scripts 08 Pilot and 09 Marine Engineer. Firefighter when the user is ready.
