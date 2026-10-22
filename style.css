@@ -859,6 +859,20 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .frozen-banner a { color: inherit; font-weight: 600; }
 
+/* Compare with fir-db1 */
+.fir-card { margin: 0; }
+.fir-steps { margin: 0 0 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
+.fir-steps input[type="file"] { max-width: 100%; }
+.fir-script { width: 100%; min-height: 120px; font: 0.75rem var(--font-data); background: var(--bg); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; }
+.fir-result { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.fir-result p { margin: 0; }
+.fir-sec > summary { cursor: pointer; padding: 6px 0; }
+.fir-sec .n { font-family: var(--font-data); color: var(--muted); }
+table.fir-t td { white-space: normal; vertical-align: top; }
+.fir-form { border-top: 0; padding-top: 0; margin-top: 0; }
+.fir-who > summary, .fir-person > summary { cursor: pointer; padding: 6px 0; }
+.fir-list { max-height: 50vh; overflow: auto; }
+.fir-person { border-top: 1px solid var(--line); }
 /* Sign-in: cell number first, Google second */
 .phone-in { border-top: 0; margin-top: 0; padding-top: 0; }
 .phone-in input[type="tel"], .phone-in input[type="text"] { font-size: 1.1rem; min-height: 46px; }
@@ -886,3 +900,12 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .crew-day .cd-dow { font-size: 0.75rem; opacity: 0.8; }
 .crew-day .cd-date { font-weight: 600; white-space: nowrap; }
 .crew-head { margin: 10px 0; }
+
+/* Feedback (feedback.js): the form's text box and the admin list's reply box */
+.fb-form textarea, .fb-reply input { width: 100%; font: inherit; font-size: 0.92rem; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 7px 10px; }
+.fb-form textarea { resize: vertical; }
+.fb-reply { margin-top: 6px; max-width: 520px; }
+.fb-list li > div:first-child { min-width: 0; flex: 1 1 auto; }
+.fb-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+#feedback-detail .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#feedback-detail .seg { margin: 8px 0 4px; }

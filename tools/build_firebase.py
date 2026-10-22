@@ -23,9 +23,10 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = "10.14.1"  # Firebase JS SDK (compat) served by Hosting
 APP_FILES = ["index.html", "style.css", "schedule.js", "organization.js", "store.js", "admin.js", "dashboard.js",
-             "trades.js", "awards.js", "corrections.js", "card.js", "app.js"]
+             "trades.js", "awards.js", "corrections.js", "feedback.js", "fir.js", "card.js", "app.js"]
 # Admin-only screens left out of the employee app: same entry points as the real files, no screens behind them.
 STUBS = {
+    "fir.js": "/* fir-db1 checks are on the admin site only. */\n",
     "card.js": "/* Employee cards are on the admin site only. */\n"
                "window.CardViews = function () { return { render: function () {}, open: function () {} }; };\n",
     "awards.js": "/* 2027 awards import is on the admin site only. */\n"

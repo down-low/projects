@@ -363,6 +363,13 @@ class ServerTest(unittest.TestCase):
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"hireDate": "2999-01-01"})[0], 400)
         self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"birthDate": "1980-01-01", "hireDate": "2005-01-01"})[0], 200)
         self.assertEqual(admin.req("PUT", "/api/profiles/10EOC03M", {"birthDate": "1970-01-01", "hireDate": "1995-01-01"})[0], 200)
+        # Academy class: admins set it; saving dates keeps it; a member can't change it.
+        self.assertEqual(admin.req("PUT", f"/api/profiles/{key}", {"classNo": 137})[0], 200)
+        self.assertEqual(admin.req("PUT", f"/api/profiles/{key}", {"classNo": "137th"})[0], 400)
+        self.assertEqual(n.req("PUT", f"/api/profiles/{key}", {"hireDate": "2005-01-02", "classNo": 1})[0], 200)
+        mine = [r for r in admin.req("GET", "/api/admin/profiles")[1] if r["key"] == key][0]
+        self.assertEqual((mine["classNo"], mine["birthDate"], mine["hireDate"]), (137, "1980-01-01", "2005-01-02"))
+        n.req("PUT", f"/api/profiles/{key}", {"hireDate": "2005-01-01"})
         self.assertEqual(n.req("GET", "/api/admin/profiles")[0], 403)
         self.assertEqual(len(admin.req("GET", "/api/admin/profiles")[1]), 2)
         self.assertEqual(n.req("GET", "/api/me")[1]["profile"]["hireDate"], "2005-01-01")

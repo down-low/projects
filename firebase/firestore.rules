@@ -85,7 +85,10 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
     match /profiles/{key} {
-      allow read, write: if isAdmin() || (myPos() != null && key == myPos());
+      allow read: if isAdmin() || (myPos() != null && key == myPos());
+      // A member sets their own dates; the academy class (classNo) is set by admins.
+      allow write: if isAdmin() || (myPos() != null && key == myPos() &&
+        request.resource.data.get('classNo', null) == (resource == null ? null : resource.data.get('classNo', null)));
     }
     // The claude.ai page's "This is me" records, kept for reference after the import.
     match /members/{id} {
@@ -139,6 +142,12 @@ service cloud.firestore {
     // Corrections: one record per member (corrections/<uid>), read and written by that member; editors and admins
     // read and handle all of them.
     match /corrections/{uid} {
+      allow read: if isEditor() || (active() && uid == request.auth.uid);
+      allow write: if isEditor() || (active() && uid == request.auth.uid);
+    }
+
+    // Feedback about the app: the same shape and access as corrections.
+    match /feedback/{uid} {
       allow read: if isEditor() || (active() && uid == request.auth.uid);
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }

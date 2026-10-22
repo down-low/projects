@@ -73,6 +73,16 @@ class FirebaseBuild(unittest.TestCase):
         self.assertTrue(caps["downloads"])
         self.assertIn("admin", {r["write"] for r in build_artifact.CAPABILITIES["db"]["rules"]})  # the live rules are unchanged
 
+    def test_feedback_on_every_site_and_kept_out_of_snapshots(self):
+        for folder in (self.app, self.admin):
+            self.assertIn('src="feedback.js"', self.read(folder, "index.html"))
+            self.assertEqual(self.read(folder, "feedback.js"), self.read(ROOT, "feedback.js"))
+        rules = {r["path"]: r for r in build_artifact.CAPABILITIES["db"]["rules"]}
+        self.assertEqual((rules["feedback"]["read"], rules["feedback/{self}"]["read"]), ("admin", "interact"))
+        records = {"feedback": [{"id": "u1", "items": {}}], "statuses": []}
+        build_artifact.fold_trades(records)
+        self.assertNotIn("feedback", records)
+
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()

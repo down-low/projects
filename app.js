@@ -89,7 +89,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -97,6 +97,7 @@
     $("awards-link").classList.toggle("on", v === "awards");
     $("fixes-link").classList.toggle("on", v === "fixes");
     $("card-link").classList.toggle("on", v === "card");
+    $("feedback-link").classList.toggle("on", v === "feedback");
     store("view", v);
     render();
   }
@@ -113,6 +114,7 @@
     else if (state.view === "awards") Awards.render();
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
+    else if (state.view === "feedback") Feedback.render();
     else renderRank();
   }
 
@@ -719,39 +721,45 @@
       '<div class="tile"><span class="k">Empl ID</span><span class="v mono">' + esc(p.emplId || "—") + "</span></div></div>";
   }
 
-  /* ---------- Birth and hire dates (admins) ---------- */
+  /* ---------- Personal details: academy class, birth and hire dates (admins) ---------- */
+  // One cache, by person key, for this card and the Employee card (card.js), loaded on first use.
   var profilesCache = null, profilesLoading = false;
+  function loadProfiles() {
+    if (profilesCache || profilesLoading || !backend) return;
+    profilesLoading = true;
+    backend.profiles().then(function (list) {
+      profilesCache = {};
+      list.forEach(function (x) { profilesCache[x.key] = x; });
+      profilesLoading = false;
+      if (state.view === "person" || state.view === "card") renderAll(true);
+    }, function () { profilesLoading = false; profilesCache = {}; });
+  }
   function datesCard(p) {
     if (!backend || !backend.canAdmin()) return "";
     if (!profilesCache) {
-      if (!profilesLoading) {
-        profilesLoading = true;
-        backend.profiles().then(function (list) {
-          profilesCache = {};
-          list.forEach(function (x) { profilesCache[x.key] = x; });
-          profilesLoading = false;
-          if (state.view === "person") renderAll();
-        }, function () { profilesLoading = false; profilesCache = {}; });
-      }
-      return '<div class="card"><h3>Personal dates</h3><p class="hint">Loading…</p></div>';
+      loadProfiles();
+      return '<div class="card"><h3>Personal details</h3><p class="hint">Loading…</p></div>';
     }
     var pf = profilesCache[p.pos] || {};
-    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal dates</h3>' +
-      '<p class="hint">Admins only. Used for the dashboard\'s average age and years of service.</p>' +
-      '<div class="row"><label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
+    return '<form class="card edit dates" id="pd-form" novalidate><h3>Personal details</h3>' +
+      '<p class="hint">Admins only. The dates feed the dashboard\'s average age and years of service.</p>' +
+      '<div class="row"><label>Class<input type="number" id="pd-class" min="1" max="999" inputmode="numeric" placeholder="e.g. 137" value="' + esc(pf.classNo || "") + '"></label>' +
+      '<label>Birth date<input type="date" id="pd-birth" value="' + esc(pf.birthDate || "") + '"></label>' +
       '<label>Hire date<input type="date" id="pd-hire" value="' + esc(pf.hireDate || "") + '"></label></div>' +
-      '<div class="row"><button class="btn primary" type="submit">Save dates</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
+      '<div class="row"><button class="btn primary" type="submit">Save details</button><span class="msg" id="pd-msg" role="status"></span></div></form>';
   }
   function wireDates(p) {
     var f = $("pd-form");
     if (!f) return;
     f.onsubmit = function (e) {
       e.preventDefault();
-      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null;
+      var bd = $("pd-birth").value || null, hd = $("pd-hire").value || null, cls = $("pd-class").value.trim();
+      if (cls && !/^[1-9]\d{0,2}$/.test(cls)) return say($("pd-msg"), "Class is the academy class number, e.g. 137.", true);
       if (bd && hd && hd <= bd) return say($("pd-msg"), "The hire date must be after the birth date.", true);
       say($("pd-msg"), "Saving…");
-      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd };
+      var classNo = cls ? +cls : null;
+      backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
+        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -1118,6 +1126,7 @@
     wireSheet();
     wireList();
     Fix.wire();
+    Feedback.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -1171,6 +1180,7 @@
     $("awards-link").onclick = function () { setView("awards"); };
     $("fixes-link").onclick = function () { setView("fixes"); };
     $("card-link").onclick = function () { setView("card"); };
+    $("feedback-link").onclick = openFeedback;
     $("six-link").onclick = function () {
       if (state.view !== "six") {
         var me = serverMode() && backend.me && backend.me();
@@ -1281,7 +1291,29 @@
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
+    if (v === "feedback") return Feedback.isAdmin();
     return false;
+  }
+  // Feedback: admins get the list (with its own Send feedback); everyone else the form.
+  function openFeedback() { if (tabAllowed("feedback")) setView("feedback"); else Feedback.open(); }
+  function feedbackBadge() {
+    var n = Feedback.isAdmin() ? Feedback.count() : 0;
+    $("feedback-link").textContent = "Feedback" + (n ? " (" + n + ")" : "");
+    $("feedback-count").textContent = n ? n + " open" : "";
+    Feedback.refresh();
+  }
+  // What the sender was looking at, sent with feedback when they leave it ticked (no contact details).
+  function feedbackContext() {
+    var names = { dash: "Staffing", date: "Projection", person: "Schedule", crew: "My crew", rank: "Rank grid", six: "6 of 9", trades: "Trades",
+      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback" };
+    var v = state.view, bits = [names[v] || v];
+    if (v === "date") bits.push(iso(state.date));
+    if (v === "dash") bits.push(iso(state.dashDate));
+    if (v === "person" && state.personPos && byPos[state.personPos]) bits.push(byPos[state.personPos].name);
+    var site = !backend ? "page" : backend.mode === "db" ? "claude.ai page" : backend.mode === "snapshot" ? "view-only page"
+      : window.FIREBASE_SITE === "app" ? "employee app" : window.FIREBASE_SITE ? "back office" : backend.mode;
+    bits.push(site, (window.innerWidth || 0) + "px wide" + (isPhone() ? " (phone)" : ""));
+    return "Looking at: " + bits.join(" · ");
   }
   // Open corrections, on the header link and the menu item (admins).
   function fixesBadge() {
@@ -1299,11 +1331,13 @@
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
     $("card-link").hidden = !tabAllowed("card");
+    $("feedback-link").hidden = !(Feedback.canSend() || tabAllowed("feedback"));
+    feedbackBadge();
     if (!tabAllowed(state.view) && booted) setView(simpleUi() ? "person" : "dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi() };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1343,6 +1377,7 @@
         var to = go.dataset.go;
         closeSheet();
         if (to === "signout") return backend.signOut();
+        if (to === "feedback") return openFeedback();
         if (to === "seats") { state.seatsOpen = true; return setView("dash"); }
         if (to === "dash") state.seatsOpen = false;
         if (tabAllowed(to)) setView(to);
@@ -1435,6 +1470,11 @@
     renderAll: renderAll, kindWord: kindWord, KIND: KIND, STATUS_LABEL: STATUS_LABEL,
   });
 
+  var Feedback = window.FeedbackViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
+    shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
+  });
+
   var Card = window.CardViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     people: function () { return people; }, contacts: function () { return contacts; }, byId: function () { return byId; },
@@ -1445,7 +1485,17 @@
     statusForm: statusForm, coverForm: coverForm, tourForm: tourForm, wireForms: wireForms,
     companyOk: function (co) { return data.some(function (p) { return p.company === co; }); },
     fix: function () { return Fix; }, choosePerson: choosePerson, renderAll: renderAll,
+    profiles: function () { return profilesCache; }, loadProfiles: loadProfiles,
     Organization: window.Organization, store: store, recall: recall,
+    byName: function (n) { return byName[nameKey(n)] || []; },
+    dayRows: dayRows, apparatus: function (co) { return window.Organization ? window.Organization.apparatus(co) : co; },
+    // Companies to pull from fir-db1: every roster company plus the rescue captains.
+    companies: function () {
+      var seen = {};
+      data.forEach(function (p) { if (p.company) seen[p.company] = 1; });
+      ["RC1", "RC2", "RC3", "RC4"].forEach(function (c) { seen[c] = 1; });
+      return Object.keys(seen).sort(function (a, b) { return coKey(a).localeCompare(coKey(b)); });
+    },
     show: function () { if (state.view === "card") renderAll(true); else setView("card"); },
   });
 
@@ -1466,9 +1516,10 @@
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [] };
     recsVersion++;
     fixesBadge();
+    feedbackBadge();
     if (r.contacts) contacts = r.contacts;
     siteBanner();
     if (booted) rebuildPeople();
