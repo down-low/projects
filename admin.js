@@ -11,6 +11,13 @@
     domain: "That Google account isn't from an allowed domain. Sign in with your department account.",
     disabled: "This account has been disabled. Contact an admin.",
     not_configured: "Google sign-in isn't set up on this server yet. An admin needs to add the Google settings.",
+    cell_moved: "Your cell is now on your existing account. Sign in with your cell once more to open it.",
+  };
+  // Why a cell sign-in didn't move into the account that owns its seat (functions: planPhoneSwitch).
+  var CELL_NOTES = {
+    staff: "Your cell belongs to an account with admin access. Sign in with Google, then add your cell on My page.",
+    phone: "Your seat is linked to an account with a different cell number. Ask an admin to merge the two accounts.",
+    disabled: "The account for your seat is disabled. Contact an admin.",
   };
   var ROLE_LABEL = { member: "Member", editor: "Editor", admin: "Admin" };
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
@@ -144,6 +151,33 @@
     }
 
     /* ---------- Sign-in and claim screen ---------- */
+    /* "Verify with your cell": one texted code adds the cell to the signed-in account; the staff list then fills in the
+       seat (Firebase only, store.js linkCell / confirmLink). id prefix keeps the claim screen and My page apart. */
+    function cellLinkHtml(pre, title, lede) {
+      return '<form class="edit cell-link" id="' + pre + '-form" novalidate><h3>' + esc(title) + "</h3><p class=\"hint\">" + esc(lede) + "</p>" +
+        '<div class="row"><label>Cell number<input type="tel" id="' + pre + '-cell" maxlength="20" autocomplete="tel" placeholder="(415) 555-0100"></label>' +
+        '<button class="btn primary" type="submit" id="' + pre + '-send">Text me a code</button></div>' +
+        '<div class="row" id="' + pre + '-code-row" hidden><label>6-digit code<input type="text" id="' + pre + '-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+        '<button class="btn primary" type="button" id="' + pre + '-confirm">Verify</button></div>' +
+        '<span class="msg" id="' + pre + '-msg" role="status"></span></form>';
+    }
+    function wireCellLink(pre) {
+      var b = api.backend(), msg = $(pre + "-msg");
+      $(pre + "-form").onsubmit = function (e) {
+        e.preventDefault();
+        api.say(msg, "Sending…");
+        b.linkCell($(pre + "-cell").value, pre + "-send").then(function (n) {
+          api.say(msg, "Code sent to " + n.slice(2, 5) + "-" + n.slice(5, 8) + "-" + n.slice(8) + ".");
+          $(pre + "-code-row").hidden = false;
+          $(pre + "-code").focus();
+        }, function (er) { api.say(msg, er.message, true); });
+      };
+      $(pre + "-confirm").onclick = function () {
+        api.say(msg, "Checking…");
+        b.confirmLink($(pre + "-code").value).catch(function (er) { api.say(msg, er.message, true); });
+      };
+    }
+
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
@@ -197,10 +231,15 @@
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
+        (me.cellNote && CELL_NOTES[me.cellNote] ? '<p class="msg err" role="status">' + esc(CELL_NOTES[me.cellNote]) + "</p>" : "") +
+        (api.backend().linkCell && !me.phone && !me.claimPos && !req
+          ? cellLinkHtml("gl", "Verify with your cell (fastest)", "We text you a code. If your cell is on the department's staff list, your position fills in by itself.") +
+            '<p class="hint">Or find yourself by name below.</p>'
+          : "") +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
         "<p>Find yourself on the roster so the schedule knows which position is yours.</p>" +
         '<label for="claim-q">Your name or position number</label>' +
-        '<input type="search" id="claim-q" autocomplete="off" placeholder="First and last name, e.g. Dave Lester">' +
+        '<input type="search" id="claim-q" autocomplete="off" placeholder="First or last name, or position number">' +
         '<ul class="pick" id="claim-list"></ul>' +
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
         (api.backend().hosted === "firebase"
@@ -224,6 +263,7 @@
         '<button class="linkish" type="button" id="back-to-list">Back to the roster search</button></div></form></div>';
 
       $("gate-out").onclick = function () { api.backend().signOut(); };
+      if ($("gl-form")) wireCellLink("gl");
       if ($("claim-change")) $("claim-change").onclick = function () {
         this.parentNode.hidden = true;
         if (req) {
@@ -247,22 +287,27 @@
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
-      // Names in any order ("dave lester", "lester d"); when only one name matches, it's picked for you.
+      // First name, last name or both, in any order ("dave", "lester", "dave lester"), or a position number: the
+      // roster's short name plus the staff-list full name (r.full). Always a list to tap, never an automatic pick.
+      // Seats already linked to an account show greyed, so their owner knows to sign in the way they did before.
       function showMatches() {
         var q = $("claim-q").value.trim();
-        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
-        var hits = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + r.title + " " + r.pos); }).slice(0, 12);
-        if (hits.length === 1) return pick(hits[0]);
         if (claimPick) unpick();
+        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
+        var all = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + (r.full || "") + " " + r.title + " " + r.pos); });
+        var hits = all.slice(0, 12);
         listEl.innerHTML = hits.length ? hits.map(function (r) {
-          return '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '"><b>' + esc(r.name) + "</b> " +
-            '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span></button></li>";
-        }).join("") : '<li class="hint">No unclaimed roster entry matches. Check the spelling or ask an admin.</li>';
+          var label = "<b>" + esc(r.full || r.name) + "</b> " + '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span>";
+          return r.taken
+            ? '<li><div class="pick-btn taken">' + label + '<div class="hint">Already linked to an account. If that\'s you, sign in the way you did before (Google or your cell), or ask an admin to move it.</div></div></li>'
+            : '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '">' + label + "</button></li>";
+        }).join("") + (all.length > hits.length ? '<li class="hint">More match: type more of your name.</li>' : "")
+          : '<li class="hint">No roster entry matches. Check the spelling, try your last name, or tap "I\'m not on the list" below.</li>';
       }
       function pick(r) {
         claimPick = r.pos;
         $("claim-chosen").hidden = false;
-        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
+        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.full || r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
           ' <button class="linkish" type="button" id="claim-not-me">Not me</button>';
         $("claim-not-me").onclick = function () { $("claim-q").value = ""; unpick(); $("claim-q").focus(); };
         listEl.innerHTML = "";
@@ -277,7 +322,8 @@
       listEl.onclick = function (e) {
         var b = e.target.closest("button[data-pos]");
         if (!b) return;
-        pick(roster.filter(function (x) { return x.pos === b.dataset.pos; })[0]);
+        var r = roster.filter(function (x) { return x.pos === b.dataset.pos && !x.taken; })[0];
+        if (r) pick(r);
       };
       $("claim-form").onsubmit = function (e) {
         e.preventDefault();
@@ -344,6 +390,9 @@
           "Ask an admin to link it if you work a tour.</p></div>";
       }
 
+      if (b.linkCell && !me.phone) {
+        html += '<div class="card">' + cellLinkHtml("ml", "Add my cell for sign-in", "Then you can sign in with your cell or with Google, and both open this same account.") + "</div>";
+      }
       html += '<form class="card edit contact" id="me-contact" novalidate><h3>Contact info</h3>' +
         '<label>Contact email<input type="email" id="mc-email" maxlength="254" value="' + esc(me.contactEmail || "") + '" placeholder="' + esc(me.googleEmail) + '"></label>' +
         '<p class="hint">Where people should reach you. Your Google sign-in stays ' + esc(me.googleEmail) + ".</p>" +
@@ -365,6 +414,7 @@
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
+      if ($("ml-form")) wireCellLink("ml");
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;
@@ -678,7 +728,14 @@
           }).join("") + "</select></td>" +
           "<td>" + esc(u.status.charAt(0).toUpperCase() + u.status.slice(1)) + "<br>" + (self ? "" : u.status === "disabled"
             ? '<button class="linkish small-link" data-act="enable" data-id="' + esc(u.id) + '">Enable</button>'
-            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') + "</td>" +
+            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') +
+          (!self && !u.pos && !u.claimPos && api.backend().mergeAccounts
+            ? ' · <button class="linkish small-link" data-act="show-merge" data-id="' + esc(u.id) + '">Merge into…</button>' +
+              '<form class="merge-form" data-id="' + esc(u.id) + '" hidden><select aria-label="Account to keep">' +
+              adminUsersCache.filter(function (o) { return o.id !== u.id; }).map(function (o) {
+                return '<option value="' + esc(o.id) + '">' + esc(o.name + " · " + (o.googleEmail || "") + (o.pos ? " · " + o.pos : "")) + "</option>";
+              }).join("") + '</select><button class="btn small danger" type="submit">Merge (removes this account)</button></form>'
+            : "") + "</td>" +
           '<td class="mono">' + esc(u.lastLogin ? u.lastLogin.slice(0, 10) : "—") + "</td></tr>";
       }).join("") : '<tr><td colspan="5" class="hint">No users match.</td></tr>';
     }
@@ -696,6 +753,11 @@
       var b = e.target.closest("button[data-act]");
       if (!b) return;
       var id = b.dataset.id, u = userById(id), a = b.dataset.act;
+      if (a === "show-merge") {
+        var mf = document.querySelector('.merge-form[data-id="' + id + '"]');
+        mf.hidden = !mf.hidden;
+        return;
+      }
       if (a === "show-link") {
         var f = document.querySelector('.link-form[data-id="' + id + '"]');
         f.hidden = !f.hidden;
@@ -717,6 +779,16 @@
       act(s.dataset.id, { action: "role", role: s.value }, userById(s.dataset.id).name + " is now " + ROLE_LABEL[s.value] + ".");
     }
     function onAdminSubmit(e) {
+      var mf = e.target.closest(".merge-form");
+      if (mf) {
+        e.preventDefault();
+        var keep = mf.querySelector("select").value, from = userById(mf.dataset.id), into = userById(keep);
+        api.say($("admin-msg"), "Merging…");
+        return api.backend().mergeAccounts(mf.dataset.id, keep).then(function () {
+          api.say($("admin-msg"), "Merged " + from.name + " into " + into.name + ". Either sign-in now opens " + into.name + "'s account.");
+          renderAdmin();
+        }, function (er) { api.say($("admin-msg"), er.message, true); });
+      }
       var f = e.target.closest(".link-form");
       if (!f) return;
       e.preventDefault();
