@@ -59,10 +59,10 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 ## New pulls (10/22)
 - `fir-pull-battalions.js` reads Roster by Station (1021:11): 10 battalions × the dates asked. It gives one day's crews, with role, ID, TRC and trade partner, in the company-page CSV format, so the Employee card's fir-db1 comparison reads it. About 10 consecutive days cover every tour.
-- `fir-pull-balance.js`: run on the balance report page; it reads the status table (DP/IDV/SP/SPI/TC/VA/WC/WDO by OFF/PM/FF) and the hires table for a date range.
+- `fir-pull-balance.js` (rebuilt 10/22): the balance report is a fir-sap2 BusinessObjects report (open.jsp, `lsSFROMDT=Date(y,m,d)`), so the script asks it for each day as Excel (`sOutputFormat=E`) and reads the status table (DP/IDV/PB/SP/SPI/TC/VA/WC/WDO by OFF/PM/FF) and the hires table. If fir-sap2 won't hand the files over, it downloads one file per day; parse those with `python3 -I tools/reconcile/balance_xlsx.py <folder or zip> out.csv`.
 - `fir-licenses-probe.js` (run 10/22): the Licenses and Certs rows are in the employee page HTML, like phones, so they can be pulled per Employee ID when wanted.
-- **Licenses test (Stations 1, 7, 36):** `fir-pull-licenses-st01-07-36.js` covers 126 people (Joyce's old seat has no ID). The file has description and expiration, never license numbers. They load into each person's profile (`licenses: [{name, expires}]`, `licensesAsOf`, admin-only) and show in **Licenses and certifications** on the Employee card. Saving class or dates keeps them.
-- **Balance pull 10/22: not-found** (no tables in the fetched page). `fir-balance-probe.js` shows where the tables come from.
+- **Licenses test (Stations 1, 7, 36):** pulled 10/22: 731 licenses for 126 people (79 expired, 35 within 90 days); waiting on the user's OK to load. `fir-pull-licenses-st01-07-36.js` covers 126 people (Joyce's old seat has no ID). The file has description and expiration, never license numbers. They load into each person's profile (`licenses: [{name, expires}]`, `licensesAsOf`, admin-only) and show in **Licenses and certifications** on the Employee card. Saving class or dates keeps them.
+- **Balance pull 10/22: not-found.** The probe showed the report is a fir-sap2 PDF in a frame, not an fir-db1 page, so the pull was rebuilt (above).
 - **Battalion roster 10/21 (all 10):** the companies and their battalion/division match organization.js exactly (81 apparatus). Stations were added from it (`Organization.STATIONS`, `station(co)`), and there's a Station column on the Employee card list. One day is enough for now (user).
 
 ## Next step

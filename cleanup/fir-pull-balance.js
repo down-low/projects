@@ -1,64 +1,147 @@
-/* Tour schedule: fir-db1 daily balance report pull (status and hire tables, dates asked when it runs). Paste in the console on the balance report page. */
-(function balanceMain(PLAN) {
-    const m = /[?&]p=(\d+):(\d+):(\d+)/.exec(location.href);
-    if (!m) return alert("Open the balance report in fir-db1 first, then run this again.");
-    const [, app, pg, session] = m, DATE = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-    let item = null;
-    const u = /[?&]p=[^&]*?:NO::([^:&]+):([^:&]+)/.exec(location.href);
-    if (u) { const names = decodeURIComponent(u[1]).split(","), vals = decodeURIComponent(u[2]).split(","); const k = vals.findIndex((v) => DATE.test(v)); if (k >= 0) item = names[k]; }
-    if (!item) { const f = [...document.querySelectorAll("input[id^='P" + pg + "_']")].find((e) => DATE.test(e.value || "")); if (f) item = f.id; }
-    if (!item) item = (prompt("Page " + pg + ": name of the date item (e.g. P" + pg + "_DATE)", "P" + pg + "_DATE") || "").trim();
-    if (!item) return;
-    const t = new Date(), md = (d) => (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
-    const from = PLAN.from || (prompt("First date (MM/DD/YYYY)", md(t)) || "").trim(), to = PLAN.to || (prompt("Last date (MM/DD/YYYY)", from) || "").trim();
-    if (!DATE.test(from) || !DATE.test(to)) return alert("Use dates like 10/22/2026.");
-    const dt = (x) => { const a = x.split("/"); return new Date(+a[2], a[0] - 1, +a[1]); };
-    const dates = [];
-    for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(md(d));
-    const base = location.origin + location.pathname + "?p=" + app + ":" + pg + ":" + session + "::NO::" + item + ":";
-    const txt = (c) => c.textContent.replace(/\s+/g, " ").trim();
-    const read = (html, date) => {
-      const doc = new DOMParser().parseFromString(html, "text/html"), out = [];
-      doc.querySelectorAll("table").forEach((tb) => {
-        const trs = [...tb.querySelectorAll("tr")].filter((tr) => tr.closest("table") === tb);
-        const rowText = (tr) => [...tr.children].map(txt).join(" ");
-        const hi = trs.findIndex((tr) => [...tr.children].some((c) => /^(Status|Rank)$/.test(txt(c))) && /\b(OFF|Voluntary)\b/.test(rowText(tr)));
-        if (hi < 0) return;
-        const head = [...trs[hi].children].map(txt);
-        // One table or two side by side: split the header where a block starts (Status, Rank).
-        const starts = head.map((h, i) => (/^(Status|Rank)$/.test(h) ? i : -1)).filter((i) => i >= 0);
-        starts.forEach((s, n) => {
-          const e = n + 1 < starts.length ? starts[n + 1] : head.length, cols = head.slice(s + 1, e), table = head[s] === "Rank" ? "hires" : "status";
-          trs.slice(hi + 1).forEach((tr) => {
-            const c = [...tr.children].map(txt), key = c[s];
-            if (!key) return;
-            const r = { date, table, key };
-            cols.forEach((h, j) => { r[h] = c[s + 1 + j] || ""; });
-            out.push(r);
-          });
-        });
+/* Tour schedule: daily balance report counts from fir-sap2 in one CSV.
+ * Open the Daily Balance Report (the /rpt/open.jsp link, any date) on fir-sap2, then paste this in that tab's console
+ * (F12 → Console). It asks for a first and last date, asks the same report for each day as an Excel file and reads its two
+ * bottom tables: status counts (DP, IDV, PB, SP, SPI, TC, VA, WC, WDO… by OFF, PM, FF) and hires by rank (Voluntary,
+ * Mandatory, Advance Hire, Total). Downloads fir-balance-<dates>.csv with: date, table, key and the columns.
+ * Nothing is sent anywhere else. If fir-sap2 won't hand the Excel files to the script, it offers to download each day's
+ * file instead; attach those (or a zip) in the chat. */
+(async () => {
+  const here = new URL(location.href);
+  if (!/open\.jsp/i.test(here.pathname) || !here.searchParams.get('iDocID')) {
+    return alert('Open the Daily Balance Report on fir-sap2 first (the open.jsp link), then run this again.');
+  }
+  const md = (d) => (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear(), t = new Date();
+  const from = (prompt('First date (MM/DD/YYYY)', md(t)) || '').trim(), to = (prompt('Last date (MM/DD/YYYY)', from) || '').trim();
+  if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(from) || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(to)) return alert('Use dates like 10/22/2026.');
+  const dt = (x) => { const a = x.split('/'); return new Date(+a[2], a[0] - 1, +a[1]); };
+  const dates = [];
+  for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(d);
+  // The report's date parameter is Date(year,month,day) with month 1-12, as in the link fir-db1 opens.
+  const urlFor = (d) => { const u = new URL(here.href); u.searchParams.set('lsSFROMDT', 'Date(' + d.getFullYear() + ',' + (d.getMonth() + 1) + ',' + d.getDate() + ')'); u.searchParams.set('sOutputFormat', 'E'); return u.href; };
+  const wait = () => new Promise((r) => setTimeout(r, 400));
+
+  // A minimal .xlsx reader: find the files in the zip, inflate them, parse the XML.
+  const u16 = (b, o) => b[o] | (b[o + 1] << 8);
+  const u32 = (b, o) => (b[o] | (b[o + 1] << 8) | (b[o + 2] << 16) | (b[o + 3] << 24)) >>> 0;
+  async function unzip(buf) {
+    const b = new Uint8Array(buf), files = {};
+    let e = b.length - 22;
+    while (e >= 0 && u32(b, e) !== 0x06054b50) e--;
+    if (e < 0) throw new Error('not a zip file');
+    let p = u32(b, e + 16);
+    for (let i = 0, n = u16(b, e + 10); i < n; i++) {
+      const method = u16(b, p + 10), size = u32(b, p + 20), nl = u16(b, p + 28), xl = u16(b, p + 30), cl = u16(b, p + 32), lo = u32(b, p + 42);
+      const name = new TextDecoder().decode(b.subarray(p + 46, p + 46 + nl));
+      const start = lo + 30 + u16(b, lo + 26) + u16(b, lo + 28), raw = b.subarray(start, start + size);
+      files[name] = async () => method === 0 ? new TextDecoder().decode(raw)
+        : new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+      p += 46 + nl + xl + cl;
+    }
+    return files;
+  }
+  // Rows as [rowNumber, {column: value}], keeping column positions (the tables have blank cells).
+  const colOf = (ref) => { let n = 0; for (const ch of String(ref).replace(/\d+$/, '')) n = n * 26 + ch.charCodeAt(0) - 64; return n; };
+  async function readXlsx(buf) {
+    const files = await unzip(buf), xml = (s) => new DOMParser().parseFromString(s, 'application/xml');
+    const sheet = Object.keys(files).find((n) => /^xl\/worksheets\/[^/]+\.xml$/i.test(n));
+    if (!sheet) throw new Error('no worksheet in the file');
+    const ssName = Object.keys(files).find((n) => /^xl\/sharedStrings\.xml$/i.test(n));
+    const shared = ssName ? [...xml(await files[ssName]()).getElementsByTagName('si')].map((si) => [...si.getElementsByTagName('t')].map((t) => t.textContent).join('')) : [];
+    return [...xml(await files[sheet]()).getElementsByTagName('row')].map((row) => {
+      const cells = {};
+      [...row.getElementsByTagName('c')].forEach((c) => {
+        const t = c.getAttribute('t'), v = c.getElementsByTagName('v')[0];
+        const val = (t === 'inlineStr' ? [...c.getElementsByTagName('t')].map((x) => x.textContent).join('') : v ? (t === 's' ? shared[+v.textContent] : v.textContent) : '').replace(/_x000a_/g, ' ').trim();
+        if (val) cells[colOf(c.getAttribute('r'))] = val;
       });
-      if (!out.length) out.push({ date, table: /type="password"/i.test(html) ? "signed-out" : "not-found",
-        key: [...doc.querySelectorAll("table")].slice(-4).map((tb) => [...tb.querySelectorAll("tr")].slice(0, 3).map((tr) => [...tr.children].map(txt).join(" ")).join(" / ").slice(0, 140)).join(" | ").slice(0, 600) });
-      return out;
-    };
-    return (async () => {
-      const all = [];
-      for (let k = 0; k < dates.length; k++) {
-        const rows = read(await (await fetch(base + encodeURIComponent(dates[k]), { credentials: "same-origin" })).text(), dates[k]);
-        if (rows[0].table === "signed-out") { alert("fir-db1 signed you out after " + k + " of " + dates.length + " days. Sign in and run again from " + dates[k] + "."); break; }
-        rows.forEach((r) => all.push(r));
-        console.log("balance pull " + (k + 1) + "/" + dates.length + ": " + dates[k] + " (" + rows.length + " rows)");
-        await new Promise((r) => setTimeout(r, 400));
+      return [+row.getAttribute('r'), cells];
+    });
+  }
+  // The two tables under the totals: a header row with "Status … OFF PM FF" and "Rank Voluntary Mandatory Advance Hire Total".
+  // Each value goes to the nearest header column of its block, since exported cells don't always line up under headers.
+  function balance(rows, date) {
+    const out = [], hi = rows.findIndex(([, c]) => Object.values(c).includes('Status') && Object.values(c).includes('OFF'));
+    if (hi < 0) return out;
+    const head = rows[hi][1], cols = Object.keys(head).map(Number).sort((a, b) => a - b);
+    const sCol = cols.find((k) => head[k] === 'Status'), rCol = cols.find((k) => head[k] === 'Rank') || 1e9;
+    const sHeads = cols.filter((k) => k > sCol && k < rCol), rHeads = cols.filter((k) => k > rCol);
+    const near = (k, list) => list.reduce((b, x) => Math.abs(x - k) < Math.abs(b - k) ? x : b, list[0]);
+    rows.slice(hi + 1).filter(([n]) => n <= rows[hi][0] + 20).forEach(([, c]) => {
+      const ks = Object.keys(c).map(Number).sort((a, b) => a - b);
+      const sKey = ks.filter((k) => k < (rCol === 1e9 ? 1e9 : rCol) && /^[A-Z]{1,4}$/.test(c[k]))[0];
+      const rKey = rCol < 1e9 ? ks.filter((k) => Math.abs(k - rCol) <= 1 && /^(H\s*\d+|Total)$/.test(c[k]))[0] : undefined;
+      if (sKey != null && sHeads.length) {
+        const r = { date, table: 'status', key: c[sKey] };
+        ks.filter((k) => k > sKey && (rKey == null || k < rKey) && /^-?\d+$/.test(c[k])).forEach((k) => { r[head[near(k, sHeads)]] = c[k]; });
+        out.push(r);
       }
-      const cols = ["date", "table", "key"];
-      all.forEach((r) => Object.keys(r).forEach((h) => { if (cols.indexOf(h) < 0) cols.push(h); }));
-      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-      const csv = [cols.join(",")].concat(all.map((r) => cols.map((c) => q(r[c])).join(","))).join("\n");
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-      a.download = PLAN.fileName || ("fir-balance-" + from.replace(/\//g, "-") + (to !== from ? "_to_" + to.replace(/\//g, "-") : "") + ".csv");
-      document.body.appendChild(a); a.click(); a.remove();
-      console.log("balance pull done: " + all.length + " rows (date item " + item + ").");
-    })();
-  })({"from":"","to":"","fileName":""});
+      if (rKey != null && rHeads.length) {
+        const r = { date, table: 'hires', key: c[rKey].replace(/\s+/g, ' ') };
+        ks.filter((k) => k > rKey && /^-?\d+$/.test(c[k])).forEach((k) => { r[head[near(k, rHeads)]] = c[k]; });
+        out.push(r);
+      }
+    });
+    return out;
+  }
+
+  // BusinessObjects answers with a page that loads the report in a frame (sometimes through a redirect script),
+  // so follow frames, meta refreshes and location changes until a file arrives.
+  const isZip = (buf) => { const h = new Uint8Array(buf.slice(0, 2)); return h[0] === 0x50 && h[1] === 0x4b; };
+  function nextUrl(htmlText, base) {
+    const pats = [/<i?frame[^>]*\ssrc\s*=\s*["']([^"']+)["']/i, /http-equiv\s*=\s*["']?refresh["']?[^>]*url\s*=\s*([^"'>\s]+)/i,
+      /(?:window|document|top|self)\.location(?:\.href)?\s*=\s*["']([^"']+)["']/i, /location\.replace\(\s*["']([^"']+)["']/i];
+    for (const re of pats) { const m = re.exec(htmlText); if (m && m[1] && !/^about:|^javascript:/i.test(m[1])) return new URL(m[1].replace(/&amp;/g, '&'), base).href; }
+    return null;
+  }
+  async function getFile(url) {
+    const trail = [];
+    for (let hop = 0; hop < 6; hop++) {
+      const res = await fetch(url, { credentials: 'include' });
+      const buf = await res.arrayBuffer();
+      if (isZip(buf)) return { buf };
+      const text = new TextDecoder().decode(buf);
+      trail.push({ url: res.url || url, type: res.headers.get('content-type'), text });
+      const next = nextUrl(text, res.url || url);
+      if (!next || next === url) break;
+      url = next;
+    }
+    return { trail };
+  }
+
+  const all = [], failed = [];
+  for (const d of dates) {
+    try {
+      const got = await getFile(urlFor(d));
+      if (!got.buf) {
+        if (!all.length) {
+          got.trail.forEach((t, i) => console.log('fir-sap2 step ' + (i + 1) + ': ' + t.url + ' (' + t.type + ')\n' + t.text.slice(0, 3000)));
+          if (!confirm('fir-sap2 did not hand the Excel file to this script.\n\nDownload each day\'s Excel file instead? That is ' + dates.length +
+            ' files, about 3 seconds apart; Chrome asks once to allow multiple downloads (choose Allow). Then attach the files (or a zip of them) in the chat.\n\nCancel stops here; then copy the "fir-sap2 step" lines from the console into the chat.')) return;
+          for (const x of dates) {
+            const f = document.createElement('iframe');
+            f.style.display = 'none'; f.src = urlFor(x); document.body.appendChild(f);
+            console.log('balance: asked for ' + md(x));
+            await new Promise((r) => setTimeout(r, 3000));
+            setTimeout(() => f.remove(), 60000);
+          }
+          return alert('Asked for all ' + dates.length + ' days. When the downloads finish, attach the files (or a zip of them) in the chat.');
+        }
+        failed.push(md(d)); continue;
+      }
+      const rows = balance(await readXlsx(got.buf), md(d));
+      if (rows.length) all.push(...rows); else { failed.push(md(d) + ' (no tables)'); all.push({ date: md(d), table: 'not-found', key: '' }); }
+      console.log('balance: ' + md(d) + ' · ' + rows.length + ' rows');
+    } catch (e) { failed.push(md(d) + ' (' + e.message + ')'); }
+    await wait();
+  }
+  if (!all.length) return alert('Nothing read. Failed: ' + failed.join(', '));
+  const cols = ['date', 'table', 'key'];
+  all.forEach((r) => Object.keys(r).forEach((h) => { if (cols.indexOf(h) < 0) cols.push(h); }));
+  const q = (v) => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+  const csv = [cols.join(',')].concat(all.map((r) => cols.map((c) => q(r[c])).join(','))).join('\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+  a.download = 'fir-balance-' + from.replace(/\//g, '-') + (to !== from ? '_to_' + to.replace(/\//g, '-') : '') + '.csv';
+  document.body.appendChild(a); a.click(); a.remove();
+  console.log('balance: ' + all.length + ' rows' + (failed.length ? ' · failed: ' + failed.join(', ') : ''));
+})();
