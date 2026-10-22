@@ -2,10 +2,10 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
-### Invite a coworker
+### Invite a coworker (built Oct 22, 2026; on the Firebase sites; the claude.ai page shows it once it knows the app address)
 - **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
 - **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
-- **No server work:** signing up already works from the plain app address. The QR is drawn in the page (a small QR library: a pinned version, or vendored into the repo for Firebase).
+- **No server work:** signing up already works from the plain app address. The QR is drawn in the page from `vendor/qrcode.js` (Kazuhiko Arase's MIT QR encoder, bundled in the repo); `invite.js` holds the sheet.
 - On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
 
 ### Overtime days on my calendar
