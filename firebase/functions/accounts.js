@@ -153,10 +153,15 @@ function planClaim(uid, u, body, { lookup, takenBy, companies, emplOwner, expect
 }
 
 // Positions with a name and added people that no account is linked to yet (the claim screen's search list).
-function rosterNames(positions, people, taken) {
-  return positions.filter((p) => p.name && !taken.has(p.pos)).map((p) => ({ pos: p.pos, name: p.name, title: p.title }))
-    .concat(people.filter((r) => !taken.has(PERSON_PREFIX + r.id))
-      .map((r) => ({ pos: PERSON_PREFIX + r.id, name: r.name, title: r.rank + " (added)" })));
+function rosterNames(positions, people, taken, ids) {
+  // full: the staff-list name ("Lester,David J"), so a first name alone finds people. Seats already linked to an
+  // account come back marked taken (and nothing else about that account), so their owner sees why they can't pick it.
+  const entry = (pos, name, title) => {
+    const full = ids && ids[pos] && ids[pos].name;
+    return Object.assign({ pos, name, title }, full && full !== name ? { full } : {}, taken.has(pos) ? { taken: true } : {});
+  };
+  return positions.filter((p) => p.name).map((p) => entry(p.pos, p.name, p.title))
+    .concat(people.map((r) => entry(PERSON_PREFIX + r.id, r.name, r.rank + " (added)")));
 }
 
 /* What an admin action does to the target account, as server.py's admin_action. ctx: {activeAdmins, takenBy(pos),

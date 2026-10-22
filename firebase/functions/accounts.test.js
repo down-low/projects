@@ -65,10 +65,14 @@ test("claims: roster entry must exist and be free; requests are checked", () => 
     Object.assign({}, ctx, { emplOwner: () => "Lester,D" })), /already on Lester,D/);
 });
 
-test("roster names leave out linked positions and vacant seats", () => {
+test("roster names: vacant seats left out, linked ones flagged, staff-list full names added", () => {
   const out = A.rosterNames(Object.values(roster), [{ id: "p1", name: "New,A", rank: "Firefighter" }, { id: "p2", name: "Taken,B", rank: "ISS" }],
-    new Set(["person:p2"]));
-  assert.deepEqual(out.map((r) => r.pos), ["10EOC03M", "person:p1"]);
+    new Set(["person:p2"]), { "10EOC03M": { id: "WE1234", name: "Weddle,Todd" } });
+  assert.deepEqual(out.map((r) => r.pos), ["10EOC03M", "person:p1", "person:p2"]);
+  assert.equal(out[0].full, "Weddle,Todd");
+  assert.equal(out[0].taken, undefined);
+  assert.equal(out[2].taken, true);
+  assert.ok(!("id" in out[0]) && !JSON.stringify(out).includes("WE1234"), "Employee IDs never go to the claim screen");
 });
 
 test("admin actions: approve, link, role, disable, keep one admin", () => {

@@ -70,7 +70,7 @@ async function lookups() {
     if (r) return { pos: key, name: r.name, title: r.rank + (r.company ? " " + r.company : "") + " (added)" };
     return byPos.get(key) || null;
   };
-  return { rows, people: Array.from(added.values()), lookup, companies: new Set(rows.map((p) => p.company).filter(Boolean)),
+  return { rows, ids, people: Array.from(added.values()), lookup, companies: new Set(rows.map((p) => p.company).filter(Boolean)),
     emplOwner: (id) => {
       const pos = Object.keys(ids).find((k) => ids[k].id === id);
       if (pos) return (byPos.get(pos) && byPos.get(pos).name) || pos;
@@ -171,7 +171,7 @@ exports.claim = wrap(async (req) => {
 exports.rosterNames = wrap(async (req) => {
   signedIn(req);
   const [ctx, taken] = await Promise.all([lookups(), takenMap()]);
-  return A.rosterNames(ctx.rows, ctx.people, new Set(taken.keys()));
+  return A.rosterNames(ctx.rows, ctx.people, new Set(taken.keys()), ctx.ids);
 });
 
 // Who's on the tool: positions with an active linked account. A trade's poster gets Invite for the people they sent it
