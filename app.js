@@ -9,7 +9,7 @@
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {} };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, crewIdx: 0, crewStart: 0 };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -77,10 +77,19 @@
   function store(k, v) { try { localStorage.setItem("tour-schedule:" + k, v); } catch (e) { /* storage unavailable */ } }
   function recall(k) { try { return localStorage.getItem("tour-schedule:" + k); } catch (e) { return null; } }
 
+  /* ---------- Theme: follow the phone, or always light or dark (remembered on this device) ---------- */
+  function applyTheme(v) {
+    if (v !== "light" && v !== "dark") v = "system";
+    if (v === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", v);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.themeSet === v ? "true" : "false"); });
+  }
+  applyTheme(recall("theme"));
+
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -97,6 +106,7 @@
     else if (state.view === "six") Dash.renderSix();
     else if (state.view === "date") renderDate();
     else if (state.view === "person") renderPerson();
+    else if (state.view === "crew") renderCrew();
     else if (state.view === "me") Accounts.renderMe();
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
@@ -198,7 +208,8 @@
     var offParts = OFF_CODES.filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " covering elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
-    var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
+    // Members see the total off; editors and admins also get the breakdown (D, WE, covering elsewhere, covered).
+    var offText = offTotal ? " · " + offTotal + " off" + (simpleUi() ? "" : " (" + offParts.join(" · ") + ")") : "";
     if (phone) {
       $("date-summary").innerHTML = '<div class="pt-sum">' + (M.holidayFor(d) ? holidayNote(d) + "<br>" : "") +
         "Tours " + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
@@ -290,6 +301,54 @@
     if (x.slot.added && !x.acting) tags.push('<span class="tag">Added</span>');
     if (x.moved && !x.acting) tags.push('<span class="tag tag-acting">' + (/^2027 (award|assignment)/.test(x.moved.note || "") ? "2027 seat" : "Moved here") + "</span>");
     return tags;
+  }
+
+  /* ---------- Crew: who's on your apparatus on your next shifts (members) ---------- */
+  var RANK_SHORT = { "Battalion Chief": "BC", "Rescue Captain": "RC", Captain: "Capt", Lieutenant: "Lt", "FF/Paramedic": "FF/PM",
+    Firefighter: "FF", "Marine Engineer": "ME" };
+  function renderCrew() {
+    var out = $("crew-detail");
+    var me = byPos[myPos()];
+    if (!me) {
+      out.innerHTML = '<div class="empty">Link your account to your roster spot (Trades, This is me) to see your crew.</div>';
+      return;
+    }
+    // Your next 12 working shifts, three at a time between ‹ and ›.
+    var shifts = [], d = today();
+    for (var k = 0; k < 150 && shifts.length < 12; k++, d = addDays(d, 1)) {
+      var s = day(me, d);
+      if (s && !s.status) shifts.push({ d: d, co: s.co || home(me), k: k });
+    }
+    if (!shifts.length) { out.innerHTML = '<div class="empty">No shifts in the next 150 days.</div>'; return; }
+    var start = Math.max(0, Math.min(state.crewStart || 0, Math.floor((shifts.length - 1) / 3) * 3));
+    var i = Math.min(Math.max(state.crewIdx, start), Math.min(start + 2, shifts.length - 1)), cur = shifts[i];
+    var co = Organization.apparatus(cur.co);
+    var rows = mergeCovered(dayRows(cur.d)).filter(function (r) { return r.name && Organization.apparatus(r.co) === co; })
+      .sort(function (a, b) { return RANK_ORDER.indexOf(a.slot.rank) - RANK_ORDER.indexOf(b.slot.rank) || (a.name || "").localeCompare(b.name || ""); });
+    var on = rows.filter(function (r) { return !r.off; }).length;
+    out.innerHTML =
+      '<div class="crew-days" role="group" aria-label="Your next shifts">' +
+      '<button type="button" class="btn icon" data-crew-page="-3" aria-label="Earlier shifts"' + (start === 0 ? " disabled" : "") + ">&lsaquo;</button>" +
+      shifts.slice(start, start + 3).map(function (x, n) {
+        var j = start + n;
+        return '<button type="button" class="btn small crew-day' + (j === i ? " primary" : "") + '" data-crew="' + j + '" aria-pressed="' + (j === i) + '">' +
+          '<span class="cd-dow">' + (x.k === 0 ? "Today" : x.k === 1 ? "Tomorrow" : DOW[x.d.getDay()]) + "</span>" +
+          '<span class="cd-date">' + esc(MONTHS[x.d.getMonth()].slice(0, 3) + " " + x.d.getDate()) + "</span></button>";
+      }).join("") +
+      '<button type="button" class="btn icon" data-crew-page="3" aria-label="Later shifts"' + (start + 3 >= shifts.length ? " disabled" : "") + ">&rsaquo;</button></div>" +
+      '<p class="hint crew-head">' + esc(co) + " on " + esc(longDate(cur.d)) + " · " + on + " on duty</p>" +
+      '<div class="group"><ul class="plist">' + rows.map(function (x) {
+        return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(RANK_SHORT[x.slot.rank] || x.slot.rank) + "</span>" +
+          '<span class="pl-main"><span class="pl-names">' + nameCell(x) + (x.who && x.who.pos === me.pos ? ' <span class="tag">You</span>' : "") + "</span>" +
+          '<span class="pl-sub">' + esc(x.slot.title) + (x.role ? " · " + esc(x.role) : "") + " · T" + x.tour + "</span></span>" +
+          '<span class="pl-tags">' + statusPill(x.status) + rowTags(x).join(" ") + "</span></li>";
+      }).join("") + "</ul></div>";
+    out.querySelectorAll("[data-crew]").forEach(function (b) {
+      b.onclick = function () { state.crewIdx = +b.dataset.crew; renderCrew(); };
+    });
+    out.querySelectorAll("[data-crew-page]").forEach(function (b) {
+      b.onclick = function () { state.crewStart = start + +b.dataset.crewPage; state.crewIdx = state.crewStart; renderCrew(); };
+    });
   }
 
   /* ---------- Schedule: one person ---------- */
@@ -419,7 +478,7 @@
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
-    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit());
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p);
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -458,23 +517,42 @@
       '<div class="person">' +
       '<div class="card ident"><h2>' + esc(p.name) + "</h2>" +
       identTiles(p, tourNow, next) +
+      // Two rows up top: the tiles, then one full row of data (rank, position, today's leave) ending in a › that opens
+      // the rest. The row never wraps; values shorten instead. No label: not "Details", since in the department a
+      // detail is an assignment to another station.
+      '<div class="ident-row">' +
       kv("Rank", p.rank) +
+      (p.added ? kv("Roster", "Added, not on the vacancy list") + (p.tour ? kv("Apparatus", p.company) : "") : kv("Position", p.title)) +
+      (p.added && !p.tour ? "" : '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>") +
+      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
+      (function () {
+        var notes = [];
+        if (actingNow) notes.push(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow));
+        if (moveNext) notes.push("New seat");
+        if (coveredNow) notes.push("Covered");
+        if (upcoming) notes.push("Tour change");
+        if (p.open) notes.push("Open for bid");
+        var open = !!state.folds.ident;
+        return '<button type="button" class="ident-toggle' + (notes.length ? " has-notes" : "") + '" id="ident-toggle" aria-controls="ident-body" aria-expanded="' + open +
+          '" aria-label="' + esc((open ? "Show less" : "Show more") + (notes.length ? " (" + notes.join(", ") + ")" : "")) + '"' +
+          (notes.length ? ' title="' + esc(notes.join(" · ")) + '"' : "") +
+          '><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button></div>' +
+          Trades.personExtras(p) +
+          '<div class="ident-body" id="ident-body"' + (open ? "" : " hidden") + ">";
+      })() +
       kv("Employee ID", p.emplId || "Not on file", "kv-id") +
-      (p.added && !p.tour
-        ? kv("Roster", "Added, not on the vacancy list")
-        : (p.added ? kv("Roster", "Added, not on the vacancy list") + kv("Apparatus", p.company) : kv("Position", p.title) + kv("Position no.", p.pos)) +
-          '<div class="kv kv-tour"><span class="k">Tour</span><span class="v big">' + tourNow + "</span></div>" +
-          (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
-          kv("Works watches", watchesFor(tourNow).join(" "))) +
+      (p.added ? "" : kv("Position no.", p.pos)) +
+      (p.added && !p.tour ? "" : (upcoming ? kv("Tour change", "→ " + upcoming.tour + " from " + shortDate(fromIso(upcoming.effective))) : "") +
+        kv("Works watches", watchesFor(tourNow).join(" "))) +
       (p.open ? '<div class="kv"><span class="k">Bid</span><span class="v"><span class="tag tag-open">Spot open for bid</span></span></div>' : "") +
       (actingNow ? kv(actingNow.start > iso(t) ? "Will cover" : kindWord(actingNow), slotLabel(actingNow.targetPos) + " · " + rangeText(actingNow)) : "") +
       (moveNext ? kv(moveNext.start > iso(t) ? "Own seat from " + shortDate(fromIso(moveNext.start)) : "Own seat", (byPos[moveNext.targetPos] || {}).title + " " + moveNext.targetPos +
         (actingNow && (!actingNow.end || actingNow.end >= moveNext.start) ? " · the cover above continues until it's ended" : "")) : "") +
       (coveredNow ? kv("Covered by", (coveredNow.coverName || nameOf(coveredNow.coverKey)) + " · " + kindWord(coveredNow).toLowerCase() + " · " + rangeText(coveredNow)) : "") +
       (p.added && !p.tour && !actingNow ? kv("Assignment", "None. Use Cover another position below.") : "") +
-      (statusNow ? '<div class="kv"><span class="k">Today</span><span class="v">' + statusPill(statusNow) + " " + esc(STATUS_LABEL[statusNow]) + "</span></div>" : "") +
-      twinsHtml(p) + contactHtml(p) + Trades.personExtras(p) + Fix.link(p) +
-      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") + "</div>" +
+      twinsHtml(p) + contactHtml(p) + Fix.link(p) +
+      (isCardAdmin() ? '<div class="kv"><span class="v"><button type="button" class="btn small" id="open-card">Employee card</button> <span class="hint">admins only</span></span></div>' : "") +
+      "</div></div>" +
       '<div class="card"><div class="cal-head"><button class="btn icon" id="pm-prev" aria-label="Previous month">&lsaquo;</button>' +
       '<span class="month-label">' + MONTHS[m.getMonth()] + " " + m.getFullYear() + '</span><button class="btn icon" id="pm-next" aria-label="Next month">&rsaquo;</button></div>' +
       '<div class="cal">' + cells + "</div>" + holidayList(monthHolidays) +
@@ -499,6 +577,13 @@
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
     wireEditForms(p);
     if ($("open-card")) $("open-card").onclick = function () { Card.open(p.pos); };
+    $("ident-toggle").onclick = function () {
+      var open = $("ident-body").hidden;
+      state.folds.ident = open;
+      $("ident-body").hidden = !open;
+      this.setAttribute("aria-expanded", open);
+      this.setAttribute("aria-label", this.getAttribute("aria-label").replace(open ? "Show more" : "Show less", open ? "Show less" : "Show more"));
+    };
     Fix.wireLinks($("person-detail"));
     Fix.prefill(p);
     wireDates(p);
@@ -513,7 +598,8 @@
     });
   }
   /* ---------- One day's options (from the calendar or Next shifts) ----------
-     Trade the shift (your own page) or mark one day VA or S (editors; D and WE stay in the Edit forms).
+     Trade the shift (your own page) or mark one day VA or S (editors on anyone's page, members on their own, with Undo
+     for a day they marked; D and WE stay in the Edit forms).
      Days are only tappable for someone who can do one of those. */
   var dayOpener = null;
   function openDay(p, dIso, opener) {
@@ -530,10 +616,17 @@
         : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
-    if (s && !s.status && backend && backend.canEdit()) {
+    var editor = !!(backend && backend.canEdit()), own = markOwnDay(p);
+    if (s && !s.status && (editor || own)) {
       leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S"].map(function (c) {
         return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
       }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
+    }
+    // A day you marked yourself (VA or S from this drawer) can be taken back here.
+    var mark = own && s && s.status ? recs.statuses.filter(function (r) { return r.self && r.pos === p.pos && r.start === dIso && r.end === dIso; })[0] : null;
+    if (mark) {
+      leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
+        '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
     if (!acts.length && !leave) return; // nothing to do on this day
     var hol = M.holidayFor(d);
@@ -555,11 +648,19 @@
       b.onclick = function () {
         var code = b.dataset.dayLeave;
         say($("day-msg"), "Saving…");
-        backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" })
+        (editor ? backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" }) : backend.addOwnStatus(code, dIso, p.name))
           .then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
       };
     });
+    $("day-body").querySelectorAll("[data-day-undo]").forEach(function (b) {
+      b.onclick = function () {
+        say($("day-msg"), "Saving…");
+        backend.removeOwnStatus(b.dataset.dayUndo).then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
+      };
+    });
   }
+  // Members mark their own days VA or S (one day at a time) from the day drawer.
+  function markOwnDay(p) { return !!(backend && backend.addOwnStatus && myPos() && p.pos === myPos()); }
   function closeDay() {
     if ($("day-sheet").hidden) return;
     $("day-sheet").hidden = true;
@@ -1131,7 +1232,9 @@
     booted = true;
     applyAccountUi();
     var v = openTrades ? "trades" : recall("view");
-    setView(tabAllowed(v) ? v : isPhone() ? "person" : "dash");
+    // Members start on their own schedule, or on one of their main tabs if they left it open last time.
+    if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(v) === -1) v = "person";
+    setView(tabAllowed(v) ? v : isPhone() || simpleUi() ? "person" : "dash");
   }
   function selectText(el) {
     if (!el) return;
@@ -1172,8 +1275,12 @@
     var k = backend.myKey();
     return k && byPos[k] ? k : null;
   }
+  // The simpler member layout: anyone who can't edit (everyone on the employee app). Editors and admins keep every tab.
+  // Until the account is known (the single-file page boots first), keep today's layout.
+  function simpleUi() { return !!backend && !backend.canEdit(); }
   function tabAllowed(v) {
     if (v === "dash" || v === "six" || v === "date" || v === "person" || v === "rank") return true;
+    if (v === "crew") return simpleUi() && !!myPos();
     if (v === "me") return serverMode() && backend.isActive();
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
@@ -1190,16 +1297,19 @@
   }
   function applyAccountUi() {
     $("add-person-btn").hidden = !(backend && backend.canEdit());
+    document.querySelector(".page").classList.toggle("simple", simpleUi());
+    $("tab-crew").hidden = !tabAllowed("crew");
     $("tab-me").hidden = !tabAllowed("me");
     $("tab-admin").hidden = !tabAllowed("admin");
     $("tab-trades").hidden = !tabAllowed("trades");
     $("awards-link").hidden = !tabAllowed("awards");
     $("fixes-link").hidden = !tabAllowed("fixes");
     $("card-link").hidden = !tabAllowed("card");
-    if (!tabAllowed(state.view) && booted) setView("dash");
+    if (!tabAllowed(state.view) && booted) setView(simpleUi() ? "person" : "dash");
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
-    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn) };
+    var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
+      simple: simpleUi() };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1232,6 +1342,8 @@
     $("tab-more").onclick = function () { openSheet(this); };
     $("more-sheet").addEventListener("click", function (e) {
       if (e.target.closest("[data-close]")) return closeSheet();
+      var th = e.target.closest("[data-theme-set]");
+      if (th) { store("theme", th.dataset.themeSet); applyTheme(th.dataset.themeSet); return; }
       var go = e.target.closest("[data-go]");
       if (go) {
         var to = go.dataset.go;
@@ -1307,12 +1419,19 @@
     kindWord: kindWord, KIND: KIND, showList: showList,
   });
 
+  // What to call someone in a text: the first name from the staff list ("Doe,Jane Q" -> Jane), else "J. Doe".
+  function firstName(pos) {
+    var e = emplIds && emplIds.ids && emplIds.ids[pos], parts = String((e && e.name) || (byPos[pos] || {}).name || "").split(",");
+    var last = parts[0].trim(), first = (parts[1] || "").trim().split(/\s+/)[0];
+    return first.length > 1 ? first : first ? first + ". " + last : last;
+  }
   var Trades = window.TradeViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, byPos: function () { return byPos; },
     people: function () { return people; }, slots: function () { return slots(); }, opts: opts, day: day, tourOn: tourOn, home: home, coKey: coKey,
     today: today, iso: iso, fromIso: fromIso, shortDate: shortDate, longDate: longDate, renderAll: renderAll,
     showTrades: function () { if (state.view === "trades") renderAll(true); else setView("trades"); },
     afterClaim: function (p, station, tour) { return Fix.afterClaim(p, station, tour); },
+    firstName: firstName,
   });
 
   var Fix = window.CorrectionViews({
@@ -1385,6 +1504,8 @@
       // Linked with "This is me": open on yourself, unless someone was already picked this visit.
       if (myPos() && !pickedThisVisit) { state.personPos = myPos(); $("person-input").value = byPos[myPos()].name; }
       applyAccountUi();
+      // Members (now that we know) start on a main tab, as boot does on the other builds.
+      if (simpleUi() && ["person", "crew", "date", "trades"].indexOf(state.view) === -1) return setView("person");
       renderAll(true);
     });
   } else {

@@ -221,6 +221,7 @@ function averages(rows, isoDate, known) {
 const INVITES_PER_DAY = 20;
 const INVITE_DAYS = 14;
 const ANSWERS_PER_INVITE = 10;
+const INVITE_ID_TRIES = 5; // wrong Employee IDs before a link stops taking answers
 const isDate = (v) => typeof v === "string" && /^\d{4}-\d{2}-\d{2}$/.test(v);
 
 /* Why the poster can't invite `key` to `trade`, or null. trade: {posterKey, status, date, audience}; ctx: {callerPos,
@@ -255,6 +256,22 @@ function cleanInviteAnswer(body, tradeDate, today) {
     proposal = { swapDate: p.swapDate };
   } else throw bad("Choose pay back later or a swap day");
   return { proposal, note: cleanText(body.note, "note", 300) || null };
+}
+// "Doe,Jane Q" -> "Jane Doe"; "Doe,J" -> "J. Doe": how an invite greets someone.
+function friendlyName(name) {
+  const [last, rest] = String(name || "").split(",").map((s) => (s || "").trim());
+  const first = (rest || "").split(/\s+/)[0];
+  return first.length > 1 ? first + " " + last : first ? first + ". " + last : last;
+}
+/* Answering from a link: only the invited person, by their Employee ID, so a link sent to the wrong person records
+   nothing. inv.idMisses counts wrong IDs. Returns {ok: true}, or {why, miss} (miss: count it against the link). */
+function checkInviteId(inv, emplId, expected) {
+  if ((inv.idMisses || 0) >= INVITE_ID_TRIES) return { why: "Too many wrong Employee IDs on this link. Sign in instead." };
+  if (!expected) return { why: "There's no Employee ID on file for you yet. Sign in and pick your name; an admin will approve it." };
+  const id = String(emplId || "").trim().toUpperCase();
+  if (!EMPL_ID_RE.test(id)) return { why: "Employee ID is two letters and four digits, e.g. LE1234" };
+  if (id !== String(expected).toUpperCase()) return { why: "That Employee ID doesn't match the person this link was sent to", miss: true };
+  return { ok: true };
 }
 /* Signing in from a link: the Employee ID must match the one on file for the invited person. u: the account; expected:
    that person's Employee ID or null; takenBy: the uid linked to recipientKey, or null. Returns the account fields to set. */
@@ -291,5 +308,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  normCell, cellKey, planCellMatch, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, planCellMatch, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

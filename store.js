@@ -21,7 +21,7 @@
  * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
- * answerInvite(code, proposal, note), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
+ * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
  * onTool(key): true when that person has claimed a record or has a linked account, false when not, null when unknown;
  * the poster gets Invite (a text from their own phone) for the people they sent a trade to who aren't on the tool.
  * onChange also carries {members, trades, tradeReplies}.
@@ -382,6 +382,9 @@
             adminUsers: function () { return getJson("api/admin/users"); },
             adminAction: function (id, body) { return thenRefresh(call("POST", "api/admin/users/" + encodeURIComponent(id), body)); },
             addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
+            // A member marks one of their own days VA or S (the server allows only their linked seat, one day).
+            addOwnStatus: function (code, day) { return thenRefresh(call("POST", "api/me/statuses", { code: code, day: day })); },
+            removeOwnStatus: function (id) { return thenRefresh(call("DELETE", "api/me/statuses/" + encodeURIComponent(id))); },
             addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
             addCover: function (rec) { return thenRefresh(call("POST", "api/covers", rec)); },
             canAdmin: function () { return active() && me.role === "admin"; },
@@ -633,7 +636,7 @@
       // Trade invites: personal links (functions createInvite, inviteInfo, answerFromInvite, redeemInvite).
       createInvite: function (tradeId, keys) { return call("createInvite", { tradeId: tradeId, keys: keys }); },
       inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
-      answerInvite: function (code, proposal, note) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "" }); },
+      answerInvite: function (code, proposal, note, emplId) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "", emplId: emplId || "" }); },
       redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
@@ -647,6 +650,12 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
       addStatus: function (rec) { return write("statuses", rec); },
+      // A member marks one of their own days VA or S (the rules allow only that: own seat, one day, self: true).
+      addOwnStatus: function (code, day, name) {
+        if (!active() || !me.pos) return Promise.reject(new Error(NO_EDIT));
+        return w(addRec("statuses", { pos: me.pos, name: name || "", code: code, start: day, end: day, note: "", self: true }));
+      },
+      removeOwnStatus: function (id) { return active() ? w(fs.collection("statuses").doc(id).delete()) : Promise.reject(new Error(NO_EDIT)); },
       addTourChange: function (rec) { return write("tourChanges", rec); },
       addCover: function (rec) { return write("covers", rec); },
       addPerson: function (rec) { return write("people", rec); },

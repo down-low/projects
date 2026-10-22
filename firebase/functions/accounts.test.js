@@ -144,6 +144,21 @@ test("signing in from a link: the Employee ID must match the invited person", ()
   assert.throws(() => A.planRedeem("u1", pending, inv, "1234", { expected: "LE1234", nowIso: NOW }), /two letters/);
 });
 
+test("answering from a link: only the invited person's Employee ID, capped wrong tries", () => {
+  const inv = { recipientKey: "11ENL01M", idMisses: 0 };
+  assert.deepEqual(A.checkInviteId(inv, " le1234 ", "LE1234"), { ok: true });
+  assert.deepEqual(["Doe,Jane Q", "Doe,J", "Doe"].map(A.friendlyName), ["Jane Doe", "J. Doe", "Doe"]);
+  const wrong = A.checkInviteId(inv, "LE9999", "LE1234");
+  assert.equal(wrong.miss, true);
+  assert.match(wrong.why, /doesn't match/);
+  assert.match(A.checkInviteId(inv, "LE1234", null).why, /no Employee ID on file/);
+  assert.match(A.checkInviteId(inv, "1234", "LE1234").why, /two letters/);
+  assert.ok(!A.checkInviteId(inv, "1234", "LE1234").miss);
+  const spent = A.checkInviteId({ idMisses: A.INVITE_ID_TRIES }, "LE1234", "LE1234");
+  assert.match(spent.why, /Too many/);
+  assert.ok(!spent.ok);
+});
+
 test("cell-number sign-in: a phone account, no domain rule", () => {
   const a = A.signIn(null, { phone: "+14155550110", isAdmin: false, allowed: false, now: NOW });
   assert.deepEqual([a.user.phone, a.user.email, a.user.status, a.user.name], ["+14155550110", null, "pending", "+14155550110"]);
