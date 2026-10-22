@@ -112,6 +112,22 @@ exports.syncMe = wrap(async (req) => {
   const { admins, domains } = settings();
   const ref = db.doc("users/" + auth.uid);
   const cells = phone ? await staffCellMap() : null;
+  // One account per person: a cell whose seat is already linked to another account (often a Google one) signs into
+  // that account instead of starting a second one (accounts.js planPhoneSwitch).
+  let cellNote = null;
+  const seat = phone ? A.cellSeat(phone, cells) : null;
+  if (seat) {
+    const linked = await db.collection("users").where("pos", "==", seat).limit(1).get();
+    const ownerDoc = linked.empty ? null : linked.docs[0];
+    if (ownerDoc && ownerDoc.id !== auth.uid) {
+      const [callerSnap, fix, fb] = await Promise.all([ref.get(), db.doc("corrections/" + auth.uid).get(), db.doc("feedback/" + auth.uid).get()]);
+      const o = ownerDoc.data();
+      const plan = A.planPhoneSwitch({ callerUid: auth.uid, caller: callerSnap.exists ? callerSnap.data() : null, phone,
+        owner: { uid: ownerDoc.id, role: o.role, status: o.status, phone: o.phone || null }, callerHasData: fix.exists || fb.exists });
+      if (plan && plan.action === "switch") return switchToOwner(auth.uid, ownerDoc.id, phone, seat);
+      if (plan && plan.action === "refuse") cellNote = plan.reason;
+    }
+  }
   const result = await db.runTransaction(async (t) => {
     const snap = await t.get(ref);
     const r = A.signIn(snap.exists ? snap.data() : null, { email, phone, name: auth.token.name || "", isAdmin: !!email && admins.includes(email),
@@ -134,7 +150,52 @@ exports.syncMe = wrap(async (req) => {
   }
   const changed = await syncClaims(auth.uid, result.user, auth.token);
   const { lookup } = await lookups();
-  return Object.assign(await meFor(auth.uid, result.user, lookup), { claimsChanged: changed });
+  return Object.assign(await meFor(auth.uid, result.user, lookup), { claimsChanged: changed, cellNote });
+});
+
+/* Move a cell sign-in into the account that owns its seat: the phone goes onto that account, the empty new account is
+   removed, and the page signs in again with a custom token for the kept account. Making the token needs the
+   functions' service account to hold "Service Account Token Creator" (FIREBASE_SETUP.md); without it the page asks
+   for one more code, which then lands in the kept account. */
+async function switchToOwner(callerUid, ownerUid, phone, seat) {
+  let token = null;
+  try { token = await admin.auth().createCustomToken(ownerUid); } catch (e) { console.warn("createCustomToken: " + e.message); }
+  await admin.auth().deleteUser(callerUid).catch(() => {});
+  await db.doc("users/" + callerUid).delete().catch(() => {});
+  await admin.auth().updateUser(ownerUid, { phoneNumber: phone });
+  await db.doc("users/" + ownerUid).set({ phone }, { merge: true });
+  await audit(ownerUid, "cellMerge", { pos: seat, removed: callerUid });
+  return token ? { switchTo: token } : { signInAgain: true };
+}
+
+/* Admin → Users → Merge into…: fold an extra account (no seat, no claim) into the account to keep. Its phone and Google
+   sign-in move over, so either way of signing in reaches the kept account; its corrections and feedback come along. */
+exports.mergeAccounts = wrap(async (req) => {
+  const actor = requireAdmin(req);
+  const { from, into } = req.data || {};
+  if (typeof from !== "string" || typeof into !== "string" || !from || !into) throw new HttpsError("invalid-argument", "from and into are required");
+  const [fs, is] = await Promise.all([db.doc("users/" + from).get(), db.doc("users/" + into).get()]);
+  const gain = A.planMerge(fs.exists ? Object.assign({ uid: from }, fs.data()) : null, is.exists ? Object.assign({ uid: into }, is.data()) : null);
+  const fromAuth = await admin.auth().getUser(from).catch(() => null);
+  const google = fromAuth && fromAuth.providerData.find((p) => p.providerId === "google.com");
+  for (const col of ["corrections", "feedback"]) {
+    const d = await db.doc(col + "/" + from).get();
+    if (d.exists) { await db.doc(col + "/" + into).set(d.data(), { merge: true }); await d.ref.delete(); }
+  }
+  await admin.auth().deleteUser(from).catch(() => {});
+  await fs.ref.delete();
+  const update = {};
+  if (gain.phone) update.phoneNumber = gain.phone;
+  if (google && !(await admin.auth().getUser(into)).providerData.some((p) => p.providerId === "google.com")) {
+    update.providerToLink = { providerId: "google.com", uid: google.uid, email: google.email, displayName: google.displayName };
+  }
+  if (Object.keys(update).length) await admin.auth().updateUser(into, update);
+  const patch = {};
+  if (gain.phone) patch.phone = gain.phone;
+  if (gain.email) patch.email = gain.email;
+  if (Object.keys(patch).length) await is.ref.set(patch, { merge: true });
+  await audit(actor.uid, "merge", { from, into });
+  return { ok: true };
 });
 
 // A pending account picks its roster entry, or asks to be added ("I'm not on the list").

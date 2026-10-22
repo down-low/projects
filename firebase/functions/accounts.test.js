@@ -213,3 +213,32 @@ test("cell numbers are standardized to +1 and ten digits", () => {
   Object.entries(cases).forEach(([raw, want]) => assert.equal(A.normCell(raw), want, raw));
   assert.equal(A.cellKey("cell 415-555-0100 / home 650-555-0199"), "4155550100");
 });
+
+test("phone switch: a cell sign-in moves into the account linked to that cell's seat", () => {
+  const owner = { uid: "g1", role: "member", status: "active", phone: null };
+  const base = { callerUid: "p1", caller: null, owner, phone: "+14155550100", callerHasData: false };
+  assert.deepEqual(A.planPhoneSwitch(base), { action: "switch" });
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { phone: "(415) 555-0100" }) })), { action: "switch" });
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { role: "admin" }) })), { action: "refuse", reason: "staff" });
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { role: "editor" }) })), { action: "refuse", reason: "staff" });
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { phone: "+14155550199" }) })), { action: "refuse", reason: "phone" });
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { status: "disabled" }) })), { action: "refuse", reason: "disabled" });
+  assert.equal(A.planPhoneSwitch(Object.assign({}, base, { callerHasData: true })), null);
+  assert.equal(A.planPhoneSwitch(Object.assign({}, base, { caller: { role: "member", status: "pending", email: "x@y.org" } })), null);
+  assert.equal(A.planPhoneSwitch(Object.assign({}, base, { caller: { role: "member", status: "pending", claimPos: "10EOC03M" } })), null);
+  assert.deepEqual(A.planPhoneSwitch(Object.assign({}, base, { caller: { role: "member", status: "pending" } })), { action: "switch" });
+  assert.equal(A.planPhoneSwitch(Object.assign({}, base, { owner: Object.assign({}, owner, { uid: "p1" }) })), null);
+  assert.equal(A.cellSeat("+14155550100", new Map([["10EOC03M", "415-555-0100"], ["11ENL01M", "415 555 0199"]])), "10EOC03M");
+  assert.equal(A.cellSeat("+14155550100", new Map([["a", "415-555-0100"], ["b", "(415) 555-0100"]])), null);
+});
+
+test("admin merge: an extra account with no seat folds into the one kept", () => {
+  const into = { uid: "g1", email: "a@x.org", phone: null, pos: "10EOC03M", role: "admin", status: "active" };
+  const from = { uid: "p1", email: null, phone: "+14155550100", pos: null, role: "member", status: "pending" };
+  assert.deepEqual(A.planMerge(from, into), { phone: "+14155550100" });
+  assert.deepEqual(A.planMerge(from, Object.assign({}, into, { phone: "415-555-0100" })), {});
+  assert.throws(() => A.planMerge(from, Object.assign({}, into, { phone: "+14155550199" })), /different cell/);
+  assert.throws(() => A.planMerge(Object.assign({}, from, { pos: "11ENL01M" }), into), /seat or a claim/);
+  assert.throws(() => A.planMerge(from, Object.assign({}, from)), /different account/);
+  assert.deepEqual(A.planMerge({ uid: "g2", email: "b@x.org", role: "member", status: "pending" }, { uid: "p9", phone: "+14155550100" }), { email: "b@x.org" });
+});
