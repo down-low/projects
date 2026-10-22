@@ -57,6 +57,11 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
     - 36EOE02M Joyce,S from 8/29. Promoted H20 Lt, now x-JO3145. Seat goes to Mui MU2796 on 1/17/2027.
 - Still no Employee ID (all WE): Alba,K 3FBOL07M, Louie,T 31EOE15M, Dickerson,C 10TOE29M.
 
+## New pulls (10/22)
+- `fir-pull-battalions.js` reads Roster by Station (1021:11): 10 battalions × the dates asked. It gives one day's crews, with role, ID, TRC and trade partner, in the company-page CSV format, so the Employee card's fir-db1 comparison reads it. About 10 consecutive days cover every tour.
+- `fir-pull-balance.js`: run on the balance report page; it reads the status table (DP/IDV/SP/SPI/TC/VA/WC/WDO by OFF/PM/FF) and the hires table for a date range.
+- `fir-licenses-probe.js`: one paste on the employee page (like the phone probe).
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
@@ -73,7 +78,13 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
      - Dresser D from 9/27/26.
    - **Swing seats:** the tool already follows the rotation from the vacancy list (`swing` tables in data/positions.json), so one cover per person is enough.
    - **Settled:** Price — Truong owns 22EOL22M, and Price is already D. Moreno — TC = time coming, OE = overtime earned; day-to-day relief at T09, so no cover.
-3. **H 3 (17):** `fir-pull-H3.js` sent 10/22 (still 17 after the re-check).
+3. **H 3 (17): pulled 10/22. Paused until 10/23 (user).**
+   - 6 match: Fartash, Lopez,E, Steward, Deaner, Levesque, Hausel (VR fills) and Feerick (owns 03EOA05M).
+   - Proposed, waiting on dates and answers:
+     - Covers: Mah to 44EOA30M; Hanley,Joseph to 35EOA26M; Wiltshire to 29EOA13M; Wu to 36EOA15M; Alvarado to swing 17ETA03M; Summers to 01EOA07M; Huynh to 20EOA30M (less certain); Garavaglia to 25EOA02M (already D).
+     - Nunnery D. Le covers 44EOA31M and is D.
+     - Fix: the 2027 award move into 35EOA26M (HA6250) sits on 05ETX14M, which is Hanley,James HA5462. It should be on Joseph's record.
+   - Questions: start dates; Summers at E01 now?; Rios SPI on 25EOA03M — D or S?
 4. **H 2 (70 after dropping the OSE-at-own-company flags; trim further first):** include the leftover class matches.
    - Hausel: HA2634 is right, so set the 131st on his card.
    - Lui: report says LU1896, tool says LU1898.
