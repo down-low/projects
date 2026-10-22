@@ -1,9 +1,10 @@
 /* Tour schedule: daily balance report counts from fir-sap2 in one CSV.
  * Open the Daily Balance Report (the /rpt/open.jsp link, any date) on fir-sap2, then paste this in that tab's console
  * (F12 → Console). It asks for a first and last date, asks the same report for each day as an Excel file and reads its two
- * bottom tables: status counts (DP, IDV, PB, SP, SPI, TC, VA, WC, WDO… by OFF, PM, FF) and hires by rank (Voluntary,
- * Mandatory, Advance Hire, Total). Downloads fir-balance-<dates>.csv with: date, table, key and the columns.
- * Nothing is sent anywhere else. If fir-sap2 won't hand the Excel files to the script, it offers to download each day's
+ * bottom tables: status counts (DP, IDV, PB, SP, SPI, TC, VA, WC, WDO… by OFF, PM, FF) and overtime hired by rank
+ * (Voluntary, Mandatory, Advance Hire, Total). Downloads balance_bottom.csv (date YYYY-MM-DD, table status|overtime, code,
+ * OFF, PM, FF, rank, voluntary, mandatory, advance, total) and, if any day failed, balance_failed.txt.
+ * The full reports are read in this browser's memory and never saved. Nothing is sent anywhere else. If fir-sap2 won't hand the Excel files to the script, it offers to download each day's
  * file instead; attach those (or a zip) in the chat. */
 (async () => {
   const here = new URL(location.href);
@@ -11,7 +12,7 @@
     return alert('Open the Daily Balance Report on fir-sap2 first (the open.jsp link), then run this again.');
   }
   const md = (d) => (d.getMonth() + 1) + '/' + d.getDate() + '/' + d.getFullYear(), t = new Date();
-  const from = (prompt('First date (MM/DD/YYYY)', md(t)) || '').trim(), to = (prompt('Last date (MM/DD/YYYY)', from) || '').trim();
+  const from = (prompt('First date (MM/DD/YYYY)', '10/1/2025') || '').trim(), to = (prompt('Last date (MM/DD/YYYY)', '12/31/2025') || '').trim();
   if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(from) || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(to)) return alert('Use dates like 10/22/2026.');
   const dt = (x) => { const a = x.split('/'); return new Date(+a[2], a[0] - 1, +a[1]); };
   const dates = [];
@@ -59,6 +60,9 @@
   }
   // The two tables under the totals: a header row with "Status … OFF PM FF" and "Rank Voluntary Mandatory Advance Hire Total".
   // Each value goes to the nearest header column of its block, since exported cells don't always line up under headers.
+  // Same logic as tools/reconcile/balance_xlsx.py.
+  const NAME = { Voluntary: 'voluntary', Mandatory: 'mandatory', 'Advance Hire': 'advance', Advance: 'advance', Total: 'total' };
+  const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   function balance(rows, date) {
     const out = [], hi = rows.findIndex(([, c]) => Object.values(c).includes('Status') && Object.values(c).includes('OFF'));
     if (hi < 0) return out;
@@ -66,21 +70,24 @@
     const sCol = cols.find((k) => head[k] === 'Status'), rCol = cols.find((k) => head[k] === 'Rank') || 1e9;
     const sHeads = cols.filter((k) => k > sCol && k < rCol), rHeads = cols.filter((k) => k > rCol);
     const near = (k, list) => list.reduce((b, x) => Math.abs(x - k) < Math.abs(b - k) ? x : b, list[0]);
-    rows.slice(hi + 1).filter(([n]) => n <= rows[hi][0] + 20).forEach(([, c]) => {
+    const nm = (h) => NAME[h] || h;
+    for (const [n, c] of rows.slice(hi + 1)) {
+      if (n > rows[hi][0] + 60) break;
       const ks = Object.keys(c).map(Number).sort((a, b) => a - b);
-      const sKey = ks.filter((k) => k < (rCol === 1e9 ? 1e9 : rCol) && /^[A-Z]{1,4}$/.test(c[k]))[0];
+      const sKey = ks.filter((k) => k < rCol && /^[A-Z]{1,4}$/.test(c[k]))[0];
       const rKey = rCol < 1e9 ? ks.filter((k) => Math.abs(k - rCol) <= 1 && /^(H\s*\d+|Total)$/.test(c[k]))[0] : undefined;
       if (sKey != null && sHeads.length) {
-        const r = { date, table: 'status', key: c[sKey] };
-        ks.filter((k) => k > sKey && (rKey == null || k < rKey) && /^-?\d+$/.test(c[k])).forEach((k) => { r[head[near(k, sHeads)]] = c[k]; });
+        const r = { date, table: 'status', code: c[sKey] };
+        ks.filter((k) => k > sKey && (rKey == null || k < rKey) && /^-?\d+$/.test(c[k])).forEach((k) => { r[nm(head[near(k, sHeads)])] = c[k]; });
         out.push(r);
       }
       if (rKey != null && rHeads.length) {
-        const r = { date, table: 'hires', key: c[rKey].replace(/\s+/g, ' ') };
-        ks.filter((k) => k > rKey && /^-?\d+$/.test(c[k])).forEach((k) => { r[head[near(k, rHeads)]] = c[k]; });
+        const r = { date, table: 'overtime', rank: c[rKey].replace(/\s+/g, ' ') };
+        ks.filter((k) => k > rKey && /^-?\d+$/.test(c[k])).forEach((k) => { r[nm(head[near(k, rHeads)])] = c[k]; });
         out.push(r);
+        if (c[rKey] === 'Total') break;
       }
-    });
+    }
     return out;
   }
 
@@ -126,22 +133,22 @@
           }
           return alert('Asked for all ' + dates.length + ' days. When the downloads finish, attach the files (or a zip of them) in the chat.');
         }
-        failed.push(md(d)); continue;
+        failed.push(isoOf(d) + ' (no Excel file)'); continue;
       }
-      const rows = balance(await readXlsx(got.buf), md(d));
-      if (rows.length) all.push(...rows); else { failed.push(md(d) + ' (no tables)'); all.push({ date: md(d), table: 'not-found', key: '' }); }
-      console.log('balance: ' + md(d) + ' · ' + rows.length + ' rows');
-    } catch (e) { failed.push(md(d) + ' (' + e.message + ')'); }
+      const rows = balance(await readXlsx(got.buf), isoOf(d));
+      if (rows.length) all.push(...rows); else failed.push(isoOf(d) + ' (no tables in the report)');
+      console.log('balance: ' + isoOf(d) + ' · ' + rows.length + ' rows');
+    } catch (e) { failed.push(isoOf(d) + ' (' + e.message + ')'); }
     await wait();
   }
   if (!all.length) return alert('Nothing read. Failed: ' + failed.join(', '));
-  const cols = ['date', 'table', 'key'];
-  all.forEach((r) => Object.keys(r).forEach((h) => { if (cols.indexOf(h) < 0) cols.push(h); }));
+  all.sort((a, b) => a.date.localeCompare(b.date) || (a.table === 'status' ? 0 : 1) - (b.table === 'status' ? 0 : 1));
+  const COLS = ['date', 'table', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total'];
   const q = (v) => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
-  const csv = [cols.join(',')].concat(all.map((r) => cols.map((c) => q(r[c])).join(','))).join('\n');
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
-  a.download = 'fir-balance-' + from.replace(/\//g, '-') + (to !== from ? '_to_' + to.replace(/\//g, '-') : '') + '.csv';
-  document.body.appendChild(a); a.click(); a.remove();
-  console.log('balance: ' + all.length + ' rows' + (failed.length ? ' · failed: ' + failed.join(', ') : ''));
+  const save = (text, name, type) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type })); a.download = name; document.body.appendChild(a); a.click(); a.remove(); };
+  save([COLS.join(',')].concat(all.map((r) => COLS.map((c) => q(r[c])).join(','))).join('\n'), 'balance_bottom.csv', 'text/csv');
+  if (failed.length) save('Dates that failed (' + failed.length + '):\n' + failed.join('\n') + '\n', 'balance_failed.txt', 'text/plain');
+  const days = new Set(all.map((r) => r.date)).size;
+  console.log('balance: ' + days + ' days, ' + all.length + ' rows' + (failed.length ? ' · failed: ' + failed.join(', ') : ''));
+  alert('Done: ' + days + ' of ' + dates.length + ' days in balance_bottom.csv.' + (failed.length ? ' ' + failed.length + ' failed (listed in balance_failed.txt).' : ' None failed.'));
 })();
