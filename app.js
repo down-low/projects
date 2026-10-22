@@ -759,7 +759,7 @@
       say($("pd-msg"), "Saving…");
       var classNo = cls ? +cls : null;
       backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
+        profilesCache[p.pos] = Object.assign({}, profilesCache[p.pos], { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo });
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
