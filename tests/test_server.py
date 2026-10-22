@@ -122,6 +122,28 @@ class ServerTest(unittest.TestCase):
     def client(self):
         return Client(self.base)
 
+    def test_member_marks_own_day(self):
+        admin = self.client()
+        admin.google_login("chief@example.org")
+        m = self.client()
+        m.google_login("ownday@example.org")
+        self.assertEqual(m.req("POST", "/api/me/statuses", {"code": "VA", "day": "2026-11-05"})[0], 403)  # not approved yet
+        m.req("POST", "/api/me/claim", {"pos": "10EOL04M"})
+        _, users, _ = admin.req("GET", "/api/admin/users")
+        uid = next(u["id"] for u in users if u["googleEmail"] == "ownday@example.org")
+        admin.req("POST", f"/api/admin/users/{uid}", {"action": "approve"})
+        st, rec, _ = m.req("POST", "/api/me/statuses", {"code": "S", "day": "2026-11-05"})
+        self.assertEqual((st, rec["pos"], rec["start"], rec["end"], rec["self"]), (201, "10EOL04M", "2026-11-05", "2026-11-05", 1))
+        for bad in ({"code": "D", "day": "2026-11-06"}, {"code": "WE", "day": "2026-11-06"}, {"code": "VA", "day": "11/06/2026"}):
+            self.assertEqual(m.req("POST", "/api/me/statuses", bad)[0], 400, bad)
+        self.assertEqual(m.req("POST", "/api/statuses", {"pos": "10EOL04M", "code": "VA", "start": "2026-11-07"})[0], 403)  # still no editor route
+        # An editor's record on the same seat can't be removed through the member route; the member's own can.
+        _, other, _ = admin.req("POST", "/api/statuses", {"pos": "10EOL04M", "code": "VA", "start": "2026-11-09", "end": "2026-11-09"})
+        self.assertEqual(m.req("DELETE", f"/api/me/statuses/{other['id']}")[0], 404)
+        self.assertEqual(m.req("DELETE", f"/api/me/statuses/{rec['id']}")[0], 200)
+        self.assertIsNone(self.app.one("SELECT id FROM statuses WHERE id = ?", (rec["id"],)))
+        self.assertIsNotNone(self.app.one("SELECT id FROM statuses WHERE id = ?", (other["id"],)))
+
     # ---------- sign-in ----------
     def test_rejected_tokens(self):
         cases = {"aud": {"aud": "someone-else"}, "iss": {"iss": "https://evil.example"},

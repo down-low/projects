@@ -9,7 +9,7 @@
   var data = [];
   var people = []; // filled positions, sorted by name
   var state = { view: "dash", date: today(), personPos: null, personMonth: null, rankMonth: null,
-    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, crewIdx: 0 };
+    dashDate: today(), sixTour: 1, sixMonth: null, sixPair: null, folds: {}, crewIdx: 0, crewStart: 0 };
   var recsVersion = 0; // bumps whenever records change, for caches
   var requiredData = window.REQUIRED_STAFFING || null; // required staffing per apparatus, from the Daily Balance Report
   var emplIds = window.EMPLOYEE_IDS || null; // {ids: {pos: {id, name, source}}}, employee IDs for roster positions
@@ -210,7 +210,8 @@
     var offParts = OFF_CODES.filter(function (c) { return off[c]; }).map(function (c) { return c + " " + off[c]; });
     if (awayN) offParts.push(awayN + " covering elsewhere");
     if (coveredN) offParts.push(coveredN + " covered");
-    var offText = offTotal ? " · " + offTotal + " off (" + offParts.join(" · ") + ")" : "";
+    // Members see the total off; editors and admins also get the breakdown (D, WE, covering elsewhere, covered).
+    var offText = offTotal ? " · " + offTotal + " off" + (simpleUi() ? "" : " (" + offParts.join(" · ") + ")") : "";
     if (phone) {
       $("date-summary").innerHTML = '<div class="pt-sum">' + (M.holidayFor(d) ? holidayNote(d) + "<br>" : "") +
         "Tours " + M.toursOn(w).join(" · ") + " · <b>" + onDuty + "</b> on duty" + offText +
@@ -314,22 +315,29 @@
       out.innerHTML = '<div class="empty">Link your account to your roster spot (Trades, This is me) to see your crew.</div>';
       return;
     }
+    // Your next 12 working shifts, three at a time between ‹ and ›.
     var shifts = [], d = today();
-    for (var k = 0; k < 60 && shifts.length < 4; k++, d = addDays(d, 1)) {
+    for (var k = 0; k < 150 && shifts.length < 12; k++, d = addDays(d, 1)) {
       var s = day(me, d);
       if (s && !s.status) shifts.push({ d: d, co: s.co || home(me), k: k });
     }
-    if (!shifts.length) { out.innerHTML = '<div class="empty">No shifts in the next 60 days.</div>'; return; }
-    var i = Math.min(state.crewIdx, shifts.length - 1), cur = shifts[i];
+    if (!shifts.length) { out.innerHTML = '<div class="empty">No shifts in the next 150 days.</div>'; return; }
+    var start = Math.max(0, Math.min(state.crewStart || 0, Math.floor((shifts.length - 1) / 3) * 3));
+    var i = Math.min(Math.max(state.crewIdx, start), Math.min(start + 2, shifts.length - 1)), cur = shifts[i];
     var co = Organization.apparatus(cur.co);
     var rows = mergeCovered(dayRows(cur.d)).filter(function (r) { return r.name && Organization.apparatus(r.co) === co; })
       .sort(function (a, b) { return RANK_ORDER.indexOf(a.slot.rank) - RANK_ORDER.indexOf(b.slot.rank) || (a.name || "").localeCompare(b.name || ""); });
     var on = rows.filter(function (r) { return !r.off; }).length;
     out.innerHTML =
-      '<div class="crew-days" role="group" aria-label="Your next shifts">' + shifts.map(function (x, j) {
-        return '<button type="button" class="btn small' + (j === i ? " primary" : "") + '" data-crew="' + j + '" aria-pressed="' + (j === i) + '">' +
-          (x.k === 0 ? "Today" : x.k === 1 ? "Tomorrow" : esc(shortDate(x.d))) + "</button>";
-      }).join("") + "</div>" +
+      '<div class="crew-days" role="group" aria-label="Your next shifts">' +
+      '<button type="button" class="btn icon" data-crew-page="-3" aria-label="Earlier shifts"' + (start === 0 ? " disabled" : "") + ">&lsaquo;</button>" +
+      shifts.slice(start, start + 3).map(function (x, n) {
+        var j = start + n;
+        return '<button type="button" class="btn small crew-day' + (j === i ? " primary" : "") + '" data-crew="' + j + '" aria-pressed="' + (j === i) + '">' +
+          '<span class="cd-dow">' + (x.k === 0 ? "Today" : x.k === 1 ? "Tomorrow" : DOW[x.d.getDay()]) + "</span>" +
+          '<span class="cd-date">' + esc(MONTHS[x.d.getMonth()].slice(0, 3) + " " + x.d.getDate()) + "</span></button>";
+      }).join("") +
+      '<button type="button" class="btn icon" data-crew-page="3" aria-label="Later shifts"' + (start + 3 >= shifts.length ? " disabled" : "") + ">&rsaquo;</button></div>" +
       '<p class="hint crew-head">' + esc(co) + " on " + esc(longDate(cur.d)) + " · " + on + " on duty</p>" +
       '<div class="group"><ul class="plist">' + rows.map(function (x) {
         return "<li" + (x.off ? ' class="is-off"' : "") + '><span class="pl-co">' + esc(RANK_SHORT[x.slot.rank] || x.slot.rank) + "</span>" +
@@ -339,6 +347,9 @@
       }).join("") + "</ul></div>";
     out.querySelectorAll("[data-crew]").forEach(function (b) {
       b.onclick = function () { state.crewIdx = +b.dataset.crew; renderCrew(); };
+    });
+    out.querySelectorAll("[data-crew-page]").forEach(function (b) {
+      b.onclick = function () { state.crewStart = start + +b.dataset.crewPage; state.crewIdx = state.crewStart; renderCrew(); };
     });
   }
 
@@ -469,7 +480,7 @@
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
-    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit());
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p);
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -589,7 +600,8 @@
     });
   }
   /* ---------- One day's options (from the calendar or Next shifts) ----------
-     Trade the shift (your own page) or mark one day VA or S (editors; D and WE stay in the Edit forms).
+     Trade the shift (your own page) or mark one day VA or S (editors on anyone's page, members on their own, with Undo
+     for a day they marked; D and WE stay in the Edit forms).
      Days are only tappable for someone who can do one of those. */
   var dayOpener = null;
   function openDay(p, dIso, opener) {
@@ -606,10 +618,17 @@
         : '<button type="button" data-day-act="trade">Trade this shift' + (Trades.forSomeone(p.pos) ? " for " + esc(p.name) : "") + '<span class="hint">Send it to people who are off, or post it to the board</span></button>');
     }
     var leave = "";
-    if (s && !s.status && backend && backend.canEdit()) {
+    var editor = !!(backend && backend.canEdit()), own = markOwnDay(p);
+    if (s && !s.status && (editor || own)) {
       leave = ('<div class="day-leave"><span class="k">Mark this day</span><div class="seg">' + ["VA", "S"].map(function (c) {
         return '<button type="button" class="btn small" data-day-leave="' + c + '" title="' + esc(STATUS_LABEL[c]) + '">' + c + "</button>";
       }).join("") + '</div><span class="msg" id="day-msg" role="status"></span></div>');
+    }
+    // A day you marked yourself (VA or S from this drawer) can be taken back here.
+    var mark = own && s && s.status ? recs.statuses.filter(function (r) { return r.self && r.pos === p.pos && r.start === dIso && r.end === dIso; })[0] : null;
+    if (mark) {
+      leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
+        '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
     if (!acts.length && !leave) return; // nothing to do on this day
     var hol = M.holidayFor(d);
@@ -631,11 +650,19 @@
       b.onclick = function () {
         var code = b.dataset.dayLeave;
         say($("day-msg"), "Saving…");
-        backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" })
+        (editor ? backend.addStatus({ pos: p.pos, name: p.name, code: code, start: dIso, end: dIso, note: "" }) : backend.addOwnStatus(code, dIso, p.name))
           .then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
       };
     });
+    $("day-body").querySelectorAll("[data-day-undo]").forEach(function (b) {
+      b.onclick = function () {
+        say($("day-msg"), "Saving…");
+        backend.removeOwnStatus(b.dataset.dayUndo).then(function () { closeDay(); renderAll(true); }, function (er) { say($("day-msg"), er.message, true); });
+      };
+    });
   }
+  // Members mark their own days VA or S (one day at a time) from the day drawer.
+  function markOwnDay(p) { return !!(backend && backend.addOwnStatus && myPos() && p.pos === myPos()); }
   function closeDay() {
     if ($("day-sheet").hidden) return;
     $("day-sheet").hidden = true;

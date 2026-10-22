@@ -34,12 +34,21 @@ service cloud.firestore {
         (!('emplId' in m) || m.emplId == null || (m.emplId is string && m.emplId.matches('^[A-Z]{2}[0-9]{4}$')));
     }
     function recordWrite(ok) { return isAdmin() || (isEditor() && ok); }
+    // A member marks one of their own days VA or S from the day drawer (self: true), and may delete only that record.
+    function ownDayOk(m) {
+      return myPos() != null && m.pos == myPos() && m.code in ['VA', 'S'] && isDate(m.start) && m.end == m.start &&
+        m.self == true && m.createdBy == request.auth.uid &&
+        m.keys().hasOnly(['pos', 'name', 'code', 'start', 'end', 'note', 'self', 'createdAt', 'createdBy']) &&
+        optText(m, 'name', 80) && optText(m, 'note', 500);
+    }
+    function ownDay(r) { return myPos() != null && r.self == true && r.createdBy == request.auth.uid && r.pos == myPos(); }
 
-    // Schedule records: everyone approved reads; editors and admins write.
+    // Schedule records: everyone approved reads; editors and admins write; members add or remove their own one-day VA / S.
     match /statuses/{id} {
       allow read: if active();
-      allow create, update: if recordWrite(statusOk(data()));
-      allow delete: if isEditor();
+      allow create: if recordWrite(statusOk(data())) || ownDayOk(data());
+      allow update: if recordWrite(statusOk(data()));
+      allow delete: if isEditor() || ownDay(resource.data);
     }
     match /tourChanges/{id} {
       allow read: if active();

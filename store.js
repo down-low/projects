@@ -410,6 +410,9 @@
             adminUsers: function () { return getJson("api/admin/users"); },
             adminAction: function (id, body) { return thenRefresh(call("POST", "api/admin/users/" + encodeURIComponent(id), body)); },
             addStatus: function (rec) { return thenRefresh(call("POST", "api/statuses", rec)); },
+            // A member marks one of their own days VA or S (the server allows only their linked seat, one day).
+            addOwnStatus: function (code, day) { return thenRefresh(call("POST", "api/me/statuses", { code: code, day: day })); },
+            removeOwnStatus: function (id) { return thenRefresh(call("DELETE", "api/me/statuses/" + encodeURIComponent(id))); },
             addTourChange: function (rec) { return thenRefresh(call("POST", "api/tour-changes", rec)); },
             addCover: function (rec) { return thenRefresh(call("POST", "api/covers", rec)); },
             canAdmin: function () { return active() && me.role === "admin"; },
@@ -677,6 +680,12 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
       addStatus: function (rec) { return write("statuses", rec); },
+      // A member marks one of their own days VA or S (the rules allow only that: own seat, one day, self: true).
+      addOwnStatus: function (code, day, name) {
+        if (!active() || !me.pos) return Promise.reject(new Error(NO_EDIT));
+        return w(addRec("statuses", { pos: me.pos, name: name || "", code: code, start: day, end: day, note: "", self: true }));
+      },
+      removeOwnStatus: function (id) { return active() ? w(fs.collection("statuses").doc(id).delete()) : Promise.reject(new Error(NO_EDIT)); },
       addTourChange: function (rec) { return write("tourChanges", rec); },
       addCover: function (rec) { return write("covers", rec); },
       addPerson: function (rec) { return write("people", rec); },

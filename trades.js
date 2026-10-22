@@ -300,7 +300,7 @@
     // Who a text goes to, and the staff-list number Messages will open to, so the poster knows before sending.
     function sendTo(t, k) {
       var mine = inviteFor(t, k);
-      return mine && mine.cell ? '<p class="hint">Opens to ' + esc(M.showCell(mine.cell)) + ", " + esc(api.firstName(k)) + "'s cell on the staff list</p>" : "";
+      return mine && mine.cell ? '<p class="hint">Opens to ' + esc(M.showCell(mine.cell)) + "</p>" : "";
     }
     function smsLink(t, k, label, cls, run) {
       var mine = inviteFor(t, k);
@@ -347,7 +347,7 @@
           '<div class="row">' + (keys.length > 1 ? '<button class="btn small" data-invite-all="' + esc(t.id) + '">Invite all (' + keys.length + ")</button>" +
             '<a class="btn small" href="' + esc(smsHref(inviteText(t), cells)) + '" target="_blank" rel="noopener">Group text</a>' : "") +
           '<button class="linkish small-link" data-invite-copy="' + esc(t.id) + '">Copy the text instead</button></div>' +
-          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them with the general link; everyone sees the replies.</p>' : "") +
+          (keys.length > 1 ? '<p class="hint">Group text: one message to all of them; everyone sees the replies.</p>' : "") +
           (ui.copyOpen === t.id ? '<textarea class="invite-copy" readonly rows="4" data-copy-text="' + esc(t.id) + '">' + esc(inviteText(t)) + "</textarea>" : "");
       }
       return html + "</div>";
