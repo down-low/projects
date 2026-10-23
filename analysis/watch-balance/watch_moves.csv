@@ -1,0 +1,14 @@
+rank,step,from_tour,to_tour,min,max,sd,positions,even
+Captain,0,,,16,23,2.05,67,19.5
+Captain,1,12,14,17,22,1.52,67,19.5
+Captain,2,26,21,18,21,0.94,67,19.5
+Captain,3,30,24,18,21,0.66,67,19.5
+Captain,4,1,4,19,20,0.5,67,19.5
+Lieutenant,0,,,45,52,1.93,167,48.5
+Lieutenant,1,14,12,46,52,1.43,167,48.5
+Lieutenant,2,21,26,47,51,0.91,167,48.5
+Lieutenant,3,4,22,47,50,0.67,167,48.5
+Lieutenant,4,28,20,48,49,0.5,167,48.5
+Battalion Chief,0,,,9,10,0.34,34,9.9
+Rescue Captain,0,,,2,4,0.67,12,3.5
+Rescue Captain,1,1,4,3,4,0.5,12,3.5
