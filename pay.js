@@ -62,18 +62,22 @@
     ],
     // % of base. retire: counts toward retirement (kept in the data; not shown for now). ot: false, left out of the
     // overtime rate. group: only one of the group at a time.
+    // only: the classifications that can get it (the user: EMT, AO and Rescue Boat are H-2 only). hidden: not offered for now.
     premiums: [
-      { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt" },
-      { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt" },
-      { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false },
-      { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false },
-      { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true },
+      { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt", only: ["H-2"] },
+      { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt", hidden: true },
+      { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false, only: ["H-2"] },
+      { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false, only: ["H-2"] },
+      { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true, hidden: true },
       { key: "holiday", label: "Holiday premium", pct: 9.09, retire: true, ot: false },
     ],
     // Training and education premium: the person picks one of these (or none). Not counted for retirement.
     training: { pcts: [7, 8, 9], retire: false },
     // Classifications that get the holiday premium unless the person unticks it.
     holidayDefault: ["H-2", "H-20", "H-30", "H-40", "H-110", "H-120"],
+    // Classifications not offered for now (the user, Oct 2026; more to follow). Someone whose own one is hidden gets no card.
+    // Only 97.40-hour (24-hour shift) employees for now.
+    hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110"],
     // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
     longevity: [{ yos: 21, pct: 2 }, { yos: 23, pct: 4 }, { yos: 26, pct: 6 }],
     otTimes: 1.5, otShiftHours: 24,
@@ -87,6 +91,18 @@
   };
   var RANK_DEFAULT = { "Battalion Chief": "H-40", "Rescue Captain": "H-33", Captain: "H-30", Lieutenant: "H-20", ISS: "H-10",
     Pilot: "H-120", "Marine Engineer": "H-110", Firefighter: "H-2", "FF/Paramedic": "H-2" };
+
+  // The person's own classification: their seat's hclass ("H20" -> "H-20"), else from rank.
+  function defaultCode(p) {
+    if (!p) return "H-2";
+    var h = p.hclass ? "H-" + String(p.hclass).replace(/^H-?/i, "") : null;
+    if (h && (h === "H-2" || PAY.rates.some(function (r) { return r[0] === h; }))) return h;
+    return RANK_DEFAULT[p.rank] || "H-2";
+  }
+  // Whether someone gets the card: their own classification isn't hidden.
+  function shows(p) { return offered(defaultCode(p)); }
+  function offered(code) { return PAY.hidden.indexOf(code) === -1; }
+  function premOffered(x, code) { return !x.hidden && (!x.only || x.only.indexOf(code) !== -1); }
 
   function yearsOf(hire, today) {
     if (!hire) return null;
@@ -142,7 +158,7 @@
       if (counts) retire += amt;
       if (ot !== false) otTotal += amt;
     }
-    PAY.premiums.forEach(function (x) { if (premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire, x.ot); });
+    PAY.premiums.forEach(function (x) { if (premOffered(x, code) && premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire, x.ot); });
     if (PAY.training.pcts.indexOf(Number(prem.train)) !== -1) add("Training and education", Number(prem.train), PAY.training.retire);
     var lp = longevityPct(yos);
     if (lp) add("Longevity (" + yos + " years)", lp, false);
@@ -174,8 +190,9 @@
       if (!out) return;
       var p = api.person();
       if (ui.code == null) {
-        ui.code = load("code") || (p && RANK_DEFAULT[p.rank]) || "H-2";
-        ui.prem = load("prem") || (p && p.rank === "FF/Paramedic" ? { medic: true } : {});
+        var saved = load("code");
+        ui.code = saved && offered(saved) ? saved : defaultCode(p);
+        ui.prem = load("prem") || {};
       }
       if (savedHire()) ui.hire = savedHire();
       out.innerHTML = '<details class="card fold pay" id="pay-card" open><summary><h3>Pay estimate</h3><span class="fold-sum" id="pay-sum"></span></summary>' +
@@ -189,7 +206,7 @@
     }
     function draw() {
       var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
-      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0; })
+      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0 && offered(x[0].split("/")[0]); })
         .map(function (x) { return [x[0], x[0].split("/")[0] + " " + x[1]]; }));
       var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
@@ -201,7 +218,7 @@
         '<label>Classification<select id="pay-code">' + opts.map(function (o) {
           return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
         }).join("") + "</select></label>" +
-        '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.map(function (x) {
+        '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.filter(function (x) { return premOffered(x, code); }).map(function (x) {
           return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
         }).join("") +
         '<label class="chk">Training and education <select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
@@ -236,11 +253,13 @@
           function (er) { api.say($("pay-msg"), er.message, true); });
       };
     }
-    return { render: render, PAY: PAY };
+    return { render: render, shows: shows, PAY: PAY };
   };
   root.PayViews.PAY = PAY;
   root.PayViews.estimate = estimate;
   root.PayViews.yearsOf = yearsOf;
   root.PayViews.payPeriodOf = payPeriodOf;
   root.PayViews.otWorked = otWorked;
+  root.PayViews.defaultCode = defaultCode;
+  root.PayViews.shows = shows;
 })(typeof window !== "undefined" ? window : globalThis);
