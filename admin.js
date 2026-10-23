@@ -340,6 +340,9 @@
       }, function (er) { api.say($("claim-msg"), er.message, true); });
     }
 
+    // Pay estimate on My page (pay.js).
+    var Pay = root.PayViews ? root.PayViews({ $: $, esc: esc, say: api.say, backend: api.backend, today: api.today }) : null;
+
     /* ---------- My page ---------- */
     function renderMe() {
       var b = api.backend(), me = b.me(), out = $("me-detail");
@@ -384,6 +387,7 @@
           "Ask an admin to link it if you work a tour.</p></div>";
       }
 
+      if (me.pos && Pay) html += Pay.html(me, p);
       if (b.linkCell && !me.phone) {
         html += '<div class="card">' + cellLinkHtml("ml", "Add my cell for sign-in", "Then you can sign in with your cell or with Google, and both open this same account.") + "</div>";
       }
@@ -408,6 +412,7 @@
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
+      if (Pay) Pay.wire(me);
       if ($("ml-form")) {
         wireCellLink("ml");
         // The staff-list cell for your seat, filled in so it's one tap to get the code.

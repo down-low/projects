@@ -240,3 +240,9 @@ test("ownStaffCell: an approved account's own staff-list cell, admins and editor
   assert.equal(A.ownStaffCell(u, null), null);
   assert.equal(A.ownStaffCell(u, "call the station"), null);
 });
+
+test("classHireGuess: the hire date most of the class has, earliest on a tie", () => {
+  assert.equal(A.classHireGuess(["2015-03-02", "2015-03-02", "2015-04-01", null, "bad"]), "2015-03-02");
+  assert.equal(A.classHireGuess(["2016-01-04", "2015-12-01"]), "2015-12-01");
+  assert.equal(A.classHireGuess([]), null);
+});

@@ -967,3 +967,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 /* ---------- "<year> so far" card (myyear.js) ---------- */
 .year-card { display: flex; flex-direction: column; gap: 6px; }
 .year-card .hint { margin: 4px 0 0; }
+
+/* ---------- Pay estimate on My page (pay.js) ---------- */
+.pay #pay-body { display: flex; flex-direction: column; gap: 10px; }
+.pay-prem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pay-prem legend { font-weight: 600; padding: 0 4px; }
+.pay-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pay-table th, .pay-table td { text-align: left; padding: 4px 0; border-bottom: 1px solid var(--line); font-weight: 400; }
+.pay-table td:last-child { text-align: right; }
+.pay-table .pay-total th, .pay-table .pay-total td { font-weight: 700; }
+.pay-vac select { margin-left: 6px; }
+.pay select { max-width: 100%; }

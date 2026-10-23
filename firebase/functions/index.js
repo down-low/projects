@@ -207,6 +207,19 @@ exports.myStaffCell = wrap(async (req) => {
   return { cell };
 });
 
+// Pay estimate on My page: your saved hire date, or a guess from your academy class (A.classHireGuess). Only a date.
+exports.hireDateGuess = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true || !auth.token.pos) return { date: null };
+  const own = await db.doc("profiles/" + auth.token.pos).get();
+  const p = own.exists ? own.data() : {};
+  if (p.hireDate) return { date: p.hireDate, from: "profile" };
+  if (p.classNo == null) return { date: null };
+  const snap = await db.collection("profiles").where("classNo", "==", p.classNo).get();
+  const date = A.classHireGuess(snap.docs.map((d) => d.data().hireDate));
+  return { date, from: date ? "class" : null };
+});
+
 exports.onToolKeys = wrap(async (req) => {
   const auth = signedIn(req);
   if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");

@@ -118,6 +118,12 @@ class FirebaseBuild(unittest.TestCase):
             html = self.read(folder, "index.html")
             self.assertLess(html.index('src="myyear.js"'), html.index('src="app.js"'))
 
+    def test_pay_estimate_on_every_site(self):
+        for folder in (self.app, self.admin):
+            html = self.read(folder, "index.html")
+            self.assertLess(html.index('src="pay.js"'), html.index('src="app.js"'))
+        self.assertIn('"H-2/7", "Firefighter, 7th year and up", 154960', self.read(ROOT, "pay.js"))
+
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()
