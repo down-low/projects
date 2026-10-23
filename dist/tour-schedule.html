@@ -1616,10 +1616,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     return out;
   }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
+  // home: {key: true} marks a HOME number used because fir-db1 had no cell for that person (a text may not reach it).
   function staffContacts(docs) {
     var out = {};
     (docs || []).forEach(function (d) {
-      Object.keys(d.cells || {}).forEach(function (k) { out[k] = { phoneMobile: d.cells[k], shared: false, staffList: true }; });
+      Object.keys(d.cells || {}).forEach(function (k) { out[k] = { phoneMobile: d.cells[k], shared: false, staffList: true, home: !!(d.home && d.home[k]) }; });
     });
     return out;
   }
@@ -1841,9 +1842,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           setCell: function (key, cell) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
-            var cells = Object.assign({}, doc ? doc.cells : {});
+            var cells = Object.assign({}, doc ? doc.cells : {}), home = Object.assign({}, doc ? doc.home : {});
             if (cell) cells[key] = cell; else delete cells[key];
-            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+            delete home[key]; // a number typed in by an admin is a cell
+            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells, home: home });
           },
           /* Employee card (admins). update merges fields into one record; a null field clears it. */
           update: function (kind, id, patch) {
@@ -2120,7 +2122,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
     function contactMap() {
       var out = {};
-      if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}) }]);
+      if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}),
+        home: records.staffCells.reduce(function (o, d) { if (d.home) o[d.id] = true; return o; }, {}) }]);
       records.contacts.concat(records.myContact).forEach(function (c) {
         if (c.pos) out[c.pos] = { email: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shared: !!c.share };
       });
@@ -2468,7 +2471,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
             // Standardized to +14155550100 when the text holds a number; kept as written otherwise (Invite people lists those).
-            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), home: !!(d.home && d.home[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
         var say = onProgress || function () {};
@@ -3115,7 +3118,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }).map(function (p) {
         var c = cells[p.pos];
         var raw = c && c.staffList ? c.phoneMobile : null;
-        return { p: p, cell: M.normCell(raw), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
+        return { p: p, cell: M.normCell(raw), home: !!(c && c.home), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
       }).filter(function (x) { return !(launch.notOn && x.on); })
         .sort(function (a, c) { return Organization.order(a.p.company || a.p.title) - Organization.order(c.p.company || c.p.title) || a.p.name.localeCompare(c.p.name); });
     }
@@ -3137,6 +3140,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }).map(function (p) { return p.company; }))).sort(function (a, c) { return Organization.order(a) - Organization.order(c); });
       var grps = Array.from(new Set(api.people().map(function (p) { return root.TourMath.rankGroup(p.rank); }))).sort();
       var noCell = all.filter(function (x) { return !x.cell; }).length, sentN = all.filter(function (x) { return x.sent; }).length;
+      var homeN = all.filter(function (x) { return x.cell && x.home; }).length;
       // Cells on file that aren't a phone number (fix them on the person's Employee card).
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
@@ -3148,7 +3152,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<label>Rank group<select data-l="grp"><option value="">All</option>' + opts(grps.map(function (g) { return [g, g]; }), launch.grp) + "</select></label></div>" +
         '<label class="chk"><input type="checkbox" data-l="notOn"' + (launch.notOn ? " checked" : "") + "> Only people not on the tool yet</label>" +
         '<label class="chk"><input type="checkbox" data-l="hideSent"' + (launch.hideSent ? " checked" : "") + "> Hide people already texted</label>" +
-        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
+        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (homeN ? " · " + homeN + " home numbers (a text may not reach a landline)" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
         (bad.length ? '<p class="msg err">' + bad.length + (bad.length === 1 ? " cell on file isn't" : " cells on file aren't") + " a phone number: " +
           esc(bad.slice(0, 8).map(function (x) { return x.p.name; }).join(", ")) + (bad.length > 8 ? "…" : "") + ". Fix them on their Employee cards.</p>" : "") +
         '<label>Message<textarea id="launch-msg" rows="3" maxlength="600">' + esc(launchMsg()) + "</textarea></label>" +
@@ -8086,6 +8090,7 @@ module.exports = QRCode;
       // 6. Cell number (staff list, admins only)
       var c = api.contacts()[key] || {};
       var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
+        (c.staffList && c.home ? '<p class="msg err">This is their home number: fir-db1 had no cell. A text may not reach it; saving a cell here replaces it.</p>' : "") +
         (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
         '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? root.TourMath.showCell(c.phoneMobile) : "") + '"></label></div>' +
         '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
@@ -8116,7 +8121,7 @@ module.exports = QRCode;
         section("asg", "Current assignment", nCur ? esc(api.kindWord(cur[0])) + " " + esc((byPos()[cur[0].targetPos] || {}).company || cur[0].targetPos) : "Own seat", asgBody, !api.isPhone()) +
         section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
         section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
-        section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("cell", "Cell number", c.staffList ? (c.home ? "Home (no cell)" : "On file") : "None", cellBody, !api.isPhone()) +
         section("lic", "Licenses and certifications", licSummary(p), licBody(p), !api.isPhone()) +
         section("bal", "Time balances", balSummary(p), balBody(p), !api.isPhone()) +
         section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +

@@ -568,6 +568,7 @@
       // 6. Cell number (staff list, admins only)
       var c = api.contacts()[key] || {};
       var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
+        (c.staffList && c.home ? '<p class="msg err">This is their home number: fir-db1 had no cell. A text may not reach it; saving a cell here replaces it.</p>' : "") +
         (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
         '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? root.TourMath.showCell(c.phoneMobile) : "") + '"></label></div>' +
         '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
@@ -598,7 +599,7 @@
         section("asg", "Current assignment", nCur ? esc(api.kindWord(cur[0])) + " " + esc((byPos()[cur[0].targetPos] || {}).company || cur[0].targetPos) : "Own seat", asgBody, !api.isPhone()) +
         section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
         section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
-        section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("cell", "Cell number", c.staffList ? (c.home ? "Home (no cell)" : "On file") : "None", cellBody, !api.isPhone()) +
         section("lic", "Licenses and certifications", licSummary(p), licBody(p), !api.isPhone()) +
         section("bal", "Time balances", balSummary(p), balBody(p), !api.isPhone()) +
         section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +

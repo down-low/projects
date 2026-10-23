@@ -37,6 +37,7 @@ The status log is `STATUS.md` and the routine is `README.md`.
 | `tools/reconcile/balance_xlsx.py` | balance report Excel files (folder or zip) | `balance_bottom.csv` |
 | `tools/reconcile/balance_summary.py` | `balance_bottom.csv` | one row per day: sick, vacation, disability (OFF/PM/FF), hired, the same weekday last year |
 | `tools/reconcile/trades.py` | battalion or time-pull CSVs | per person: TRW, TRO, net and partners; top-10 lists |
+| `tools/reconcile/load_phones.py` | current staff-list doc plus phone pull CSVs | the new staff-list doc (CELL, else HOME marked `home`; never replaces a number); counts only |
 | `tools/reconcile/missing_cells.js` | page dump with contacts | `missing-cells.md` (who has no cell, by rank) |
 | `tools/make_sweep.js` | page dump | `fir-sweep.js`, a 14-day time pull for everyone |
 | `tools/extract_vacancy.py`, `extract_awards.py`, `extract_balance.py` | the Vacancy List, Vacancy Awards and Balance Report PDFs | `data/*.json` the tool is built from |
