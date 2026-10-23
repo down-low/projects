@@ -969,7 +969,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .year-card .hint { margin: 4px 0 0; }
 
 /* ---------- Pay estimate on My page (pay.js) ---------- */
-.pay #pay-body, .pay #pay-ot { display: flex; flex-direction: column; gap: 10px; }
+.pay #pay-body { display: flex; flex-direction: column; gap: 10px; }
 .pay-prem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
 .pay-prem legend { font-weight: 600; padding: 0 4px; }
 .pay-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }

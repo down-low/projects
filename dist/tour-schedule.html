@@ -973,7 +973,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .year-card .hint { margin: 4px 0 0; }
 
 /* ---------- Pay estimate on My page (pay.js) ---------- */
-.pay #pay-body, .pay #pay-ot { display: flex; flex-direction: column; gap: 10px; }
+.pay #pay-body { display: flex; flex-direction: column; gap: 10px; }
 .pay-prem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
 .pay-prem legend { font-weight: 600; padding: 0 4px; }
 .pay-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
@@ -6080,7 +6080,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false },
       { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false },
       { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true },
-      { key: "holiday", label: "Holiday premium (on for suppression)", pct: 9.09, retire: true },
+      { key: "holiday", label: "Holiday premium", pct: 9.09, retire: true },
     ],
     // Training and education premium: the person picks one of these (or none). Not counted for retirement.
     training: { pcts: [7, 8, 9], retire: false },
@@ -6159,8 +6159,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         ui.prem = load("prem") || (p && p.rank === "FF/Paramedic" ? { medic: true } : {});
       }
       if (savedHire()) ui.hire = savedHire();
-      out.innerHTML = '<div class="card pay"><h3>Pay estimate</h3><div id="pay-body"></div></div>' +
-        '<div class="card pay"><h3>Overtime</h3><div id="pay-ot"></div></div>';
+      out.innerHTML = '<details class="card fold pay" id="pay-card" open><summary><h3>Pay estimate</h3><span class="fold-sum" id="pay-sum"></span></summary>' +
+        '<div id="pay-body"></div></details>';
       draw();
       var b = api.backend();
       if (!ui.hire && !ui.guess && !ui.asked && b.hireDateGuess) {
@@ -6186,7 +6186,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%" +
             (x.retire ? "" : ' <span class="hint">not counted for retirement</span>') + "</label>";
         }).join("") +
-        '<label>Training and education<select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
+        '<label class="chk">Training and education <select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
           return '<option value="' + n + '"' + (train === n ? " selected" : "") + ">" + n + "%</option>";
         }).join("") + '</select> <span class="hint">not counted for retirement</span></label></fieldset>' +
         (e ? '<table class="pay-table"><tbody>' +
@@ -6195,12 +6195,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(e.total) + "</td></tr>" +
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
-          "<tr><td>Counts toward retirement</td><td>" + money(e.retire) + "</td></tr></tbody></table>" : "");
-      $("pay-ot").innerHTML = e ? '<table class="pay-table"><tbody>' +
-        "<tr><td>Overtime hourly (" + PAY.otTimes + " × " + cents(e.hourly) + ")</td><td>" + cents(e.otHourly) + "</td></tr>" +
-        '<tr class="pay-total"><th>One ' + PAY.otShiftHours + "-hour overtime shift</th><td>" + money(e.otShift) + "</td></tr></tbody></table>" +
-        '<p class="hint">Time and a half of your hourly rate with the premiums above. Totals from the Worked OT days on your calendar come later.</p>'
-        : '<p class="hint">Pick a classification.</p>';
+          "<tr><td>Counts toward retirement</td><td>" + money(e.retire) + "</td></tr>" +
+          "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr></tbody></table>" : "");
+      $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
       $("pay-train").onchange = function () { ui.prem.train = Number(this.value) || 0; keep("prem", ui.prem); draw(); };
