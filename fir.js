@@ -329,31 +329,58 @@
       });
       return { flag: items.length ? (shown ? "" : "unchecked") : "none", items };
     };
-    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
-      if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out"); return h; };
+    // As the phone pull: 30 seconds a page, one retry, then flagged "timeout"; saves every 10; a status box on the page.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try {
+        const h = await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text();
+        if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out");
+        return h;
+      } catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
     const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
     let saved = { done: [], rows: [] };
     try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
     const done = new Set(saved.done), out = saved.rows.slice();
     const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { } };
+    if (done.size) console.log("license pull: resuming, " + done.size + " already done.");
     const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
-    let n = done.size, stop = null;
+    let n = done.size, stop = null, lastAt = Date.now();
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (note) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = note ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "License pull: " + n + "/" + total + " · " + (note || (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString()));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
     const worker = async () => {
       while (queue.length && !stop) {
         const p = queue.shift();
-        try {
-          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
-          if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
-          r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
-          done.add(p.id);
-        } catch (e) { stop = e; queue.unshift(p); break; }
-        if (++n % 25 === 0) save();
-        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        let r = null;
+        for (let tries = 0; tries < 2 && !r; tries++) {
+          try { r = read(await get(base + encodeURIComponent(p.id)), p.id); } catch (e) {
+            if (e.message === "signed-out") { stop = e; break; }
+            if (tries === 1) r = { flag: e.message === "timeout" ? "timeout" : "error", items: [] };
+            else console.warn("license pull: " + p.name + " " + p.id + " " + e.message + ", trying again");
+          }
+        }
+        if (stop) { queue.unshift(p); break; }
+        if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+        r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
+        done.add(p.id);
+        lastAt = Date.now();
+        if (++n % 10 === 0) save();
+        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id + (r.flag === "timeout" || r.flag === "error" ? " (" + r.flag + ")" : ""));
+        show();
         await wait();
       }
     };
     return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
-      if (stop) { save(); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
+      clearInterval(tick);
+      if (stop) { save(); show("stopped: " + stop.message); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
       if (RK) try { localStorage.removeItem(RK); } catch (e) { }
       const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
@@ -362,12 +389,13 @@
       a.download = PLAN.fileName || "fir-licenses.csv";
       document.body.appendChild(a); a.click(); a.remove();
       console.log("license pull done: " + total + " people, " + out.filter((r) => r[3]).length + " licenses.");
+      show("done: " + out.filter((r) => r[3]).length + " licenses, file downloaded");
     });
   }
   function licenseScript(plan) {
     return "/* Tour schedule: fir-db1 licenses and certifications pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(" + licenseMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
-        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000 }) + ");\n";
   }
 
   /* Battalion rosters (admins; cleanup/fir-pull-battalions.js): fir-db1's Roster by Station (app 1021, page 11) lists one

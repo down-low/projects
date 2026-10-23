@@ -77,6 +77,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **No-cell count (10/23):** the live records have 407 of 1,228 with no number (Firefighter 402, Lt 2, Pilot 2, Marine Engineer 1). The back office's Invite panel showed 496 because its copy of the cells came from a backup loaded before the 10/21 phone loads; load a fresh backup (Admin → Cut-over). Pulls 07 Firefighter (399 with IDs), 08 Pilot, 09 Marine Engineer rebuilt. Load with `python3 -I tools/reconcile/load_phones.py <staff-list.json> <out.json> <pull.csv>...`: CELL first, else HOME (marked in `home`), never replacing a number on file; counts only. Home numbers show as "Home (no cell)" on the Employee card and are counted on the Invite panel.
 
+- **Licenses E16 and E35 (10/23):** `fir-pull-licenses-e16-e35.js` covers 32 people (25 seat owners plus 7 covering a seat there today). The license and phone pulls now time out a page after 30 s (one retry, then flagged), save every 10 people and show a status box. Load after the user's OK.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
