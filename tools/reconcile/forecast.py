@@ -5,13 +5,15 @@ already booked), and later the check of those estimates against the real reports
   python3 -I tools/reconcile/forecast.py check <forecast.csv> <actual balance_bottom.csv> <out.csv>
 
 project: for each date in the booked file:
-- vacation and disability as booked (a future report already carries them);
+- disability as booked (a future report already carries it); vacation as the larger of booked and last year's same
+  weekday that month, since vacation keeps getting booked closer to the day;
 - sick from the same weekday over the 8 weeks before --asof, scaled by the month's share in last year's data when
   that month is in the history (Nov and Dec 2025 are);
 - OS (extra people on the roster; high OS goes with low hires) as its average over the last 2 weeks;
 - hires from a straight-line fit on the whole history: hires = a + b * (sick + vacation + disability) + c * OS, refit on
   every run, with a typical miss (the fit's average daily error) as a +/- band.
-Holidays are flagged: they run low on sick and high on mandatory hires, which the fit doesn't know.
+Holidays run low on sick and high on mandatory hires, which the fit doesn't know: a holiday that is in last year's
+history gets last year's gap (its hires minus a typical same weekday that month) added, shown as holiday_adj.
 
 check: joins a forecast with the real reports for the same dates and lists, per day, estimate vs actual for sick,
 vacation, disability and hires, with the miss; prints the average miss for the days checked."""
@@ -83,8 +85,17 @@ def project(hist_path, booked_path, out_path, asof):
     coef, miss = fit(hist)
     D = {datetime.date.fromisoformat(k): v for k, v in hist.items()}
     recent = [d for d in D if asof - datetime.timedelta(56) < d <= asof]
-    month_sick = defaultdict(list)
-    for d, v in D.items(): month_sick[(d.year, d.month)].append(v['sick'])
+    month_sick, wd_vac, wd_hires = defaultdict(list), defaultdict(list), defaultdict(list)
+    for d, v in D.items():
+        month_sick[(d.year, d.month)].append(v['sick'])
+        if not holiday(d):
+            wd_vac[(d.year, d.month, d.weekday())].append(v['vacation'])
+            wd_hires[(d.year, d.month, d.weekday())].append(v['hired'])
+    # A holiday last year: its hires minus a typical same weekday that month (Thanksgiving 2025 ran about +32).
+    hol_gap = {}
+    for d, v in D.items():
+        name, typ = holiday(d), wd_hires.get((d.year, d.month, d.weekday()))
+        if name and typ: hol_gap[(d.year, name)] = v['hired'] - st.mean(typ)
     # OS moves in blocks (it ran 20-28/day in Aug-Sep 2026, then dropped to ~10), so only the last two weeks count.
     os_recent = st.mean(D[d]['os'] for d in D if asof - datetime.timedelta(14) < d <= asof)
     rows = []
@@ -96,15 +107,27 @@ def project(hist_path, booked_path, out_path, asof):
         # Season: last year's month vs last year's month of --asof, when both are in the history.
         ly, ly_ref = month_sick.get((day.year - 1, day.month)), month_sick.get((asof.year - 1, asof.month))
         if ly and ly_ref: sick *= st.mean(ly) / st.mean(ly_ref)
-        hires = coef[0] + coef[1] * (sick + b['vacation'] + b['disability']) + coef[2] * os_recent
-        rows.append({'date': k, 'weekday': day.strftime('%a'), 'holiday': holiday(day), 'booked_vacation': b['vacation'],
-                     'booked_disability': b['disability'], 'booked_sick': b['sick'], 'est_sick': round(sick, 1),
-                     'est_os': round(os_recent, 1), 'est_hires': round(hires, 1), 'low': round(max(0, hires - miss), 1),
+        # Vacation keeps getting booked after a future report is pulled (about 10/day booked 3-10 weeks out vs about 22
+        # actual last Nov-Dec), so use the larger of booked and last year's same weekday that month.
+        ly_vac = wd_vac.get((day.year - 1, day.month, day.weekday()))
+        vac = max(b['vacation'], st.mean(ly_vac)) if ly_vac else b['vacation']
+        hires = coef[0] + coef[1] * (sick + vac + b['disability']) + coef[2] * os_recent
+        hname = holiday(day)
+        adj = hol_gap.get((day.year - 1, hname), 0) if hname else 0
+        hires += adj
+        rows.append({'date': k, 'weekday': day.strftime('%a'), 'holiday': hname, 'booked_vacation': b['vacation'],
+                     'est_vacation': round(vac, 1), 'booked_disability': b['disability'], 'booked_sick': b['sick'], 'est_sick': round(sick, 1),
+                     'est_os': round(os_recent, 1), 'holiday_adj': round(adj, 1), 'est_hires': round(hires, 1), 'low': round(max(0, hires - miss), 1),
                      'high': round(hires + miss, 1), 'asof': asof.isoformat()})
     w = csv.DictWriter(open(out_path, 'w', newline=''), fieldnames=list(rows[0]))
     w.writeheader(); w.writerows(rows)
     print(f"{len(rows)} days projected as of {asof}; hires = {coef[0]:.1f} + {coef[1]:.2f} x (sick+vacation+disability) "
           f"{coef[2]:+.2f} x OS, typical miss {miss:.1f}/day; recent OS {os_recent:.1f}/day")
+    weeks = defaultdict(list)
+    for r in rows:
+        d = datetime.date.fromisoformat(r['date']); weeks[d - datetime.timedelta(d.weekday())].append(r['est_hires'])
+    for wk, v in sorted(weeks.items()):
+        print(f"  week of {wk:%m/%d}: {len(v)} days, est. hires {round(sum(v))}")
     for r in sorted(rows, key=lambda r: -r['est_hires'])[:8]:
         print(f"  {r['date']} {r['weekday']} est. hires {r['est_hires']} ({r['low']}-{r['high']})" + (f" · {r['holiday']}" if r['holiday'] else ''))
 
@@ -117,7 +140,7 @@ def check(fc_path, actual_path, out_path):
         f, a = fc[k], act[k]
         rows.append({'date': k, 'weekday': f['weekday'], 'holiday': f['holiday'],
                      'est_sick': f['est_sick'], 'sick': a['sick'], 'booked_vacation': f['booked_vacation'], 'vacation': a['vacation'],
-                     'booked_disability': f['booked_disability'], 'disability': a['disability'],
+                     'est_vacation': f.get('est_vacation', f['booked_vacation']), 'booked_disability': f['booked_disability'], 'disability': a['disability'],
                      'est_hires': f['est_hires'], 'hired': a['hired'], 'miss': round(a['hired'] - float(f['est_hires']), 1),
                      'in_band': float(f['low']) <= a['hired'] <= float(f['high'])})
     if not rows: return print('no dates in both files')
