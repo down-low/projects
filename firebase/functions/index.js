@@ -197,6 +197,16 @@ exports.rosterNames = wrap(async (req) => {
 
 // Who's on the tool: positions with an active linked account. A trade's poster gets Invite for the people they sent it
 // to who aren't (a text from their own phone).
+// My page: the signed-in person's own staff-list cell, so "Add my cell for sign-in" is filled in (A.ownStaffCell).
+exports.myStaffCell = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true || !auth.token.pos) return { cell: null };
+  const [u, c] = await Promise.all([db.doc("users/" + auth.uid).get(), db.doc("staffCells/" + auth.token.pos).get()]);
+  const cell = A.ownStaffCell(u.exists ? u.data() : null, c.exists ? c.data().cell : null);
+  if (cell) await audit(auth.uid, "ownCell", { pos: auth.token.pos });
+  return { cell };
+});
+
 exports.onToolKeys = wrap(async (req) => {
   const auth = signedIn(req);
   if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
@@ -420,9 +430,10 @@ exports.pushTest = wrap(async (req) => {
   const snap = await db.doc("users/" + auth.uid).get();
   const tokens = (snap.exists && snap.data().pushTokens) || [];
   if (!tokens.length) return { devices: 0, sent: 0 };
+  const errors = [];
   const sent = await D.sendPush({ uid: auth.uid, pushTokens: tokens },
-    { subject: "Test notification", text: "App notifications work on this device." }, D.appUrl() + "/");
-  return { devices: tokens.length, sent };
+    { subject: "Sample trade alert", text: "This is how alerts look: who's asking, the date and the terms. Tap one to open the trade." }, D.appUrl() + "/", errors);
+  return { devices: tokens.length, sent, errors };
 });
 
 /* Admin announcements (Admin → Send announcement; checks and audience in announce.js): stored in announcements/{id},

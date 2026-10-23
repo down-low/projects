@@ -45,6 +45,7 @@ test.beforeEach(async () => {
     await d.doc("trades/t1").set({ posterKey: "10EOC03M", date: "2026-11-05", status: "open", audience: { board: true, to: [] } });
     await d.doc("corrections/mem1").set({ items: { a: { state: "open" } } });
     await d.doc("feedback/mem1").set({ items: { a: { state: "open", kind: "idea", text: "x" } } });
+    await d.doc("overtime/mem1").set({ pos: "10EOC03M", name: "A", days: { "2026-11-02": { kind: "want" } } });
     await d.doc("audit/a1").set({ action: "x" });
     await d.doc("announcements/n1").set({ title: "Hello", message: "Welcome", audience: "all", uids: [] });
     await d.doc("notices/mem1").set({ items: { n1: { title: "Hello", message: "Welcome", link: null } } });
@@ -192,6 +193,29 @@ test("admins post a trade for someone, record answers and pick; members can't po
   await assertSucceeds(db(OTHER).doc("trades/a1").update({ status: "cancelled", cancelledAt: "x" }));
 });
 
+test("a set trade's legs: only the taker on the posted seat and the poster TR (and the reverse on a swap day)", async () => {
+  await env.withSecurityRulesDisabled(async (ctx) => {
+    const d = ctx.firestore();
+    await d.doc("trades/t2").set({ posterKey: "10EOC03M", seatPos: "10EOC03M", date: "2026-11-05", status: "open", audience: { board: true, to: [] } });
+    await d.doc("tradeReplies/r2").set({ tradeId: "t2", takerKey: "11ENL01M", proposal: { later: true } });
+    await d.doc("tradeReplies/r3").set({ tradeId: "t2", takerKey: "11ENL01M", proposal: { swapDate: "2026-11-20" } });
+  });
+  const cover = (who, seat, day) => ({ kind: "covers", coverKey: who, coverName: "X", targetPos: seat, start: day, end: day, note: "Shift trade" });
+  const tr = (who, day) => ({ kind: "statuses", pos: who, name: "X", code: "TR", start: day, end: day, note: "Shift trade" });
+  const set = (extra) => Object.assign({ status: "set", replyId: "r2", takerKey: "11ENL01M", proposal: { later: true }, setAt: "x",
+    legs: [cover("11ENL01M", "10EOC03M", "2026-11-05"), tr("10EOC03M", "2026-11-05")] }, extra);
+  await assertFails(db(MEMBER).doc("trades/t2").update(set({ legs: [cover("11ENL01M", "10EOC03M", "2026-11-05"), tr("12ENL01M", "2026-11-05")] }))); // someone else TR
+  await assertFails(db(MEMBER).doc("trades/t2").update(set({ legs: [cover("11ENL01M", "20EOC01M", "2026-11-05"), tr("10EOC03M", "2026-11-05")] }))); // another seat
+  await assertFails(db(MEMBER).doc("trades/t2").update(set({ legs: [cover("11ENL01M", "10EOC03M", "2026-11-05"), tr("10EOC03M", "2026-11-06")] }))); // two days
+  await assertFails(db(MEMBER).doc("trades/t2").update(set({ takerKey: "12ENL01M", legs: [cover("12ENL01M", "10EOC03M", "2026-11-05"), tr("10EOC03M", "2026-11-05")] }))); // didn't answer
+  await assertFails(db(MEMBER).doc("trades/t2").update(set({ legs: [Object.assign(tr("11ENL01M", "2026-11-05"), { code: "VA" }), tr("10EOC03M", "2026-11-05")] })));
+  const swap = set({ replyId: "r3", proposal: { swapDate: "2026-11-20" }, legs: [cover("11ENL01M", "10EOC03M", "2026-11-05"), tr("10EOC03M", "2026-11-05"),
+    cover("10EOC03M", "11ENL01M", "2026-11-20"), tr("11ENL01M", "2026-11-20")] });
+  await assertSucceeds(db(MEMBER).doc("trades/t2").update(swap));
+  await assertSucceeds(db(MEMBER).doc("trades/t2").update(set()));
+  await assertSucceeds(db(MEMBER).doc("trades/t2").update({ status: "cancelled", cancelledAt: "x" }));
+});
+
 test("corrections: each member their own; editors and admins all", async () => {
   await assertSucceeds(db(MEMBER).doc("corrections/mem1").get());
   await assertSucceeds(db(MEMBER).doc("corrections/mem1").set({ items: { b: { state: "open" } } }, { merge: true }));
@@ -207,6 +231,23 @@ test("feedback: each member their own; editors and admins all", async () => {
   await assertFails(db(OTHER).collection("feedback").get());
   await assertFails(db(PENDING).doc("feedback/mem1").get());
   await assertSucceeds(db(EDITOR).collection("feedback").get());
+});
+
+test("overtime: everyone reads the marks; notes only the member and admins; admins mark anyone's seat", async () => {
+  const mark = (extra) => Object.assign({ pos: "10EOC03M", name: "A", days: { "2026-11-03": { kind: "worked", hours: 24 } } }, extra);
+  await assertSucceeds(db(MEMBER).doc("overtime/mem1").set(mark()));
+  await assertFails(db(MEMBER).doc("overtime/mem1").set(mark({ pos: "11ENL01M" })));   // someone else's seat
+  await assertFails(db(MEMBER).doc("overtime/mem2").set(mark()));                      // someone else's record
+  await assertFails(db(MEMBER).doc("overtime/seat-11ENL01M").set(mark({ pos: "11ENL01M" })));
+  await assertSucceeds(db(OTHER).doc("overtime/mem1").get());                           // marks are public
+  await assertSucceeds(db(OTHER).collection("overtime").get());
+  await assertFails(db(PENDING).collection("overtime").get());
+  await assertSucceeds(db(MEMBER).doc("overtimeNotes/mem1").set({ pos: "10EOC03M", notes: { "2026-11-03": "Hired E7" } }));
+  await assertFails(db(OTHER).doc("overtimeNotes/mem1").get());                         // notes are private
+  await assertFails(db(EDITOR).collection("overtimeNotes").get());
+  await assertSucceeds(db(ADMIN).collection("overtimeNotes").get());
+  await assertSucceeds(db(ADMIN).doc("overtime/seat-11ENL01M").set(mark({ pos: "11ENL01M" })));
+  await assertSucceeds(db(MEMBER).doc("overtime/mem1").delete());
 });
 
 test("site mode: everyone approved reads it, only admins set it", async () => {

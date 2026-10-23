@@ -75,6 +75,17 @@
       });
       return out;
     }
+    // One person's trades for a year (dates up to today) and their owed-shift balance, for the "so far" card.
+    function yearSummary(key, y) {
+      var pre = y + "-", t0 = todayIso(), out = { away: 0, forOthers: 0, owe: 0, owed: 0 };
+      trades().forEach(function (t) {
+        if (t.status !== "set" || t.date.indexOf(pre) !== 0 || t.date > t0) return;
+        if (t.posterKey === key) out.away++;
+        if (t.takerKey === key) out.forOthers++;
+      });
+      owed().forEach(function (o) { if (o.owes === key) out.owe++; if (o.to === key) out.owed++; });
+      return out;
+    }
     function owedLines(key) {
       return owed().filter(function (o) { return o.owes === key || o.to === key; }).map(function (o) {
         return o.owes === key
@@ -304,10 +315,10 @@
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    // The text for one person (or a group, without k). Always the general app link: personal ?t= links read as spam.
     function inviteText(t, k) {
       var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
-      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
+      var link = pageLink();
       return (k ? "Hi " + api.firstName(k) + ", " : "") + p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
@@ -370,11 +381,12 @@
       }
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
-      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      // createInvite is used only for the staff-list cells, so Messages opens addressed to the person.
+      var cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
       var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
         (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
-        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
-        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
+        " (They can answer before signing up.)</p>" +
+        (links.loading ? '<p class="hint">Getting their numbers…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -421,6 +433,12 @@
         esc(t.proposal && t.proposal.later ? "They owe you a shift." : terms(t.proposal) + ".") + "</p></article>";
     }
 
+    // What pushTest did: sent, no device saved, or Google's reason for refusing (shown so a failure can be fixed).
+    function pushResult(r) {
+      if (r.sent) return "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds.";
+      if (!r.devices) return "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone.";
+      return "It didn't go through" + (r.errors && r.errors.length ? " (" + r.errors[0] + ")" : "") + ".";
+    }
     function alertsHtml() {
       var b = backend(), m = b.myMember() || {}, a = m.alerts || {};
       // App notifications: on iPhone, only from the Home Screen app; once on, a test sends one to this account's devices.
@@ -455,10 +473,18 @@
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
           var b = backend(), msg = $("alert-msg");
           // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
-          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          var turnedOn = c.dataset.alert === "app" && c.checked && b.registerPush;
+          var ready = turnedOn ? b.registerPush() : Promise.resolve();
           ready.then(function () {
-            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
             return b.setAlerts(vals);
+          }).then(function () {
+            if (c.dataset.alert !== "app") return;
+            // Redraw so "Send me a test notification" shows (or hides), and send a sample at once so they see what alerts look like.
+            ui.alertsOpen = true;
+            renderTrades();
+            if (!turnedOn) return;
+            api.say($("alert-msg"), "Notifications are on for this device. A sample is on its way.");
+            if (b.pushTest) b.pushTest().then(function (r) { if (!r.sent) api.say($("alert-msg"), pushResult(r), true); }, function (er) { api.say($("alert-msg"), er.message, true); });
           }).catch(function (er) {
             if (c.tagName !== "SELECT") c.checked = !c.checked;
             if (msg) api.say(msg, er.message, true);
@@ -472,9 +498,7 @@
           api.say($("alert-msg"), "Sending…");
           backend().pushTest().then(function (r) {
             x.disabled = false;
-            api.say($("alert-msg"), !r.devices ? "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone."
-              : r.sent ? "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds."
-              : "It didn't go through. Turn \"Notify me in the app\" off and on again on this phone.", !r.sent);
+            api.say($("alert-msg"), pushResult(r), !r.sent);
           }, function (er) { x.disabled = false; api.say($("alert-msg"), er.message, true); });
         };
       }
@@ -870,6 +894,7 @@
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible,
+      yearSummary: yearSummary };
   };
 })(window);

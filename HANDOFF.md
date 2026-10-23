@@ -46,6 +46,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 - Never delete the claude.ai page without the user's word.
 - **Before publishing the claude.ai links, merge `main` into your branch.** Several chats publish to the same links; publishing from a stale branch drops other chats' work. If a publish is refused, merge the newer live version, don't overwrite it.
 - Run `python3 -m unittest discover -s tests` before pushing.
+- **Spec features in two phases.** Propose a simple, fool-proof **Phase 1** to ship now and write the richer **Phase 2** down for a later release; build only Phase 1 unless the user says otherwise. Example: `SPEC-INVITES.md`.
 
 ## Where things live
 
@@ -75,6 +76,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 ## Security rules (never break these)
 
 - **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase, rule `read, write: if isAdmin()`). Never put them in this repo, the view-only link, a member-readable collection, logs, or chat output. One exception (the user's call, Oct 2026): on Firebase, `createInvite` hands a trade's poster the cell of each person they sent the trade to who isn't on the tool yet, so Messages opens addressed to them; each one handed out is logged in `audit` (`inviteCell`). They move to Firebase only through the backup file the admin downloads and imports themselves; don't read `contacts` with ArtifactData.
+- **Your own cell, shown back to you** (the user's call, Oct 23, 2026): the `myStaffCell` function returns the signed-in person's own staff-list cell (approved, on a seat, no sign-in cell yet) so My page → Add my cell for sign-in is filled in; the texted code still proves they hold that phone. Each one is audited (`ownCell`). Never anyone else's.
 - **The staff-list cell is also an identity on Firebase** (the user's call, Oct 2026): signing in with a cell and its texted code links the account to the one seat with that staff-list cell, with no other check. Keep `staffCells` admin-only and accurate; a wrong cell there would let the wrong person in. Each link is audited (`cellLink`).
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
@@ -91,3 +93,9 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - January double covers.
 - Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
 - Items from the officer roster check.
+- **Decided (user, 10/23): overtime marks are visible to everyone** who opens that person's page (Want OT / Worked OT, `overtime.js`), not only the member and admins.
+- **To enter once Overtime is live:** Spencer,Marcus D (`10EOE09M`, SP2764): Worked OT 2026-10-21 (24 hrs), Want OT 2026-10-27.
+
+## Parked ideas (not now; ask before building)
+
+- **Admin → Trades list.** Phase 1: every trade, newest first, with a name search and a status filter, and Cancel and Delete per row (Delete removes its answers too); works on Firebase and the claude.ai page, and the rules already allow it. Phase 2: Edit (note, who it was sent to) and pick for the poster. For now the admin uses the Firebase console (Firestore → `trades`).
