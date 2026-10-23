@@ -85,6 +85,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **Battalion pull for trades (10/23):** `fir-pull-battalions-0922-1022.js`, 10 battalions × 31 days (310 pages), with the same timeout, resume and status box as the phone pull. Then `python3 -I tools/reconcile/trades.py <out.csv> <battalions.csv>` for the rankings.
 
+- **Battalion pull 9/22–10/22/2026 done (10/23):** 310 pages, 10,223 rows, no timeouts. Trades: 1,087 people seen, 884 traded, 1,684 TRW / 1,572 TRO days; the most active trade 12–13 of a cycle's shifts. TRO is counted only when the partner's TRW row names them, so it runs slightly low. Rankings were given in chat; names stay out of the repo. Aides: 13 people worked 3+ REG days at a B/D company, and all standing ones already match the tool; two short details (B01, B02) ended by 10/14. No fixes needed.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
