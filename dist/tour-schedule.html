@@ -7116,8 +7116,15 @@ module.exports = QRCode;
       while ((x = PHONE.exec(text))) { const k = x[1] + x[2]; if (!seen[k] && !/^PHONE|TYPE$/.test(x[1])) { seen[k] = 1; phones.push({ type: x[1], number: x[2] }); } }
       return { flag: phones.length ? (shown ? "" : "unchecked") : "none", phones };
     };
-    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
-      if (/type="password"/i.test(h) && !/PHONE_NUMBERS/.test(h)) throw new Error("signed-out"); return h; };
+    // Each page gets 30 seconds; one that never answers is retried once, then flagged "timeout" so the run can't hang.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try {
+        const h = await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text();
+        if (/type="password"/i.test(h) && !/PHONE_NUMBERS/.test(h)) throw new Error("signed-out");
+        return h;
+      } catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
     const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
     let saved = { done: [], rows: [] };
     try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
@@ -7125,23 +7132,48 @@ module.exports = QRCode;
     const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { console.warn("Could not save progress: " + e.message); } };
     if (done.size) console.log("phone pull: resuming, " + done.size + " already done.");
     const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
-    let n = done.size, stop = null;
+    let n = done.size, stop = null, lastAt = Date.now();
+    // A small status box on the page: count and time of the last person, red after a minute with nothing new.
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (note) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = note ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "Phone pull: " + n + "/" + total + " · " + (note || (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString()));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
+    window.phonePullStatus = () => { const s = JSON.parse(localStorage.getItem(RK) || "null"); return (s ? s.done.length : n) + " of " + total + " saved"; };
+    const record = (p, r) => {
+      if (!r.phones.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+      r.phones.forEach((ph) => out.push([p.key, p.id, p.name, ph.type, ph.number, r.flag]));
+      done.add(p.id);
+    };
     const worker = async () => {
       while (queue.length && !stop) {
         const p = queue.shift();
-        try {
-          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
-          if (!r.phones.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
-          r.phones.forEach((ph) => out.push([p.key, p.id, p.name, ph.type, ph.number, r.flag]));
-          done.add(p.id);
-        } catch (e) { stop = e; queue.unshift(p); break; }
-        if (++n % 25 === 0) save();
-        console.log("phone pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        let r = null;
+        for (let tries = 0; tries < 2 && !r; tries++) {
+          try { r = read(await get(base + encodeURIComponent(p.id)), p.id); } catch (e) {
+            if (e.message === "signed-out") { stop = e; break; }
+            if (tries === 1) r = { flag: e.message === "timeout" ? "timeout" : "error", phones: [] };
+            else console.warn("phone pull: " + p.name + " " + p.id + " " + e.message + ", trying again");
+          }
+        }
+        if (stop) { queue.unshift(p); break; }
+        record(p, r);
+        lastAt = Date.now();
+        if (++n % 10 === 0) save();
+        console.log("phone pull " + n + "/" + total + ": " + p.name + " " + p.id + (r.flag === "timeout" || r.flag === "error" ? " (" + r.flag + ")" : ""));
+        show();
         await wait();
       }
     };
     return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      clearInterval(tick);
       if (stop) {
+        show("stopped: " + stop.message);
         save();
         return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped."
           : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on.");
@@ -7154,12 +7186,13 @@ module.exports = QRCode;
       a.download = PLAN.fileName || "fir-phones.csv";
       document.body.appendChild(a); a.click(); a.remove();
       console.log("phone pull done: " + total + " people, " + out.filter((r) => r[4]).length + " numbers.");
+      show("done: " + out.filter((r) => r[4]).length + " numbers, file downloaded");
     });
   }
   function phoneScript(plan) {
     return "/* Tour schedule: fir-db1 phone pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(" + phoneMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
-        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000 }) + ");\n";
   }
 
   /* Licenses and certifications (admins; cleanup/fir-pull-licenses-*.js): the Licenses and Certs pop-up (region
