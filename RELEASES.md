@@ -15,12 +15,13 @@
 - **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
 - **Later:** admins use Want OT days to fill shortages.
 
-### Invite one person from the back office
-- **Where:** the Employee card (back office, admins) gets **Invite to the app**; the same action sits on each person in Admin → Invite people's list.
-- **Message:** opens Messages on the admin's phone, addressed to the person's staff-list cell, starting "Hi <first name>," with the app link.
-- **Reuses, doesn't change:** the launch-invite helpers in `admin.js` (`launchMsg`, `launchSms`) and the sent marks in `launchInvites/{pos}` (`store.js` `launchMark` / `launchSent`), so the card shows "Invited Oct 22" and the bulk list skips them.
-- **Trade invites stay exactly as they are:** `trades.js` (Invite, Copy text), the `tradeInvites` collection and the `createInvite` / `inviteInfo` / `answerFromInvite` / `redeemInvite` functions are not touched; the build checks trade invites still work.
-- **No cell on file:** the button reads "No cell on file" and points to adding one on the card.
+### Personal invite links (admin)
+- **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.
+- **Link:** `<app>/?join=<code>`: one use, expires after 14 days, made by a function. Reuses the trade-invite code paths (`createInvite`, `redeemInvite`) but in its own `joinInvites` collection, so trade invites stay untouched.
+- **First Google sign-in through the link:** a confirm card, "You're joining as David Lester · Captain E10: Yes, that's me / Not me". Yes links the account to that seat at once (no claim screen) and marks the invite Joined; for members the staff-list cell is then attached automatically (`planStaffCell`), so cell sign-in works right away. Not me goes to the normal claim screen and flags the invite for the admin.
+- **Tracking:** Invite people shows Sent → Opened → Joined per person, with Resend and Revoke.
+- **Safety:** one use, expiry and the confirm step; admin Undo (unlink) on the Users row; a link never gives more than member access.
+- **Later, separately:** the claim screen one step at a time (cell → code → done; name search behind a link). Users find it confusing; left as is for now.
 
 ### App notifications test and announcements (own chat)
 - Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
