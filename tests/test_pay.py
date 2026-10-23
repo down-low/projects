@@ -52,6 +52,11 @@ class PayEstimate(unittest.TestCase):
         self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
         self.assertAlmostEqual(e["otShift"], 61.191 * 1.05 * 1.5 * 24)
 
+    def test_no_holiday_premium_on_overtime(self):
+        e = estimate("H-2", 6, {"holiday": True, "ao": True})
+        self.assertAlmostEqual(e["hourly"], 61.191 * 1.1409)
+        self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
+
 
     def test_pay_periods_are_14_days_from_9_12_26(self):
         self.assertEqual(period(2026, 9, 12), ("2026-09-12", "2026-09-25"))

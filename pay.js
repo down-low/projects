@@ -5,7 +5,8 @@
  *   person's academy class), shown as a guess. The person can type their own and save it as their hire date.
  * - Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step);
  *   anyone can pick another. Premiums are a % of base; longevity follows years of service.
- * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums; the pay period's
+ * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums except
+ *   Holiday (no holiday premium on overtime); the pay period's
  *   total counts your own Worked OT marks (overtime.js) from the period's start through today.
  * - Vacation and IDV stay in PAY but aren't shown for now (the user's call, Oct 2026).
  * An estimate for planning, not a pay stub.
@@ -59,14 +60,15 @@
       ["H-3/10", "H3-L3 Firefighter/Paramedic, step 10", 170586, 67.3614, 82.0125],
       ["H-3/11", "H3-L3 Firefighter/Paramedic, step 11", 179140, 70.7392, 86.125],
     ],
-    // % of base. retire: counts toward retirement (kept in the data; not shown for now). group: only one of the group at a time.
+    // % of base. retire: counts toward retirement (kept in the data; not shown for now). ot: false, left out of the
+    // overtime rate. group: only one of the group at a time.
     premiums: [
       { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt" },
       { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt" },
       { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false },
       { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false },
       { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true },
-      { key: "holiday", label: "Holiday premium", pct: 9.09, retire: true },
+      { key: "holiday", label: "Holiday premium", pct: 9.09, retire: true, ot: false },
     ],
     // Training and education premium: the person picks one of these (or none). Not counted for retirement.
     training: { pcts: [7, 8, 9], retire: false },
@@ -132,18 +134,19 @@
     prem = prem || {};
     var r = rateFor(code, yos);
     if (!r) return null;
-    var base = r[2], rows = [], total = base, retire = base;
-    function add(label, pct, counts) {
+    var base = r[2], rows = [], total = base, retire = base, otTotal = base;
+    function add(label, pct, counts, ot) {
       var amt = base * pct / 100;
       rows.push({ label: label, pct: pct, amount: amt });
       total += amt;
       if (counts) retire += amt;
+      if (ot !== false) otTotal += amt;
     }
-    PAY.premiums.forEach(function (x) { if (premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire); });
+    PAY.premiums.forEach(function (x) { if (premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire, x.ot); });
     if (PAY.training.pcts.indexOf(Number(prem.train)) !== -1) add("Training and education", Number(prem.train), PAY.training.retire);
     var lp = longevityPct(yos);
     if (lp) add("Longevity (" + yos + " years)", lp, false);
-    var hourly = r[3] * total / base, otHourly = hourly * PAY.otTimes;
+    var hourly = r[3] * total / base, otHourly = r[3] * otTotal / base * PAY.otTimes;
     return { rate: r, base: base, rows: rows, total: total, biweekly: total / 26, retire: retire, hourly: hourly,
       otHourly: otHourly, otShift: otHourly * PAY.otShiftHours };
   }

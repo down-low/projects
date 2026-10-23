@@ -39,7 +39,7 @@
 - **Premiums (% of base):** EMT 5% (engine/truck/rescue squad) or 8% (ambulance), one or the other; Apparatus Operator 5%; Rescue Boat Operator 5% (stacks with AO); Paramedic license 5%; **Holiday 9.09%** (on by default for suppression: H-2, H-20, H-30, H-40, H-110, H-120; can be unticked); **Training and education** None / 7 / 8 / 9%. (Which premiums count toward retirement is kept in `PAY` but not shown, the user's call.)
 - **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
 - **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), overtime hourly and one 24-hour overtime shift.
-- **Overtime (the user's rule):** 1.5 × that hourly with premiums, and what one 24-hour overtime shift pays.
+- **Overtime (the user's rule):** 1.5 × that hourly with premiums, except the Holiday premium (none on overtime), and what one 24-hour overtime shift pays.
 - **Overtime this pay period** (built Oct 23, 2026). One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
   - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
   - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
