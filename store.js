@@ -34,7 +34,8 @@
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback", overtime: "overtime",
+    overtimeNotes: "overtimeNotes" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -49,6 +50,24 @@
       Object.keys(d.items || {}).forEach(function (k) { out.push(Object.assign({}, d.items[k], { id: d.id + "/" + k, owner: d.id, item: k })); });
     });
     return out;
+  }
+  /* Overtime days: overtime/<doc> = {pos, name, days: {<date>: {kind: "want" | "worked", hours}}}, read by everyone; the
+     note goes to overtimeNotes/<doc> = {pos, notes: {<date>: text}}, read by that member and admins. <doc> is the member's
+     user id for their own seat, or seat-<pos> for marks an admin enters for someone. A null mark removes the day. */
+  function writeOvertime(col, id, pos, name, dIso, mark) {
+    var ref = col("overtime").doc(id), nref = col("overtimeNotes").doc(id);
+    var note = mark && mark.note ? String(mark.note).slice(0, 200) : null, day = mark ? { kind: mark.kind } : null;
+    if (day && mark.kind === "worked") day.hours = mark.hours;
+    return ref.get().then(function (s) {
+      var days = Object.assign({}, s.exists ? s.data().days : {});
+      if (day) days[dIso] = day; else delete days[dIso];
+      return ref.set({ pos: pos, name: name || null, days: days, updatedAt: nowIso() });
+    }).then(function () { return nref.get(); }).then(function (s) {
+      var notes = Object.assign({}, s.exists ? s.data().notes : {});
+      if (!note && !notes[dIso]) return;
+      if (note) notes[dIso] = note; else delete notes[dIso];
+      return nref.set({ pos: pos, notes: notes });
+    });
   }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
   function staffContacts(docs) {
@@ -101,14 +120,14 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
           corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-          feedback: flattenFixes(records.feedback) });
+          feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
       }
       // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
       // Editors (platformEdit) can still save the backup.
@@ -233,6 +252,14 @@
             var parts = String(id).split("/"), item = {};
             item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
             return db.collection("corrections").doc(parts[0]).update({ items: item });
+          },
+          /* Overtime days (writeOvertime): members mark their own seat; editors mark anyone's (seat-<pos>). */
+          canOvertime: function () { return tradeOk() && !!myMember(); },
+          canOvertimeFor: function (pos) { var m = myMember(); return tradeOk() && (editable || !!(m && m.key === pos)); },
+          setOvertime: function (pos, name, dIso, mark, docId) {
+            var m = myMember(), own = !!(m && m.key === pos);
+            if (!tradeOk() || !(own || editable)) return Promise.reject(new Error(own || m ? NO_EDIT : "Claim your record first."));
+            return tw(writeOvertime(db.collection.bind(db), docId || (own ? uid : "seat-" + pos), pos, name, dIso, mark));
           },
           /* Feedback about the app, stored like corrections (feedback/<user id>); admins read, answer and delete all. */
           userId: function () { return uid; },
@@ -476,6 +503,7 @@
      "Test copy" banner until cut-over (CUTOVER.md). */
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
+  // Overtime days aren't imported or replaced: members keep the ones they marked on Firebase.
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
   // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
@@ -508,7 +536,7 @@
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -582,7 +610,7 @@
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
         corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-        feedback: flattenFixes(records.feedback) });
+        feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -600,6 +628,8 @@
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
+      watch("overtime", fs.collection("overtime"));
+      watch("overtimeNotes", admin() ? fs.collection("overtimeNotes") : fs.collection("overtimeNotes").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
       watch("notices", fs.collection("notices").doc(user.uid));
@@ -864,6 +894,14 @@
           delete items[parts[1]];
           return ref.set(Object.assign({}, d, { items: items }));
         }));
+      },
+      // Overtime days (writeOvertime): members mark their own seat; admins mark anyone's (seat-<pos>).
+      canOvertime: function () { return active() && !!me.pos; },
+      canOvertimeFor: function (pos) { return active() && (admin() || me.pos === pos); },
+      setOvertime: function (pos, name, dIso, mark, docId) {
+        var own = active() && me.pos === pos;
+        if (!own && !admin()) return Promise.reject(new Error(me.pos ? NO_EDIT : "Claim your record first."));
+        return w(writeOvertime(fs.collection.bind(fs), docId || (own ? user.uid : "seat-" + pos), pos, name, dIso, mark));
       },
       // Feedback about the app: one record per member, feedback/<uid> = {items: {<id>: feedback}}, like corrections.
       userId: function () { return user ? user.uid : null; },

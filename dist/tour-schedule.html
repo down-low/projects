@@ -871,6 +871,17 @@ ul.card-list li > div:first-child { flex: 1 1 220px; min-width: 0; }
 .frozen-banner { display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; }
 .frozen-banner a { color: inherit; font-weight: 600; }
 
+/* Announcements from the admins, and app notifications that arrive while the app is open */
+.notices { display: grid; gap: 8px; }
+.notice {
+  display: flex; gap: 12px; align-items: flex-start; padding: 10px 12px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--today);
+}
+.notice-body { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.notice-body p { margin: 2px 0 4px; }
+.ann-people { max-height: 260px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
+.ann-preview { margin: 8px 0; }
+
 /* Compare with fir-db1 */
 .fir-card { margin: 0; }
 .fir-steps { margin: 0 0 8px; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
@@ -933,6 +944,29 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .phone-later { margin-top: 12px; }
 .phone-later > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
 .phone-later[open] > summary { margin-bottom: 8px; }
+
+/* ---------- Overtime days (overtime.js) ---------- */
+.cal .d.ot-want { border: 2px solid var(--ok); }
+.cal .d.ot-worked:not(.work) { background: var(--ok); border-color: var(--ok); color: var(--on-accent); }
+.cal .d.ot-worked:not(.work) .w { color: var(--on-accent); opacity: 0.9; }
+.legend i.sw-ot-worked { background: var(--ok); }
+.legend i.sw-ot-want { box-shadow: inset 0 0 0 2px var(--ok); background: transparent; }
+.day-ot label { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; }
+.day-ot label[hidden] { display: none; }
+.day-ot #ot-hours { width: 5em; }
+.day-ot #ot-note { flex: 1; min-width: 10em; }
+.day-ot .ot-now { font-weight: 600; }
+.day-ot .hint { flex-basis: 100%; margin: 0; }
+.ot-sum { margin: 6px 0 0; }
+
+/* ---------- Add to Home Screen banner (homescreen.js; employee app on phones) ---------- */
+.hs-banner { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 40px 12px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--today); border-radius: 10px; font-size: 0.92rem; }
+.hs-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 220px; }
+.hs-title { font-weight: 600; }
+.hs-acts { display: flex; gap: 8px; }
+.hs-share { width: 1.1em; height: 1.1em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hs-x { position: absolute; top: 4px; right: 4px; width: 36px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; }
 </style>
 
 <div class="page">
@@ -1599,7 +1633,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback", overtime: "overtime",
+    overtimeNotes: "overtimeNotes" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -1614,6 +1649,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       Object.keys(d.items || {}).forEach(function (k) { out.push(Object.assign({}, d.items[k], { id: d.id + "/" + k, owner: d.id, item: k })); });
     });
     return out;
+  }
+  /* Overtime days: overtime/<doc> = {pos, name, days: {<date>: {kind: "want" | "worked", hours}}}, read by everyone; the
+     note goes to overtimeNotes/<doc> = {pos, notes: {<date>: text}}, read by that member and admins. <doc> is the member's
+     user id for their own seat, or seat-<pos> for marks an admin enters for someone. A null mark removes the day. */
+  function writeOvertime(col, id, pos, name, dIso, mark) {
+    var ref = col("overtime").doc(id), nref = col("overtimeNotes").doc(id);
+    var note = mark && mark.note ? String(mark.note).slice(0, 200) : null, day = mark ? { kind: mark.kind } : null;
+    if (day && mark.kind === "worked") day.hours = mark.hours;
+    return ref.get().then(function (s) {
+      var days = Object.assign({}, s.exists ? s.data().days : {});
+      if (day) days[dIso] = day; else delete days[dIso];
+      return ref.set({ pos: pos, name: name || null, days: days, updatedAt: nowIso() });
+    }).then(function () { return nref.get(); }).then(function (s) {
+      var notes = Object.assign({}, s.exists ? s.data().notes : {});
+      if (!note && !notes[dIso]) return;
+      if (note) notes[dIso] = note; else delete notes[dIso];
+      return nref.set({ pos: pos, notes: notes });
+    });
   }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
   function staffContacts(docs) {
@@ -1666,14 +1719,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
           corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-          feedback: flattenFixes(records.feedback) });
+          feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
       }
       // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
       // Editors (platformEdit) can still save the backup.
@@ -1798,6 +1851,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             var parts = String(id).split("/"), item = {};
             item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
             return db.collection("corrections").doc(parts[0]).update({ items: item });
+          },
+          /* Overtime days (writeOvertime): members mark their own seat; editors mark anyone's (seat-<pos>). */
+          canOvertime: function () { return tradeOk() && !!myMember(); },
+          canOvertimeFor: function (pos) { var m = myMember(); return tradeOk() && (editable || !!(m && m.key === pos)); },
+          setOvertime: function (pos, name, dIso, mark, docId) {
+            var m = myMember(), own = !!(m && m.key === pos);
+            if (!tradeOk() || !(own || editable)) return Promise.reject(new Error(own || m ? NO_EDIT : "Claim your record first."));
+            return tw(writeOvertime(db.collection.bind(db), docId || (own ? uid : "seat-" + pos), pos, name, dIso, mark));
           },
           /* Feedback about the app, stored like corrections (feedback/<user id>); admins read, answer and delete all. */
           userId: function () { return uid; },
@@ -2041,6 +2102,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
      "Test copy" banner until cut-over (CUTOVER.md). */
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
+  // Overtime days aren't imported or replaced: members keep the ones they marked on Firebase.
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
   // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
@@ -2073,7 +2135,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -2085,6 +2147,28 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
     // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
     function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
+    // App notifications: register the service worker (firebase-messaging-sw.js) and save this device's token on the account.
+    var HOME_SCREEN = "On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), open it from there, then turn this on.";
+    // Messaging needs the web app's ID. Hosting's init.js only has it when a web app is linked to the site; otherwise a
+    // second app with the same settings plus FIREBASE_APP_ID (a GitHub variable, set at build) is used for messaging only.
+    function messaging() {
+      if (fb.app().options.appId) return fb.messaging();
+      if (!root.FIREBASE_APP_ID) throw new Error("App notifications need the app ID setting (FIREBASE_APP_ID). Tell the admin.");
+      var app = fb.apps.filter(function (a) { return a.name === "push"; })[0] ||
+        fb.initializeApp(Object.assign({}, fb.app().options, { appId: root.FIREBASE_APP_ID }), "push");
+      return app.messaging();
+    }
+    function pushToken() {
+      // Wait for the worker to be active: asking for a token while it's still installing fails on the first try.
+      return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function () {
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
+        return messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+      }).then(function (token) {
+        if (!token) throw new Error("This browser didn't give a notification token.");
+        return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+      });
+    }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -2125,7 +2209,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
         corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-        feedback: flattenFixes(records.feedback) });
+        feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -2143,8 +2227,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
+      watch("overtime", fs.collection("overtime"));
+      watch("overtimeNotes", admin() ? fs.collection("overtimeNotes") : fs.collection("overtimeNotes").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
+      watch("notices", fs.collection("notices").doc(user.uid));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
       var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
       loadOnTool();
@@ -2340,17 +2427,49 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       alertsLive: true,
       canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
       registerPush: function () {
+        // Checked first: Safari has no notifications at all outside the Home Screen app.
+        if (root.FIREBASE_VAPID_KEY && adapter.needsHomeScreen()) return Promise.reject(new Error(HOME_SCREEN));
         if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
         return Notification.requestPermission().then(function (p) {
           if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
-            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
-          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        }).then(function (reg) {
-          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
-        }).then(function (token) {
-          if (!token) throw new Error("This browser didn't give a notification token.");
-          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+            (/iPhone|iPad/.test(navigator.userAgent) ? " " + HOME_SCREEN : ""));
+          return pushToken();
         });
+      },
+      // iPhone and iPad allow app notifications only in the app opened from the Home Screen (Apple's rule for web apps).
+      needsHomeScreen: function () {
+        var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        var standalone = navigator.standalone === true || !!(root.matchMedia && root.matchMedia("(display-mode: standalone)").matches);
+        return ios && !standalone;
+      },
+      // "Send me a test notification": the pushTest function sends one to this account's registered devices.
+      pushTest: function () { return call("pushTest"); },
+      // Alerts that arrive while the app is open (the phone shows them only when it's in the background).
+      onPush: function (cb) {
+        if (!adapter.canPush()) return;
+        try {
+          messaging().onMessage(function (m) { var n = (m && m.notification) || {}; cb(n.title || "", n.body || ""); });
+        } catch (e) { /* this browser has no push support */ }
+      },
+      /* Announcements (Admin → Send announcement; function announce): sent by admins, stored in announcements/{id};
+         each recipient's copy is in notices/<uid> until they dismiss it. */
+      announce: function (rec) { return admin() ? call("announce", rec) : Promise.reject(new Error(NO_EDIT)); },
+      announcements: function () {
+        if (!admin()) return Promise.resolve([]);
+        return w(fs.collection("announcements").orderBy("at", "desc").limit(20).get()).then(docs);
+      },
+      notices: function () {
+        var d = records.notices[0];
+        if (!d || !d.items) return [];
+        var gone = d.dismissed || {};
+        return Object.keys(d.items).filter(function (k) { return !gone[k]; })
+          .map(function (k) { return Object.assign({ id: k }, d.items[k]); })
+          .sort(function (a, b) { return String(b.at || "").localeCompare(String(a.at || "")); });
+      },
+      dismissNotice: function (id) {
+        var gone = {};
+        gone[id] = true;
+        return w(fs.collection("notices").doc(user.uid).set({ dismissed: gone }, { merge: true }));
       },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
@@ -2374,6 +2493,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           delete items[parts[1]];
           return ref.set(Object.assign({}, d, { items: items }));
         }));
+      },
+      // Overtime days (writeOvertime): members mark their own seat; admins mark anyone's (seat-<pos>).
+      canOvertime: function () { return active() && !!me.pos; },
+      canOvertimeFor: function (pos) { return active() && (admin() || me.pos === pos); },
+      setOvertime: function (pos, name, dIso, mark, docId) {
+        var own = active() && me.pos === pos;
+        if (!own && !admin()) return Promise.reject(new Error(me.pos ? NO_EDIT : "Claim your record first."));
+        return w(writeOvertime(fs.collection.bind(fs), docId || (own ? user.uid : "seat-" + pos), pos, name, dIso, mark));
       },
       // Feedback about the app: one record per member, feedback/<uid> = {items: {<id>: feedback}}, like corrections.
       userId: function () { return user ? user.uid : null; },
@@ -2526,6 +2653,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       return syncMe().then(function () {
         watchAccount();
         listen();
+        // Tokens change now and then: with app alerts on and permission already given, save this device's current one.
+        if (active() && me.alerts && me.alerts.app && adapter.canPush() && Notification.permission === "granted") {
+          pushToken().catch(function (e) { if (root.console) console.warn("push: " + e.message); });
+        }
         return adapter;
       });
     }).catch(function (e) {
@@ -3060,7 +3191,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           '<tbody id="admin-users"></tbody></table></div></div>' +
           '<datalist id="roster-dl">' + api.people().map(function (p) {
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
-          }).join("") + "</datalist>" + (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
+          }).join("") + "</datalist>" + (api.backend().announce ? '<div class="card" id="announce"></div>' : "") +
+          (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
           (api.backend().importBackup ? importHtml() : "");
         if ($("import-form")) wireImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
@@ -3073,8 +3205,95 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         adminUsersCache = users;
         drawPending();
         drawUsers();
+        // Not while the admin is typing in it (the Admin page refreshes when records change).
+        if ($("announce") && !$("announce").contains(document.activeElement)) drawAnnounce();
       }, function (er) { api.say($("admin-msg"), er.message, true); });
       if ($("launch")) drawLaunch();
+    }
+
+    /* ---------- Send announcement (Firebase admin site; function announce) ----------
+       Title, short message and an optional link, to everyone or picked people. Everyone it goes to sees it in the app
+       until they dismiss it; people with app notifications on also get one on their phone. Kept in announcements/{id}. */
+    var ann = { open: false, title: "", message: "", link: "", audience: "all", picked: {}, q: "", confirm: false, history: null };
+    function annPeople() {
+      return adminUsersCache.filter(function (u) { return u.status === "active"; })
+        .sort(function (a, c) { return String(a.posName || a.name || "").localeCompare(String(c.posName || c.name || "")); });
+    }
+    function annCount() { return ann.audience === "all" ? annPeople().length : Object.keys(ann.picked).filter(function (k) { return ann.picked[k]; }).length; }
+    function annList() {
+      var q = ann.q.toLowerCase();
+      var list = annPeople().filter(function (u) { return !q || [u.posName, u.name, u.googleEmail].join(" ").toLowerCase().indexOf(q) !== -1; });
+      return list.length ? list.map(function (u) {
+        return '<label class="chk"><input type="checkbox" data-ann-pick="' + esc(u.id) + '"' + (ann.picked[u.id] ? " checked" : "") + "> " +
+          esc(u.posName || u.name || u.googleEmail || u.id) + (u.alerts && u.alerts.app ? ' <span class="hint">· app notifications on</span>' : "") + "</label>";
+      }).join("") : '<p class="hint">No one matches.</p>';
+    }
+    function drawAnnounce() {
+      var el = $("announce"), b = api.backend();
+      if (ann.history === null && b.announcements) {
+        ann.history = [];
+        b.announcements().then(function (h) { ann.history = h; drawAnnounce(); }, function () {});
+      }
+      var n = annCount();
+      el.innerHTML = '<details class="fold"' + (ann.open ? " open" : "") + ' id="ann-fold"><summary><h3>Send announcement</h3><span class="fold-sum">To everyone or picked people</span></summary>' +
+        '<p class="hint">Everyone it goes to sees it at the top of the app until they dismiss it. People who turned on app notifications also get it on their phone. Never put cell numbers in it.</p>' +
+        '<label>Title<input id="ann-title" maxlength="80" value="' + esc(ann.title) + '"></label>' +
+        '<label>Message <span class="hint" id="ann-left"></span><textarea id="ann-message" rows="3" maxlength="300">' + esc(ann.message) + "</textarea></label>" +
+        '<label>Link (optional)<input id="ann-link" type="url" placeholder="https://" value="' + esc(ann.link) + '"></label>' +
+        '<div class="row"><label class="chk"><input type="radio" name="ann-aud" value="all"' + (ann.audience === "all" ? " checked" : "") + "> Everyone with an account</label>" +
+        '<label class="chk"><input type="radio" name="ann-aud" value="picked"' + (ann.audience === "picked" ? " checked" : "") + "> Pick people</label></div>" +
+        (ann.audience === "picked" ? '<input type="search" id="ann-q" placeholder="Filter by name or email" aria-label="Filter people" value="' + esc(ann.q) + '">' +
+          '<div class="ann-people" id="ann-people">' + annList() + "</div>" : "") +
+        '<div class="ann-preview" id="ann-preview"></div>' +
+        '<div class="row"><button class="btn small primary' + (ann.confirm ? " danger" : "") + '" type="button" id="ann-send">' +
+          (ann.confirm ? "Confirm: send to " + n + (n === 1 ? " person" : " people") : "Send to " + n + (n === 1 ? " person" : " people")) + "</button>" +
+          (ann.confirm ? '<button class="btn small" type="button" id="ann-cancel">Cancel</button>' : "") + "</div>" +
+        '<span class="msg" id="ann-say" role="status"></span>' +
+        (ann.history && ann.history.length ? '<h3 class="sub-h">Sent</h3><ul class="hist">' + ann.history.map(function (h) {
+          var c = h.counts || {};
+          return "<li><b>" + esc(h.title) + '</b> <span class="hint">' + esc(String(h.at || "").slice(0, 10)) + " · " + (h.audience === "picked" ? "picked people" : "everyone") +
+            " · " + (c.recipients || 0) + " people, " + (c.pushed || 0) + " by app notification</span></li>";
+        }).join("") + "</ul>" : "") + "</details>";
+      wireAnnounce(el);
+    }
+    function annPreview() {
+      var left = 300 - ann.message.length;
+      $("ann-left").textContent = "(" + left + " left)";
+      $("ann-preview").innerHTML = ann.title || ann.message ? '<div class="notice"><div class="notice-body"><b>' + esc(ann.title) + "</b><p>" + esc(ann.message) + "</p>" +
+        (ann.link ? '<span class="linkish">Open link</span>' : "") + '</div><span class="hint">Preview</span></div>' : "";
+    }
+    function wireAnnounce(el) {
+      var b = api.backend(), say = function (t, bad) { api.say($("ann-say"), t, bad); };
+      $("ann-fold").addEventListener("toggle", function () { ann.open = this.open; });
+      [["ann-title", "title"], ["ann-message", "message"], ["ann-link", "link"]].forEach(function (f) {
+        $(f[0]).oninput = function () { ann[f[1]] = this.value; if (ann.confirm) { ann.confirm = false; drawAnnounce(); return; } annPreview(); };
+      });
+      el.querySelectorAll("[name=ann-aud]").forEach(function (r) { r.onchange = function () { ann.audience = r.value; ann.confirm = false; drawAnnounce(); }; });
+      if ($("ann-q")) $("ann-q").oninput = function () { ann.q = this.value.trim(); $("ann-people").innerHTML = annList(); };
+      if ($("ann-people")) $("ann-people").addEventListener("change", function (e) {
+        var id = e.target.dataset && e.target.dataset.annPick;
+        if (!id) return;
+        ann.picked[id] = e.target.checked;
+        ann.confirm = false;
+        var n = annCount();
+        $("ann-send").textContent = "Send to " + n + (n === 1 ? " person" : " people");
+      });
+      if ($("ann-cancel")) $("ann-cancel").onclick = function () { ann.confirm = false; drawAnnounce(); };
+      $("ann-send").onclick = function () {
+        if (!ann.title.trim() || !ann.message.trim()) return say("Write a title and a message first.", true);
+        if (!annCount()) return say("Pick at least one person.", true);
+        if (!ann.confirm) { ann.confirm = true; drawAnnounce(); return; }
+        var x = this;
+        x.disabled = true;
+        say("Sending…");
+        var uids = Object.keys(ann.picked).filter(function (k) { return ann.picked[k]; });
+        b.announce({ title: ann.title, message: ann.message, link: ann.link, audience: ann.audience, uids: ann.audience === "picked" ? uids : [] }).then(function (r) {
+          ann = { open: true, title: "", message: "", link: "", audience: "all", picked: {}, q: "", confirm: false, history: null };
+          drawAnnounce();
+          say("Sent to " + r.recipients + (r.recipients === 1 ? " person" : " people") + "; " + r.pushed + " by app notification. The others see it when they open the app.");
+        }, function (er) { ann.confirm = false; drawAnnounce(); say(er.message, true); });
+      };
+      annPreview();
     }
 
     /* ---------- Invite people (Firebase admin site): the launch text with the sign-up link ----------
@@ -4441,11 +4660,21 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         esc(t.proposal && t.proposal.later ? "They owe you a shift." : terms(t.proposal) + ".") + "</p></article>";
     }
 
+    // What pushTest did: sent, no device saved, or Google's reason for refusing (shown so a failure can be fixed).
+    function pushResult(r) {
+      if (r.sent) return "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds.";
+      if (!r.devices) return "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone.";
+      return "It didn't go through" + (r.errors && r.errors.length ? " (" + r.errors[0] + ")" : "") + ".";
+    }
     function alertsHtml() {
-      var m = backend().myMember() || {}, a = m.alerts || {};
+      var b = backend(), m = b.myMember() || {}, a = m.alerts || {};
+      // App notifications: on iPhone, only from the Home Screen app; once on, a test sends one to this account's devices.
+      var push = (b.needsHomeScreen && root.FIREBASE_VAPID_KEY && b.needsHomeScreen()
+        ? '<p class="hint push-hint">For app notifications on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>, open the app from that icon, and turn them on there.</p>' : "") +
+        (a.app && b.pushTest ? '<p><button class="btn small" type="button" id="push-test">Send me a test notification</button></p>' : "");
       return '<details class="trade-alerts"' + (ui.alertsOpen ? " open" : "") + "><summary>Alerts</summary>" +
         '<label class="chk"><input type="checkbox" data-alert="text"' + (a.text ? " checked" : "") + "> Notify me by text</label>" +
-        '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" +
+        '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" + push +
         '<label class="chk"><input type="checkbox" data-alert="email"' + (a.email ? " checked" : "") + "> Notify me by email</label>" +
         '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
           return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
@@ -4471,16 +4700,35 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
           var b = backend(), msg = $("alert-msg");
           // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
-          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          var turnedOn = c.dataset.alert === "app" && c.checked && b.registerPush;
+          var ready = turnedOn ? b.registerPush() : Promise.resolve();
           ready.then(function () {
-            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
             return b.setAlerts(vals);
+          }).then(function () {
+            if (c.dataset.alert !== "app") return;
+            // Redraw so "Send me a test notification" shows (or hides), and send a sample at once so they see what alerts look like.
+            ui.alertsOpen = true;
+            renderTrades();
+            if (!turnedOn) return;
+            api.say($("alert-msg"), "Notifications are on for this device. A sample is on its way.");
+            if (b.pushTest) b.pushTest().then(function (r) { if (!r.sent) api.say($("alert-msg"), pushResult(r), true); }, function (er) { api.say($("alert-msg"), er.message, true); });
           }).catch(function (er) {
             if (c.tagName !== "SELECT") c.checked = !c.checked;
             if (msg) api.say(msg, er.message, true);
           });
         };
       });
+      if ($("push-test")) {
+        $("push-test").onclick = function () {
+          var x = this;
+          x.disabled = true;
+          api.say($("alert-msg"), "Sending…");
+          backend().pushTest().then(function (r) {
+            x.disabled = false;
+            api.say($("alert-msg"), pushResult(r), !r.sent);
+          }, function (er) { x.disabled = false; api.say($("alert-msg"), er.message, true); });
+        };
+      }
       out.querySelectorAll("[data-reply]").forEach(function (b) {
         b.onclick = function () { ui.replyOpen = b.dataset.reply; renderTrades(); var f = out.querySelector(".reply-form"); if (f) f.querySelector("input").focus(); };
       });
@@ -5531,6 +5779,122 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
 
     return { open: open, refresh: refresh, render: render, count: count, canSend: canSend, isAdmin: isAdmin, wire: wire };
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* Overtime days on a person's calendar: Want OT (days they'd take) and Worked OT (hired, with hours and a note).
+ * window.OvertimeViews(api) -> {canMark, marksFor, calClass, label, dayHtml, wireDay, summary}. `api` comes from app.js.
+ * - Marked from the day drawer on your own Schedule page, on a day you aren't scheduled to work; admins mark anyone's.
+ *   Want OT is for today on; Worked OT for any day.
+ * - Everyone signed in sees the marks; the note only the member and admins (store.js writeOvertime: `overtime` and
+ *   `overtimeNotes`). The calendar finds a person's marks by `pos`.
+ * - Later: admins use Want OT days to fill shortages.
+ */
+(function (root) {
+  "use strict";
+
+  root.OvertimeViews = function (api) {
+    var $ = api.$, esc = api.esc;
+    var HOURS = 24;
+
+    function backend() { return api.backend(); }
+    function canMark(p) {
+      var b = backend();
+      return !!(b && b.setOvertime && p && b.canOvertimeFor && b.canOvertimeFor(p.pos));
+    }
+    function isAdmin() { var b = backend(); return !!(b && b.canEdit && b.canEdit()); }
+    // Every mark for a seat, by date, with the record it's in (`doc`) and its note when this account may read it.
+    function marksFor(pos) {
+      var out = {}, notes = {};
+      (api.recs().overtimeNotes || []).forEach(function (r) { notes[r.id] = r.notes || {}; });
+      (api.recs().overtime || []).forEach(function (r) {
+        if (r.pos !== pos) return;
+        Object.keys(r.days || {}).forEach(function (k) {
+          var m = r.days[k];
+          if (m && m.kind) out[k] = { kind: m.kind, hours: m.hours, note: (notes[r.id] || {})[k] || null, doc: r.id };
+        });
+      });
+      return out;
+    }
+    function calClass(marks, dIso) {
+      var m = marks[dIso];
+      return !m ? "" : m.kind === "worked" ? " ot-worked" : " ot-want";
+    }
+    function label(m) { return m.kind === "worked" ? "Worked OT · " + (m.hours || HOURS) + " hrs" : "Want OT"; }
+
+    // The drawer section for one day: shown on your own page for a day off (or one already marked).
+    function dayHtml(p, dIso, offDay) {
+      var cur = marksFor(p.pos)[dIso];
+      if (!canMark(p) || (!offDay && !cur)) return "";
+      var past = dIso < api.iso(api.today()), kind = cur ? cur.kind : past ? "worked" : "want";
+      var b = backend(), mine = api.myPos() === p.pos;
+      var now = cur ? '<span class="ot-now">' + esc(label(cur)) + (cur.note ? " · " + esc(cur.note) : "") + "</span>" : "";
+      // An admin's mark on your own seat (seat-<pos>) stays as they entered it.
+      if (cur && mine && !isAdmin() && b.userId && cur.doc !== b.userId()) {
+        return '<div class="day-leave day-ot" id="day-ot"><span class="k">Overtime</span>' + now + '<p class="hint">Entered by an admin; ask one to change it.</p></div>';
+      }
+      return '<div class="day-leave day-ot" id="day-ot"><span class="k">Overtime' + (mine ? "" : " · for " + esc(p.name)) + "</span>" + now +
+        '<div class="seg" role="group" aria-label="Overtime">' +
+        (past ? "" : '<button type="button" class="btn small' + (kind === "want" ? " primary" : "") + '" data-ot-kind="want" aria-pressed="' + (kind === "want") + '">Want OT</button>') +
+        '<button type="button" class="btn small' + (kind === "worked" ? " primary" : "") + '" data-ot-kind="worked" aria-pressed="' + (kind === "worked") + '">Worked OT</button></div>' +
+        '<label class="ot-hours"' + (kind === "worked" ? "" : " hidden") + '>Hours <input type="number" id="ot-hours" min="1" max="48" step="0.5" value="' +
+        esc(String(cur && cur.hours || HOURS)) + '"></label>' +
+        '<label class="ot-note">Note <input type="text" id="ot-note" maxlength="200" placeholder="Optional" value="' + esc(cur && cur.note || "") + '"></label>' +
+        '<div class="row"><button type="button" class="btn small primary" id="ot-save">' + (cur ? "Save" : "Mark") + "</button>" +
+        (cur ? '<button type="button" class="btn small" id="ot-remove">Remove</button>' : "") +
+        '<span class="msg" id="ot-msg" role="status"></span></div>' +
+        '<p class="hint">Everyone sees the mark; only ' + (mine ? "you" : esc(p.name)) + " and admins see the note.</p></div>";
+    }
+    function wireDay(p, dIso, done) {
+      var box = $("day-ot");
+      if (!box || !$("ot-save")) return;
+      var cur = marksFor(p.pos)[dIso];
+      var kind = (box.querySelector("[data-ot-kind].primary") || {}).dataset;
+      kind = kind ? kind.otKind : "worked";
+      box.querySelectorAll("[data-ot-kind]").forEach(function (b) {
+        b.onclick = function () {
+          kind = b.dataset.otKind;
+          box.querySelectorAll("[data-ot-kind]").forEach(function (x) {
+            var on = x === b;
+            x.classList.toggle("primary", on);
+            x.setAttribute("aria-pressed", on);
+          });
+          box.querySelector(".ot-hours").hidden = kind !== "worked";
+        };
+      });
+      var msg = $("ot-msg");
+      var save = function (mark) {
+        api.say(msg, "Saving…");
+        backend().setOvertime(p.pos, p.name, dIso, mark, cur ? cur.doc : null).then(done, function (er) { api.say(msg, er.message, true); });
+      };
+      $("ot-save").onclick = function () {
+        var note = $("ot-note").value.trim().slice(0, 200), mark = { kind: kind, note: note || null };
+        if (kind === "worked") {
+          var h = Number($("ot-hours").value);
+          if (!(h > 0 && h <= 48)) return api.say(msg, "Hours from 1 to 48.", true);
+          mark.hours = h;
+        }
+        save(mark);
+      };
+      if ($("ot-remove")) $("ot-remove").onclick = function () { save(null); };
+    }
+
+    // The month's totals under the calendar: "OT: 2 days, 48 hrs this month · 3 wanted".
+    function summary(marks, month) {
+      var pre = month.getFullYear() + "-" + ("0" + (month.getMonth() + 1)).slice(-2) + "-", days = 0, hrs = 0, want = 0;
+      Object.keys(marks).forEach(function (k) {
+        if (k.indexOf(pre) !== 0) return;
+        if (marks[k].kind === "worked") { days++; hrs += Number(marks[k].hours) || HOURS; } else want++;
+      });
+      if (!days && !want) return "";
+      var parts = [];
+      if (days) parts.push(days + (days === 1 ? " day, " : " days, ") + hrs + " hrs this month");
+      if (want) parts.push(want + " wanted");
+      return '<p class="hint ot-sum">OT: ' + esc(parts.join(" · ")) + "</p>";
+    }
+
+    return { canMark: canMark, marksFor: marksFor, calClass: calClass, label: label, dayHtml: dayHtml, wireDay: wireDay, summary: summary };
   };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
@@ -6857,7 +7221,7 @@ module.exports = QRCode;
         (share ? '<button class="btn primary" type="button" id="invite-share">Share</button>' : "") +
         '<button class="btn' + (share ? "" : " primary") + '" type="button" id="invite-copy">Copy link</button>' +
         '<span class="msg" id="invite-msg" role="status"></span></div>' +
-        '<p class="hint">They sign in with Google the first time, then can add their cell. On iPhone, Share → Add to Home Screen installs it.</p>';
+        '<p class="hint">They sign in with Google the first time, then can add their cell. On iPhone, Share → Add to Home Screen installs it; on Android, ⋮ → Add to Home screen.</p>';
       $("invite-sheet").hidden = false;
       var msg = $("invite-msg");
       if ($("invite-share")) $("invite-share").onclick = function () {
@@ -6888,6 +7252,75 @@ module.exports = QRCode;
     return { open: open, canShow: canShow, wire: wire };
   };
 })(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* "Add to Home Screen" banner for first-time visitors to the employee app (FIREBASE_SITE "app"), on phones only, and only
+ * when the app wasn't opened from the home screen. On iPhone the home-screen app is also what app notifications need.
+ * - iPhone Safari: Share → Add to Home Screen. iPhone in another browser (Chrome, an app's built-in browser): open the
+ *   link in Safari first. Android: an Install button from the browser's own prompt (beforeinstallprompt), else ⋮ → Add
+ *   to Home screen.
+ * - Got it hides it for good on that phone; × until the next visit. It never shows on the admin site or the claude.ai page.
+ * Runs on its own at load; window.HomeScreen.state() reports what it decided (for tests).
+ */
+(function (root) {
+  "use strict";
+  var KEY = "tour-schedule:homescreen-done";
+  var promptEvent = null, decided = "hidden";
+
+  function done() { try { return root.localStorage.getItem(KEY) === "1"; } catch (e) { return false; } }
+  function remember() { try { root.localStorage.setItem(KEY, "1"); } catch (e) { /* storage unavailable */ } }
+  function standalone() {
+    return root.navigator.standalone === true || !!(root.matchMedia && root.matchMedia("(display-mode: standalone)").matches);
+  }
+  function platform() {
+    var ua = root.navigator.userAgent || "";
+    var ios = /iPhone|iPad|iPod/.test(ua) || (root.navigator.platform === "MacIntel" && root.navigator.maxTouchPoints > 1);
+    if (ios) return /CriOS|FxiOS|EdgiOS|GSA\/|FBAN|FBAV|Instagram|Line\//.test(ua) ? "ios-other" : "ios";
+    return /Android/.test(ua) ? "android" : null;
+  }
+  var SHARE_ICON = '<svg class="hs-share" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4M6 11v9h12v-9"/></svg>';
+  function text(kind) {
+    if (kind === "ios") return "Tap Share " + SHARE_ICON + " at the bottom of Safari, then <b>Add to Home Screen</b>. Open the app from there from now on.";
+    if (kind === "ios-other") return "Open this link in <b>Safari</b>, then tap Share " + SHARE_ICON + " → <b>Add to Home Screen</b>.";
+    return promptEvent ? "Install it on this phone so it opens like an app." : "Tap <b>⋮</b> (top right), then <b>Add to Home screen</b> or <b>Install app</b>.";
+  }
+
+  function hide() { var el = document.getElementById("hs-banner"); if (el) el.remove(); }
+  function show(kind) {
+    hide();
+    var page = document.querySelector(".page");
+    if (!page) return;
+    decided = kind;
+    page.insertAdjacentHTML("afterbegin", '<section class="hs-banner" id="hs-banner" role="region" aria-label="Add to Home Screen">' +
+      '<div class="hs-text"><b class="hs-title">Add this app to your home screen</b><span>' + text(kind) + "</span></div>" +
+      '<div class="hs-acts">' + (kind === "android" && promptEvent ? '<button class="btn small primary" type="button" id="hs-install">Install</button>' : "") +
+      '<button class="btn small" type="button" id="hs-done">Got it</button></div>' +
+      '<button class="hs-x" type="button" id="hs-x" aria-label="Close">×</button></section>');
+    document.getElementById("hs-done").onclick = function () { remember(); hide(); };
+    document.getElementById("hs-x").onclick = hide;
+    var inst = document.getElementById("hs-install");
+    if (inst) inst.onclick = function () {
+      var ev = promptEvent;
+      promptEvent = null;
+      ev.prompt();
+      (ev.userChoice || Promise.resolve({})).then(function (c) { if (c.outcome === "accepted") { remember(); hide(); } else show(kind); });
+    };
+  }
+  function start() {
+    if (root.FIREBASE_SITE !== "app" || done() || standalone()) return;
+    var kind = platform();
+    if (kind) show(kind);
+  }
+
+  root.addEventListener("beforeinstallprompt", function (e) {
+    e.preventDefault(); // our own Install button instead of the browser's mini bar
+    promptEvent = e;
+    if (document.getElementById("hs-banner") && decided === "android") show("android");
+  });
+  root.addEventListener("appinstalled", function () { remember(); hide(); });
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+  root.HomeScreen = { state: function () { return document.getElementById("hs-banner") ? decided : "hidden"; } };
+})(window);
 </script>
 <script>
 /* Compare with fir-db1 (admins, Employee cards screen).
@@ -8690,7 +9123,7 @@ module.exports = QRCode;
     ul.hidden = false;
     $("person-input").setAttribute("aria-expanded", "true");
   }
-  // Today at a glance for a search result: "On · E09", a leave code, or "Off" with the next shift.
+  // Today at a glance for a search result: "On · E09", a leave code, or "Off today" with when they next work.
   function briefHtml(p) {
     var t = today(), s = day(p, t);
     if (s && !s.status) return '<span class="brief on">On · ' + esc(s.co || home(p)) + "</span>";
@@ -8698,7 +9131,7 @@ module.exports = QRCode;
     for (var k = 1; k <= 40; k++) {
       var d = addDays(t, k), s2 = day(p, d);
       if (s2 && !s2.status) {
-        return '<span class="brief">Off<small>' + (k === 1 ? "tomorrow" : k < 7 ? "next " + DOW[d.getDay()] : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
+        return '<span class="brief">Off today<small>Works ' + (k === 1 ? "tomorrow" : k < 7 ? DOW[d.getDay()].slice(0, 3) : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
       }
     }
     return '<span class="brief">Off</span>';
@@ -8791,7 +9224,8 @@ module.exports = QRCode;
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
-    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p);
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p) || Overtime.canMark(p);
+    var ot = Overtime.marksFor(p.pos), otWant = 0, otWorked = 0;
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -8799,9 +9233,12 @@ module.exports = QRCode;
       var own = ownSeatOn(p, d), awayDay = !s && own && M.actingOn(p.pos, d, recs.covers) && shift(own, d);
       if (s) { if (s.status) offCount++; else if (s.acting) actingCount++; else workCount++; }
       var cover = s && !s.acting && s.swing && s.co !== p.company;
-      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : "W" + M.watchFor(d);
-      var cls = s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "";
-      var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
+      var mark = ot[iso(d)];
+      if (mark) { if (mark.kind === "worked") otWorked++; else otWant++; }
+      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : mark && mark.kind === "worked" ? "OT" : "W" + M.watchFor(d);
+      var cls = (s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "") + Overtime.calClass(ot, iso(d));
+      var tip = (s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off") +
+        (mark ? " · " + Overtime.label(mark) : "");
       var hol = M.holidayFor(d);
       if (hol) monthHolidays.push({ d: d, h: hol });
       cells += '<div class="d' + (tappable ? " tap" : "") + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") + '"' +
@@ -8874,7 +9311,9 @@ module.exports = QRCode;
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
       (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE / TR (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
-      '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
+      (otWorked ? '<span><i class="sw-ot-worked"></i>Worked OT (' + otWorked + ")</span>" : "") +
+      (otWant ? '<span><i class="sw-ot-want"></i>Want OT (' + otWant + ")</span>" : "") +
+      '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div>' + Overtime.summary(ot, m) + "</div>" +
       '<div class="side">' +
       foldOpen("next", '<details class="card fold" data-fold="next"', ">") + '<summary><h3>Next shifts</h3><span class="fold-sum">' +
       esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
@@ -8941,14 +9380,17 @@ module.exports = QRCode;
       leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
         '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
-    if (!acts.length && !leave) return; // nothing to do on this day
+    // Overtime on your own page: a day you aren't scheduled (not away covering), or one already marked.
+    var otHtml = Overtime.dayHtml(p, dIso, !s && !(ownSeatOn(p, d) && M.actingOn(p.pos, d, recs.covers) && shift(ownSeatOn(p, d), d)));
+    if (!acts.length && !leave && !otHtml) return; // nothing to do on this day
     var hol = M.holidayFor(d);
     $("day-title").textContent = shortDate(d);
     $("day-body").innerHTML = '<p class="day-line">' + esc(p.name) + " · Watch " + M.watchFor(d) + (hol ? " · " + esc(hol.name) : "") + "<br>" + line + "</p>" +
-      (acts.length ? '<div class="sheet-list day-acts">' + acts.join("") + "</div>" : "") + leave;
+      (acts.length ? '<div class="sheet-list day-acts">' + acts.join("") + "</div>" : "") + leave + otHtml;
     dayOpener = opener || document.activeElement;
     $("day-sheet").hidden = false;
     $("day-sheet").querySelector(".sheet-x").focus();
+    Overtime.wireDay(p, dIso, function () { closeDay(); renderAll(true); });
     $("day-body").querySelectorAll("[data-day-act]").forEach(function (b) {
       b.onclick = function () {
         var a = b.dataset.dayAct;
@@ -9731,6 +10173,7 @@ module.exports = QRCode;
       document.querySelector(".page").insertAdjacentHTML("afterbegin", '<p class="site-banner" id="site-banner" role="status">' +
         "<b>Test copy.</b> Not the live schedule: changes here are replaced on cut-over day.</p>");
     } else if (mode !== "test" && el) el.remove();
+    noticeCards();
     var fb = $("frozen-backup");
     if (fb && !fb.firstChild && backend && backend.canBackup && backend.canBackup()) {
       fb.innerHTML = '<button class="btn small" type="button" id="card-backup">Download backup</button> <span class="msg" id="card-backup-msg" role="status"></span>';
@@ -9744,6 +10187,39 @@ module.exports = QRCode;
         }, function (er) { x.disabled = false; say($("card-backup-msg"), er.message, true); });
       };
     }
+  }
+  /* Announcements from the admins (Firebase, notices/<uid>): each shows as a card at the top until it's dismissed.
+     App notifications that arrive while the app is open show the same way, for this visit only. */
+  var livePush = [], noticesDrawn = "";
+  function noticeCards() {
+    var list = livePush.concat(backend && backend.notices ? backend.notices() : []), el = $("notices");
+    var key = JSON.stringify(list.map(function (n) { return n.id; }));
+    if (key === noticesDrawn && (el || !list.length)) return;
+    noticesDrawn = key;
+    if (!list.length) { if (el) el.remove(); return; }
+    if (!el) {
+      var after = $("site-banner");
+      (after || document.querySelector(".page")).insertAdjacentHTML(after ? "afterend" : "afterbegin", '<div class="notices" id="notices" role="status"></div>');
+      el = $("notices");
+    }
+    el.innerHTML = list.map(function (n) {
+      return '<div class="notice"><div class="notice-body"><b>' + esc(n.title) + "</b><p>" + esc(n.message) + "</p>" +
+        (n.link ? '<a class="linkish" href="' + esc(n.link) + '" target="_blank" rel="noopener">Open link</a>' : "") +
+        '</div><button class="btn small" type="button" data-notice="' + esc(n.id) + '">Dismiss</button></div>';
+    }).join("");
+    el.querySelectorAll("[data-notice]").forEach(function (x) {
+      x.onclick = function () {
+        var id = x.dataset.notice;
+        livePush = livePush.filter(function (n) { return n.id !== id; });
+        if (id.indexOf("push-") === 0) return noticeCards();
+        x.disabled = true;
+        backend.dismissNotice(id).then(noticeCards, function () { x.disabled = false; });
+      };
+    });
+  }
+  function showPush(title, body) {
+    livePush.unshift({ id: "push-" + Date.now(), title: title || "Notification", message: body || "", link: null });
+    noticeCards();
   }
   function gate(on) {
     document.querySelector(".page").classList.toggle("gated", on);
@@ -9786,6 +10262,11 @@ module.exports = QRCode;
   var Feedback = window.FeedbackViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
+  });
+
+  var Overtime = window.OvertimeViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, myPos: function () { return myPos(); },
+    today: today, iso: iso,
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
@@ -9831,7 +10312,8 @@ module.exports = QRCode;
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [],
+      overtime: r.overtime || [], overtimeNotes: r.overtimeNotes || [] };
     recsVersion++;
     fixesBadge();
     feedbackBadge();
@@ -9862,6 +10344,7 @@ module.exports = QRCode;
     window.ScheduleStore.connect(onRecords).then(function (b) {
       backend = b;
       if (serverMode() && !backend.isActive()) { renderEditChip(); Accounts.renderGate(); return; }
+      if (backend.onPush) backend.onPush(showPush);
       // The roster and the three smaller files download together (Firebase may have started them during sign-in).
       var json = function (url) {
         return getFile(url).then(function (r) { return r.ok ? r.json() : null; }, function () { return null; });

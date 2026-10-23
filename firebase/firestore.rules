@@ -152,6 +152,19 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
+    // Overtime days: overtime/<doc> = {pos, name, days: {<date>: {kind, hours}}}, read by everyone signed in. <doc> is
+    // the member's uid (their own seat only) or seat-<pos> for marks an admin enters. Notes are private:
+    // overtimeNotes/<doc> = {notes: {<date>: text}}, read and written by that member and admins.
+    match /overtime/{doc} {
+      allow read: if active();
+      allow create, update: if isAdmin() || (active() && doc == request.auth.uid && myPos() != null && data().pos == myPos() &&
+        data().days is map && data().days.size() <= 400);
+      allow delete: if isAdmin() || (active() && doc == request.auth.uid);
+    }
+    match /overtimeNotes/{doc} {
+      allow read, write: if isAdmin() || (active() && doc == request.auth.uid);
+    }
+
     // Announcements (Admin → Send announcement): written only by the announce function; admins read the history.
     match /announcements/{id} {
       allow read: if isAdmin();

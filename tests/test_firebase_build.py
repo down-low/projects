@@ -87,6 +87,19 @@ class FirebaseBuild(unittest.TestCase):
         build_artifact.fold_trades(records)
         self.assertNotIn("feedback", records)
 
+    def test_overtime_on_every_site_notes_private_and_kept_out_of_snapshots(self):
+        for folder in (self.app, self.admin):
+            self.assertIn('src="overtime.js"', self.read(folder, "index.html"))
+            self.assertEqual(self.read(folder, "overtime.js"), self.read(ROOT, "overtime.js"))
+        rules = {r["path"]: r for r in build_artifact.CAPABILITIES["db"]["rules"]}
+        self.assertEqual(rules["overtime"]["read"], "view")  # marks: everyone signed in
+        self.assertEqual((rules["overtimeNotes"]["read"], rules["overtimeNotes/{self}"]["read"]), ("admin", "interact"))
+        records = {"overtime": [{"id": "u1", "pos": "10EOC03M", "days": {}}], "overtimeNotes": [{"id": "u1", "notes": {}}], "statuses": []}
+        build_artifact.fold_trades(records)
+        self.assertNotIn("overtime", records)
+        self.assertNotIn("overtimeNotes", records)
+        self.assertIn("match /overtimeNotes/{doc}", self.read(ROOT, "firebase/firestore.rules"))
+
     def test_invite_a_coworker_on_both_sites_and_trades_untouched(self):
         for folder in (self.app, self.admin):
             html = self.read(folder, "index.html")
@@ -94,6 +107,11 @@ class FirebaseBuild(unittest.TestCase):
             self.assertEqual(self.read(folder, "invite.js"), self.read(ROOT, "invite.js"))
             self.assertEqual(self.read(folder, "trades.js"), self.read(ROOT, "trades.js"))
         self.assertIn("MIT license", self.read(ROOT, "vendor/qrcode.js"))
+
+    def test_home_screen_banner_on_the_app_site_only(self):
+        for folder in (self.app, self.admin):
+            self.assertIn('src="homescreen.js"', self.read(folder, "index.html"))
+        self.assertIn('root.FIREBASE_SITE !== "app"', self.read(ROOT, "homescreen.js"))
 
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:

@@ -379,7 +379,7 @@
     ul.hidden = false;
     $("person-input").setAttribute("aria-expanded", "true");
   }
-  // Today at a glance for a search result: "On · E09", a leave code, or "Off" with the next shift.
+  // Today at a glance for a search result: "On · E09", a leave code, or "Off today" with when they next work.
   function briefHtml(p) {
     var t = today(), s = day(p, t);
     if (s && !s.status) return '<span class="brief on">On · ' + esc(s.co || home(p)) + "</span>";
@@ -387,7 +387,7 @@
     for (var k = 1; k <= 40; k++) {
       var d = addDays(t, k), s2 = day(p, d);
       if (s2 && !s2.status) {
-        return '<span class="brief">Off<small>' + (k === 1 ? "tomorrow" : k < 7 ? "next " + DOW[d.getDay()] : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
+        return '<span class="brief">Off today<small>Works ' + (k === 1 ? "tomorrow" : k < 7 ? DOW[d.getDay()].slice(0, 3) : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
       }
     }
     return '<span class="brief">Off</span>';
@@ -480,7 +480,8 @@
     var cells = DOW.map(function (d) { return '<div class="dow">' + d.slice(0, 2) + "</div>"; }).join("");
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
-    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p);
+    var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p) || Overtime.canMark(p);
+    var ot = Overtime.marksFor(p.pos), otWant = 0, otWorked = 0;
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -488,9 +489,12 @@
       var own = ownSeatOn(p, d), awayDay = !s && own && M.actingOn(p.pos, d, recs.covers) && shift(own, d);
       if (s) { if (s.status) offCount++; else if (s.acting) actingCount++; else workCount++; }
       var cover = s && !s.acting && s.swing && s.co !== p.company;
-      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : "W" + M.watchFor(d);
-      var cls = s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "";
-      var tip = s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off";
+      var mark = ot[iso(d)];
+      if (mark) { if (mark.kind === "worked") otWorked++; else otWant++; }
+      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : mark && mark.kind === "worked" ? "OT" : "W" + M.watchFor(d);
+      var cls = (s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "") + Overtime.calClass(ot, iso(d));
+      var tip = (s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off") +
+        (mark ? " · " + Overtime.label(mark) : "");
       var hol = M.holidayFor(d);
       if (hol) monthHolidays.push({ d: d, h: hol });
       cells += '<div class="d' + (tappable ? " tap" : "") + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") + '"' +
@@ -563,7 +567,9 @@
       (actingCount ? '<span><i class="sw-acting"></i>Acting / covering (' + actingCount + ")</span>" : "") +
       (offCount ? '<span><i class="sw-off"></i>Off: VA / S / D / WE / TR (' + offCount + ")</span>" : "") +
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
-      '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div></div>' +
+      (otWorked ? '<span><i class="sw-ot-worked"></i>Worked OT (' + otWorked + ")</span>" : "") +
+      (otWant ? '<span><i class="sw-ot-want"></i>Want OT (' + otWant + ")</span>" : "") +
+      '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div>' + Overtime.summary(ot, m) + "</div>" +
       '<div class="side">' +
       foldOpen("next", '<details class="card fold" data-fold="next"', ">") + '<summary><h3>Next shifts</h3><span class="fold-sum">' +
       esc(next.slice(0, 3).map(function (n) { return n.k === 0 ? "Today" : DOW[n.d.getDay()] + " " + n.d.getDate(); }).join(" · ")) + "</span></summary>" +
@@ -630,14 +636,17 @@
       leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
         '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
-    if (!acts.length && !leave) return; // nothing to do on this day
+    // Overtime on your own page: a day you aren't scheduled (not away covering), or one already marked.
+    var otHtml = Overtime.dayHtml(p, dIso, !s && !(ownSeatOn(p, d) && M.actingOn(p.pos, d, recs.covers) && shift(ownSeatOn(p, d), d)));
+    if (!acts.length && !leave && !otHtml) return; // nothing to do on this day
     var hol = M.holidayFor(d);
     $("day-title").textContent = shortDate(d);
     $("day-body").innerHTML = '<p class="day-line">' + esc(p.name) + " · Watch " + M.watchFor(d) + (hol ? " · " + esc(hol.name) : "") + "<br>" + line + "</p>" +
-      (acts.length ? '<div class="sheet-list day-acts">' + acts.join("") + "</div>" : "") + leave;
+      (acts.length ? '<div class="sheet-list day-acts">' + acts.join("") + "</div>" : "") + leave + otHtml;
     dayOpener = opener || document.activeElement;
     $("day-sheet").hidden = false;
     $("day-sheet").querySelector(".sheet-x").focus();
+    Overtime.wireDay(p, dIso, function () { closeDay(); renderAll(true); });
     $("day-body").querySelectorAll("[data-day-act]").forEach(function (b) {
       b.onclick = function () {
         var a = b.dataset.dayAct;
@@ -1511,6 +1520,11 @@
     shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
   });
 
+  var Overtime = window.OvertimeViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, myPos: function () { return myPos(); },
+    today: today, iso: iso,
+  });
+
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
 
   var Card = window.CardViews({
@@ -1554,7 +1568,8 @@
   function onRecords(r) {
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
-      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [] };
+      corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [],
+      overtime: r.overtime || [], overtimeNotes: r.overtimeNotes || [] };
     recsVersion++;
     fixesBadge();
     feedbackBadge();
