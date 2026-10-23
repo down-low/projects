@@ -8,11 +8,12 @@
 - **No server work:** signing up already works from the plain app address. The QR is drawn in the page from `vendor/qrcode.js` (Kazuhiko Arase's MIT QR encoder, bundled in the repo); `invite.js` holds the sheet.
 - On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
 
-### Overtime days on my calendar
+### Overtime days on my calendar (built Oct 23, 2026; `overtime.js`)
 - **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
 - **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
 - **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
 - **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
+- **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Admins see a person's marks on that person's calendar; there's no Employee card line yet. Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
 ### Personal invite links (admin)

@@ -152,6 +152,14 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
+    // Overtime days on your own calendar: overtime/<uid> = {pos, name, days}, written only by its member, for their own
+    // seat; read by that member and admins.
+    match /overtime/{uid} {
+      allow read: if isAdmin() || (active() && uid == request.auth.uid);
+      allow create, update: if active() && uid == request.auth.uid && myPos() != null && data().pos == myPos() && data().days is map && data().days.size() <= 400;
+      allow delete: if isAdmin() || (active() && uid == request.auth.uid);
+    }
+
     // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).
     match /settings/{doc} {
       allow read: if active();

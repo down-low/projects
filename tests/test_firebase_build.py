@@ -86,6 +86,17 @@ class FirebaseBuild(unittest.TestCase):
         build_artifact.fold_trades(records)
         self.assertNotIn("feedback", records)
 
+    def test_overtime_on_every_site_private_and_kept_out_of_snapshots(self):
+        for folder in (self.app, self.admin):
+            self.assertIn('src="overtime.js"', self.read(folder, "index.html"))
+            self.assertEqual(self.read(folder, "overtime.js"), self.read(ROOT, "overtime.js"))
+        rules = {r["path"]: r for r in build_artifact.CAPABILITIES["db"]["rules"]}
+        self.assertEqual((rules["overtime"]["read"], rules["overtime/{self}"]["read"]), ("admin", "interact"))
+        records = {"overtime": [{"id": "u1", "pos": "10EOC03M", "days": {}}], "statuses": []}
+        build_artifact.fold_trades(records)
+        self.assertNotIn("overtime", records)
+        self.assertIn("match /overtime/{uid}", self.read(ROOT, "firebase/firestore.rules"))
+
     def test_invite_a_coworker_on_both_sites_and_trades_untouched(self):
         for folder in (self.app, self.admin):
             html = self.read(folder, "index.html")

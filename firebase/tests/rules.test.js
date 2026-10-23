@@ -45,6 +45,7 @@ test.beforeEach(async () => {
     await d.doc("trades/t1").set({ posterKey: "10EOC03M", date: "2026-11-05", status: "open", audience: { board: true, to: [] } });
     await d.doc("corrections/mem1").set({ items: { a: { state: "open" } } });
     await d.doc("feedback/mem1").set({ items: { a: { state: "open", kind: "idea", text: "x" } } });
+    await d.doc("overtime/mem1").set({ pos: "10EOC03M", name: "A", days: { "2026-11-02": { kind: "want" } } });
     await d.doc("audit/a1").set({ action: "x" });
   });
 });
@@ -199,6 +200,20 @@ test("feedback: each member their own; editors and admins all", async () => {
   await assertFails(db(OTHER).collection("feedback").get());
   await assertFails(db(PENDING).doc("feedback/mem1").get());
   await assertSucceeds(db(EDITOR).collection("feedback").get());
+});
+
+test("overtime: each member their own seat; only admins read everyone's", async () => {
+  const mark = (extra) => Object.assign({ pos: "10EOC03M", name: "A", days: { "2026-11-03": { kind: "worked", hours: 24 } } }, extra);
+  await assertSucceeds(db(MEMBER).doc("overtime/mem1").get());
+  await assertSucceeds(db(MEMBER).doc("overtime/mem1").set(mark()));
+  await assertFails(db(MEMBER).doc("overtime/mem1").set(mark({ pos: "11ENL01M" })));   // someone else's seat
+  await assertFails(db(MEMBER).doc("overtime/mem2").set(mark()));                      // someone else's record
+  await assertFails(db(OTHER).doc("overtime/mem1").get());
+  await assertFails(db(OTHER).collection("overtime").get());
+  await assertFails(db(EDITOR).collection("overtime").get());
+  await assertFails(db(PENDING).doc("overtime/mem1").get());
+  await assertSucceeds(db(ADMIN).collection("overtime").get());
+  await assertSucceeds(db(MEMBER).doc("overtime/mem1").delete());
 });
 
 test("site mode: everyone approved reads it, only admins set it", async () => {
