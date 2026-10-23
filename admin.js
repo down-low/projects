@@ -408,7 +408,17 @@
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
-      if ($("ml-form")) wireCellLink("ml");
+      if ($("ml-form")) {
+        wireCellLink("ml");
+        // The staff-list cell for your seat, filled in so it's one tap to get the code.
+        if (b.myStaffCell) b.myStaffCell().then(function (cell) {
+          var input = $("ml-cell");
+          if (!cell || !input || input.value) return;
+          input.value = root.TourMath.showCell(cell);
+          var hint = $("ml-form").querySelector(".hint");
+          if (hint) hint.textContent = "Your cell from the staff list is filled in. Tap Text me a code, then enter the code. Wrong number? Change it first.";
+        });
+      }
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;

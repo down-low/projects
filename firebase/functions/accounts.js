@@ -93,6 +93,13 @@ function planStaffCell(u, cells) {
   return normCell(cells.get(u.pos)) || null;
 }
 
+// The account's own staff-list cell, shown back to them on My page so "Add my cell for sign-in" needs no typing. Only
+// for an approved account on a seat that has no sign-in cell yet; the texted code still proves they hold that phone.
+function ownStaffCell(u, cell) {
+  if (!u || u.status !== "active" || !u.pos || u.phone) return null;
+  return normCell(cell) || null;
+}
+
 function claimsFor(user) {
   return { active: user.status === "active", role: ROLES.indexOf(user.role) !== -1 ? user.role : "member", pos: user.pos || null };
 }
@@ -328,5 +335,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, ownStaffCell, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

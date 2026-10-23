@@ -752,6 +752,8 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.
+      myStaffCell: function () { return call("myStaffCell").then(function (r) { return (r && r.cell) || null; }, function () { return null; }); },
       linkCell: function (cell, buttonId) {
         var digits = String(cell || "").replace(/[^0-9]/g, "");
         if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
