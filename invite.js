@@ -45,11 +45,11 @@
         (share ? '<button class="btn primary" type="button" id="invite-share">Share</button>' : "") +
         '<button class="btn' + (share ? "" : " primary") + '" type="button" id="invite-copy">Copy link</button>' +
         '<span class="msg" id="invite-msg" role="status"></span></div>' +
-        '<p class="hint">They sign in with the cell number on the staff list. On iPhone, Share → Add to Home Screen installs it.</p>';
+        '<p class="hint">They sign in with Google the first time, then can add their cell. On iPhone, Share → Add to Home Screen installs it.</p>';
       $("invite-sheet").hidden = false;
       var msg = $("invite-msg");
       if ($("invite-share")) $("invite-share").onclick = function () {
-        navigator.share({ title: "SFFD Tour Schedule", text: "SFFD tour schedule: sign in with your cell number.", url: url })
+        navigator.share({ title: "SFFD Tour Schedule", text: "SFFD tour schedule: sign in with your Google account.", url: url })
           .catch(function () {}); // closing the share sheet isn't an error
       };
       $("invite-copy").onclick = function () {

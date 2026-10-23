@@ -11,13 +11,7 @@
     domain: "That Google account isn't from an allowed domain. Sign in with your department account.",
     disabled: "This account has been disabled. Contact an admin.",
     not_configured: "Google sign-in isn't set up on this server yet. An admin needs to add the Google settings.",
-    cell_moved: "Your cell is now on your existing account. Sign in with your cell once more to open it.",
-  };
-  // Why a cell sign-in didn't move into the account that owns its seat (functions: planPhoneSwitch).
-  var CELL_NOTES = {
-    staff: "Your cell belongs to an account with admin access. Sign in with Google, then add your cell on My page.",
-    phone: "Your seat is linked to an account with a different cell number. Ask an admin to merge the two accounts.",
-    disabled: "The account for your seat is disabled. Contact an admin.",
+    google_first: "Sign in with Google the first time. Then add your cell on My page to use it next time.",
   };
   var ROLE_LABEL = { member: "Member", editor: "Editor", admin: "Admin" };
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
@@ -41,11 +35,12 @@
     }
     function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
     function signInButton() {
-      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
-        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+      // Google first; the cell form is for people who already added their cell to their account (My page).
+      return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>' +
+        (api.backend().phoneSignIn ? '<details class="phone-later"><summary>Already added your cell? Sign in with it</summary>' + phoneHtml() + "</details>" : "");
     }
-    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
-       once; anyone else lands on the claim screen. */
+    /* Cell-number sign-in (Firebase), once the cell is on the account: the cell, a texted 6-digit code, done. A cell on
+       no account yet is refused (functions: syncMe, google_first). */
     function phoneHtml() {
       return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
         '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
@@ -201,7 +196,7 @@
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
-          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
+          (api.backend().phoneSignIn ? "Sign in with Google. After that you can add your cell on My page and sign in with either.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
         wireSignIn(el);
         return;
@@ -231,7 +226,6 @@
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
-        (me.cellNote && CELL_NOTES[me.cellNote] ? '<p class="msg err" role="status">' + esc(CELL_NOTES[me.cellNote]) + "</p>" : "") +
         (api.backend().linkCell && !me.phone && !me.claimPos && !req
           ? cellLinkHtml("gl", "Verify with your cell (fastest)", "We text you a code. If your cell is on the department's staff list, your position fills in by itself.") +
             '<p class="hint">Or find yourself by name below.</p>'
@@ -471,7 +465,7 @@
     function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
     function launchMsg() {
       return launch.msg != null ? launch.msg
-        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your Google account (then you can add your cell): " + appLink();
     }
     function launchSms(cells, body) {
       var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
@@ -519,7 +513,7 @@
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
       el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
-        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<p class="hint">They sign in with Google the first time; a cell on the staff list then fills in their position (Verify with your cell). After that they can add their cell on My page and sign in with either.</p>' +
         '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
         '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
         '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
@@ -732,14 +726,7 @@
           }).join("") + "</select></td>" +
           "<td>" + esc(u.status.charAt(0).toUpperCase() + u.status.slice(1)) + "<br>" + (self ? "" : u.status === "disabled"
             ? '<button class="linkish small-link" data-act="enable" data-id="' + esc(u.id) + '">Enable</button>'
-            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') +
-          (!self && !u.pos && !u.claimPos && api.backend().mergeAccounts
-            ? ' · <button class="linkish small-link" data-act="show-merge" data-id="' + esc(u.id) + '">Merge into…</button>' +
-              '<form class="merge-form" data-id="' + esc(u.id) + '" hidden><select aria-label="Account to keep">' +
-              adminUsersCache.filter(function (o) { return o.id !== u.id; }).map(function (o) {
-                return '<option value="' + esc(o.id) + '">' + esc(o.name + " · " + (o.googleEmail || "") + (o.pos ? " · " + o.pos : "")) + "</option>";
-              }).join("") + '</select><button class="btn small danger" type="submit">Merge (removes this account)</button></form>'
-            : "") + "</td>" +
+            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') + "</td>" +
           '<td class="mono">' + esc(u.lastLogin ? u.lastLogin.slice(0, 10) : "—") + "</td></tr>";
       }).join("") : '<tr><td colspan="5" class="hint">No users match.</td></tr>';
     }
@@ -757,11 +744,6 @@
       var b = e.target.closest("button[data-act]");
       if (!b) return;
       var id = b.dataset.id, u = userById(id), a = b.dataset.act;
-      if (a === "show-merge") {
-        var mf = document.querySelector('.merge-form[data-id="' + id + '"]');
-        mf.hidden = !mf.hidden;
-        return;
-      }
       if (a === "show-link") {
         var f = document.querySelector('.link-form[data-id="' + id + '"]');
         f.hidden = !f.hidden;
@@ -783,16 +765,6 @@
       act(s.dataset.id, { action: "role", role: s.value }, userById(s.dataset.id).name + " is now " + ROLE_LABEL[s.value] + ".");
     }
     function onAdminSubmit(e) {
-      var mf = e.target.closest(".merge-form");
-      if (mf) {
-        e.preventDefault();
-        var keep = mf.querySelector("select").value, from = userById(mf.dataset.id), into = userById(keep);
-        api.say($("admin-msg"), "Merging…");
-        return api.backend().mergeAccounts(mf.dataset.id, keep).then(function () {
-          api.say($("admin-msg"), "Merged " + from.name + " into " + into.name + ". Either sign-in now opens " + into.name + "'s account.");
-          renderAdmin();
-        }, function (er) { api.say($("admin-msg"), er.message, true); });
-      }
       var f = e.target.closest(".link-form");
       if (!f) return;
       e.preventDefault();

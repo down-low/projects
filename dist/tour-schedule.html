@@ -677,6 +677,14 @@ s.held + .st { margin-left: 2px; }
 .trade { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .trade-sec h3 + .trade, .trade-filters + .trade { border-top: 0; padding-top: 0; }
 .trade-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+details.trade { display: block; } /* older Safari ignores flex on <details> */
+details.trade > * + * { margin-top: 4px; }
+details.trade > summary.trade-head { cursor: pointer; list-style: none; padding: 2px 0; }
+details.trade > summary.trade-head::-webkit-details-marker { display: none; }
+details.trade > summary.trade-head::before { content: "▸"; color: var(--muted); width: 0.8em; }
+details.trade[open] > summary.trade-head::before { content: "▾"; }
+details.trade:not([open]) { padding-bottom: 6px; }
+.trade-gist.due { font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 .trade-date { font-weight: 600; font-variant-numeric: tabular-nums; }
 .trade-who .hint { font-size: 0.82rem; }
 .trade-terms { margin: 0; font-size: 0.88rem; }
@@ -922,6 +930,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .invite-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 .pick-btn.taken { cursor: default; opacity: 0.6; }
 .pick-btn.taken:hover { background: none; }
+.phone-later { margin-top: 12px; }
+.phone-later > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.phone-later[open] > summary { margin-bottom: 8px; }
 </style>
 
 <div class="page">
@@ -2032,6 +2043,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
+  // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
+  // file's trades are added only when new. A trade's covers and TR records are its legs, so they stay with it.
+  var KEEP_KINDS = ["trades", "tradeReplies"];
   function firebaseAdapter(onChange) {
     var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
     var fb = root.firebase;
@@ -2053,7 +2067,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
       "auth/operation-not-allowed": "Firebase won't send a code to this number. Use Google for now and tell an admin.",
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
-      "auth/credential-already-in-use": "This cell is already on another account. An admin can merge the two (Admin → Users).",
+      "auth/credential-already-in-use": "This cell is already on another account. An admin can delete that extra account in the Firebase console (Authentication → Users), then try again.",
       "auth/provider-already-linked": "Your account already has a cell number. Ask an admin to change it.",
       "auth/invalid-app-credential": "The page check failed. Reload and try again.",
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
@@ -2088,15 +2102,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
        server.py's /api/me. The ID token is refreshed when the claims changed, so the rules see them at once. */
     function syncMe() {
       return call("syncMe").then(function (j) {
-        // A cell whose seat belongs to another account: the server moved the cell there (functions: switchToOwner).
-        if (j && j.switchTo) return auth.signInWithCustomToken(j.switchTo).then(function () { location.reload(); return new Promise(function () {}); });
-        if (j && j.signInAgain) {
-          return auth.signOut().then(function () {
-            try { history.replaceState(null, "", location.pathname + "?auth_error=cell_moved"); } catch (x) { /* old browser */ }
-            location.reload();
-            return new Promise(function () {});
-          });
-        }
         me = j;
         return user.getIdTokenResult(!!j.claimsChanged);
       }).then(function (t) {
@@ -2257,8 +2262,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       },
       adminUsers: function () { return call("adminUsers"); },
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
-      // Admins: fold an extra account with no seat into the one to keep (its cell and Google sign-in move over).
-      mergeAccounts: function (from, into) { return call("mergeAccounts", { from: from, into: into }); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
       linkCell: function (cell, buttonId) {
@@ -2475,13 +2478,21 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           }
           return chain;
         }
-        var removals = Promise.resolve([]);
+        var keep = !!(opts && opts.keepTrades);
+        var kept = !keep ? Promise.resolve() : Promise.all(KEEP_KINDS.map(function (k) { return fs.collection(k).get(); })).then(function (snaps) {
+          var have = {};
+          KEEP_KINDS.forEach(function (k, i) { have[k] = {}; snaps[i].docs.forEach(function (d) { have[k][d.id] = true; }); });
+          writes = writes.filter(function (x) { return !have[x[0]] || !have[x[0]][x[1]]; });
+        });
+        var removals = kept.then(function () { return []; });
         if (opts && opts.replace) {
-          removals = Promise.all(REPLACE_KINDS.map(function (k) {
-            return fs.collection(k).get().then(function (snap) {
-              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
-            });
-          })).then(function (lists) { return [].concat.apply([], lists); });
+          removals = kept.then(function () {
+            return Promise.all(REPLACE_KINDS.filter(function (k) { return !keep || KEEP_KINDS.indexOf(k) === -1; }).map(function (k) {
+              return fs.collection(k).get().then(function (snap) {
+                return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+              });
+            }));
+          }).then(function (lists) { return [].concat.apply([], lists); });
         }
         return w(removals.then(function (gone) {
           return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
@@ -2491,7 +2502,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
         }).then(function (snaps) {
           var out = {};
-          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          REPLACE_KINDS.forEach(function (k, i) {
+            out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length };
+            if (keep && KEEP_KINDS.indexOf(k) !== -1) out[k].kept = true;
+          });
           return out;
         }));
       },
@@ -2618,13 +2632,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     domain: "That Google account isn't from an allowed domain. Sign in with your department account.",
     disabled: "This account has been disabled. Contact an admin.",
     not_configured: "Google sign-in isn't set up on this server yet. An admin needs to add the Google settings.",
-    cell_moved: "Your cell is now on your existing account. Sign in with your cell once more to open it.",
-  };
-  // Why a cell sign-in didn't move into the account that owns its seat (functions: planPhoneSwitch).
-  var CELL_NOTES = {
-    staff: "Your cell belongs to an account with admin access. Sign in with Google, then add your cell on My page.",
-    phone: "Your seat is linked to an account with a different cell number. Ask an admin to merge the two accounts.",
-    disabled: "The account for your seat is disabled. Contact an admin.",
+    google_first: "Sign in with Google the first time. Then add your cell on My page to use it next time.",
   };
   var ROLE_LABEL = { member: "Member", editor: "Editor", admin: "Admin" };
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
@@ -2648,11 +2656,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
     function signInButton() {
-      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
-        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+      // Google first; the cell form is for people who already added their cell to their account (My page).
+      return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>' +
+        (api.backend().phoneSignIn ? '<details class="phone-later"><summary>Already added your cell? Sign in with it</summary>' + phoneHtml() + "</details>" : "");
     }
-    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
-       once; anyone else lands on the claim screen. */
+    /* Cell-number sign-in (Firebase), once the cell is on the account: the cell, a texted 6-digit code, done. A cell on
+       no account yet is refused (functions: syncMe, google_first). */
     function phoneHtml() {
       return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
         '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
@@ -2808,7 +2817,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
-          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
+          (api.backend().phoneSignIn ? "Sign in with Google. After that you can add your cell on My page and sign in with either.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
         wireSignIn(el);
         return;
@@ -2838,7 +2847,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
-        (me.cellNote && CELL_NOTES[me.cellNote] ? '<p class="msg err" role="status">' + esc(CELL_NOTES[me.cellNote]) + "</p>" : "") +
         (api.backend().linkCell && !me.phone && !me.claimPos && !req
           ? cellLinkHtml("gl", "Verify with your cell (fastest)", "We text you a code. If your cell is on the department's staff list, your position fills in by itself.") +
             '<p class="hint">Or find yourself by name below.</p>'
@@ -3078,7 +3086,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
     function launchMsg() {
       return launch.msg != null ? launch.msg
-        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your Google account (then you can add your cell): " + appLink();
     }
     function launchSms(cells, body) {
       var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
@@ -3126,7 +3134,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
       el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
-        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<p class="hint">They sign in with Google the first time; a cell on the staff list then fills in their position (Verify with your cell). After that they can add their cell on My page and sign in with either.</p>' +
         '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
         '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
         '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
@@ -3236,10 +3244,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var mode = api.backend().siteMode ? api.backend().siteMode() : null;
       return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
         '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Refresh records (keep trades)</b>, while people test: this site's schedule records match the file; trades and answers made here are kept, and the page's trades are added if they're new. " +
         "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
         "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<div class="row"><button class="btn primary" type="button" id="import-refresh">Refresh records (keep trades)</button>' +
+        '<button class="btn" type="submit" id="import-test">Import as test copy</button>' +
         '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
         '<span class="msg" id="import-msg" role="status"></span></div>' +
         '<div class="table-wrap" id="import-counts" hidden></div>' +
@@ -3252,6 +3262,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function wireImport() {
       $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-refresh").onclick = function () { runImport(true, true); };
       $("import-replace").onclick = function () {
         if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
         this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
@@ -3269,23 +3280,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         }, function (er) { api.say($("mode-msg"), er.message, true); });
       };
     }
-    function runImport(replace) {
+    function runImport(replace, keepTrades) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
+        return api.backend().importBackup(data, { replace: replace, keepTrades: !!keepTrades }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return !counts[k].kept && counts[k].backup !== counts[k].firestore; });
         api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
           : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
         $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
           keys.map(function (k) {
             var c = counts[k], ok = c.backup === c.firestore;
-            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" +
+              (c.kept ? '<span class="hint">kept</span>' : ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
           }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }
@@ -3335,14 +3347,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           }).join("") + "</select></td>" +
           "<td>" + esc(u.status.charAt(0).toUpperCase() + u.status.slice(1)) + "<br>" + (self ? "" : u.status === "disabled"
             ? '<button class="linkish small-link" data-act="enable" data-id="' + esc(u.id) + '">Enable</button>'
-            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') +
-          (!self && !u.pos && !u.claimPos && api.backend().mergeAccounts
-            ? ' · <button class="linkish small-link" data-act="show-merge" data-id="' + esc(u.id) + '">Merge into…</button>' +
-              '<form class="merge-form" data-id="' + esc(u.id) + '" hidden><select aria-label="Account to keep">' +
-              adminUsersCache.filter(function (o) { return o.id !== u.id; }).map(function (o) {
-                return '<option value="' + esc(o.id) + '">' + esc(o.name + " · " + (o.googleEmail || "") + (o.pos ? " · " + o.pos : "")) + "</option>";
-              }).join("") + '</select><button class="btn small danger" type="submit">Merge (removes this account)</button></form>'
-            : "") + "</td>" +
+            : '<button class="linkish small-link" data-act="disable" data-id="' + esc(u.id) + '">Disable</button>') + "</td>" +
           '<td class="mono">' + esc(u.lastLogin ? u.lastLogin.slice(0, 10) : "—") + "</td></tr>";
       }).join("") : '<tr><td colspan="5" class="hint">No users match.</td></tr>';
     }
@@ -3360,11 +3365,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var b = e.target.closest("button[data-act]");
       if (!b) return;
       var id = b.dataset.id, u = userById(id), a = b.dataset.act;
-      if (a === "show-merge") {
-        var mf = document.querySelector('.merge-form[data-id="' + id + '"]');
-        mf.hidden = !mf.hidden;
-        return;
-      }
       if (a === "show-link") {
         var f = document.querySelector('.link-form[data-id="' + id + '"]');
         f.hidden = !f.hidden;
@@ -3386,16 +3386,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       act(s.dataset.id, { action: "role", role: s.value }, userById(s.dataset.id).name + " is now " + ROLE_LABEL[s.value] + ".");
     }
     function onAdminSubmit(e) {
-      var mf = e.target.closest(".merge-form");
-      if (mf) {
-        e.preventDefault();
-        var keep = mf.querySelector("select").value, from = userById(mf.dataset.id), into = userById(keep);
-        api.say($("admin-msg"), "Merging…");
-        return api.backend().mergeAccounts(mf.dataset.id, keep).then(function () {
-          api.say($("admin-msg"), "Merged " + from.name + " into " + into.name + ". Either sign-in now opens " + into.name + "'s account.");
-          renderAdmin();
-        }, function (er) { api.say($("admin-msg"), er.message, true); });
-      }
       var f = e.target.closest(".link-form");
       if (!f) return;
       e.preventDefault();
@@ -4077,7 +4067,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -4289,9 +4279,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     // One of my posts: responses with their terms, Pick, Cancel, Widen.
     function ownCard(t) {
       var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] }, other = t.posterKey !== myKey();
-      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
+      // Collapsed to one line (date, status, a short count) until tapped, so a long list stays short.
+      var gist = st === "set" || st === "pending" ? nameOf(t.takerKey) + (st === "set" ? " works it" : " picked")
+        : st === "open" ? (reps.length ? reps.length + (reps.length === 1 ? " answer" : " answers")
+          : [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ")) : "";
+      var head = '<summary class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>" +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
+        (gist ? '<span class="' + (st === "open" && reps.length ? "trade-gist due" : "hint trade-gist") + '">' + esc(gist + (st === "open" && reps.length ? " · pick one" : "")) + "</span>" : "") + "</summary>" +
         (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
       if (st === "pending") {
@@ -4316,7 +4311,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           (ui.addOpen === t.id ? "" : '<button class="btn small" data-add="' + esc(t.id) + '">Add their answer</button>') +
           '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button><span class="msg" data-msg="' + esc(t.id) + '" role="status"></span></div>';
       }
-      return '<article class="trade mine">' + head + (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</article>";
+      var open = ui.openOwn[t.id] || ui.addOpen === t.id || (ui.inviteRun && ui.inviteRun.id === t.id) || ui.copyOpen === t.id;
+      return '<details class="trade mine" data-own="' + esc(t.id) + '"' + (open ? " open" : "") + ">" + head +
+        (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</details>";
     }
     /* ---------- Invites: people the trade was sent to who aren't on the tool yet ----------
        The text goes from the poster's own phone (Messages opens with it filled in; they pick the person from their contacts).
@@ -4378,9 +4375,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function inviteHtml(t) {
       var keys = notOnTool(t);
       if (!keys.length) return "";
-      var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
+      var n = keys.length === 1 ? "1 person you chose isn't" : keys.length + " people you chose aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy each person's text and send it to them from Messages.</p>" +
+        return '<div class="invite-box"><p class="hint">' + n + " on the app yet. Copy each person's text and send it to them from Messages.</p>" +
           '<ul class="tlist">' + keys.map(function (k) {
             var done = ui.invited[t.id + "/" + k], id = t.id + "/" + k, name = api.firstName(k);
             return '<li class="invite-one"><div>' + who(byPos()[k]) +
@@ -4394,9 +4391,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
       var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
-        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
-        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
+        (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
+        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
         (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
@@ -4590,6 +4587,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm undo"; b.classList.add("danger"); return; }
           backend().unclaim(b.dataset.unclaim).then(function () { api.renderAll(true); }, function (er) { b.textContent = er.message; });
         };
+      });
+      var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
+      if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
+      out.querySelectorAll("details[data-own]").forEach(function (d) {
+        d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });
       var af = out.querySelector("details.trade-alerts");
       if (af) af.addEventListener("toggle", function () { ui.alertsOpen = af.open; });
@@ -4824,7 +4826,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
           note: w.note, audience: aud }));
-      p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
+      // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
+      p.then(function (r) {
+        var id = w.widen ? w.widen.id : r && r.id;
+        if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
+        closeWizard(); api.showTrades();
+      }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");
@@ -6850,11 +6857,11 @@ module.exports = QRCode;
         (share ? '<button class="btn primary" type="button" id="invite-share">Share</button>' : "") +
         '<button class="btn' + (share ? "" : " primary") + '" type="button" id="invite-copy">Copy link</button>' +
         '<span class="msg" id="invite-msg" role="status"></span></div>' +
-        '<p class="hint">They sign in with the cell number on the staff list. On iPhone, Share → Add to Home Screen installs it.</p>';
+        '<p class="hint">They sign in with Google the first time, then can add their cell. On iPhone, Share → Add to Home Screen installs it.</p>';
       $("invite-sheet").hidden = false;
       var msg = $("invite-msg");
       if ($("invite-share")) $("invite-share").onclick = function () {
-        navigator.share({ title: "SFFD Tour Schedule", text: "SFFD tour schedule: sign in with your cell number.", url: url })
+        navigator.share({ title: "SFFD Tour Schedule", text: "SFFD tour schedule: sign in with your Google account.", url: url })
           .catch(function () {}); // closing the share sheet isn't an error
       };
       $("invite-copy").onclick = function () {

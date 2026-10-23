@@ -121,13 +121,13 @@ Next: test with a few people using [`BETA.md`](BETA.md) (optional), then switch 
 
 ## 11. Sign-in with a cell number
 
-So people can sign in with the cell number on the staff list and a texted code, without a Google account:
+So people can also sign in with their cell and a texted code, after their first Google sign-in:
 
 1. Firebase console → **Authentication** → **Sign-in method** → **Add new provider** → **Phone** → **Enable** → **Save**.
 2. **Limit the codes to US numbers.** Authentication → **Settings** → **SMS region policy** → **Allow** → **United States** → **Save**. This blocks code texts to other countries, the usual source of SMS fraud charges.
 3. **A free test number (optional).** Authentication → **Sign-in method** → **Phone** → **Phone numbers for testing**: add a made-up number such as `+1 650 555 0100` with code `123456`. Signing in with it sends no text and costs nothing; it isn't on the staff list, so it lands on the claim screen.
 4. **Check the domains.** Authentication → **Settings** → **Authorized domains** must list `<project-id>.web.app` (there by default) and `<project-id>-admin.web.app` (step 4). Phone sign-in uses the same list.
-5. **One account per person (Google or cell).** When someone signs in with a cell whose seat is already linked to another account (usually their Google one), the server moves the cell onto that account and signs them into it. That needs one permission: Google Cloud console → **IAM & Admin** → **IAM** → find the **Compute Engine default service account** (`<number>-compute@developer.gserviceaccount.com`, the one the functions run as) → **Edit** (pencil) → **Add another role** → **Service Account Token Creator** → **Save**. Without it, people are asked to sign in with their cell once more instead, and it still lands in the right account. Editor and admin accounts never switch this way: they sign in with Google and add their cell on **My page**.
+5. **Google first.** People sign in with Google the first time. Then they add their cell (My page → Add my cell, or Verify with your cell on the claim screen; one texted code), and from then on either Google or the cell opens the same account. Members linked to a seat whose cell is on the staff list get it automatically at their next Google sign-in; editors and admins add theirs on My page. A cell that isn't on any account yet is refused with "Sign in with Google the first time."
 6. Nothing else: the page's invisible "I'm not a robot" check is built in. Each real code text costs a few cents and counts toward the budget alert from step 2.
 7. **To try it with your own cell:** the staff-list cells reach Firebase with the page backup, so first load it in the back office under **Admin → Cut-over** as a **Test copy** (adds, doesn't replace). Then, in a private window, open the employee app, enter your cell and type the code. If your cell is on the staff list, you land on your own schedule; if not, on the claim screen.
 
