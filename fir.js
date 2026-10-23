@@ -5,7 +5,7 @@
  * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
  * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
  * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
- * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan), licenseScript(plan), battalionScript(plan),
+ * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan), licenseScript(plan), pqfScript(plan), battalionScript(plan),
  * parseCsv(text), compare(rows, api)}. A list (e.g. cleanup/records-in-question.csv) can stand in for the tool's own questions.
  *
  * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
@@ -213,8 +213,15 @@
       while ((x = PHONE.exec(text))) { const k = x[1] + x[2]; if (!seen[k] && !/^PHONE|TYPE$/.test(x[1])) { seen[k] = 1; phones.push({ type: x[1], number: x[2] }); } }
       return { flag: phones.length ? (shown ? "" : "unchecked") : "none", phones };
     };
-    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
-      if (/type="password"/i.test(h) && !/PHONE_NUMBERS/.test(h)) throw new Error("signed-out"); return h; };
+    // Each page gets 30 seconds; one that never answers is retried once, then flagged "timeout" so the run can't hang.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try {
+        const h = await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text();
+        if (/type="password"/i.test(h) && !/PHONE_NUMBERS/.test(h)) throw new Error("signed-out");
+        return h;
+      } catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
     const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
     let saved = { done: [], rows: [] };
     try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
@@ -222,23 +229,48 @@
     const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { console.warn("Could not save progress: " + e.message); } };
     if (done.size) console.log("phone pull: resuming, " + done.size + " already done.");
     const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
-    let n = done.size, stop = null;
+    let n = done.size, stop = null, lastAt = Date.now();
+    // A small status box on the page: count and time of the last person, red after a minute with nothing new.
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (note) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = note ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "Phone pull: " + n + "/" + total + " · " + (note || (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString()));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
+    window.phonePullStatus = () => { const s = JSON.parse(localStorage.getItem(RK) || "null"); return (s ? s.done.length : n) + " of " + total + " saved"; };
+    const record = (p, r) => {
+      if (!r.phones.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+      r.phones.forEach((ph) => out.push([p.key, p.id, p.name, ph.type, ph.number, r.flag]));
+      done.add(p.id);
+    };
     const worker = async () => {
       while (queue.length && !stop) {
         const p = queue.shift();
-        try {
-          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
-          if (!r.phones.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
-          r.phones.forEach((ph) => out.push([p.key, p.id, p.name, ph.type, ph.number, r.flag]));
-          done.add(p.id);
-        } catch (e) { stop = e; queue.unshift(p); break; }
-        if (++n % 25 === 0) save();
-        console.log("phone pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        let r = null;
+        for (let tries = 0; tries < 2 && !r; tries++) {
+          try { r = read(await get(base + encodeURIComponent(p.id)), p.id); } catch (e) {
+            if (e.message === "signed-out") { stop = e; break; }
+            if (tries === 1) r = { flag: e.message === "timeout" ? "timeout" : "error", phones: [] };
+            else console.warn("phone pull: " + p.name + " " + p.id + " " + e.message + ", trying again");
+          }
+        }
+        if (stop) { queue.unshift(p); break; }
+        record(p, r);
+        lastAt = Date.now();
+        if (++n % 10 === 0) save();
+        console.log("phone pull " + n + "/" + total + ": " + p.name + " " + p.id + (r.flag === "timeout" || r.flag === "error" ? " (" + r.flag + ")" : ""));
+        show();
         await wait();
       }
     };
     return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      clearInterval(tick);
       if (stop) {
+        show("stopped: " + stop.message);
         save();
         return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped."
           : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on.");
@@ -251,12 +283,13 @@
       a.download = PLAN.fileName || "fir-phones.csv";
       document.body.appendChild(a); a.click(); a.remove();
       console.log("phone pull done: " + total + " people, " + out.filter((r) => r[4]).length + " numbers.");
+      show("done: " + out.filter((r) => r[4]).length + " numbers, file downloaded");
     });
   }
   function phoneScript(plan) {
     return "/* Tour schedule: fir-db1 phone pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(" + phoneMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
-        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000 }) + ");\n";
   }
 
   /* Licenses and certifications (admins; cleanup/fir-pull-licenses-*.js): the Licenses and Certs pop-up (region
@@ -296,31 +329,58 @@
       });
       return { flag: items.length ? (shown ? "" : "unchecked") : "none", items };
     };
-    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
-      if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out"); return h; };
+    // As the phone pull: 30 seconds a page, one retry, then flagged "timeout"; saves every 10; a status box on the page.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try {
+        const h = await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text();
+        if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out");
+        return h;
+      } catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
     const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
     let saved = { done: [], rows: [] };
     try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
     const done = new Set(saved.done), out = saved.rows.slice();
     const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { } };
+    if (done.size) console.log("license pull: resuming, " + done.size + " already done.");
     const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
-    let n = done.size, stop = null;
+    let n = done.size, stop = null, lastAt = Date.now();
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (note) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = note ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "License pull: " + n + "/" + total + " · " + (note || (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString()));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
     const worker = async () => {
       while (queue.length && !stop) {
         const p = queue.shift();
-        try {
-          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
-          if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
-          r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
-          done.add(p.id);
-        } catch (e) { stop = e; queue.unshift(p); break; }
-        if (++n % 25 === 0) save();
-        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        let r = null;
+        for (let tries = 0; tries < 2 && !r; tries++) {
+          try { r = read(await get(base + encodeURIComponent(p.id)), p.id); } catch (e) {
+            if (e.message === "signed-out") { stop = e; break; }
+            if (tries === 1) r = { flag: e.message === "timeout" ? "timeout" : "error", items: [] };
+            else console.warn("license pull: " + p.name + " " + p.id + " " + e.message + ", trying again");
+          }
+        }
+        if (stop) { queue.unshift(p); break; }
+        if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+        r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
+        done.add(p.id);
+        lastAt = Date.now();
+        if (++n % 10 === 0) save();
+        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id + (r.flag === "timeout" || r.flag === "error" ? " (" + r.flag + ")" : ""));
+        show();
         await wait();
       }
     };
     return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
-      if (stop) { save(); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
+      clearInterval(tick);
+      if (stop) { save(); show("stopped: " + stop.message); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
       if (RK) try { localStorage.removeItem(RK); } catch (e) { }
       const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
@@ -329,12 +389,114 @@
       a.download = PLAN.fileName || "fir-licenses.csv";
       document.body.appendChild(a); a.click(); a.remove();
       console.log("license pull done: " + total + " people, " + out.filter((r) => r[3]).length + " licenses.");
+      show("done: " + out.filter((r) => r[3]).length + " licenses, file downloaded");
     });
   }
   function licenseScript(plan) {
     return "/* Tour schedule: fir-db1 licenses and certifications pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
       "(" + licenseMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
-        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000 }) + ");\n";
+  }
+
+  /* PQF details (admins; cleanup/fir-pull-pqf-*.js): the left column of fir-db1's PQF page (app 1021, page 19, item
+     P19_EMPLID): appointment type, official rank, appointment date, job code, job entry date, SFFD hire date and
+     seniority. plan: {people: [{id, name, key}], label, concurrency, resumeKey, fileName, timeoutMs}. Downloads key,
+     emplId, name and those seven fields, plus flag ("mismatch" when the page shows another ID, "none" when no field was
+     found, "timeout"/"error"). Same status box, retry and resume as the license pull. */
+  function pqfMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:19:" + m[2] + ":::19:P19_EMPLID:";
+    const FIELDS = [["apptType", /^appt\.? type$/i], ["officialRank", /^official rank$/i], ["apptDate", /^appointment date$/i],
+      ["jobCode", /^job code$/i], ["jobEntryDate", /^job entry date$/i], ["hireDate", /^sffd hire date$/i], ["seniority", /^seniority$/i]];
+    const COLS = ["key", "emplId", "name"].concat(FIELDS.map((f) => f[0])).concat(["flag"]);
+    const clean = (x) => String(x == null ? "" : x).replace(/\s+/g, " ").trim();
+    const read = (html, id) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const hid = doc.getElementById("P19_EMPLID"), disp = doc.getElementById("P19_EMPLID_DISPLAY");
+      const shown = clean((disp && disp.textContent) || (hid && (hid.getAttribute("value") || hid.textContent)) || "").toUpperCase();
+      if (shown && shown !== id) return { flag: "mismatch", vals: {} };
+      const vals = {};
+      // A label (with or without its colon) followed by its value: the next non-empty element, or the parent's next.
+      doc.querySelectorAll("td, th, dt, label, span, div, b, strong").forEach((e) => {
+        if (e.children.length > 1) return;
+        const lab = clean(e.textContent).replace(/:$/, "");
+        const f = FIELDS.find((x) => x[1].test(lab));
+        if (!f || vals[f[0]] != null) return;
+        let v = e.nextElementSibling;
+        while (v && !clean(v.textContent)) v = v.nextElementSibling;
+        if (!v && e.parentElement && e.parentElement.children.length === 1) v = e.parentElement.nextElementSibling;
+        if (!v && e.tagName === "LABEL" && e.getAttribute("for")) v = doc.getElementById(e.getAttribute("for") + "_DISPLAY") || doc.getElementById(e.getAttribute("for"));
+        const t = v ? clean(v.tagName === "INPUT" ? v.getAttribute("value") : v.textContent) : "";
+        if (t && t.length < 60 && !/\d{7,}/.test(t)) vals[f[0]] = t;
+      });
+      return { flag: Object.keys(vals).length ? (shown ? "" : "unchecked") : "none", vals };
+    };
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try {
+        const h = await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text();
+        if (/type="password"/i.test(h) && !/P19_/.test(h)) throw new Error("signed-out");
+        return h;
+      } catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
+    const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
+    let saved = { done: [], rows: [] };
+    try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const done = new Set(saved.done), out = saved.rows.slice();
+    const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { } };
+    if (done.size) console.log("PQF pull: resuming, " + done.size + " already done.");
+    const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
+    let n = done.size, stop = null, lastAt = Date.now();
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (note) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = note ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "PQF pull: " + n + "/" + total + " · " + (note || (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString()));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
+    const worker = async () => {
+      while (queue.length && !stop) {
+        const p = queue.shift();
+        let r = null;
+        for (let tries = 0; tries < 2 && !r; tries++) {
+          try { r = read(await get(base + encodeURIComponent(p.id)), p.id); } catch (e) {
+            if (e.message === "signed-out") { stop = e; break; }
+            if (tries === 1) r = { flag: e.message === "timeout" ? "timeout" : "error", vals: {} };
+          }
+        }
+        if (stop) { queue.unshift(p); break; }
+        out.push([p.key, p.id, p.name].concat(FIELDS.map((f) => r.vals[f[0]] || "")).concat([r.flag]));
+        done.add(p.id);
+        lastAt = Date.now();
+        if (++n % 10 === 0) save();
+        console.log("PQF pull " + n + "/" + total + ": " + p.name + " " + p.id + (r.flag ? " (" + r.flag + ")" : ""));
+        show();
+        await wait();
+      }
+    };
+    return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      clearInterval(tick);
+      if (stop) { save(); show("stopped: " + stop.message); return alert("fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped."); }
+      if (RK) try { localStorage.removeItem(RK); } catch (e) { }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || "fir-pqf.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      const got = out.filter((r) => r[r.length - 1] === "" || r[r.length - 1] === "unchecked").length;
+      console.log("PQF pull done: " + total + " people, " + got + " with details.");
+      show("done: " + got + " with details, file downloaded");
+    });
+  }
+  function pqfScript(plan) {
+    return "/* Tour schedule: fir-db1 PQF details pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + pqfMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000 }) + ");\n";
   }
 
   /* Battalion rosters (admins; cleanup/fir-pull-battalions.js): fir-db1's Roster by Station (app 1021, page 11) lists one
@@ -397,19 +559,56 @@
       }
       return rows;
     };
-    const out = [], jobs = [];
+    const jobs = [];
     dates.forEach((d) => PLAN.battalions.forEach((b) => jobs.push([d, b])));
     const wait = () => new Promise((r) => setTimeout(r, 400));
+    // As the phone and license pulls: 30 seconds a page and one retry (then flagged "timeout"), progress saved every
+    // 10 pages so a sign-out or closed tab resumes where it stopped, and a status box on the page.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try { return await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text(); }
+      catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
+    const RK = "tour-schedule:battalions-" + from + "-" + to + "-" + PLAN.battalions.join("");
+    let saved = { k: 0, rows: [] };
+    try { saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const out = saved.rows.slice();
+    let k = saved.k, lastAt = Date.now(), note = "";
+    const save = () => { try { localStorage.setItem(RK, JSON.stringify({ k, rows: out })); } catch (e) { console.warn("Could not save progress: " + e.message); } };
+    if (k) console.log("battalion pull: resuming, " + k + " of " + jobs.length + " pages already done.");
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (end) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = end ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "Battalion pull: " + k + "/" + jobs.length + " · " + (end || ((note ? note + " · " : "") + (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString())));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
     return (async () => {
-      for (let k = 0; k < jobs.length; k++) {
+      for (; k < jobs.length; ) {
         const [d, b] = jobs[k];
-        const html = await (await fetch(base + encodeURIComponent(d) + "," + b, { credentials: "same-origin" })).text();
-        const rows = read(html, d, b);
-        if (rows[0].flag === "signed-out") { alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in and run again (the file has what came in so far)."); out.push(...rows); break; }
+        let rows = null;
+        for (let tries = 0; tries < 2 && !rows; tries++) {
+          try { rows = read(await get(base + encodeURIComponent(d) + "," + b), d, b); } catch (e) {
+            if (tries === 1) rows = [{ mode: "co", pulledFor: d, date: d, query: b, flag: e.message === "timeout" ? "timeout" : "error", battalion: b }];
+            else console.warn("battalion pull: " + d + " " + b + " " + e.message + ", trying again");
+          }
+        }
+        if (rows[0].flag === "signed-out") {
+          save(); clearInterval(tick); show("stopped: signed out");
+          return alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in again, then paste and run this script again: it carries on where it stopped.");
+        }
         rows.forEach((r) => out.push(r));
-        console.log("battalion pull " + (k + 1) + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people)");
+        k++; lastAt = Date.now(); note = d + " " + b;
+        if (k % 10 === 0) save();
+        console.log("battalion pull " + k + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people" + (rows[0].flag === "timeout" || rows[0].flag === "error" ? ", " + rows[0].flag : "") + ")");
+        show();
         await wait();
       }
+      clearInterval(tick);
+      try { localStorage.removeItem(RK); } catch (e) { }
       const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       const csv = [COLS.join(",")].concat(out.map((r) => COLS.map((c) => q(r[c])).join(","))).join("\n");
       const a = document.createElement("a");
@@ -417,11 +616,12 @@
       a.download = PLAN.fileName || ("fir-battalions-" + from.replace(/\//g, "-") + (to !== from ? "_to_" + to.replace(/\//g, "-") : "") + ".csv");
       document.body.appendChild(a); a.click(); a.remove();
       console.log("battalion pull done: " + out.filter((r) => !r.flag).length + " rows.");
+      show("done: " + out.filter((r) => !r.flag).length + " rows, file downloaded");
     })();
   }
   function battalionScript(plan) {
     return "/* Tour schedule: fir-db1 battalion roster pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
-      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "",
+      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000,
         battalions: plan.battalions || ["BT01", "BT02", "BT03", "BT04", "BT05", "BT06", "BT07", "BT08", "BT09", "BT10"] }) + ");\n";
   }
 
@@ -613,5 +813,5 @@
       unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
   }
 
-  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, licenseScript: licenseScript, battalionScript: battalionScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, licenseScript: licenseScript, pqfScript: pqfScript, battalionScript: battalionScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
 })(typeof window !== "undefined" ? window : globalThis);

@@ -588,7 +588,7 @@
       }).map(function (p) {
         var c = cells[p.pos];
         var raw = c && c.staffList ? c.phoneMobile : null;
-        return { p: p, cell: M.normCell(raw), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
+        return { p: p, cell: M.normCell(raw), home: !!(c && c.home), badCell: !!raw && !M.normCell(raw), on: b.onTool && b.onTool(p.pos) === true, sent: sent[p.pos] || null };
       }).filter(function (x) { return !(launch.notOn && x.on); })
         .sort(function (a, c) { return Organization.order(a.p.company || a.p.title) - Organization.order(c.p.company || c.p.title) || a.p.name.localeCompare(c.p.name); });
     }
@@ -610,6 +610,7 @@
       }).map(function (p) { return p.company; }))).sort(function (a, c) { return Organization.order(a) - Organization.order(c); });
       var grps = Array.from(new Set(api.people().map(function (p) { return root.TourMath.rankGroup(p.rank); }))).sort();
       var noCell = all.filter(function (x) { return !x.cell; }).length, sentN = all.filter(function (x) { return x.sent; }).length;
+      var homeN = all.filter(function (x) { return x.cell && x.home; }).length;
       // Cells on file that aren't a phone number (fix them on the person's Employee card).
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
@@ -621,7 +622,7 @@
         '<label>Rank group<select data-l="grp"><option value="">All</option>' + opts(grps.map(function (g) { return [g, g]; }), launch.grp) + "</select></label></div>" +
         '<label class="chk"><input type="checkbox" data-l="notOn"' + (launch.notOn ? " checked" : "") + "> Only people not on the tool yet</label>" +
         '<label class="chk"><input type="checkbox" data-l="hideSent"' + (launch.hideSent ? " checked" : "") + "> Hide people already texted</label>" +
-        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
+        '<p class="launch-count"><b>' + all.length + "</b> people · " + todo.length + " to text" + (noCell ? " · " + noCell + " with no cell on file" : "") + (homeN ? " · " + homeN + " home numbers (a text may not reach a landline)" : "") + (sentN ? " · " + sentN + " already texted" : "") + "</p>" +
         (bad.length ? '<p class="msg err">' + bad.length + (bad.length === 1 ? " cell on file isn't" : " cells on file aren't") + " a phone number: " +
           esc(bad.slice(0, 8).map(function (x) { return x.p.name; }).join(", ")) + (bad.length > 8 ? "…" : "") + ". Fix them on their Employee cards.</p>" : "") +
         '<label>Message<textarea id="launch-msg" rows="3" maxlength="600">' + esc(launchMsg()) + "</textarea></label>" +

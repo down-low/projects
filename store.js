@@ -70,10 +70,11 @@
     });
   }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
+  // home: {key: true} marks a HOME number used because fir-db1 had no cell for that person (a text may not reach it).
   function staffContacts(docs) {
     var out = {};
     (docs || []).forEach(function (d) {
-      Object.keys(d.cells || {}).forEach(function (k) { out[k] = { phoneMobile: d.cells[k], shared: false, staffList: true }; });
+      Object.keys(d.cells || {}).forEach(function (k) { out[k] = { phoneMobile: d.cells[k], shared: false, staffList: true, home: !!(d.home && d.home[k]) }; });
     });
     return out;
   }
@@ -97,12 +98,19 @@
     return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
   }
   // Licenses and certifications from fir-db1 ({name, expires: ISO date or null}), loaded by admins; never license numbers.
+  // Time balances from fir-db1 ({type, hours, scheduled: number or null}), loaded by admins.
   function profileOut(x) {
     return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo,
-      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null };
+      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null,
+      balances: Array.isArray(x.balances) ? x.balances : [], balancesAsOf: x.balancesAsOf || null };
   }
   // What a profile save carries over untouched (set by imports, not the forms).
-  function profileKeep(cur) { return cur && Array.isArray(cur.licenses) ? { licenses: cur.licenses, licensesAsOf: cur.licensesAsOf || null } : {}; }
+  function profileKeep(cur) {
+    var out = {};
+    if (cur && Array.isArray(cur.licenses)) { out.licenses = cur.licenses; out.licensesAsOf = cur.licensesAsOf || null; }
+    if (cur && Array.isArray(cur.balances)) { out.balances = cur.balances; out.balancesAsOf = cur.balancesAsOf || null; }
+    return out;
+  }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -296,9 +304,10 @@
           setCell: function (key, cell) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var doc = records.contacts.filter(function (d) { return d.id === "staff-list"; })[0];
-            var cells = Object.assign({}, doc ? doc.cells : {});
+            var cells = Object.assign({}, doc ? doc.cells : {}), home = Object.assign({}, doc ? doc.home : {});
             if (cell) cells[key] = cell; else delete cells[key];
-            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells });
+            delete home[key]; // a number typed in by an admin is a cell
+            return db.collection("contacts").doc("staff-list").set({ asOf: doc ? doc.asOf : null, source: doc ? doc.source : "Corrections", cells: cells, home: home });
           },
           /* Employee card (admins). update merges fields into one record; a null field clears it. */
           update: function (kind, id, patch) {
@@ -617,7 +626,8 @@
 
     function contactMap() {
       var out = {};
-      if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}) }]);
+      if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}),
+        home: records.staffCells.reduce(function (o, d) { if (d.home) o[d.id] = true; return o; }, {}) }]);
       records.contacts.concat(records.myContact).forEach(function (c) {
         if (c.pos) out[c.pos] = { email: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shared: !!c.share };
       });
@@ -1023,7 +1033,7 @@
           if (d.id !== "staff-list") return;
           Object.keys(d.cells || {}).forEach(function (k) {
             // Standardized to +14155550100 when the text holds a number; kept as written otherwise (Invite people lists those).
-            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
+            if (d.cells[k]) { writes.push(["staffCells", k, { cell: root.TourMath.normCell(d.cells[k]) || String(d.cells[k]), home: !!(d.home && d.home[k]), updatedAt: d.asOf || nowIso(), updatedBy: "import" }]); want.staffCells[k] = true; }
           });
         });
         var say = onProgress || function () {};

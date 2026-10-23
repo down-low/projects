@@ -124,6 +124,13 @@ test("profiles are private to their owner and admins", async () => {
   await assertSucceeds(db(ADMIN).collection("profiles").get());
 });
 
+test("time balances on a profile are set by admins only", async () => {
+  await assertSucceeds(db(ADMIN).doc("profiles/10EOC03M").set({ balances: [{ type: "SP", hours: 72.05, scheduled: null }], balancesAsOf: "2026-10-22" }, { merge: true }));
+  await assertSucceeds(db(MEMBER).doc("profiles/10EOC03M").set({ birthDate: "1980-03-03" }, { merge: true })); // dates only: balances kept
+  await assertFails(db(MEMBER).doc("profiles/10EOC03M").set({ balances: [{ type: "SP", hours: 999, scheduled: null }] }, { merge: true }));
+  await assertFails(db(MEMBER).doc("profiles/10EOC03M").set({ balancesAsOf: "2030-01-01" }, { merge: true }));
+});
+
 test("contact info: own, shared, or admin", async () => {
   await assertSucceeds(db(MEMBER).doc("contacts/mem1").get());
   await assertSucceeds(db(MEMBER).doc("contacts/mem2").get()); // shared

@@ -2,7 +2,7 @@
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
  * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
- * (staff list), licenses and certifications (from fir-db1), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
+ * (staff list), licenses and certifications and time balances (from fir-db1), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
 (function (root) {
@@ -93,6 +93,28 @@
         var d = licDays(x), tag = d == null ? "" : d < 0 ? ' <span class="tag tag-away">Expired</span>' : d <= 90 ? ' <span class="tag">Expires in ' + d + " days</span>" : "";
         return "<li><span>" + esc(x.name) + tag + '</span><span class="hint">' + (x.expires ? "expires " + esc(mdy(x.expires)) : "no expiration") + "</span></li>";
       }).join("") + "</ul>" + (pf.licensesAsOf ? '<p class="hint">From fir-db1, as of ' + esc(mdy(pf.licensesAsOf)) + ". Admins only.</p>" : "");
+    }
+    // Time balances (profiles, loaded from fir-db1 by admins): hours per code, and vacation already scheduled.
+    var BAL = { SP: "Sick", SL: "Sick", SPI: "Sick", VA: "Vacation", IDV: "Vacation", TC: "Time coming", OE: "Overtime earned" };
+    function hrs(n) { return n == null || isNaN(n) ? "—" : String(Math.round(n * 100) / 100); }
+    function balSummary(p) {
+      if (!api.profiles()) return "Loading…";
+      var b = profile(p).balances || [];
+      if (!b.length) return "None on file";
+      var order = ["SP", "VA", "TC"], rows = b.slice().sort(function (x, y) { return (order.indexOf(x.type) + 1 || 9) - (order.indexOf(y.type) + 1 || 9); });
+      return rows.map(function (x) {
+        var over = x.scheduled != null && x.scheduled > x.hours;
+        return esc(BAL[x.type] || x.type) + " " + esc(hrs(x.hours)) + (x.scheduled != null ? " (" + (over ? '<span class="err">' : "") + esc(hrs(x.scheduled)) + " scheduled" + (over ? "</span>" : "") + ")" : "");
+      }).join(" · ");
+    }
+    function balBody(p) {
+      var pf = profile(p), b = pf.balances || [];
+      if (!b.length) return '<p class="hint">None on file. They are loaded from fir-db1 (Time Balance) by an admin.</p>';
+      return '<ul class="hist">' + b.map(function (x) {
+        var left = x.scheduled != null ? x.hours - x.scheduled : null;
+        return "<li><span>" + esc(x.type) + " · " + esc(BAL[x.type] || "other") + (left != null && left < 0 ? ' <span class="tag tag-away">Scheduled beyond balance</span>' : "") +
+          '</span><span class="hint">' + esc(hrs(x.hours)) + " hrs" + (x.scheduled != null ? " · " + esc(hrs(x.scheduled)) + " scheduled · " + esc(hrs(left)) + " unscheduled" : "") + "</span></li>";
+      }).join("") + "</ul>" + (pf.balancesAsOf ? '<p class="hint">From fir-db1, as of ' + esc(mdy(pf.balancesAsOf)) + ". Admins only.</p>" : "");
     }
     function section(id, title, sum, body, openDefault) {
       var open = ui.folds && id in ui.folds ? ui.folds[id] : openDefault !== false;
@@ -546,6 +568,7 @@
       // 6. Cell number (staff list, admins only)
       var c = api.contacts()[key] || {};
       var cellBody = '<form class="edit" id="cc-form" novalidate><p class="hint">From the staff list. Only admins ever receive it; it is never in the view-only link or the repository.</p>' +
+        (c.staffList && c.home ? '<p class="msg err">This is their home number: fir-db1 had no cell. A text may not reach it; saving a cell here replaces it.</p>' : "") +
         (c.phoneMobile && !c.staffList ? '<p>Their own contact: ' + esc(c.phoneMobile) + (c.shared ? " (shared)" : " (not shared)") + "</p>" : "") +
         '<div class="row"><label>Cell<input type="tel" id="cc-cell" maxlength="25" placeholder="(415) 555-0100" value="' + esc(c.staffList ? root.TourMath.showCell(c.phoneMobile) : "") + '"></label></div>' +
         '<div class="row"><button class="btn primary" type="submit">Save cell</button>' + (c.staffList ? " " + btn("Clear", 'id="cc-clear"') : "") + msgEl("cc-msg") + "</div></form>";
@@ -576,8 +599,9 @@
         section("asg", "Current assignment", nCur ? esc(api.kindWord(cur[0])) + " " + esc((byPos()[cur[0].targetPos] || {}).company || cur[0].targetPos) : "Own seat", asgBody, !api.isPhone()) +
         section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
         section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
-        section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("cell", "Cell number", c.staffList ? (c.home ? "Home (no cell)" : "On file") : "None", cellBody, !api.isPhone()) +
         section("lic", "Licenses and certifications", licSummary(p), licBody(p), !api.isPhone()) +
+        section("bal", "Time balances", balSummary(p), balBody(p), !api.isPhone()) +
         section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +
         section("fixes", "Corrections", fx.filter(function (x) { return x.state === "open"; }).length + " open of " + fx.length, fixBody, !api.isPhone()) +
         section("hist", "History", hist.length + (hist.length === 1 ? " record" : " records"), histBody, !api.isPhone());
