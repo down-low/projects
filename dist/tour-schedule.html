@@ -701,6 +701,8 @@ ul.tlist.plain li { display: block; }
 .trade-filters input, .trade-filters select { width: 100%; min-width: 0; }
 @media (max-width: 640px) { .trade-filters { grid-template-columns: 1fr 1fr; } .trade-filters label:last-child { grid-column: 1 / -1; } }
 .trade-filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.trade-filters label.chk input { width: auto; }
+.trade-filters label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--fg); grid-column: 1 / -1; }
 .trade-alerts summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .trade-alerts .chk { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; margin-top: 6px; }
 .trade-alerts .hint { margin: 6px 0 0; }
@@ -971,6 +973,16 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 /* ---------- "<year> so far" card (myyear.js) ---------- */
 .year-card { display: flex; flex-direction: column; gap: 6px; }
 .year-card .hint { margin: 4px 0 0; }
+
+/* ---------- Pay estimate on My page (pay.js) ---------- */
+.pay #pay-body { display: flex; flex-direction: column; gap: 10px; }
+.pay-prem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
+.pay-prem legend { font-weight: 600; padding: 0 4px; }
+.pay-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.pay-table th, .pay-table td { text-align: left; padding: 4px 0; border-bottom: 1px solid var(--line); font-weight: 400; }
+.pay-table td:last-child { text-align: right; }
+.pay-table .pay-total th, .pay-table .pay-total td { font-weight: 700; }
+.pay select { max-width: 100%; }
 </style>
 
 <div class="page">
@@ -1108,6 +1120,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     <div id="feedback-detail"></div>
   </section>
 
+  <section class="view" id="view-pay" role="region" aria-label="Pay estimate" hidden>
+    <div id="pay-detail"></div>
+  </section>
+
   <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
     <div id="card-detail"></div>
   </section>
@@ -1157,6 +1173,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
             <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
           </div></li>
+        <li data-need="pay"><button type="button" data-go="pay">Pay estimate</button></li>
         <li data-need="invite"><button type="button" data-go="invite">Invite a coworker</button></li>
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
@@ -1621,7 +1638,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * saveContact(), adminUsers(), adminAction().
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
- * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * postTrade(rec), repostTrade(cancelledTrade, rec), deleteTrade(trade) (admins), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
  * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
@@ -1942,6 +1959,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             rec.status = "open";
             return tw(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
           },
+          repostTrade: function (old, rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            return tw(db.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { return { id: old.id }; });
+          },
           widenTrade: function (id, audience) { return tw(db.collection("trades").doc(id).update({ audience: audience })); },
           replyTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -1955,6 +1976,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           // Cancelling a set trade drops its cover and TR records with it.
           cancelTrade: function (trade) {
             return tw(db.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() }));
+          },
+          // Admins (Trades tab, all trades): the trade and its answers. A set trade's cover and TR go with it (legs).
+          deleteTrade: function (trade) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var reps = records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; });
+            return tw(reps.reduce(function (p, r) { return p.then(function () { return db.collection("tradeReplies").doc(r.id).delete(); }); }, Promise.resolve())
+              .then(function () { return db.collection("trades").doc(trade.id).delete(); }));
           },
           remove: function (kind, id) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
@@ -2104,6 +2132,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
      app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
+  /* Posting again for a day whose trade was cancelled re-opens that trade (one trade per person per day) with the new
+     choices; answers from before (createdAt < reopenedAt) are ignored by the page. */
+  function reopenFields(rec) {
+    var f = { status: "open", audience: rec.audience, note: rec.note || "", seatPos: rec.seatPos, reopenedAt: nowIso(),
+      replyId: null, takerKey: null, proposal: null, setAt: null, cancelledAt: null, legs: [] };
+    if (rec.postedBy) f.postedBy = rec.postedBy;
+    return f;
+  }
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Overtime days aren't imported or replaced: members keep the ones they marked on Firebase.
@@ -2355,6 +2391,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      // Pay estimate: your hire date, or a guess from your academy class (a date or null).
+      hireDateGuess: function () { return call("hireDateGuess").then(function (r) { return (r && r.date) || null; }, function () { return null; }); },
       // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.
       myStaffCell: function () { return call("myStaffCell").then(function (r) { return (r && r.cell) || null; }, function () { return null; }); },
       linkCell: function (cell, buttonId) {
@@ -2419,6 +2457,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         rec.status = "open";
         return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
+      repostTrade: function (old, rec) {
+        return w(fs.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { notify("trade", old.id); return { id: old.id }; });
+      },
       widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
       replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
       // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
@@ -2428,6 +2469,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           .then(function () { notify("trade", trade.id); });
       },
       cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Admins (Trades tab, all trades): the trade and its answers, in one batch. A set trade's cover and TR go with it (legs).
+      deleteTrade: function (trade) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch();
+        records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; }).forEach(function (r) { batch.delete(fs.collection("tradeReplies").doc(r.id)); });
+        batch.delete(fs.collection("trades").doc(trade.id));
+        return w(batch.commit());
+      },
       // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
       // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
       alertsLive: true,
@@ -4305,7 +4354,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {} };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {},
+      all: { open: false, q: "", st: "active", upcoming: true } };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -4340,7 +4390,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function repliesFor(t) {
       var by = {};
       (recs().tradeReplies || []).forEach(function (r) {
-        if (r.tradeId === t.id && (!by[r.takerKey] || r.createdAt > by[r.takerKey].createdAt)) by[r.takerKey] = r;
+        if (r.tradeId !== t.id || (t.reopenedAt && String(r.createdAt) < t.reopenedAt)) return; // answers from before a re-post don't count
+        if (!by[r.takerKey] || r.createdAt > by[r.takerKey].createdAt) by[r.takerKey] = r;
       });
       return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.createdAt.localeCompare(b.createdAt); });
     }
@@ -4430,7 +4481,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var mine = me();
       if (!mine) {
         out.innerHTML = '<div class="trades">' + (b.mode === "server" ? '<div class="card"><h3>Shift trades</h3><p class="hint">Your account isn\'t linked to a roster position yet. Ask an admin to link it on the Admin page.</p></div>'
-          : claimHtml()) + forOthersHtml(null) + adminClaimsHtml() + "</div>";
+          : claimHtml()) + forOthersHtml(null) + allTradesHtml() + adminClaimsHtml() + "</div>";
         wireClaim();
         wireTab();
         return;
@@ -4445,7 +4496,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         if (ui.bt && where(byPos()[t.posterKey] || {}) !== ui.bt) return false;
         return canTake(mine, t);
       }).sort(byDate);
-      var own = all.filter(function (t) { return t.posterKey === key && (t.status !== "cancelled" || t.date >= t0); }).sort(byDate);
+      // A cancelled trade is left out once the same day has a live one (older data can hold both).
+      var own = all.filter(function (t) {
+        return t.posterKey === key && (t.status !== "cancelled" || (t.date >= t0 && !tradeFor(key, t.date)));
+      }).sort(byDate);
       var took = all.filter(function (t) { return t.status === "set" && t.takerKey === key && t.date >= t0; }).sort(byDate);
       var lines = owedLines(key);
 
@@ -4468,7 +4522,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
           '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
-        forOthersHtml(key) + adminClaimsHtml() + "</div>";
+        forOthersHtml(key) + allTradesHtml() + adminClaimsHtml() + "</div>";
       wireTab();
     }
     // Demo page: say nothing is saved, and let the viewer switch who they are.
@@ -4490,6 +4544,37 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }).sort(byDate);
       return section("Admin: trades posted for others", list.map(ownCard).join("") ||
         '<p class="hint">None. To post one for someone, open their page and tap the day.</p>');
+    }
+    /* Admins: every trade, with Cancel and Delete (testing and clean-up). Folded until opened. Phase 2: Edit, pick for the
+       poster. */
+    var ALL_ST = [["active", "Active"], ["open", "Open"], ["set", "Set"], ["cancelled", "Cancelled"], ["expired", "Expired"], ["all", "All"]];
+    function allTradesHtml() {
+      if (!tradeAdmin()) return "";
+      var f = ui.all, t0 = todayIso();
+      var all = trades().filter(function (t) {
+        var st = statusOf(t);
+        if (f.upcoming && t.date < t0) return false;
+        if (f.st === "active" ? ["open", "pending", "set"].indexOf(st) === -1 : f.st !== "all" && st !== f.st && !(f.st === "set" && st === "pending")) return false;
+        return !f.q || M.wordsMatch(f.q, nameOf(t.posterKey) + " " + (t.posterName || "") + " " + (t.takerKey ? nameOf(t.takerKey) : "") + " " + t.posterKey);
+      }).sort(byDate);
+      var active = trades().filter(function (t) { return t.date >= t0 && ["open", "pending", "set"].indexOf(statusOf(t)) !== -1; }).length;
+      return '<details class="card fold trade-sec all-trades"' + (f.open ? " open" : "") + '><summary><h3>Admin: all trades</h3><span class="fold-sum">' + active + " active</span></summary>" +
+        '<div class="trade-filters"><label>Name<input type="search" id="at-q" value="' + esc(f.q) + '" placeholder="Poster or taker"></label>' +
+        '<label>Status<select id="at-st">' + ALL_ST.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === f.st ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></label>" +
+        '<label class="chk"><input type="checkbox" id="at-up"' + (f.upcoming ? " checked" : "") + "> Upcoming only</label></div>" +
+        (all.length ? '<ul class="tlist">' + all.map(allRow).join("") + "</ul>" : '<p class="hint">No trades match.</p>') + "</details>";
+    }
+    function allRow(t) {
+      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || {};
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "", title: "" };
+      var gist = st === "set" || st === "pending" ? nameOf(t.takerKey) + (st === "set" ? " works it" : " picked")
+        : st === "open" ? (reps.length ? reps.length + (reps.length === 1 ? " answer" : " answers") : [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ")) : "";
+      var live = ["open", "pending", "set"].indexOf(st) !== -1;
+      return '<li data-at="' + esc(t.id) + '"><div><b>' + esc(dateText(t.date)) + "</b> " + who(p) + ' <span class="tag tag-st-' + st + '">' +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
+        (gist ? '<div class="hint">' + esc(gist) + "</div>" : "") + "</div>" +
+        '<div class="row">' + (live ? '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button>' : "") +
+        '<button class="btn small danger" data-at-del="' + esc(t.id) + '"' + (st === "set" ? ' data-set="1"' : "") + ">Delete</button></div></li>";
     }
     function byDate(a, b) { return a.date.localeCompare(b.date) || String(a.createdAt).localeCompare(String(b.createdAt)); }
     function section(title, body) { return '<section class="card trade-sec"><h3>' + esc(title) + "</h3>" + body + "</section>"; }
@@ -4573,10 +4658,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    // The text for one person (or a group, without k). Always the general app link: personal ?t= links read as spam.
     function inviteText(t, k) {
       var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
-      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
+      var link = pageLink();
       return (k ? "Hi " + api.firstName(k) + ", " : "") + p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
@@ -4639,11 +4724,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       }
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
-      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      // createInvite is used only for the staff-list cells, so Messages opens addressed to the person.
+      var cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
       var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
         (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
-        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
-        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
+        " (They can answer before signing up.)</p>" +
+        (links.loading ? '<p class="hint">Getting their numbers…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
@@ -4868,6 +4954,26 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       });
       var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
       if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
+      var atf = out.querySelector("details.all-trades");
+      if (atf) {
+        atf.addEventListener("toggle", function () { ui.all.open = atf.open; });
+        $("at-q").oninput = function () {
+          var pos = this.selectionStart;
+          ui.all.q = this.value; renderTrades();
+          var q = $("at-q"); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) { /* search inputs in some browsers */ } }
+        };
+        $("at-st").onchange = function () { ui.all.st = this.value; renderTrades(); };
+        $("at-up").onchange = function () { ui.all.upcoming = this.checked; renderTrades(); };
+        atf.querySelectorAll("[data-at-del]").forEach(function (b) {
+          b.onclick = function () {
+            if (b.dataset.confirm !== "1") {
+              b.dataset.confirm = "1"; b.textContent = b.dataset.set ? "Confirm: delete (removes its cover and TR)" : "Confirm delete"; return;
+            }
+            b.disabled = true;
+            backend().deleteTrade(find(b.dataset.atDel)).then(function () { api.renderAll(true); }, function (er) { b.disabled = false; b.textContent = er.message; });
+          };
+        });
+      }
       out.querySelectorAll("details[data-own]").forEach(function (d) {
         d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });
@@ -5098,18 +5204,25 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var w = wiz, msg = $("wz-msg");
       var to = w.send ? Object.keys(w.sel).filter(function (k) { return w.sel[k]; }) : [];
       if (!to.length && !w.board) return api.say(msg, "Pick people to send it to, or post it to the board.", true);
+      var btn = $("wz-post");
+      if (btn.disabled) return; // one save at a time: a double tap posts once
+      btn.disabled = true;
       api.say(msg, "Saving…");
-      var aud = { board: !!w.board, to: to };
+      var aud = { board: !!w.board, to: to }, b = backend();
+      var rec = Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
+        note: w.note, audience: aud });
+      // One trade per person per day: posting again after a cancel re-opens that trade with the new choices.
+      var gone = trades().filter(function (x) { return x.posterKey === w.poster.pos && x.date === w.date && x.status === "cancelled"; })
+        .sort(function (a, c) { return String(c.cancelledAt || c.createdAt).localeCompare(String(a.cancelledAt || a.createdAt)); })[0];
       var p = w.widen
-        ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
-        : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          note: w.note, audience: aud }));
+        ? b.widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
+        : gone && b.repostTrade ? b.repostTrade(gone, rec) : b.postTrade(rec);
       // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
       p.then(function (r) {
         var id = w.widen ? w.widen.id : r && r.id;
         if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
         closeWizard(); api.showTrades();
-      }, function (er) { api.say(msg, er.message, true); });
+      }, function (er) { btn.disabled = false; api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");
@@ -5993,6 +6106,251 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 
     return { html: html };
   };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* Pay estimate (More → Pay estimate): the 2026-27 uniformed pay sheet, years of service from the hire date, the premiums
+ * the person checks, and what an hour and a 24-hour shift of overtime pay. window.PayViews(api) -> {render, ...}; `api`
+ * comes from app.js. PayViews.estimate(code, yos, prem) is the math alone.
+ * - Hire date: the one saved on My page; otherwise a guess from the server (hireDateGuess: the usual hire date of the
+ *   person's academy class), shown as a guess. The person can type their own and save it as their hire date.
+ * - Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step);
+ *   anyone can pick another. Premiums are a % of base; longevity follows years of service.
+ * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums; the pay period's
+ *   total counts your own Worked OT marks (overtime.js) from the period's start through today.
+ * - Vacation and IDV stay in PAY but aren't shown for now (the user's call, Oct 2026).
+ * An estimate for planning, not a pay stub.
+ */
+(function (root) {
+  "use strict";
+
+  var PAY = {
+    title: "2026–27 uniformed pay (07/01/26 – 01/01/27)",
+    // [code, name, yearly, hourly at 97.40 hrs biweekly (shift workers), hourly at 80 hrs]
+    rates: [
+      ["H-40", "Battalion Chief", 246844, 97.4743, 118.675],
+      ["H-41", "Battalion Chief, Administration", 271544, 107.2279, 130.55],
+      ["H-43", "Section Chief, EMS", 246844, 97.4743, 118.675],
+      ["H-39", "Captain, Div. of Training", 246818, 97.4641, 118.6625],
+      ["H-33", "Fire/Paramedic Captain", 205608, 81.191, 98.85],
+      ["H-32", "Captain, Div. of FP & I", 232232, 91.7043, 111.65],
+      ["H-31", "Captain, Administration", 226174, 89.3121, 108.755],
+      ["H-30", "Captain", 205608, 81.191, 98.85],
+      ["H-29", "Lieutenant, Training", 205582, 81.1807, 98.8375],
+      ["H-28", "Lieutenant, Div. of Training", 205582, 81.1807, 98.8375],
+      ["H-24", "Lieutenant, BFI", 203294, 80.2772, 97.7375],
+      ["H-23", "Lieutenant, EMS", 180128, 71.1294, 86.6],
+      ["H-22", "Lieutenant, BFP", 203294, 80.2772, 97.7375],
+      ["H-21", "Lieutenant, Administration", 198120, 78.2341, 95.25],
+      ["H-20", "Lieutenant", 180128, 71.1294, 86.6],
+      ["H-18", "Coord. of Community Service", 180102, 71.1191, 86.5875],
+      ["H-16", "Tech Training Specialist", 180102, 71.1191, 86.5875],
+      ["H-10", "Incident Support Specialist", 168818, 66.6632, 81.1625],
+      ["H-9", "Community Paramedic", 163514, 64.5688, 78.6125],
+      ["H-6", "Investigator, BFI", 185796, 73.3676, 89.325],
+      ["H-4", "Inspector, BFP", 185796, 73.3676, 89.325],
+      ["H-120", "Pilot, Fireboat", 205608, 81.191, 98.85],
+      ["H-110", "Marine Engineer of Fireboat", 205608, 81.191, 98.85],
+      ["H-2/1", "Firefighter, 1st year", 100464, 39.6715, 48.3],
+      ["H-2/2", "Firefighter, 2nd year", 105378, 41.6119, 50.6625],
+      ["H-2/3", "Firefighter, 3rd year", 110760, 43.7372, 53.25],
+      ["H-2/4", "Firefighter, 4th year", 122772, 48.4805, 59.025],
+      ["H-2/5", "Firefighter, 5th year", 140634, 55.5339, 67.6125],
+      ["H-2/6", "Firefighter, 6th year", 147420, 58.2136, 70.875],
+      ["H-2/7", "Firefighter, 7th year and up", 154960, 61.191, 74.5],
+      ["H-3/1", "H3-L1 EMT, step 1", 92014, 36.3347, 44.2375],
+      ["H-3/2", "H3-L1 EMT, step 2", 96590, 38.1417, 46.4375],
+      ["H-3/3", "H3-L1 EMT, step 3", 106340, 41.9918, 51.125],
+      ["H-3/4", "H3-L1 EMT, step 4", 117026, 46.2115, 56.2625],
+      ["H-3/5", "H3-L2 Paramedic, step 5", 122616, 48.4189, 58.95],
+      ["H-3/6", "H3-L2 Paramedic, step 6", 128700, 50.8214, 61.875],
+      ["H-3/7", "H3-L2 Paramedic, step 7", 141544, 55.8932, 68.05],
+      ["H-3/8", "H3-L2 Paramedic, step 8", 155714, 61.4887, 74.8625],
+      ["H-3/9", "H3-L3 Firefighter/Paramedic, step 9", 162448, 64.1478, 78.1],
+      ["H-3/10", "H3-L3 Firefighter/Paramedic, step 10", 170586, 67.3614, 82.0125],
+      ["H-3/11", "H3-L3 Firefighter/Paramedic, step 11", 179140, 70.7392, 86.125],
+    ],
+    // % of base. retire: counts toward retirement (kept in the data; not shown for now). group: only one of the group at a time.
+    premiums: [
+      { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt" },
+      { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt" },
+      { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false },
+      { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false },
+      { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true },
+      { key: "holiday", label: "Holiday premium", pct: 9.09, retire: true },
+    ],
+    // Training and education premium: the person picks one of these (or none). Not counted for retirement.
+    training: { pcts: [7, 8, 9], retire: false },
+    // Classifications that get the holiday premium unless the person unticks it.
+    holidayDefault: ["H-2", "H-20", "H-30", "H-40", "H-110", "H-120"],
+    // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
+    longevity: [{ yos: 21, pct: 2 }, { yos: 23, pct: 4 }, { yos: 26, pct: 6 }],
+    otTimes: 1.5, otShiftHours: 24,
+    // Pay periods: 14 days, Saturday to Friday, from 9/12/26 – 9/25/26 (both ways).
+    payPeriod: { anchor: "2026-09-12", days: 14 },
+    // Not shown for now. Vacation hours a year by years of service (only the tier we have).
+    vacation: [{ yos: 20, hrs: 240 }],
+    // Intermittent Daily Vacation: 12-hour watches that can be taken during the year, by hours accrued.
+    idv: { 120: "2 or 4 watches, in 24-hour blocks", 180: "2, 4 or 5 watches (with 5, four in 24-hour blocks; the last 12 hours can pair with 12 hours of time coming)",
+      240: "2, 4, 6 or 8 watches, in 24-hour blocks" },
+  };
+  var RANK_DEFAULT = { "Battalion Chief": "H-40", "Rescue Captain": "H-33", Captain: "H-30", Lieutenant: "H-20", ISS: "H-10",
+    Pilot: "H-120", "Marine Engineer": "H-110", Firefighter: "H-2", "FF/Paramedic": "H-2" };
+
+  function yearsOf(hire, today) {
+    if (!hire) return null;
+    var h = new Date(hire + "T00:00:00"), t = today;
+    if (isNaN(h)) return null;
+    var y = t.getFullYear() - h.getFullYear();
+    if (t.getMonth() < h.getMonth() || (t.getMonth() === h.getMonth() && t.getDate() < h.getDate())) y--;
+    return Math.max(0, y);
+  }
+  // The pay period a day falls in, as {start, end} ISO dates.
+  function payPeriodOf(d) {
+    var a = PAY.payPeriod.anchor.split("-").map(Number), day = 864e5, n = PAY.payPeriod.days;
+    var off = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(a[0], a[1] - 1, a[2])) / day);
+    var start = Date.UTC(a[0], a[1] - 1, a[2]) + Math.floor(off / n) * n * day;
+    function iso(t) { return new Date(t).toISOString().slice(0, 10); }
+    return { start: iso(start), end: iso(start + (n - 1) * day) };
+  }
+  // Worked OT marks ({iso: {kind, hours}}, as overtime.js marksFor) from `start` through `last`: days and hours (24 when blank).
+  function otWorked(marks, start, last) {
+    var days = 0, hours = 0;
+    Object.keys(marks || {}).forEach(function (k) {
+      var m = marks[k];
+      if (!m || m.kind !== "worked" || k < start || k > last) return;
+      days++;
+      hours += Number(m.hours) || PAY.otShiftHours;
+    });
+    return { days: days, hours: hours };
+  }
+  function rateFor(code, yos) {
+    if (code === "H-2") code = "H-2/" + Math.min(7, (yos || 0) + 1);
+    return PAY.rates.filter(function (r) { return r[0] === code; })[0] || null;
+  }
+  function longevityPct(yos) {
+    var hit = 0;
+    PAY.longevity.forEach(function (x) { if (yos != null && yos >= x.yos) hit = x.pct; });
+    return hit;
+  }
+  // Holiday premium is on for suppression classifications until the person unticks it.
+  function premOn(prem, key, code) {
+    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(code) !== -1;
+    return !!prem[key];
+  }
+  // The whole estimate for a classification, years of service and premiums ({key: true, train: 7|8|9}).
+  function estimate(code, yos, prem) {
+    prem = prem || {};
+    var r = rateFor(code, yos);
+    if (!r) return null;
+    var base = r[2], rows = [], total = base, retire = base;
+    function add(label, pct, counts) {
+      var amt = base * pct / 100;
+      rows.push({ label: label, pct: pct, amount: amt });
+      total += amt;
+      if (counts) retire += amt;
+    }
+    PAY.premiums.forEach(function (x) { if (premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire); });
+    if (PAY.training.pcts.indexOf(Number(prem.train)) !== -1) add("Training and education", Number(prem.train), PAY.training.retire);
+    var lp = longevityPct(yos);
+    if (lp) add("Longevity (" + yos + " years)", lp, false);
+    var hourly = r[3] * total / base, otHourly = hourly * PAY.otTimes;
+    return { rate: r, base: base, rows: rows, total: total, biweekly: total / 26, retire: retire, hourly: hourly,
+      otHourly: otHourly, otShift: otHourly * PAY.otShiftHours };
+  }
+
+  root.PayViews = function (api) {
+    var $ = api.$, esc = api.esc;
+    var ui = { code: null, prem: null, hire: null, guess: null, asked: false };
+    function load(k) { try { return JSON.parse(localStorage.getItem("tour-schedule:pay:" + k)); } catch (e) { return null; } }
+    function keep(k, v) { try { localStorage.setItem("tour-schedule:pay:" + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+    function md(iso) { var x = iso.split("-"); return Number(x[1]) + "/" + Number(x[2]); }
+    function otRow(e) {
+      if (!api.overtime || !api.myPos()) return "";
+      var t = api.today(), pp = payPeriodOf(t), last = t.getFullYear() + "-" + ("0" + (t.getMonth() + 1)).slice(-2) + "-" + ("0" + t.getDate()).slice(-2);
+      var w = otWorked(api.overtime(api.myPos()), pp.start, last < pp.end ? last : pp.end);
+      return "<tr><td>Overtime this pay period (" + md(pp.start) + " – " + md(pp.end) + "): " +
+        (w.days ? w.days + (w.days === 1 ? " day, " : " days, ") + w.hours + " hrs" : "None marked") + "</td><td>" +
+        (w.days ? money(w.hours * e.otHourly) : "") + "</td></tr>";
+    }
+    function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
+    function cents(n) { return "$" + n.toFixed(2); }
+    function savedHire() { var me = api.backend().me(); return (me.profile && me.profile.hireDate) || null; }
+
+    function render() {
+      var out = $("pay-detail");
+      if (!out) return;
+      var p = api.person();
+      if (ui.code == null) {
+        ui.code = load("code") || (p && RANK_DEFAULT[p.rank]) || "H-2";
+        ui.prem = load("prem") || (p && p.rank === "FF/Paramedic" ? { medic: true } : {});
+      }
+      if (savedHire()) ui.hire = savedHire();
+      out.innerHTML = '<details class="card fold pay" id="pay-card" open><summary><h3>Pay estimate</h3><span class="fold-sum" id="pay-sum"></span></summary>' +
+        '<div id="pay-body"></div></details>';
+      draw();
+      var b = api.backend();
+      if (!ui.hire && !ui.guess && !ui.asked && b.hireDateGuess) {
+        ui.asked = true;
+        b.hireDateGuess().then(function (g) { if (g && !ui.hire) { ui.guess = g; if ($("pay-body")) draw(); } });
+      }
+    }
+    function draw() {
+      var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
+      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0; })
+        .map(function (x) { return [x[0], x[0].split("/")[0] + " " + x[1]]; }));
+      var train = Number(ui.prem.train) || 0;
+      $("pay-body").innerHTML =
+        '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +
+        '<div class="row"><label>Hire date<input type="date" id="pay-hire" value="' + esc(hire || "") + '"></label>' +
+        '<span class="hint" id="pay-hire-note">' + (ui.hire ? (yos != null ? yos + " years of service" : "") :
+          ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span></div>" +
+        (hire && hire !== savedHire() ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
+        '<label>Classification<select id="pay-code">' + opts.map(function (o) {
+          return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+        }).join("") + "</select></label>" +
+        '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.map(function (x) {
+          return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
+        }).join("") +
+        '<label class="chk">Training and education <select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
+          return '<option value="' + n + '"' + (train === n ? " selected" : "") + ">" + n + "%</option>";
+        }).join("") + '</select></label></fieldset>' +
+        (e ? '<table class="pay-table"><tbody>' +
+          "<tr><th>Base (" + esc(e.rate[0].replace("/", " step ")) + ")</th><td>" + money(e.base) + "</td></tr>" +
+          e.rows.map(function (x) { return "<tr><td>+ " + esc(x.label) + " " + x.pct + "%</td><td>" + money(x.amount) + "</td></tr>"; }).join("") +
+          '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(e.total) + "</td></tr>" +
+          "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
+          "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
+          "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
+      $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
+      $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
+      $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
+      $("pay-train").onchange = function () { ui.prem.train = Number(this.value) || 0; keep("prem", ui.prem); draw(); };
+      $("pay-body").querySelectorAll("[data-prem]").forEach(function (c) {
+        c.onchange = function () {
+          ui.prem[c.dataset.prem] = c.checked;
+          if (c.checked && c.dataset.prem === "emt5") ui.prem.emt8 = false;
+          if (c.checked && c.dataset.prem === "emt8") ui.prem.emt5 = false;
+          keep("prem", ui.prem);
+          draw();
+        };
+      });
+      if ($("pay-save")) $("pay-save").onclick = function () {
+        var b = api.backend(), me = b.me(), d = hire;
+        if (!d) return;
+        api.say($("pay-msg"), "Saving…");
+        b.setProfile(me.pos, { hireDate: d }).then(function () { ui.hire = d; api.say($("pay-msg"), "Saved."); draw(); },
+          function (er) { api.say($("pay-msg"), er.message, true); });
+      };
+    }
+    return { render: render, PAY: PAY };
+  };
+  root.PayViews.PAY = PAY;
+  root.PayViews.estimate = estimate;
+  root.PayViews.yearsOf = yearsOf;
+  root.PayViews.payPeriodOf = payPeriodOf;
+  root.PayViews.otWorked = otWorked;
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -8930,7 +9288,7 @@ module.exports = QRCode;
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -8956,6 +9314,7 @@ module.exports = QRCode;
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
     else if (state.view === "feedback") Feedback.render();
+    else if (state.view === "pay") Pay.render();
     else renderRank();
   }
 
@@ -10144,6 +10503,7 @@ module.exports = QRCode;
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
+    if (v === "pay") return serverMode() && backend.isActive() && !!myPos();
     return false;
   }
   // Feedback: admins get the list (with its own Send feedback); everyone else the form.
@@ -10157,7 +10517,7 @@ module.exports = QRCode;
   // What the sender was looking at, sent with feedback when they leave it ticked (no contact details).
   function feedbackContext() {
     var names = { dash: "Staffing", date: "Projection", person: "Schedule", crew: "My crew", rank: "Rank grid", six: "6 of 9", trades: "Trades",
-      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback" };
+      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback", pay: "Pay estimate" };
     var v = state.view, bits = [names[v] || v];
     if (v === "date") bits.push(iso(state.date));
     if (v === "dash") bits.push(iso(state.dashDate));
@@ -10189,7 +10549,7 @@ module.exports = QRCode;
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow() };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow(), pay: tabAllowed("pay") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -10371,6 +10731,12 @@ module.exports = QRCode;
     esc: esc, backend: function () { return backend; }, myPos: function () { return myPos(); }, today: today, iso: iso, day: day,
     statusPill: statusPill, fold: foldOpen, overtime: function (pos) { return Overtime.marksFor(pos); },
     trades: function (pos, y) { return Trades.yearSummary(pos, y); },
+  });
+
+  var Pay = window.PayViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, today: today,
+    person: function () { return byPos[myPos()] || null; }, myPos: function () { return myPos(); },
+    overtime: function (pos) { return Overtime.marksFor(pos); },
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
