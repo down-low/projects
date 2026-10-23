@@ -943,3 +943,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .day-ot .ot-now { font-weight: 600; }
 .day-ot .hint { flex-basis: 100%; margin: 0; }
 .ot-sum { margin: 6px 0 0; }
+
+/* ---------- Add to Home Screen banner (homescreen.js; employee app on phones) ---------- */
+.hs-banner { position: relative; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 40px 12px 14px;
+  background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--today); border-radius: 10px; font-size: 0.92rem; }
+.hs-text { display: flex; flex-direction: column; gap: 2px; flex: 1 1 220px; }
+.hs-title { font-weight: 600; }
+.hs-acts { display: flex; gap: 8px; }
+.hs-share { width: 1.1em; height: 1.1em; vertical-align: -0.2em; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.hs-x { position: absolute; top: 4px; right: 4px; width: 36px; height: 36px; border: 0; background: none; color: var(--muted); font-size: 1.4rem; cursor: pointer; }

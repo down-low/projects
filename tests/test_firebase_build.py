@@ -105,6 +105,11 @@ class FirebaseBuild(unittest.TestCase):
             self.assertEqual(self.read(folder, "trades.js"), self.read(ROOT, "trades.js"))
         self.assertIn("MIT license", self.read(ROOT, "vendor/qrcode.js"))
 
+    def test_home_screen_banner_on_the_app_site_only(self):
+        for folder in (self.app, self.admin):
+            self.assertIn('src="homescreen.js"', self.read(folder, "index.html"))
+        self.assertIn('root.FIREBASE_SITE !== "app"', self.read(ROOT, "homescreen.js"))
+
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()
