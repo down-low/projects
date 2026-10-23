@@ -697,6 +697,8 @@ ul.tlist.plain li { display: block; }
 .trade-filters input, .trade-filters select { width: 100%; min-width: 0; }
 @media (max-width: 640px) { .trade-filters { grid-template-columns: 1fr 1fr; } .trade-filters label:last-child { grid-column: 1 / -1; } }
 .trade-filters label { display: flex; flex-direction: column; gap: 3px; font-size: 0.75rem; color: var(--muted); }
+.trade-filters label.chk input { width: auto; }
+.trade-filters label.chk { flex-direction: row; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--fg); grid-column: 1 / -1; }
 .trade-alerts summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; }
 .trade-alerts .chk { display: flex; align-items: center; gap: 6px; font-size: 0.9rem; margin-top: 6px; }
 .trade-alerts .hint { margin: 6px 0 0; }

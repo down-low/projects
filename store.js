@@ -18,7 +18,7 @@
  * saveContact(), adminUsers(), adminAction().
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
- * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * postTrade(rec), repostTrade(cancelledTrade, rec), deleteTrade(trade) (admins), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
  * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
@@ -339,6 +339,10 @@
             rec.status = "open";
             return tw(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
           },
+          repostTrade: function (old, rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            return tw(db.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { return { id: old.id }; });
+          },
           widenTrade: function (id, audience) { return tw(db.collection("trades").doc(id).update({ audience: audience })); },
           replyTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -352,6 +356,13 @@
           // Cancelling a set trade drops its cover and TR records with it.
           cancelTrade: function (trade) {
             return tw(db.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() }));
+          },
+          // Admins (Trades tab, all trades): the trade and its answers. A set trade's cover and TR go with it (legs).
+          deleteTrade: function (trade) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var reps = records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; });
+            return tw(reps.reduce(function (p, r) { return p.then(function () { return db.collection("tradeReplies").doc(r.id).delete(); }); }, Promise.resolve())
+              .then(function () { return db.collection("trades").doc(trade.id).delete(); }));
           },
           remove: function (kind, id) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
@@ -501,6 +512,14 @@
      app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
+  /* Posting again for a day whose trade was cancelled re-opens that trade (one trade per person per day) with the new
+     choices; answers from before (createdAt < reopenedAt) are ignored by the page. */
+  function reopenFields(rec) {
+    var f = { status: "open", audience: rec.audience, note: rec.note || "", seatPos: rec.seatPos, reopenedAt: nowIso(),
+      replyId: null, takerKey: null, proposal: null, setAt: null, cancelledAt: null, legs: [] };
+    if (rec.postedBy) f.postedBy = rec.postedBy;
+    return f;
+  }
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Overtime days aren't imported or replaced: members keep the ones they marked on Firebase.
@@ -818,6 +837,9 @@
         rec.status = "open";
         return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
+      repostTrade: function (old, rec) {
+        return w(fs.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { notify("trade", old.id); return { id: old.id }; });
+      },
       widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
       replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
       // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
@@ -827,6 +849,14 @@
           .then(function () { notify("trade", trade.id); });
       },
       cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Admins (Trades tab, all trades): the trade and its answers, in one batch. A set trade's cover and TR go with it (legs).
+      deleteTrade: function (trade) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch();
+        records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; }).forEach(function (r) { batch.delete(fs.collection("tradeReplies").doc(r.id)); });
+        batch.delete(fs.collection("trades").doc(trade.id));
+        return w(batch.commit());
+      },
       // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
       // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
       alertsLive: true,
