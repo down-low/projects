@@ -90,6 +90,8 @@ class PayEstimate(unittest.TestCase):
         self.assertTrue(run("P.shows({hclass: 'H30'})"))
         self.assertFalse(run("P.shows({hclass: 'H40'})"))
         self.assertFalse(run("P.shows({hclass: 'H120'})"))
+        self.assertFalse(run("P.shows({rank: 'Firefighter', hclass: 'H-3/8'})"))
+        self.assertTrue(run("P.shows({rank: 'Firefighter', hclass: 'H-3/9'})"))
 
 
 if __name__ == "__main__":
