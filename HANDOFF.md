@@ -46,6 +46,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 - Never delete the claude.ai page without the user's word.
 - **Before publishing the claude.ai links, merge `main` into your branch.** Several chats publish to the same links; publishing from a stale branch drops other chats' work. If a publish is refused, merge the newer live version, don't overwrite it.
 - Run `python3 -m unittest discover -s tests` before pushing.
+- **Spec features in two phases.** Propose a simple, fool-proof **Phase 1** to ship now and write the richer **Phase 2** down for a later release; build only Phase 1 unless the user says otherwise. Example: `SPEC-INVITES.md`.
 
 ## Where things live
 

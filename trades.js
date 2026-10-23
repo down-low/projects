@@ -337,7 +337,8 @@
       // createInvite is used only for the staff-list cells, so Messages opens addressed to the person.
       var cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
       var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
-        (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") + "</p>" +
+        (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
+        " (They can answer before signing up.)</p>" +
         (links.loading ? '<p class="hint">Getting their numbers…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
