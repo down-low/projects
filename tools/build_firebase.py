@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the two Firebase Hosting folders from the app files (FIREBASE_PLAN.md, "Two apps, one backend").
 
-Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY]
+Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY] [--app-id ID]
   out_dir defaults to firebase/; it gets public-app/ (the employee app) and public-admin/ (the back office).
   The URLs (set by the deploy workflow) let each site link to the other. --vapid-key (the Web Push key from Firebase
   Cloud Messaging) turns on app notifications for trade alerts; the app gets firebase-messaging-sw.js for them.
@@ -35,6 +35,7 @@ STUBS = {
 ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#b3261e"/>
 <text x="32" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">TS</text></svg>
 """  # placeholder until there is a department-approved icon
+TOUCH_ICON = os.path.join(ROOT, "tools", "apple-touch-icon.png")  # the same mark as a PNG: iPhone's Home Screen icon
 MANIFEST = """{
   "name": "SFFD Tour Schedule",
   "short_name": "Tours",
@@ -48,9 +49,29 @@ MANIFEST = """{
 SITES = {"app": "public-app", "admin": "public-admin"}
 
 
-# App notifications (trade alerts): Firebase Cloud Messaging's service worker, at the site root.
-PUSH_WORKER = f"""importScripts("/__/firebase/{SDK}/firebase-app-compat.js", "/__/firebase/{SDK}/firebase-messaging-compat.js", "/__/firebase/init.js");
-firebase.messaging(); // shows each alert as a notification; tapping it opens the trade (webpush.fcmOptions.link)
+# App notifications (trade alerts, announcements): the service worker at the site root that Firebase Cloud Messaging
+# delivers to. It loads no SDK: the messaging SDK refuses to start inside some browsers' workers (Safari), and a worker
+# that throws while loading is rejected, so no device could register. The page still gets the token (store.js).
+PUSH_WORKER = """self.addEventListener("install", function () { self.skipWaiting(); });
+self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
+// FCM's web payload: {notification: {title, body}, fcmOptions: {link}, data}. Always show one (Safari stops silent pushes).
+self.addEventListener("push", function (e) {
+  var p = {};
+  try { p = e.data ? e.data.json() : {}; } catch (x) { p = { notification: { body: e.data && e.data.text() } }; }
+  var n = p.notification || {}, link = (p.fcmOptions && p.fcmOptions.link) || (p.data && p.data.link) || "/";
+  e.waitUntil(self.registration.showNotification(n.title || "SFFD Tour Schedule", { body: n.body || "", icon: "/apple-touch-icon.png", data: { link: link } }));
+});
+// Tapping it opens the app (a trade alert opens that trade): an open app window if there is one, else a new one.
+self.addEventListener("notificationclick", function (e) {
+  e.notification.close();
+  var link = (e.notification.data && e.notification.data.link) || "/";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+    for (var i = 0; i < list.length; i++) {
+      if ("navigate" in list[i]) return list[i].focus().then(function (c) { return c.navigate(link); });
+    }
+    return self.clients.openWindow(link);
+  }));
+});
 """
 
 
@@ -58,7 +79,9 @@ def sdk_tags(site, urls):
     libs = ["app", "auth", "firestore", "functions"] + (["messaging"] if site == "app" and urls.get("vapid") else [])
     tags = [f'<script src="/__/firebase/{SDK}/firebase-{lib}-compat.js"></script>' for lib in libs]
     cfg = {"FIREBASE_HOSTED": True, "FIREBASE_SITE": site, "FIREBASE_APP_URL": urls.get("app"), "FIREBASE_ADMIN_URL": urls.get("admin"),
-           "FIREBASE_VAPID_KEY": urls.get("vapid") if site == "app" else None}
+           "FIREBASE_VAPID_KEY": urls.get("vapid") if site == "app" else None,
+           # The web app's ID, for app notifications when Hosting's init.js leaves it out (no web app linked to the site).
+           "FIREBASE_APP_ID": urls.get("appid") if site == "app" else None}
     js = "".join(f"window.{k} = {json.dumps(v)};" for k, v in cfg.items())
     tags += ['<script src="/__/firebase/init.js"></script>', f"<script>{js}</script>"]
     return "\n".join(tags) + "\n"
@@ -86,8 +109,12 @@ def build_site(out, site, urls):
         html = html.replace("<title>SFFD Tour Schedule</title>", "<title>SFFD Tour Schedule · Admin</title>", 1)
         extra = '  <meta name="robots" content="noindex" />\n'
     else:
+        # iPhone: the Home Screen icon and full-screen launch (app notifications only work from the Home Screen there).
         extra = ('  <link rel="manifest" href="manifest.json" />\n  <link rel="icon" href="icon.svg" type="image/svg+xml" />\n'
+                 '  <link rel="apple-touch-icon" href="apple-touch-icon.png" />\n'
+                 '  <meta name="apple-mobile-web-app-capable" content="yes" />\n  <meta name="apple-mobile-web-app-title" content="Tours" />\n'
                  '  <meta name="theme-color" content="#b3261e" />\n')
+        shutil.copy(TOUCH_ICON, os.path.join(out, "apple-touch-icon.png"))
         with open(os.path.join(out, "manifest.json"), "w") as f:
             f.write(MANIFEST)
         with open(os.path.join(out, "icon.svg"), "w") as f:
@@ -104,7 +131,7 @@ def build_site(out, site, urls):
 def main():
     args = sys.argv[1:]
     urls = {}
-    for key, flag in (("app", "--app-url"), ("admin", "--admin-url"), ("vapid", "--vapid-key")):
+    for key, flag in (("app", "--app-url"), ("admin", "--admin-url"), ("vapid", "--vapid-key"), ("appid", "--app-id")):
         if flag in args:
             i = args.index(flag)
             if args[i + 1]:

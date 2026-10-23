@@ -47,6 +47,8 @@ test.beforeEach(async () => {
     await d.doc("feedback/mem1").set({ items: { a: { state: "open", kind: "idea", text: "x" } } });
     await d.doc("overtime/mem1").set({ pos: "10EOC03M", name: "A", days: { "2026-11-02": { kind: "want" } } });
     await d.doc("audit/a1").set({ action: "x" });
+    await d.doc("announcements/n1").set({ title: "Hello", message: "Welcome", audience: "all", uids: [] });
+    await d.doc("notices/mem1").set({ items: { n1: { title: "Hello", message: "Welcome", link: null } } });
   });
 });
 
@@ -202,17 +204,20 @@ test("feedback: each member their own; editors and admins all", async () => {
   await assertSucceeds(db(EDITOR).collection("feedback").get());
 });
 
-test("overtime: each member their own seat; only admins read everyone's", async () => {
+test("overtime: everyone reads the marks; notes only the member and admins; admins mark anyone's seat", async () => {
   const mark = (extra) => Object.assign({ pos: "10EOC03M", name: "A", days: { "2026-11-03": { kind: "worked", hours: 24 } } }, extra);
-  await assertSucceeds(db(MEMBER).doc("overtime/mem1").get());
   await assertSucceeds(db(MEMBER).doc("overtime/mem1").set(mark()));
   await assertFails(db(MEMBER).doc("overtime/mem1").set(mark({ pos: "11ENL01M" })));   // someone else's seat
   await assertFails(db(MEMBER).doc("overtime/mem2").set(mark()));                      // someone else's record
-  await assertFails(db(OTHER).doc("overtime/mem1").get());
-  await assertFails(db(OTHER).collection("overtime").get());
-  await assertFails(db(EDITOR).collection("overtime").get());
-  await assertFails(db(PENDING).doc("overtime/mem1").get());
-  await assertSucceeds(db(ADMIN).collection("overtime").get());
+  await assertFails(db(MEMBER).doc("overtime/seat-11ENL01M").set(mark({ pos: "11ENL01M" })));
+  await assertSucceeds(db(OTHER).doc("overtime/mem1").get());                           // marks are public
+  await assertSucceeds(db(OTHER).collection("overtime").get());
+  await assertFails(db(PENDING).collection("overtime").get());
+  await assertSucceeds(db(MEMBER).doc("overtimeNotes/mem1").set({ pos: "10EOC03M", notes: { "2026-11-03": "Hired E7" } }));
+  await assertFails(db(OTHER).doc("overtimeNotes/mem1").get());                         // notes are private
+  await assertFails(db(EDITOR).collection("overtimeNotes").get());
+  await assertSucceeds(db(ADMIN).collection("overtimeNotes").get());
+  await assertSucceeds(db(ADMIN).doc("overtime/seat-11ENL01M").set(mark({ pos: "11ENL01M" })));
   await assertSucceeds(db(MEMBER).doc("overtime/mem1").delete());
 });
 
@@ -227,6 +232,32 @@ test("audit is admin-read, never written from a page", async () => {
   await assertFails(db(MEMBER).doc("audit/a1").get());
   await assertSucceeds(db(ADMIN).doc("audit/a1").get());
   await assertFails(db(ADMIN).collection("audit").add({ action: "y" }));
+});
+
+test("announcements: admins read the history; nobody writes them from a page", async () => {
+  await assertSucceeds(db(ADMIN).doc("announcements/n1").get());
+  await assertSucceeds(db(ADMIN).collection("announcements").get());
+  for (const who of [EDITOR, MEMBER, PENDING, null]) {
+    await assertFails(db(who).doc("announcements/n1").get());
+    await assertFails(db(who).collection("announcements").get());
+  }
+  await assertFails(db(ADMIN).collection("announcements").add({ title: "x", message: "y" }));
+  await assertFails(db(ADMIN).doc("announcements/n1").update({ title: "z" }));
+  await assertFails(db(ADMIN).doc("announcements/n1").delete());
+});
+
+test("notices: each member reads and dismisses their own; items come only from the function", async () => {
+  await assertSucceeds(db(MEMBER).doc("notices/mem1").get());
+  await assertFails(db(OTHER).doc("notices/mem1").get());
+  await assertFails(db(OTHER).collection("notices").get());
+  await assertFails(db(PENDING).doc("notices/pend1").get());
+  await assertSucceeds(db(ADMIN).doc("notices/mem1").get());
+  await assertSucceeds(db(MEMBER).doc("notices/mem1").set({ dismissed: { n1: true } }, { merge: true }));
+  await assertFails(db(MEMBER).doc("notices/mem1").set({ items: { n2: { title: "Fake" } } }, { merge: true }));
+  await assertFails(db(MEMBER).doc("notices/mem1").set({ dismissed: "all" }, { merge: true }));
+  await assertFails(db(OTHER).doc("notices/mem1").set({ dismissed: { n1: true } }, { merge: true }));
+  await assertFails(db(MEMBER).doc("notices/mem1").delete());
+  await assertFails(db(OTHER).doc("notices/mem2").set({ items: { n2: { title: "Fake" } } }));
 });
 
 test("storage: roster files and PDFs for approved accounts only", async () => {

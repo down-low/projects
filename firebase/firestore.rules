@@ -152,12 +152,29 @@ service cloud.firestore {
       allow write: if isEditor() || (active() && uid == request.auth.uid);
     }
 
-    // Overtime days on your own calendar: overtime/<uid> = {pos, name, days}, written only by its member, for their own
-    // seat; read by that member and admins.
-    match /overtime/{uid} {
+    // Overtime days: overtime/<doc> = {pos, name, days: {<date>: {kind, hours}}}, read by everyone signed in. <doc> is
+    // the member's uid (their own seat only) or seat-<pos> for marks an admin enters. Notes are private:
+    // overtimeNotes/<doc> = {notes: {<date>: text}}, read and written by that member and admins.
+    match /overtime/{doc} {
+      allow read: if active();
+      allow create, update: if isAdmin() || (active() && doc == request.auth.uid && myPos() != null && data().pos == myPos() &&
+        data().days is map && data().days.size() <= 400);
+      allow delete: if isAdmin() || (active() && doc == request.auth.uid);
+    }
+    match /overtimeNotes/{doc} {
+      allow read, write: if isAdmin() || (active() && doc == request.auth.uid);
+    }
+
+    // Announcements (Admin → Send announcement): written only by the announce function; admins read the history.
+    match /announcements/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    // What each person sees in the app: notices/<uid> = {items, dismissed}. Items come only from the function; the owner
+    // reads them and marks them dismissed.
+    match /notices/{uid} {
       allow read: if isAdmin() || (active() && uid == request.auth.uid);
-      allow create, update: if active() && uid == request.auth.uid && myPos() != null && data().pos == myPos() && data().days is map && data().days.size() <= 400;
-      allow delete: if isAdmin() || (active() && uid == request.auth.uid);
+      allow update: if active() && uid == request.auth.uid && only(['dismissed']) && data().dismissed is map;
     }
 
     // settings/site {mode: "test" | "live"}: the "Test copy" banner until cut-over (CUTOVER.md).

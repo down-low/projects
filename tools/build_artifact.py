@@ -44,9 +44,11 @@ CAPABILITIES = {
         # Feedback about the app: the same shape as corrections.
         {"path": "feedback", "read": "admin", "write": "admin"},
         {"path": "feedback/{self}", "read": "interact", "write": "interact"},
-        # Overtime days on your own calendar: each member their own record; admins read all.
-        {"path": "overtime", "read": "admin", "write": "admin"},
-        {"path": "overtime/{self}", "read": "interact", "write": "interact"},
+        # Overtime days: everyone reads the marks; each member writes their own, admins anyone's. Notes are private.
+        {"path": "overtime", "read": "view", "write": "admin"},
+        {"path": "overtime/{self}", "write": "interact"},
+        {"path": "overtimeNotes", "read": "admin", "write": "admin"},
+        {"path": "overtimeNotes/{self}", "read": "interact", "write": "interact"},
         # Employee card: a roster seat's name, rank or Employee ID over the files. Everyone reads (IDs are on the page
         # anyway); only admins write.
         {"path": "rosterOverrides", "read": "view", "write": "admin"},
@@ -75,7 +77,7 @@ def fold_trades(records):
             rec.update({"id": f"trade:{t.get('id')}:{i}", "tradeId": t.get("id"), "createdAt": t.get("setAt") or t.get("createdAt")})
             records.setdefault(leg.get("kind"), []).append(rec)
     # Private records never go into a view-only page (cell numbers, corrections, personal dates).
-    for k in ("tradeReplies", "members", "contacts", "corrections", "feedback", "overtime", "profiles"):
+    for k in ("tradeReplies", "members", "contacts", "corrections", "feedback", "overtime", "overtimeNotes", "profiles"):
         records.pop(k, None)
 
 

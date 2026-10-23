@@ -1,10 +1,9 @@
-/* Overtime days on your own calendar: Want OT (days you'd take) and Worked OT (hired, with hours and a note).
+/* Overtime days on a person's calendar: Want OT (days they'd take) and Worked OT (hired, with hours and a note).
  * window.OvertimeViews(api) -> {canMark, marksFor, calClass, label, dayHtml, wireDay, summary}. `api` comes from app.js.
- * - Marked from the day drawer on your own Schedule page, on a day you aren't scheduled to work. Want OT is for today
- *   on; Worked OT for any day.
- * - Private: only the member and admins read it (page rules `overtime` / `overtime/{self}`, Firestore `overtime/{uid}`).
- *   One record per member, overtime/<user id> = {pos, name, days: {<date>: {kind: "want" | "worked", hours, note}}};
- *   the calendar finds a person's marks by `pos`, so admins see them on that person's page.
+ * - Marked from the day drawer on your own Schedule page, on a day you aren't scheduled to work; admins mark anyone's.
+ *   Want OT is for today on; Worked OT for any day.
+ * - Everyone signed in sees the marks; the note only the member and admins (store.js writeOvertime: `overtime` and
+ *   `overtimeNotes`). The calendar finds a person's marks by `pos`.
  * - Later: admins use Want OT days to fill shortages.
  */
 (function (root) {
@@ -17,14 +16,19 @@
     function backend() { return api.backend(); }
     function canMark(p) {
       var b = backend();
-      return !!(b && b.setOvertime && (!b.canOvertime || b.canOvertime()) && p && api.myPos() === p.pos);
+      return !!(b && b.setOvertime && p && b.canOvertimeFor && b.canOvertimeFor(p.pos));
     }
-    // Every mark for a seat, by date (one member's record, or several after a seat changed hands).
+    function isAdmin() { var b = backend(); return !!(b && b.canEdit && b.canEdit()); }
+    // Every mark for a seat, by date, with the record it's in (`doc`) and its note when this account may read it.
     function marksFor(pos) {
-      var out = {};
+      var out = {}, notes = {};
+      (api.recs().overtimeNotes || []).forEach(function (r) { notes[r.id] = r.notes || {}; });
       (api.recs().overtime || []).forEach(function (r) {
         if (r.pos !== pos) return;
-        Object.keys(r.days || {}).forEach(function (k) { if (r.days[k] && r.days[k].kind) out[k] = r.days[k]; });
+        Object.keys(r.days || {}).forEach(function (k) {
+          var m = r.days[k];
+          if (m && m.kind) out[k] = { kind: m.kind, hours: m.hours, note: (notes[r.id] || {})[k] || null, doc: r.id };
+        });
       });
       return out;
     }
@@ -39,8 +43,13 @@
       var cur = marksFor(p.pos)[dIso];
       if (!canMark(p) || (!offDay && !cur)) return "";
       var past = dIso < api.iso(api.today()), kind = cur ? cur.kind : past ? "worked" : "want";
-      return '<div class="day-leave day-ot" id="day-ot"><span class="k">Overtime</span>' +
-        (cur ? '<span class="ot-now">' + esc(label(cur)) + (cur.note ? " · " + esc(cur.note) : "") + "</span>" : "") +
+      var b = backend(), mine = api.myPos() === p.pos;
+      var now = cur ? '<span class="ot-now">' + esc(label(cur)) + (cur.note ? " · " + esc(cur.note) : "") + "</span>" : "";
+      // An admin's mark on your own seat (seat-<pos>) stays as they entered it.
+      if (cur && mine && !isAdmin() && b.userId && cur.doc !== b.userId()) {
+        return '<div class="day-leave day-ot" id="day-ot"><span class="k">Overtime</span>' + now + '<p class="hint">Entered by an admin; ask one to change it.</p></div>';
+      }
+      return '<div class="day-leave day-ot" id="day-ot"><span class="k">Overtime' + (mine ? "" : " · for " + esc(p.name)) + "</span>" + now +
         '<div class="seg" role="group" aria-label="Overtime">' +
         (past ? "" : '<button type="button" class="btn small' + (kind === "want" ? " primary" : "") + '" data-ot-kind="want" aria-pressed="' + (kind === "want") + '">Want OT</button>') +
         '<button type="button" class="btn small' + (kind === "worked" ? " primary" : "") + '" data-ot-kind="worked" aria-pressed="' + (kind === "worked") + '">Worked OT</button></div>' +
@@ -50,11 +59,12 @@
         '<div class="row"><button type="button" class="btn small primary" id="ot-save">' + (cur ? "Save" : "Mark") + "</button>" +
         (cur ? '<button type="button" class="btn small" id="ot-remove">Remove</button>' : "") +
         '<span class="msg" id="ot-msg" role="status"></span></div>' +
-        '<p class="hint">Only you and admins see this.</p></div>';
+        '<p class="hint">Everyone sees the mark; only ' + (mine ? "you" : esc(p.name)) + " and admins see the note.</p></div>";
     }
     function wireDay(p, dIso, done) {
       var box = $("day-ot");
-      if (!box) return;
+      if (!box || !$("ot-save")) return;
+      var cur = marksFor(p.pos)[dIso];
       var kind = (box.querySelector("[data-ot-kind].primary") || {}).dataset;
       kind = kind ? kind.otKind : "worked";
       box.querySelectorAll("[data-ot-kind]").forEach(function (b) {
@@ -71,7 +81,7 @@
       var msg = $("ot-msg");
       var save = function (mark) {
         api.say(msg, "Saving…");
-        backend().setOvertime(dIso, mark).then(done, function (er) { api.say(msg, er.message, true); });
+        backend().setOvertime(p.pos, p.name, dIso, mark, cur ? cur.doc : null).then(done, function (er) { api.say(msg, er.message, true); });
       };
       $("ot-save").onclick = function () {
         var note = $("ot-note").value.trim().slice(0, 200), mark = { kind: kind, note: note || null };

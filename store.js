@@ -34,7 +34,8 @@
   "use strict";
   var COLLECTIONS = { statuses: "statuses", tourChanges: "tourChanges", covers: "covers", people: "people", staffing: "staffing", profiles: "profiles",
     members: "members", trades: "trades", tradeReplies: "tradeReplies", contacts: "contacts",
-    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback", overtime: "overtime" };
+    corrections: "corrections", assignments: "assignments", rosterOverrides: "rosterOverrides", feedback: "feedback", overtime: "overtime",
+    overtimeNotes: "overtimeNotes" };
   var API_PATH = { statuses: "statuses", tourChanges: "tour-changes", covers: "covers", people: "people" };
   var NO_EDIT = "Only editors can make changes on this page.";
   var BOARD_ALERTS = ["off", "daily", "each"]; // trade alerts for board posts: none, a daily summary, or each post
@@ -49,6 +50,24 @@
       Object.keys(d.items || {}).forEach(function (k) { out.push(Object.assign({}, d.items[k], { id: d.id + "/" + k, owner: d.id, item: k })); });
     });
     return out;
+  }
+  /* Overtime days: overtime/<doc> = {pos, name, days: {<date>: {kind: "want" | "worked", hours}}}, read by everyone; the
+     note goes to overtimeNotes/<doc> = {pos, notes: {<date>: text}}, read by that member and admins. <doc> is the member's
+     user id for their own seat, or seat-<pos> for marks an admin enters for someone. A null mark removes the day. */
+  function writeOvertime(col, id, pos, name, dIso, mark) {
+    var ref = col("overtime").doc(id), nref = col("overtimeNotes").doc(id);
+    var note = mark && mark.note ? String(mark.note).slice(0, 200) : null, day = mark ? { kind: mark.kind } : null;
+    if (day && mark.kind === "worked") day.hours = mark.hours;
+    return ref.get().then(function (s) {
+      var days = Object.assign({}, s.exists ? s.data().days : {});
+      if (day) days[dIso] = day; else delete days[dIso];
+      return ref.set({ pos: pos, name: name || null, days: days, updatedAt: nowIso() });
+    }).then(function () { return nref.get(); }).then(function (s) {
+      var notes = Object.assign({}, s.exists ? s.data().notes : {});
+      if (!note && !notes[dIso]) return;
+      if (note) notes[dIso] = note; else delete notes[dIso];
+      return nref.set({ pos: pos, notes: notes });
+    });
   }
   // Cell numbers from the internal staff list (admins only): {cells: {pos or "person:<id>": number}} -> contacts by key.
   function staffContacts(docs) {
@@ -101,14 +120,14 @@
     return Promise.all([root.claude.use("db"), root.claude.use("user")]).then(function (caps) {
       var db = caps[0], user = caps[1];
       if (!db) return null;
-      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [] };
+      var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], members: [], trades: [], tradeReplies: [], contacts: [], corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [] };
       function emit() {
         onChange({ statuses: records.statuses.concat(tradeLegs(records.trades, "statuses")), tourChanges: records.tourChanges,
           covers: records.covers.concat(tradeLegs(records.trades, "covers")), people: records.people,
           staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
           members: records.members, trades: records.trades, tradeReplies: records.tradeReplies, contacts: staffContacts(records.contacts),
           corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-          feedback: flattenFixes(records.feedback), overtime: records.overtime });
+          feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
       }
       // A frozen page (tools/build_artifact.py --frozen, after the move to Firebase) is read-only for everyone; page
       // Editors (platformEdit) can still save the backup.
@@ -234,18 +253,13 @@
             item[parts[1]] = { state: state, reason: reason || null, handledBy: uid, handledAt: nowIso() };
             return db.collection("corrections").doc(parts[0]).update({ items: item });
           },
-          /* Overtime days on your own calendar (overtime/<user id> = {pos, name, days: {<date>: {kind, hours, note}}}):
-             kind "want" or "worked"; only the member and admins read it. A null mark removes the day. */
+          /* Overtime days (writeOvertime): members mark their own seat; editors mark anyone's (seat-<pos>). */
           canOvertime: function () { return tradeOk() && !!myMember(); },
-          setOvertime: function (dIso, mark) {
-            var m = myMember();
-            if (!tradeOk() || !m) return Promise.reject(new Error("Claim your record first."));
-            var ref = db.collection("overtime").doc(uid);
-            return tw(ref.get().then(function (s) {
-              var days = Object.assign({}, s.exists ? s.data().days : {});
-              if (mark) days[dIso] = mark; else delete days[dIso];
-              return ref.set({ pos: m.key, name: m.name || null, days: days, updatedAt: nowIso() });
-            }));
+          canOvertimeFor: function (pos) { var m = myMember(); return tradeOk() && (editable || !!(m && m.key === pos)); },
+          setOvertime: function (pos, name, dIso, mark, docId) {
+            var m = myMember(), own = !!(m && m.key === pos);
+            if (!tradeOk() || !(own || editable)) return Promise.reject(new Error(own || m ? NO_EDIT : "Claim your record first."));
+            return tw(writeOvertime(db.collection.bind(db), docId || (own ? uid : "seat-" + pos), pos, name, dIso, mark));
           },
           /* Feedback about the app, stored like corrections (feedback/<user id>); admins read, answer and delete all. */
           userId: function () { return uid; },
@@ -522,7 +536,7 @@
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -534,6 +548,28 @@
     function approved() { return !!(me.signedIn && me.status === "active" && claims.active === true); }
     // Ask the alert function to send what's due for a trade or an answer; alerts never hold up the page.
     function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
+    // App notifications: register the service worker (firebase-messaging-sw.js) and save this device's token on the account.
+    var HOME_SCREEN = "On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), open it from there, then turn this on.";
+    // Messaging needs the web app's ID. Hosting's init.js only has it when a web app is linked to the site; otherwise a
+    // second app with the same settings plus FIREBASE_APP_ID (a GitHub variable, set at build) is used for messaging only.
+    function messaging() {
+      if (fb.app().options.appId) return fb.messaging();
+      if (!root.FIREBASE_APP_ID) throw new Error("App notifications need the app ID setting (FIREBASE_APP_ID). Tell the admin.");
+      var app = fb.apps.filter(function (a) { return a.name === "push"; })[0] ||
+        fb.initializeApp(Object.assign({}, fb.app().options, { appId: root.FIREBASE_APP_ID }), "push");
+      return app.messaging();
+    }
+    function pushToken() {
+      // Wait for the worker to be active: asking for a token while it's still installing fails on the first try.
+      return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function () {
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
+        return messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+      }).then(function (token) {
+        if (!token) throw new Error("This browser didn't give a notification token.");
+        return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+      });
+    }
     function staff() { return approved() && (claims.role === "editor" || claims.role === "admin"); }
     function wrongSite() { return SITE === "admin" && me.signedIn && !staff(); }
     function active() { return approved() && !wrongSite(); }
@@ -574,7 +610,7 @@
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
         corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-        feedback: flattenFixes(records.feedback), overtime: records.overtime });
+        feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -592,9 +628,11 @@
       watch("myContact", fs.collection("contacts").doc(user.uid));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
-      watch("overtime", admin() ? fs.collection("overtime") : fs.collection("overtime").doc(user.uid));
+      watch("overtime", fs.collection("overtime"));
+      watch("overtimeNotes", admin() ? fs.collection("overtimeNotes") : fs.collection("overtimeNotes").doc(user.uid));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
+      watch("notices", fs.collection("notices").doc(user.uid));
       // Who's on the tool (active linked accounts), for Invite on trades; refreshed every 10 minutes.
       var loadOnTool = function () { call("onToolKeys").then(function (keys) { onTool = keys; emit(); }, function () {}); };
       loadOnTool();
@@ -790,17 +828,49 @@
       alertsLive: true,
       canPush: function () { return !!(root.FIREBASE_VAPID_KEY && fb.messaging && root.Notification && navigator.serviceWorker); },
       registerPush: function () {
+        // Checked first: Safari has no notifications at all outside the Home Screen app.
+        if (root.FIREBASE_VAPID_KEY && adapter.needsHomeScreen()) return Promise.reject(new Error(HOME_SCREEN));
         if (!adapter.canPush()) return Promise.reject(new Error("App notifications aren't set up on this site yet."));
         return Notification.requestPermission().then(function (p) {
           if (p !== "granted") throw new Error("Notifications are blocked for this site. Allow them in your browser or phone settings." +
-            (/iPhone|iPad/.test(navigator.userAgent) ? " On iPhone, first add this page to your Home Screen (Share → Add to Home Screen) and open it from there." : ""));
-          return navigator.serviceWorker.register("/firebase-messaging-sw.js");
-        }).then(function (reg) {
-          return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
-        }).then(function (token) {
-          if (!token) throw new Error("This browser didn't give a notification token.");
-          return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
+            (/iPhone|iPad/.test(navigator.userAgent) ? " " + HOME_SCREEN : ""));
+          return pushToken();
         });
+      },
+      // iPhone and iPad allow app notifications only in the app opened from the Home Screen (Apple's rule for web apps).
+      needsHomeScreen: function () {
+        var ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+        var standalone = navigator.standalone === true || !!(root.matchMedia && root.matchMedia("(display-mode: standalone)").matches);
+        return ios && !standalone;
+      },
+      // "Send me a test notification": the pushTest function sends one to this account's registered devices.
+      pushTest: function () { return call("pushTest"); },
+      // Alerts that arrive while the app is open (the phone shows them only when it's in the background).
+      onPush: function (cb) {
+        if (!adapter.canPush()) return;
+        try {
+          messaging().onMessage(function (m) { var n = (m && m.notification) || {}; cb(n.title || "", n.body || ""); });
+        } catch (e) { /* this browser has no push support */ }
+      },
+      /* Announcements (Admin → Send announcement; function announce): sent by admins, stored in announcements/{id};
+         each recipient's copy is in notices/<uid> until they dismiss it. */
+      announce: function (rec) { return admin() ? call("announce", rec) : Promise.reject(new Error(NO_EDIT)); },
+      announcements: function () {
+        if (!admin()) return Promise.resolve([]);
+        return w(fs.collection("announcements").orderBy("at", "desc").limit(20).get()).then(docs);
+      },
+      notices: function () {
+        var d = records.notices[0];
+        if (!d || !d.items) return [];
+        var gone = d.dismissed || {};
+        return Object.keys(d.items).filter(function (k) { return !gone[k]; })
+          .map(function (k) { return Object.assign({ id: k }, d.items[k]); })
+          .sort(function (a, b) { return String(b.at || "").localeCompare(String(a.at || "")); });
+      },
+      dismissNotice: function (id) {
+        var gone = {};
+        gone[id] = true;
+        return w(fs.collection("notices").doc(user.uid).set({ dismissed: gone }, { merge: true }));
       },
       // Corrections: one record per member, corrections/<uid> = {items: {<id>: correction}}; merge keeps the other items.
       canSuggest: function () { return active(); },
@@ -825,16 +895,13 @@
           return ref.set(Object.assign({}, d, { items: items }));
         }));
       },
-      // Overtime days: one record per member, overtime/<uid> = {pos, name, days: {<date>: {kind, hours, note}}}.
+      // Overtime days (writeOvertime): members mark their own seat; admins mark anyone's (seat-<pos>).
       canOvertime: function () { return active() && !!me.pos; },
-      setOvertime: function (dIso, mark) {
-        if (!active() || !me.pos) return Promise.reject(new Error("Claim your record first."));
-        var ref = fs.collection("overtime").doc(user.uid);
-        return w(ref.get().then(function (s) {
-          var days = Object.assign({}, s.exists ? s.data().days : {});
-          if (mark) days[dIso] = mark; else delete days[dIso];
-          return ref.set({ pos: me.pos, name: me.name || null, days: days, updatedAt: nowIso() });
-        }));
+      canOvertimeFor: function (pos) { return active() && (admin() || me.pos === pos); },
+      setOvertime: function (pos, name, dIso, mark, docId) {
+        var own = active() && me.pos === pos;
+        if (!own && !admin()) return Promise.reject(new Error(me.pos ? NO_EDIT : "Claim your record first."));
+        return w(writeOvertime(fs.collection.bind(fs), docId || (own ? user.uid : "seat-" + pos), pos, name, dIso, mark));
       },
       // Feedback about the app: one record per member, feedback/<uid> = {items: {<id>: feedback}}, like corrections.
       userId: function () { return user ? user.uid : null; },
@@ -987,6 +1054,10 @@
       return syncMe().then(function () {
         watchAccount();
         listen();
+        // Tokens change now and then: with app alerts on and permission already given, save this device's current one.
+        if (active() && me.alerts && me.alerts.app && adapter.canPush() && Notification.permission === "granted") {
+          pushToken().catch(function (e) { if (root.console) console.warn("push: " + e.message); });
+        }
         return adapter;
       });
     }).catch(function (e) {

@@ -385,11 +385,21 @@
         esc(t.proposal && t.proposal.later ? "They owe you a shift." : terms(t.proposal) + ".") + "</p></article>";
     }
 
+    // What pushTest did: sent, no device saved, or Google's reason for refusing (shown so a failure can be fixed).
+    function pushResult(r) {
+      if (r.sent) return "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds.";
+      if (!r.devices) return "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone.";
+      return "It didn't go through" + (r.errors && r.errors.length ? " (" + r.errors[0] + ")" : "") + ".";
+    }
     function alertsHtml() {
-      var m = backend().myMember() || {}, a = m.alerts || {};
+      var b = backend(), m = b.myMember() || {}, a = m.alerts || {};
+      // App notifications: on iPhone, only from the Home Screen app; once on, a test sends one to this account's devices.
+      var push = (b.needsHomeScreen && root.FIREBASE_VAPID_KEY && b.needsHomeScreen()
+        ? '<p class="hint push-hint">For app notifications on iPhone: tap <b>Share</b>, then <b>Add to Home Screen</b>, open the app from that icon, and turn them on there.</p>' : "") +
+        (a.app && b.pushTest ? '<p><button class="btn small" type="button" id="push-test">Send me a test notification</button></p>' : "");
       return '<details class="trade-alerts"' + (ui.alertsOpen ? " open" : "") + "><summary>Alerts</summary>" +
         '<label class="chk"><input type="checkbox" data-alert="text"' + (a.text ? " checked" : "") + "> Notify me by text</label>" +
-        '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" +
+        '<label class="chk"><input type="checkbox" data-alert="app"' + (a.app ? " checked" : "") + "> Notify me in the app</label>" + push +
         '<label class="chk"><input type="checkbox" data-alert="email"' + (a.email ? " checked" : "") + "> Notify me by email</label>" +
         '<label class="alert-board">Board posts<select data-alert="board">' + [["off", "Off: I'll check the board"], ["daily", "Daily summary"], ["each", "Each new post"]].map(function (o) {
           return '<option value="' + o[0] + '"' + ((a.board || "off") === o[0] ? " selected" : "") + ">" + o[1] + "</option>";
@@ -415,16 +425,35 @@
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
           var b = backend(), msg = $("alert-msg");
           // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
-          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          var turnedOn = c.dataset.alert === "app" && c.checked && b.registerPush;
+          var ready = turnedOn ? b.registerPush() : Promise.resolve();
           ready.then(function () {
-            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
             return b.setAlerts(vals);
+          }).then(function () {
+            if (c.dataset.alert !== "app") return;
+            // Redraw so "Send me a test notification" shows (or hides), and send a sample at once so they see what alerts look like.
+            ui.alertsOpen = true;
+            renderTrades();
+            if (!turnedOn) return;
+            api.say($("alert-msg"), "Notifications are on for this device. A sample is on its way.");
+            if (b.pushTest) b.pushTest().then(function (r) { if (!r.sent) api.say($("alert-msg"), pushResult(r), true); }, function (er) { api.say($("alert-msg"), er.message, true); });
           }).catch(function (er) {
             if (c.tagName !== "SELECT") c.checked = !c.checked;
             if (msg) api.say(msg, er.message, true);
           });
         };
       });
+      if ($("push-test")) {
+        $("push-test").onclick = function () {
+          var x = this;
+          x.disabled = true;
+          api.say($("alert-msg"), "Sending…");
+          backend().pushTest().then(function (r) {
+            x.disabled = false;
+            api.say($("alert-msg"), pushResult(r), !r.sent);
+          }, function (er) { x.disabled = false; api.say($("alert-msg"), er.message, true); });
+        };
+      }
       out.querySelectorAll("[data-reply]").forEach(function (b) {
         b.onclick = function () { ui.replyOpen = b.dataset.reply; renderTrades(); var f = out.querySelector(".reply-form"); if (f) f.querySelector("input").focus(); };
       });

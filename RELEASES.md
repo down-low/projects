@@ -2,6 +2,17 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
+### App notifications test and announcements
+**Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
+- **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.
+- **iPhone:** notifications only work from the Home Screen app. On an iPhone in Safari, Trades → Alerts says so (Share → Add to Home Screen, open it from there, then turn them on) instead of asking for a permission Safari can't give. The app has a Home Screen icon and opens full screen.
+- **Small fixes:** a device's token is saved again on each visit (tokens change); alerts that arrive while the app is open show as a card at the top.
+- **Admin → Send announcement** (back office): title (80 characters), short message (300), optional `https://` link; to everyone with an account or to picked people; a preview and a confirm step.
+  - Everyone it goes to sees it as a card at the top of the app until they dismiss it; people with app notifications on also get it on their phone.
+  - Function `announce` (admins only) checks it, refuses anything that looks like a phone number (cells never go out), keeps it in `announcements/{id}` (admins read; only the function writes) and each person's copy in `notices/{uid}` (the owner reads it and may only mark it dismissed). Audited (`announce`).
+  - Sent announcements are listed under the form with how many people got them and how many by app notification.
+- **First use:** announcing sick and vacation accrual tracking. Accrual itself is a separate feature: it needs its own spec and a consent record first.
+
 ### Invite a coworker (built Oct 22, 2026; on the Firebase sites; the claude.ai page shows it once it knows the app address)
 - **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
 - **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
@@ -12,8 +23,8 @@
 - **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
 - **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
 - **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
-- **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
-- **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Admins see a person's marks on that person's calendar; there's no Employee card line yet. Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
+- **Who sees what (the user's call, 10/23):** everyone signed in sees a person's Want OT / Worked OT marks on their calendar; the note only that member and admins. Marks in `overtime/<doc>` (page rule read `view`), notes in `overtimeNotes/<doc>` (owner and admins).
+- **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Members mark their own seat; admins mark anyone's from that person's page (stored as `seat-<pos>`, which the member sees but can't change). Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
 ### Personal invite links (admin)
@@ -23,11 +34,6 @@
 - **Tracking:** Invite people shows Sent → Opened → Joined per person, with Resend and Revoke.
 - **Safety:** one use, expiry and the confirm step; admin Undo (unlink) on the Users row; a link never gives more than member access.
 - **Later, separately:** the claim screen one step at a time (cell → code → done; name search behind a link). Users find it confusing; left as is for now.
-
-### App notifications test and announcements (own chat)
-- Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
-- **First test:** Lester and Goforth (the records editor prepares them). iPhone users must add the app to the Home Screen first.
-- **First real use:** announcing sick and vacation accrual tracking, which needs its own spec and a saved consent record before any balances are stored.
 
 ### Divisions with their own real data (Airport, EMS, HQ)
 - **Real data, one Firebase project per division:** clone the Suppression project's setup into a new project (Airport, then EMS, then HQ). Same repo and code; GitHub deploys to each project as its own target.

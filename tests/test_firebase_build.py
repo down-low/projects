@@ -6,6 +6,7 @@ Run: python3 -m unittest discover -s tests
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -38,7 +39,7 @@ class FirebaseBuild(unittest.TestCase):
         return sorted(os.path.relpath(os.path.join(d, f), folder) for d, _, fs in os.walk(folder) for f in fs)
 
     def test_only_static_app_files(self):
-        self.assertEqual(self.files(self.app), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg"]))
+        self.assertEqual(self.files(self.app), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg", "apple-touch-icon.png"]))
         self.assertEqual(self.files(self.admin), sorted(build_firebase.APP_FILES))
 
     def test_no_roster_names_or_ids(self):
@@ -49,7 +50,7 @@ class FirebaseBuild(unittest.TestCase):
         # Hint-text and comment examples already in the app code ("e.g. Lester,D"), not roster data.
         examples = {"Lester,D", "Smith,J", "Pereira,J"}
         for folder in (self.app, self.admin):
-            text = "".join(self.read(folder, name) for name in self.files(folder))
+            text = "".join(self.read(folder, name) for name in self.files(folder) if not name.endswith(".png"))
             found = [n for n in names - examples if n in text] + [i for i in ids if re.search(r"\b" + i + r"\b", text)]
             self.assertEqual(found, [], "names or Employee IDs in the public Hosting files: " + folder)
 
@@ -86,16 +87,18 @@ class FirebaseBuild(unittest.TestCase):
         build_artifact.fold_trades(records)
         self.assertNotIn("feedback", records)
 
-    def test_overtime_on_every_site_private_and_kept_out_of_snapshots(self):
+    def test_overtime_on_every_site_notes_private_and_kept_out_of_snapshots(self):
         for folder in (self.app, self.admin):
             self.assertIn('src="overtime.js"', self.read(folder, "index.html"))
             self.assertEqual(self.read(folder, "overtime.js"), self.read(ROOT, "overtime.js"))
         rules = {r["path"]: r for r in build_artifact.CAPABILITIES["db"]["rules"]}
-        self.assertEqual((rules["overtime"]["read"], rules["overtime/{self}"]["read"]), ("admin", "interact"))
-        records = {"overtime": [{"id": "u1", "pos": "10EOC03M", "days": {}}], "statuses": []}
+        self.assertEqual(rules["overtime"]["read"], "view")  # marks: everyone signed in
+        self.assertEqual((rules["overtimeNotes"]["read"], rules["overtimeNotes/{self}"]["read"]), ("admin", "interact"))
+        records = {"overtime": [{"id": "u1", "pos": "10EOC03M", "days": {}}], "overtimeNotes": [{"id": "u1", "notes": {}}], "statuses": []}
         build_artifact.fold_trades(records)
         self.assertNotIn("overtime", records)
-        self.assertIn("match /overtime/{uid}", self.read(ROOT, "firebase/firestore.rules"))
+        self.assertNotIn("overtimeNotes", records)
+        self.assertIn("match /overtimeNotes/{doc}", self.read(ROOT, "firebase/firestore.rules"))
 
     def test_invite_a_coworker_on_both_sites_and_trades_untouched(self):
         for folder in (self.app, self.admin):
@@ -123,13 +126,37 @@ class FirebaseBuild(unittest.TestCase):
         self.assertNotIn("firebase-messaging-sw.js", os.listdir(self.app))
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_firebase.py"), tmp, "--app-url", "https://demo.web.app",
-                            "--vapid-key", "BKEY"], check=True, capture_output=True)
+                            "--vapid-key", "BKEY", "--app-id", "1:23:web:abc"], check=True, capture_output=True)
             app = os.path.join(tmp, "public-app")
             self.assertIn("firebase-messaging-sw.js", os.listdir(app))
+            # The worker loads no SDK (a worker that throws while loading can't register) and shows each push itself.
+            worker = self.read(app, "firebase-messaging-sw.js")
+            self.assertNotIn("importScripts", worker)
+            for event in ('"push"', '"notificationclick"', "showNotification"):
+                self.assertIn(event, worker)
+            if shutil.which("node"):
+                subprocess.run(["node", "--check", os.path.join(app, "firebase-messaging-sw.js")], check=True)
             self.assertIn('window.FIREBASE_VAPID_KEY = "BKEY"', self.read(app, "index.html"))
             self.assertIn("firebase-messaging-compat.js", self.read(app, "index.html"))
             self.assertNotIn("BKEY", self.read(os.path.join(tmp, "public-admin"), "index.html"))
+            # The web app's ID, for messaging when Hosting's init.js has none: app site only
+            self.assertIn('window.FIREBASE_APP_ID = "1:23:web:abc"', self.read(app, "index.html"))
+            self.assertNotIn("1:23:web:abc", self.read(os.path.join(tmp, "public-admin"), "index.html"))
+            # iPhone: notifications only from the Home Screen app, which needs its icon and full-screen launch
+            self.assertIn("apple-touch-icon.png", os.listdir(app))
+            self.assertIn('rel="apple-touch-icon"', self.read(app, "index.html"))
+            self.assertIn("apple-mobile-web-app-capable", self.read(app, "index.html"))
         self.assertTrue(os.path.exists(os.path.join(ROOT, "firebase", "functions", "lib", "schedule.js")))
+
+    def test_announcements_and_notices_rules(self):
+        with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
+            rules = f.read()
+        block = re.search(r"match /announcements/\{id\} \{(.*?)\}", rules, re.S).group(1)
+        self.assertIn("allow read: if isAdmin();", block)
+        self.assertIn("allow write: if false;", block)
+        block = re.search(r"match /notices/\{uid\} \{(.*?)\n    \}", rules, re.S).group(1)
+        self.assertIn("only(['dismissed'])", block)
+        self.assertNotIn("create", block)
 
     def test_cells_stay_admin_only(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
