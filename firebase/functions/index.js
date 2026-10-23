@@ -7,12 +7,14 @@
  */
 "use strict";
 const { onCall, onRequest, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentWrittenWithAuthContext } = require("firebase-functions/v2/firestore");
 const { setGlobalOptions } = require("firebase-functions/v2");
 const admin = require("firebase-admin");
 const crypto = require("crypto");
 const A = require("./accounts");
 const AL = require("./alerts");
 const AN = require("./announce");
+const CL = require("./changelog");
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 5 });
@@ -560,4 +562,61 @@ exports.launchInvites = wrap(async (req) => {
   }
   await audit(actor.uid, "launchTexts", { sent, failed, skipped: plan.skipped });
   return { sent, failed, skipped: plan.skipped };
+});
+
+/* Change history (changelog.js): every add, edit and delete to a schedule record is kept in changeLog/{id} with who did
+   it (the write's own sign-in, so deletes are tied to the person deleting), when, and the version before and after,
+   without contact fields. Admins read it on the admin site (More → Change history); only these triggers write it. */
+const actorCache = new Map(); // uid -> {label, at}, for 10 minutes
+async function actorName(uid) {
+  if (!uid || uid === "system" || uid === "unknown") return null;
+  const hit = actorCache.get(uid);
+  if (hit && Date.now() - hit.at < 600000) return hit.label;
+  let label = null;
+  try {
+    const u = await db.doc("users/" + uid).get();
+    const user = u.exists ? u.data() : null;
+    let rosterName = null;
+    if (user && user.pos) {
+      if (user.pos.indexOf(A.PERSON_PREFIX) === 0) {
+        const p = await db.doc("people/" + user.pos.slice(A.PERSON_PREFIX.length)).get();
+        rosterName = p.exists ? p.data().name || null : null;
+      } else {
+        const r = (await roster()).rows.find((x) => x.pos === user.pos);
+        rosterName = r ? r.name : null;
+      }
+    }
+    label = CL.actorLabel(user, rosterName);
+  } catch (e) { console.warn("changeLog actor: " + e.message); }
+  actorCache.set(uid, { label, at: Date.now() });
+  return label;
+}
+// One trigger per logged collection (logStatuses, logCovers, ...). The entry id is the event id, so an event delivered
+// twice is kept once.
+async function logChange(collection, event) {
+  const docId = event.params.docId;
+  const before = event.data && event.data.before && event.data.before.exists ? event.data.before.data() : null;
+  const after = event.data && event.data.after && event.data.after.exists ? event.data.after.data() : null;
+  const entry = CL.entryFor(collection, docId, before, after, { authType: event.authType, authId: event.authId }, event.time || now());
+  if (!entry) return;
+  entry.actorName = await actorName(entry.actor);
+  await db.collection("changeLog").doc(String(event.id || db.collection("changeLog").doc().id)).set(entry);
+}
+CL.LOGGED.forEach((c) => {
+  exports["log" + c.charAt(0).toUpperCase() + c.slice(1)] = onDocumentWrittenWithAuthContext(c + "/{docId}", (event) => logChange(c, event));
+});
+
+// Admins: put back the version a logged change replaced or deleted. The restored record is logged as a restore.
+exports.restoreChange = wrap(async (req) => {
+  const actor = requireAdmin(req);
+  const id = req.data && typeof req.data.id === "string" ? req.data.id : "";
+  if (!id) throw new HttpsError("invalid-argument", "Which change?");
+  const snap = await db.doc("changeLog/" + id).get();
+  if (!snap.exists) throw new HttpsError("not-found", "That change isn't in the history.");
+  const e = snap.data();
+  const doc = CL.restoreDoc(e, actor.uid, now(), id);
+  if (!doc) throw new HttpsError("failed-precondition", "There's no earlier version to put back for that change.");
+  await db.collection(e.collection).doc(e.docId).set(doc);
+  await audit(actor.uid, "restore", { collection: e.collection, docId: e.docId, change: id });
+  return { ok: true, collection: e.collection, docId: e.docId };
 });

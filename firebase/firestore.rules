@@ -209,5 +209,10 @@ service cloud.firestore {
     match /audit/{id} {
       allow read: if isAdmin();
     }
+    // Change history of schedule records: written only by the changeLog function, read by admins, changed by nobody.
+    match /changeLog/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
   }
 }

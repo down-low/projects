@@ -47,6 +47,7 @@ test.beforeEach(async () => {
     await d.doc("feedback/mem1").set({ items: { a: { state: "open", kind: "idea", text: "x" } } });
     await d.doc("overtime/mem1").set({ pos: "10EOC03M", name: "A", days: { "2026-11-02": { kind: "want" } } });
     await d.doc("audit/a1").set({ action: "x" });
+    await d.doc("changeLog/c1").set({ collection: "covers", docId: "x", action: "delete", actor: "ed1", before: { coverKey: "A" }, after: null });
     await d.doc("announcements/n1").set({ title: "Hello", message: "Welcome", audience: "all", uids: [] });
     await d.doc("notices/mem1").set({ items: { n1: { title: "Hello", message: "Welcome", link: null } } });
   });
@@ -269,6 +270,18 @@ test("audit is admin-read, never written from a page", async () => {
   await assertFails(db(MEMBER).doc("audit/a1").get());
   await assertSucceeds(db(ADMIN).doc("audit/a1").get());
   await assertFails(db(ADMIN).collection("audit").add({ action: "y" }));
+});
+
+test("change history: admins read it; nobody writes, edits or deletes it from a page", async () => {
+  await assertFails(db(MEMBER).doc("changeLog/c1").get());
+  await assertFails(db(EDITOR).doc("changeLog/c1").get());
+  await assertFails(db(EDITOR).collection("changeLog").get());
+  await assertSucceeds(db(ADMIN).doc("changeLog/c1").get());
+  await assertSucceeds(db(ADMIN).collection("changeLog").orderBy("at", "desc").limit(10).get());
+  await assertFails(db(ADMIN).collection("changeLog").add({ action: "add" }));
+  await assertFails(db(ADMIN).doc("changeLog/c1").update({ actor: "someone else" }));
+  await assertFails(db(ADMIN).doc("changeLog/c1").delete());
+  await assertFails(db(EDITOR).doc("changeLog/c1").delete());
 });
 
 test("announcements: admins read the history; nobody writes them from a page", async () => {

@@ -60,6 +60,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 | Cut-over: page backup, Admin → Cut-over (replace and count check), frozen page build | `store.js`, `admin.js`, `tools/build_artifact.py --frozen`, `CUTOVER.md` |
 | Trades, Corrections, Employee cards, awards, admin | `trades.js`, `corrections.js`, `card.js`, `awards.js`, `admin.js` |
 | App notifications (push) and admin announcements (Admin → Send announcement; function `announce`, `notices/{uid}`) | `store.js`, `admin.js`, `app.js`, `firebase/functions/announce.js`, `deliver.js` |
+| Change history of records (`changeLog`, admins only; Restore) | `history.js`, `firebase/functions/changelog.js` (one `log<Collection>` trigger per logged collection and the callable `restoreChange`, in `index.js`) |
 | Self-hosted server (SQLite, Google sign-in); kept as the fallback | `server.py`, `tests/test_server.py` |
 | Builds the claude.ai page; `--capabilities` prints the access rules | `tools/build_artifact.py` |
 | Pay estimate and overtime pay (More → Pay estimate; function `hireDateGuess`) | `pay.js`, `firebase/functions/index.js` |
@@ -81,6 +82,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - **The staff-list cell is also an identity on Firebase** (the user's call, Oct 2026): signing in with a cell and its texted code links the account to the one seat with that staff-list cell, with no other check. Keep `staffCells` admin-only and accurate; a wrong cell there would let the wrong person in. Each link is audited (`cellLink`).
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
+- The change history (`changeLog`) is admin-read and written only by the `log<Collection>` triggers. It must never hold contact fields: `changelog.js` drops anything named like a cell, phone, email or contact, and contact and cell collections aren't logged. Keep it that way when adding a collection to `LOGGED`.
 
 ## Record conventions
 

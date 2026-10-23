@@ -170,7 +170,7 @@ Texts go to the cell on each person's **My page**; email goes to their contact e
 | No code text arrives | Step 11.2: the region policy must allow United States. Check Authentication → **Usage** for the daily SMS limit. |
 | "The page check failed" on Text me a code | The site isn't in Authorized domains (step 11.4), or a browser extension blocks reCAPTCHA. |
 | An alert didn't arrive | Check the person's switches (Trades → Alerts) and My page (cell, email). Firebase console → **Functions** → `notify` → **Logs** shows "email:", "text:" or "push:" lines when sending failed. |
-| Deploy error about Eventarc, Pub/Sub or Cloud Scheduler | Not expected (alerts don't use them); send Claude the red lines. |
+| Deploy error about Eventarc, Pub/Sub or "failed to modify the IAM policy" (first deploy of the change history) | The change history is the first function that runs on database changes (Eventarc). Google Cloud → **IAM** → the `github-deploy` account → **Edit** → **+ Add another role** → **Project IAM Admin** → **Save**, then run the workflow again (Actions → the failed run → **Re-run jobs**). If it still fails, send Claude the red lines. |
 | Charges | **https://console.cloud.google.com/billing** shows the spend; the budget alert emails you at $5, $9 and $10. |
 
 Before cut-over you can **turn the sites off** at any point: Firebase console → **Hosting** → the `…` menu on a site → **Disable**. No data is deleted.

@@ -140,6 +140,10 @@
     <div id="fixes-detail"></div>
   </section>
 
+  <section class="view" id="view-history" role="region" aria-label="Change history (admins)" hidden>
+    <div id="history-detail"></div>
+  </section>
+
   <section class="view" id="view-feedback" role="region" aria-label="Feedback (admins)" hidden>
     <div id="feedback-detail"></div>
   </section>
@@ -202,6 +206,7 @@
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
         <li data-need="admin"><button type="button" data-go="admin">Admin</button></li>
+        <li data-need="history"><button type="button" data-go="history">Change history</button></li>
         <li data-need="signed-in"><button type="button" class="danger" data-go="signout">Sign out</button></li>
         <li class="sheet-mode" id="sheet-mode"></li>
       </ul>
@@ -289,6 +294,7 @@
 <script src="homescreen.js"></script>
 <script src="fir.js"></script>
 <script src="card.js"></script>
+<script src="history.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

@@ -61,6 +61,19 @@ class FirebaseBuild(unittest.TestCase):
         self.assertIn('window.FIREBASE_SITE = "app"', self.read(self.app, "index.html"))
         self.assertIn('window.FIREBASE_SITE = "admin"', self.read(self.admin, "index.html"))
 
+    def test_change_history_admin_only_and_never_written_from_a_page(self):
+        app = self.read(self.app, "history.js")
+        self.assertNotIn("restoreChange", app)
+        self.assertIn("restoreChange", self.read(self.admin, "history.js"))
+        rules = self.read(os.path.join(ROOT, "firebase"), "firestore.rules")
+        block = rules[rules.index("match /changeLog/{id}"):]
+        block = block[:block.index("    }")]
+        self.assertIn("allow read: if isAdmin();", block)
+        self.assertIn("allow write: if false;", block)
+        fn = self.read(os.path.join(ROOT, "firebase", "functions"), "changelog.js")
+        for private in ("staffCells", "contacts", "contactsPrivate", "users"):
+            self.assertNotIn('"' + private + '"', fn[fn.index("const LOGGED"):fn.index("];", fn.index("const LOGGED"))])
+
     def test_index_loads_firebase_before_store(self):
         for folder in (self.app, self.admin):
             html = self.read(folder, "index.html")
