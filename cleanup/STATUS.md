@@ -73,6 +73,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - **Balance pull 10/22: not-found.** The probe showed the report is a fir-sap2 PDF in a frame, not an fir-db1 page, so the pull was rebuilt (above).
 - **Battalion roster 10/21 (all 10):** the companies and their battalion/division match organization.js exactly (81 apparatus). Stations were added from it (`Organization.STATIONS`, `station(co)`), and there's a Station column on the Employee card list. One day is enough for now (user).
 
+- **Time balances (10/23):** `fir-pull-time-balances-test.js` reads the Time Balance pop-up from the employee page HTML (type, hours, as-of, scheduled). Test run for Lester LE2603 and Goforth GO3431 loaded into `profiles` (`balances: [{type, hours, scheduled}]`, `balancesAsOf`; admin-only) and shown in **Time balances** on the Employee card (v69). Goforth has 144 VA hours scheduled against a 54.74 balance (flagged). For more people: `node tools/make_balance_pull.js <people.json> <out.js>`.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.

@@ -86,9 +86,11 @@ service cloud.firestore {
     }
     match /profiles/{key} {
       allow read: if isAdmin() || (myPos() != null && key == myPos());
-      // A member sets their own dates; the academy class (classNo) is set by admins.
+      // A member sets their own dates; the academy class (classNo) and time balances are set by admins.
       allow write: if isAdmin() || (myPos() != null && key == myPos() &&
-        request.resource.data.get('classNo', null) == (resource == null ? null : resource.data.get('classNo', null)));
+        request.resource.data.get('classNo', null) == (resource == null ? null : resource.data.get('classNo', null)) &&
+        request.resource.data.get('balances', null) == (resource == null ? null : resource.data.get('balances', null)) &&
+        request.resource.data.get('balancesAsOf', null) == (resource == null ? null : resource.data.get('balancesAsOf', null)));
     }
     // The claude.ai page's "This is me" records, kept for reference after the import.
     match /members/{id} {

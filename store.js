@@ -78,12 +78,19 @@
     return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
   }
   // Licenses and certifications from fir-db1 ({name, expires: ISO date or null}), loaded by admins; never license numbers.
+  // Time balances from fir-db1 ({type, hours, scheduled: number or null}), loaded by admins.
   function profileOut(x) {
     return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo,
-      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null };
+      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null,
+      balances: Array.isArray(x.balances) ? x.balances : [], balancesAsOf: x.balancesAsOf || null };
   }
   // What a profile save carries over untouched (set by imports, not the forms).
-  function profileKeep(cur) { return cur && Array.isArray(cur.licenses) ? { licenses: cur.licenses, licensesAsOf: cur.licensesAsOf || null } : {}; }
+  function profileKeep(cur) {
+    var out = {};
+    if (cur && Array.isArray(cur.licenses)) { out.licenses = cur.licenses; out.licensesAsOf = cur.licensesAsOf || null; }
+    if (cur && Array.isArray(cur.balances)) { out.balances = cur.balances; out.balancesAsOf = cur.balancesAsOf || null; }
+    return out;
+  }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
