@@ -11,7 +11,8 @@
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {} };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {},
+      all: { open: false, q: "", st: "active", upcoming: true } };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -126,7 +127,7 @@
       var mine = me();
       if (!mine) {
         out.innerHTML = '<div class="trades">' + (b.mode === "server" ? '<div class="card"><h3>Shift trades</h3><p class="hint">Your account isn\'t linked to a roster position yet. Ask an admin to link it on the Admin page.</p></div>'
-          : claimHtml()) + forOthersHtml(null) + adminClaimsHtml() + "</div>";
+          : claimHtml()) + forOthersHtml(null) + allTradesHtml() + adminClaimsHtml() + "</div>";
         wireClaim();
         wireTab();
         return;
@@ -167,7 +168,7 @@
           (board.map(offerCard).join("") || '<p class="hint">No open trades you could take' + (ui.from || ui.to || ui.bt ? " with these filters" : "") + ".</p>")) +
         section("My trades", own.map(ownCard).join("") + took.map(tookCard).join("") ||
           '<p class="hint">You haven\'t posted a trade. Tap a shift on your page to trade it.</p>') +
-        forOthersHtml(key) + adminClaimsHtml() + "</div>";
+        forOthersHtml(key) + allTradesHtml() + adminClaimsHtml() + "</div>";
       wireTab();
     }
     // Demo page: say nothing is saved, and let the viewer switch who they are.
@@ -189,6 +190,37 @@
       }).sort(byDate);
       return section("Admin: trades posted for others", list.map(ownCard).join("") ||
         '<p class="hint">None. To post one for someone, open their page and tap the day.</p>');
+    }
+    /* Admins: every trade, with Cancel and Delete (testing and clean-up). Folded until opened. Phase 2: Edit, pick for the
+       poster. */
+    var ALL_ST = [["active", "Active"], ["open", "Open"], ["set", "Set"], ["cancelled", "Cancelled"], ["expired", "Expired"], ["all", "All"]];
+    function allTradesHtml() {
+      if (!tradeAdmin()) return "";
+      var f = ui.all, t0 = todayIso();
+      var all = trades().filter(function (t) {
+        var st = statusOf(t);
+        if (f.upcoming && t.date < t0) return false;
+        if (f.st === "active" ? ["open", "pending", "set"].indexOf(st) === -1 : f.st !== "all" && st !== f.st && !(f.st === "set" && st === "pending")) return false;
+        return !f.q || M.wordsMatch(f.q, nameOf(t.posterKey) + " " + (t.posterName || "") + " " + (t.takerKey ? nameOf(t.takerKey) : "") + " " + t.posterKey);
+      }).sort(byDate);
+      var active = trades().filter(function (t) { return t.date >= t0 && ["open", "pending", "set"].indexOf(statusOf(t)) !== -1; }).length;
+      return '<details class="card fold trade-sec all-trades"' + (f.open ? " open" : "") + '><summary><h3>Admin: all trades</h3><span class="fold-sum">' + active + " active</span></summary>" +
+        '<div class="trade-filters"><label>Name<input type="search" id="at-q" value="' + esc(f.q) + '" placeholder="Poster or taker"></label>' +
+        '<label>Status<select id="at-st">' + ALL_ST.map(function (o) { return '<option value="' + o[0] + '"' + (o[0] === f.st ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select></label>" +
+        '<label class="chk"><input type="checkbox" id="at-up"' + (f.upcoming ? " checked" : "") + "> Upcoming only</label></div>" +
+        (all.length ? '<ul class="tlist">' + all.map(allRow).join("") + "</ul>" : '<p class="hint">No trades match.</p>') + "</details>";
+    }
+    function allRow(t) {
+      var st = statusOf(t), reps = repliesFor(t), aud = t.audience || {};
+      var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "", title: "" };
+      var gist = st === "set" || st === "pending" ? nameOf(t.takerKey) + (st === "set" ? " works it" : " picked")
+        : st === "open" ? (reps.length ? reps.length + (reps.length === 1 ? " answer" : " answers") : [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ")) : "";
+      var live = ["open", "pending", "set"].indexOf(st) !== -1;
+      return '<li data-at="' + esc(t.id) + '"><div><b>' + esc(dateText(t.date)) + "</b> " + who(p) + ' <span class="tag tag-st-' + st + '">' +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
+        (gist ? '<div class="hint">' + esc(gist) + "</div>" : "") + "</div>" +
+        '<div class="row">' + (live ? '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button>' : "") +
+        '<button class="btn small danger" data-at-del="' + esc(t.id) + '"' + (st === "set" ? ' data-set="1"' : "") + ">Delete</button></div></li>";
     }
     function byDate(a, b) { return a.date.localeCompare(b.date) || String(a.createdAt).localeCompare(String(b.createdAt)); }
     function section(title, body) { return '<section class="card trade-sec"><h3>' + esc(title) + "</h3>" + body + "</section>"; }
@@ -555,6 +587,26 @@
       });
       var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
       if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
+      var atf = out.querySelector("details.all-trades");
+      if (atf) {
+        atf.addEventListener("toggle", function () { ui.all.open = atf.open; });
+        $("at-q").oninput = function () {
+          var pos = this.selectionStart;
+          ui.all.q = this.value; renderTrades();
+          var q = $("at-q"); if (q) { q.focus(); try { q.setSelectionRange(pos, pos); } catch (e) { /* search inputs in some browsers */ } }
+        };
+        $("at-st").onchange = function () { ui.all.st = this.value; renderTrades(); };
+        $("at-up").onchange = function () { ui.all.upcoming = this.checked; renderTrades(); };
+        atf.querySelectorAll("[data-at-del]").forEach(function (b) {
+          b.onclick = function () {
+            if (b.dataset.confirm !== "1") {
+              b.dataset.confirm = "1"; b.textContent = b.dataset.set ? "Confirm: delete (removes its cover and TR)" : "Confirm delete"; return;
+            }
+            b.disabled = true;
+            backend().deleteTrade(find(b.dataset.atDel)).then(function () { api.renderAll(true); }, function (er) { b.disabled = false; b.textContent = er.message; });
+          };
+        });
+      }
       out.querySelectorAll("details[data-own]").forEach(function (d) {
         d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });

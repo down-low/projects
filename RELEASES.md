@@ -2,6 +2,12 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
+### Admin: all trades (Trades tab)
+- **Where:** Trades tab, **Admin: all trades** (admins only, folded until opened; the count of active trades shows on it). Firebase admin site and the claude.ai page.
+- **List:** every trade by date, with the poster, a status tag and a short line (answers, sent to, who works it). Filters: name (poster or taker), status (Active by default, Open, Set, Cancelled, Expired, All), Upcoming only.
+- **Cancel** an open, picked or set trade; **Delete** any trade with its answers (a set trade's cover and TR go with it; the confirm says so).
+- Phase 2 (later): Edit the note or who it went to, and pick an answer for the poster.
+
 ### App notifications test and announcements
 **Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
 - **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.

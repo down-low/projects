@@ -18,7 +18,7 @@
  * saveContact(), adminUsers(), adminAction().
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
- * postTrade(rec), repostTrade(cancelledTrade, rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * postTrade(rec), repostTrade(cancelledTrade, rec), deleteTrade(trade) (admins), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
  * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
@@ -329,6 +329,13 @@
           // Cancelling a set trade drops its cover and TR records with it.
           cancelTrade: function (trade) {
             return tw(db.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() }));
+          },
+          // Admins (Trades tab, all trades): the trade and its answers. A set trade's cover and TR go with it (legs).
+          deleteTrade: function (trade) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var reps = records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; });
+            return tw(reps.reduce(function (p, r) { return p.then(function () { return db.collection("tradeReplies").doc(r.id).delete(); }); }, Promise.resolve())
+              .then(function () { return db.collection("trades").doc(trade.id).delete(); }));
           },
           remove: function (kind, id) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
@@ -796,6 +803,14 @@
           .then(function () { notify("trade", trade.id); });
       },
       cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Admins (Trades tab, all trades): the trade and its answers, in one batch. A set trade's cover and TR go with it (legs).
+      deleteTrade: function (trade) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch();
+        records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; }).forEach(function (r) { batch.delete(fs.collection("tradeReplies").doc(r.id)); });
+        batch.delete(fs.collection("trades").doc(trade.id));
+        return w(batch.commit());
+      },
       // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
       // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
       alertsLive: true,
