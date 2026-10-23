@@ -92,3 +92,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - January double covers.
 - Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
 - Items from the officer roster check.
+
+## Parked ideas (not now; ask before building)
+
+- **Admin → Trades list.** Phase 1: every trade, newest first, with a name search and a status filter, and Cancel and Delete per row (Delete removes its answers too); works on Firebase and the claude.ai page, and the rules already allow it. Phase 2: Edit (note, who it was sent to) and pick for the poster. For now the admin uses the Firebase console (Firestore → `trades`).
