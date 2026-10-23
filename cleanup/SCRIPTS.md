@@ -26,7 +26,7 @@ The status log is `STATUS.md` and the routine is `README.md`.
 
 ## Probes (read-only, used once to learn a page's layout)
 
-`fir-phone-probe.js`, `fir-licenses-probe.js`, `fir-licenses-paging-probe.js`, `fir-balance-probe.js`. They mask numbers, and serve as templates for probing a new report.
+`fir-phone-probe.js`, `fir-licenses-probe.js`, `fir-licenses-paging-probe.js`, `fir-balance-probe.js`, `fir-pqf-test.js` (PQF page 1021:19: hire date, seniority, appointment type; Lester and Goforth). They mask numbers, and serve as templates for probing a new report.
 
 ## Local tools
 
