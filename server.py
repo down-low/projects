@@ -38,7 +38,9 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/fir.js": "fir.js", "/style.css": "style.css"}
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/fir.js": "fir.js", "/style.css": "style.css",
+          "/feedback.js": "feedback.js", "/overtime.js": "overtime.js", "/myyear.js": "myyear.js", "/vendor/qrcode.js": "vendor/qrcode.js",
+          "/invite.js": "invite.js", "/homescreen.js": "homescreen.js"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
 TRADED = "TR"  # traded off: written only by a set shift trade, never through /api/statuses
 STATUS_CODES = CODES | {TRADED}
