@@ -2355,6 +2355,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.
+      myStaffCell: function () { return call("myStaffCell").then(function (r) { return (r && r.cell) || null; }, function () { return null; }); },
       linkCell: function (cell, buttonId) {
         var digits = String(cell || "").replace(/[^0-9]/g, "");
         if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
@@ -3164,7 +3166,17 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
-      if ($("ml-form")) wireCellLink("ml");
+      if ($("ml-form")) {
+        wireCellLink("ml");
+        // The staff-list cell for your seat, filled in so it's one tap to get the code.
+        if (b.myStaffCell) b.myStaffCell().then(function (cell) {
+          var input = $("ml-cell");
+          if (!cell || !input || input.value) return;
+          input.value = root.TourMath.showCell(cell);
+          var hint = $("ml-form").querySelector(".hint");
+          if (hint) hint.textContent = "Your cell from the staff list is filled in. Tap Text me a code, then enter the code. Wrong number? Change it first.";
+        });
+      }
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;

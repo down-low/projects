@@ -197,6 +197,16 @@ exports.rosterNames = wrap(async (req) => {
 
 // Who's on the tool: positions with an active linked account. A trade's poster gets Invite for the people they sent it
 // to who aren't (a text from their own phone).
+// My page: the signed-in person's own staff-list cell, so "Add my cell for sign-in" is filled in (A.ownStaffCell).
+exports.myStaffCell = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true || !auth.token.pos) return { cell: null };
+  const [u, c] = await Promise.all([db.doc("users/" + auth.uid).get(), db.doc("staffCells/" + auth.token.pos).get()]);
+  const cell = A.ownStaffCell(u.exists ? u.data() : null, c.exists ? c.data().cell : null);
+  if (cell) await audit(auth.uid, "ownCell", { pos: auth.token.pos });
+  return { cell };
+});
+
 exports.onToolKeys = wrap(async (req) => {
   const auth = signedIn(req);
   if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
