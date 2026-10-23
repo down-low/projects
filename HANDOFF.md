@@ -62,6 +62,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 | App notifications (push) and admin announcements (Admin → Send announcement; function `announce`, `notices/{uid}`) | `store.js`, `admin.js`, `app.js`, `firebase/functions/announce.js`, `deliver.js` |
 | Self-hosted server (SQLite, Google sign-in); kept as the fallback | `server.py`, `tests/test_server.py` |
 | Builds the claude.ai page; `--capabilities` prints the access rules | `tools/build_artifact.py` |
+| Pay estimate and overtime pay (More → Pay estimate; function `hireDateGuess`) | `pay.js`, `firebase/functions/index.js` |
 | Roster, required staffing, employee IDs (no phones), 2027 awards | `data/` |
 | Watch calendars, vacancy list, awards PDFs | `docs/` |
 

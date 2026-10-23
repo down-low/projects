@@ -144,6 +144,10 @@
     <div id="feedback-detail"></div>
   </section>
 
+  <section class="view" id="view-pay" role="region" aria-label="Pay estimate" hidden>
+    <div id="pay-detail"></div>
+  </section>
+
   <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
     <div id="card-detail"></div>
   </section>
@@ -193,6 +197,7 @@
           <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
             <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
           </div></li>
+        <li data-need="pay"><button type="button" data-go="pay">Pay estimate</button></li>
         <li data-need="invite"><button type="button" data-go="invite">Invite a coworker</button></li>
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
@@ -278,6 +283,7 @@
 <script src="feedback.js"></script>
 <script src="overtime.js"></script>
 <script src="myyear.js"></script>
+<script src="pay.js"></script>
 <script src="vendor/qrcode.js"></script>
 <script src="invite.js"></script>
 <script src="homescreen.js"></script>

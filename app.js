@@ -89,7 +89,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -115,6 +115,7 @@
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
     else if (state.view === "feedback") Feedback.render();
+    else if (state.view === "pay") Pay.render();
     else renderRank();
   }
 
@@ -1303,6 +1304,7 @@
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
+    if (v === "pay") return serverMode() && backend.isActive() && !!myPos();
     return false;
   }
   // Feedback: admins get the list (with its own Send feedback); everyone else the form.
@@ -1316,7 +1318,7 @@
   // What the sender was looking at, sent with feedback when they leave it ticked (no contact details).
   function feedbackContext() {
     var names = { dash: "Staffing", date: "Projection", person: "Schedule", crew: "My crew", rank: "Rank grid", six: "6 of 9", trades: "Trades",
-      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback" };
+      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback", pay: "Pay estimate" };
     var v = state.view, bits = [names[v] || v];
     if (v === "date") bits.push(iso(state.date));
     if (v === "dash") bits.push(iso(state.dashDate));
@@ -1348,7 +1350,7 @@
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow() };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow(), pay: tabAllowed("pay") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1530,6 +1532,12 @@
     esc: esc, backend: function () { return backend; }, myPos: function () { return myPos(); }, today: today, iso: iso, day: day,
     statusPill: statusPill, fold: foldOpen, overtime: function (pos) { return Overtime.marksFor(pos); },
     trades: function (pos, y) { return Trades.yearSummary(pos, y); },
+  });
+
+  var Pay = window.PayViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, today: today,
+    person: function () { return byPos[myPos()] || null; }, myPos: function () { return myPos(); },
+    overtime: function (pos) { return Overtime.marksFor(pos); },
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });

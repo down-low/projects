@@ -783,6 +783,8 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      // Pay estimate: your hire date, or a guess from your academy class (a date or null).
+      hireDateGuess: function () { return call("hireDateGuess").then(function (r) { return (r && r.date) || null; }, function () { return null; }); },
       // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.
       myStaffCell: function () { return call("myStaffCell").then(function (r) { return (r && r.cell) || null; }, function () { return null; }); },
       linkCell: function (cell, buttonId) {
