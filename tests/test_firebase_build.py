@@ -122,7 +122,10 @@ class FirebaseBuild(unittest.TestCase):
         for folder in (self.app, self.admin):
             html = self.read(folder, "index.html")
             self.assertLess(html.index('src="pay.js"'), html.index('src="app.js"'))
+            self.assertIn('id="view-pay"', html)
+            self.assertIn('data-go="pay"', html)
         self.assertIn('"H-2/7", "Firefighter, 7th year and up", 154960', self.read(ROOT, "pay.js"))
+
     def test_server_serves_every_script_the_page_loads(self):
         import re, server
         for src in re.findall(r'<script src="([^"]+)"', self.read(ROOT, "index.html")):

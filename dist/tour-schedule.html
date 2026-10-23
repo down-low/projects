@@ -973,14 +973,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .year-card .hint { margin: 4px 0 0; }
 
 /* ---------- Pay estimate on My page (pay.js) ---------- */
-.pay #pay-body { display: flex; flex-direction: column; gap: 10px; }
+.pay #pay-body, .pay #pay-ot { display: flex; flex-direction: column; gap: 10px; }
 .pay-prem { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; display: flex; flex-direction: column; gap: 6px; }
 .pay-prem legend { font-weight: 600; padding: 0 4px; }
 .pay-table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .pay-table th, .pay-table td { text-align: left; padding: 4px 0; border-bottom: 1px solid var(--line); font-weight: 400; }
 .pay-table td:last-child { text-align: right; }
 .pay-table .pay-total th, .pay-table .pay-total td { font-weight: 700; }
-.pay-vac select { margin-left: 6px; }
 .pay select { max-width: 100%; }
 </style>
 
@@ -1119,6 +1118,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     <div id="feedback-detail"></div>
   </section>
 
+  <section class="view" id="view-pay" role="region" aria-label="Pay estimate" hidden>
+    <div id="pay-detail"></div>
+  </section>
+
   <section class="view" id="view-card" role="region" aria-label="Employee cards (admins)" hidden>
     <div id="card-detail"></div>
   </section>
@@ -1168,6 +1171,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
             <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
           </div></li>
+        <li data-need="pay"><button type="button" data-go="pay">Pay estimate</button></li>
         <li data-need="invite"><button type="button" data-go="invite">Invite a coworker</button></li>
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
@@ -6009,13 +6013,15 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
-/* Pay estimate on My page: the 2026-27 uniformed pay sheet, years of service from the hire date, and the premiums the
- * person checks. window.PayViews(api) -> {html(me, person), wire(me, person)}. `api` comes from admin.js (My page).
+/* Pay estimate (More → Pay estimate): the 2026-27 uniformed pay sheet, years of service from the hire date, the premiums
+ * the person checks, and what an hour and a 24-hour shift of overtime pay. window.PayViews(api) -> {render, ...}; `api`
+ * comes from app.js. PayViews.estimate(code, yos, prem) is the math alone.
  * - Hire date: the one saved on My page; otherwise a guess from the server (hireDateGuess: the usual hire date of the
  *   person's academy class), shown as a guess. The person can type their own and save it as their hire date.
  * - Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step);
- *   anyone can pick another. Premiums are a % of base; longevity and vacation follow years of service.
- * - Only what the sheet and the user's notes give is filled in; tiers we don't know yet say so (PAY.unknown).
+ *   anyone can pick another. Premiums are a % of base; longevity follows years of service.
+ * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums.
+ * - Vacation and IDV stay in PAY but aren't shown for now (the user's call, Oct 2026).
  * An estimate for planning, not a pay stub.
  */
 (function (root) {
@@ -6067,18 +6073,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       ["H-3/10", "H3-L3 Firefighter/Paramedic, step 10", 170586, 67.3614, 82.0125],
       ["H-3/11", "H3-L3 Firefighter/Paramedic, step 11", 179140, 70.7392, 86.125],
     ],
-    // % of base. retire: counts toward retirement.
+    // % of base. retire: counts toward retirement. group: only one of the group at a time.
     premiums: [
       { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt" },
       { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt" },
       { key: "ao", label: "Apparatus Operator (pump, aerial, tiller, Rescue Squad, BOE, Service Squad or Airport driver)", pct: 5, retire: false },
       { key: "boat", label: "Rescue Boat Operator (stacks with Apparatus Operator)", pct: 5, retire: false },
       { key: "medic", label: "Paramedic license (H-3 Level III appointed to H-2)", pct: 5, retire: true },
+      { key: "holiday", label: "Holiday premium (on for suppression)", pct: 9.09, retire: true },
     ],
-    // Years of service -> extra %, and vacation hours a year. Only the tiers we have are listed.
-    longevity: [{ yos: 21, pct: 2 }],
+    // Training and education premium: the person picks one of these (or none). Not counted for retirement.
+    training: { pcts: [7, 8, 9], retire: false },
+    // Classifications that get the holiday premium unless the person unticks it.
+    holidayDefault: ["H-2", "H-20", "H-30", "H-40", "H-110", "H-120"],
+    // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
+    longevity: [{ yos: 21, pct: 2 }, { yos: 23, pct: 4 }, { yos: 26, pct: 6 }],
+    otTimes: 1.5, otShiftHours: 24,
+    // Not shown for now. Vacation hours a year by years of service (only the tier we have).
     vacation: [{ yos: 20, hrs: 240 }],
-    unknown: "Longevity below 21 years and vacation below 20 years aren't entered yet.",
     // Intermittent Daily Vacation: 12-hour watches that can be taken during the year, by hours accrued.
     idv: { 120: "2 or 4 watches, in 24-hour blocks", 180: "2, 4 or 5 watches (with 5, four in 24-hour blocks; the last 12 hours can pair with 12 hours of time coming)",
       240: "2, 4, 6 or 8 watches, in 24-hour blocks" },
@@ -6086,86 +6098,112 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   var RANK_DEFAULT = { "Battalion Chief": "H-40", "Rescue Captain": "H-33", Captain: "H-30", Lieutenant: "H-20", ISS: "H-10",
     Pilot: "H-120", "Marine Engineer": "H-110", Firefighter: "H-2", "FF/Paramedic": "H-2" };
 
+  function yearsOf(hire, today) {
+    if (!hire) return null;
+    var h = new Date(hire + "T00:00:00"), t = today;
+    if (isNaN(h)) return null;
+    var y = t.getFullYear() - h.getFullYear();
+    if (t.getMonth() < h.getMonth() || (t.getMonth() === h.getMonth() && t.getDate() < h.getDate())) y--;
+    return Math.max(0, y);
+  }
+  function rateFor(code, yos) {
+    if (code === "H-2") code = "H-2/" + Math.min(7, (yos || 0) + 1);
+    return PAY.rates.filter(function (r) { return r[0] === code; })[0] || null;
+  }
+  function longevityPct(yos) {
+    var hit = 0;
+    PAY.longevity.forEach(function (x) { if (yos != null && yos >= x.yos) hit = x.pct; });
+    return hit;
+  }
+  // Holiday premium is on for suppression classifications until the person unticks it.
+  function premOn(prem, key, code) {
+    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(code) !== -1;
+    return !!prem[key];
+  }
+  // The whole estimate for a classification, years of service and premiums ({key: true, train: 7|8|9}).
+  function estimate(code, yos, prem) {
+    prem = prem || {};
+    var r = rateFor(code, yos);
+    if (!r) return null;
+    var base = r[2], rows = [], total = base, retire = base;
+    function add(label, pct, counts) {
+      var amt = base * pct / 100;
+      rows.push({ label: label, pct: pct, amount: amt });
+      total += amt;
+      if (counts) retire += amt;
+    }
+    PAY.premiums.forEach(function (x) { if (premOn(prem, x.key, code)) add(x.label.replace(/ \(.*/, ""), x.pct, x.retire); });
+    if (PAY.training.pcts.indexOf(Number(prem.train)) !== -1) add("Training and education", Number(prem.train), PAY.training.retire);
+    var lp = longevityPct(yos);
+    if (lp) add("Longevity (" + yos + " years)", lp, false);
+    var hourly = r[3] * total / base, otHourly = hourly * PAY.otTimes;
+    return { rate: r, base: base, rows: rows, total: total, biweekly: total / 26, retire: retire, hourly: hourly,
+      otHourly: otHourly, otShift: otHourly * PAY.otShiftHours };
+  }
+
   root.PayViews = function (api) {
     var $ = api.$, esc = api.esc;
-    var ui = { code: null, prem: null, hire: null, guess: null, guessFrom: null, vac: null };
+    var ui = { code: null, prem: null, hire: null, guess: null, asked: false };
     function load(k) { try { return JSON.parse(localStorage.getItem("tour-schedule:pay:" + k)); } catch (e) { return null; } }
     function keep(k, v) { try { localStorage.setItem("tour-schedule:pay:" + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
-
-    function yearsOf(hire) {
-      if (!hire) return null;
-      var h = new Date(hire + "T00:00:00"), t = api.today();
-      if (isNaN(h)) return null;
-      var y = t.getFullYear() - h.getFullYear();
-      if (t.getMonth() < h.getMonth() || (t.getMonth() === h.getMonth() && t.getDate() < h.getDate())) y--;
-      return Math.max(0, y);
-    }
-    function rateFor(code, yos) {
-      if (code === "H-2") code = "H-2/" + Math.min(7, (yos || 0) + 1);
-      return PAY.rates.filter(function (r) { return r[0] === code; })[0] || null;
-    }
-    function tier(list, yos, field) {
-      var hit = null;
-      list.forEach(function (x) { if (yos != null && yos >= x.yos) hit = x[field]; });
-      return hit;
-    }
     function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
+    function cents(n) { return "$" + n.toFixed(2); }
+    function savedHire() { var me = api.backend().me(); return (me.profile && me.profile.hireDate) || null; }
 
-    function html(me, p) {
+    function render() {
+      var out = $("pay-detail");
+      if (!out) return;
+      var p = api.person();
       if (ui.code == null) {
         ui.code = load("code") || (p && RANK_DEFAULT[p.rank]) || "H-2";
         ui.prem = load("prem") || (p && p.rank === "FF/Paramedic" ? { medic: true } : {});
-        ui.vac = load("vac");
       }
-      if (me.profile && me.profile.hireDate) ui.hire = me.profile.hireDate;
-      return '<details class="card fold pay" id="pay-card"><summary><h3>Pay estimate</h3><span class="fold-sum" id="pay-sum"></span></summary>' +
-        '<div id="pay-body"></div></details>';
+      if (savedHire()) ui.hire = savedHire();
+      out.innerHTML = '<div class="card pay"><h3>Pay estimate</h3><div id="pay-body"></div></div>' +
+        '<div class="card pay"><h3>Overtime</h3><div id="pay-ot"></div></div>';
+      draw();
+      var b = api.backend();
+      if (!ui.hire && !ui.guess && !ui.asked && b.hireDateGuess) {
+        ui.asked = true;
+        b.hireDateGuess().then(function (g) { if (g && !ui.hire) { ui.guess = g; if ($("pay-body")) draw(); } });
+      }
     }
     function draw() {
-      var hire = ui.hire || ui.guess, yos = yearsOf(hire), code = ui.code, r = rateFor(code, yos);
+      var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
       var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0; })
         .map(function (x) { return [x[0], x[0].split("/")[0] + " " + x[1]]; }));
-      var base = r ? r[2] : 0, longPct = tier(PAY.longevity, yos, "pct") || 0, rows = [], total = base, retire = base;
-      PAY.premiums.forEach(function (x) {
-        if (!ui.prem[x.key]) return;
-        var amt = base * x.pct / 100;
-        rows.push([x.label.replace(/ \(.*/, "") + " " + x.pct + "%", amt]);
-        total += amt;
-        if (x.retire) retire += amt;
-      });
-      if (longPct) { var la = base * longPct / 100; rows.push(["Longevity (" + yos + " years) " + longPct + "%", la]); total += la; }
-      var pct = base ? (total / base - 1) * 100 : 0;
-      var vac = tier(PAY.vacation, yos, "hrs") || ui.vac;
-      $("pay-sum").textContent = r ? money(total) + " a year" : "";
+      var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
         '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +
         '<div class="row"><label>Hire date<input type="date" id="pay-hire" value="' + esc(hire || "") + '"></label>' +
         '<span class="hint" id="pay-hire-note">' + (ui.hire ? (yos != null ? yos + " years of service" : "") :
           ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span></div>" +
-        (hire && hire !== ((api.backend().me().profile || {}).hireDate || null) ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
+        (hire && hire !== savedHire() ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
         '<label>Classification<select id="pay-code">' + opts.map(function (o) {
           return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
         }).join("") + "</select></label>" +
         '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.map(function (x) {
-          return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (ui.prem[x.key] ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%" +
+          return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%" +
             (x.retire ? "" : ' <span class="hint">not counted for retirement</span>') + "</label>";
-        }).join("") + "</fieldset>" +
-        (r ? '<table class="pay-table"><tbody>' +
-          "<tr><th>Base (" + esc(r[0].replace("/", " step ")) + ")</th><td>" + money(base) + "</td></tr>" +
-          rows.map(function (x) { return "<tr><td>+ " + esc(x[0]) + "</td><td>" + money(x[1]) + "</td></tr>"; }).join("") +
-          '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(total) + "</td></tr>" +
-          "<tr><td>Every 2 weeks</td><td>" + money(total / 26) + "</td></tr>" +
-          "<tr><td>Hourly (97.40-hour pay period)</td><td>$" + (r[3] * (1 + pct / 100)).toFixed(2) + "</td></tr>" +
-          "<tr><td>Counts toward retirement</td><td>" + money(retire) + "</td></tr></tbody></table>" : "") +
-        '<div class="pay-vac"><b>Vacation</b> ' + (tier(PAY.vacation, yos, "hrs") ? vac + " hours a year (" + yos + " years of service)" :
-          '<select id="pay-vac"><option value="">Your yearly hours…</option>' + [120, 180, 240].map(function (h) {
-            return '<option value="' + h + '"' + (Number(ui.vac) === h ? " selected" : "") + ">" + h + " hours</option>";
-          }).join("") + "</select>") +
-        (PAY.idv[vac] ? '<p class="hint">Intermittent Daily Vacation with ' + vac + " hours: " + esc(PAY.idv[vac]) +
-          ". Requests by November 15 are awarded by seniority in rank (decided by December 15); after that, in the order received.</p>" : "") + "</div>" +
-        '<p class="hint">' + esc(PAY.unknown) + "</p>";
+        }).join("") +
+        '<label>Training and education<select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
+          return '<option value="' + n + '"' + (train === n ? " selected" : "") + ">" + n + "%</option>";
+        }).join("") + '</select> <span class="hint">not counted for retirement</span></label></fieldset>' +
+        (e ? '<table class="pay-table"><tbody>' +
+          "<tr><th>Base (" + esc(e.rate[0].replace("/", " step ")) + ")</th><td>" + money(e.base) + "</td></tr>" +
+          e.rows.map(function (x) { return "<tr><td>+ " + esc(x.label) + " " + x.pct + "%</td><td>" + money(x.amount) + "</td></tr>"; }).join("") +
+          '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(e.total) + "</td></tr>" +
+          "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
+          "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
+          "<tr><td>Counts toward retirement</td><td>" + money(e.retire) + "</td></tr></tbody></table>" : "");
+      $("pay-ot").innerHTML = e ? '<table class="pay-table"><tbody>' +
+        "<tr><td>Overtime hourly (" + PAY.otTimes + " × " + cents(e.hourly) + ")</td><td>" + cents(e.otHourly) + "</td></tr>" +
+        '<tr class="pay-total"><th>One ' + PAY.otShiftHours + "-hour overtime shift</th><td>" + money(e.otShift) + "</td></tr></tbody></table>" +
+        '<p class="hint">Time and a half of your hourly rate with the premiums above. Totals from the Worked OT days on your calendar come later.</p>'
+        : '<p class="hint">Pick a classification.</p>';
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
+      $("pay-train").onchange = function () { ui.prem.train = Number(this.value) || 0; keep("prem", ui.prem); draw(); };
       $("pay-body").querySelectorAll("[data-prem]").forEach(function (c) {
         c.onchange = function () {
           ui.prem[c.dataset.prem] = c.checked;
@@ -6175,7 +6213,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           draw();
         };
       });
-      if ($("pay-vac")) $("pay-vac").onchange = function () { ui.vac = this.value ? Number(this.value) : null; keep("vac", ui.vac); draw(); };
       if ($("pay-save")) $("pay-save").onclick = function () {
         var b = api.backend(), me = b.me(), d = hire;
         if (!d) return;
@@ -6184,16 +6221,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           function (er) { api.say($("pay-msg"), er.message, true); });
       };
     }
-    function wire(me) {
-      if (!$("pay-card")) return;
-      draw();
-      var b = api.backend();
-      if (!ui.hire && !ui.guess && b.hireDateGuess) b.hireDateGuess().then(function (g) {
-        if (g && !ui.hire) { ui.guess = g; if ($("pay-body")) draw(); }
-      });
-    }
-    return { html: html, wire: wire, PAY: PAY, rateFor: rateFor, yearsOf: yearsOf };
+    return { render: render, PAY: PAY };
   };
+  root.PayViews.PAY = PAY;
+  root.PayViews.estimate = estimate;
+  root.PayViews.yearsOf = yearsOf;
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -9131,7 +9163,7 @@ module.exports = QRCode;
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -9157,6 +9189,7 @@ module.exports = QRCode;
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
     else if (state.view === "feedback") Feedback.render();
+    else if (state.view === "pay") Pay.render();
     else renderRank();
   }
 
@@ -10345,6 +10378,7 @@ module.exports = QRCode;
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
+    if (v === "pay") return serverMode() && backend.isActive() && !!myPos();
     return false;
   }
   // Feedback: admins get the list (with its own Send feedback); everyone else the form.
@@ -10358,7 +10392,7 @@ module.exports = QRCode;
   // What the sender was looking at, sent with feedback when they leave it ticked (no contact details).
   function feedbackContext() {
     var names = { dash: "Staffing", date: "Projection", person: "Schedule", crew: "My crew", rank: "Rank grid", six: "6 of 9", trades: "Trades",
-      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback" };
+      me: "My page", admin: "Admin", awards: "2027 awards", fixes: "Corrections", card: "Employee cards", feedback: "Feedback", pay: "Pay estimate" };
     var v = state.view, bits = [names[v] || v];
     if (v === "date") bits.push(iso(state.date));
     if (v === "dash") bits.push(iso(state.dashDate));
@@ -10390,7 +10424,7 @@ module.exports = QRCode;
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow() };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow(), pay: tabAllowed("pay") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -10572,6 +10606,11 @@ module.exports = QRCode;
     esc: esc, backend: function () { return backend; }, myPos: function () { return myPos(); }, today: today, iso: iso, day: day,
     statusPill: statusPill, fold: foldOpen, overtime: function (pos) { return Overtime.marksFor(pos); },
     trades: function (pos, y) { return Trades.yearSummary(pos, y); },
+  });
+
+  var Pay = window.PayViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, today: today,
+    person: function () { return byPos[myPos()] || null; },
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });

@@ -27,6 +27,17 @@
 - **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Members mark their own seat; admins mark anyone's from that person's page (stored as `seat-<pos>`, which the member sees but can't change). Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
+### Pay estimate and overtime pay (built Oct 23, 2026 on `claude/pay-estimator`; waiting on the user's OK and more pay info; `pay.js`)
+- **Where:** More menu → **Pay estimate**, for a signed-in member linked to a seat (Firebase and server sites).
+- **Rates:** the 2026-27 uniformed pay sheet (07/01/26 – 01/01/27), every classification; yearly, hourly at 97.40 hrs and at 80 hrs. Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step); anyone can pick another.
+- **Premiums (% of base):** EMT 5% (engine/truck/rescue squad) or 8% (ambulance), one or the other; Apparatus Operator 5%; Rescue Boat Operator 5% (stacks with AO); Paramedic license 5%; **Holiday 9.09%** (on by default for suppression: H-2, H-20, H-30, H-40, H-110, H-120; can be unticked); **Training and education** None / 7 / 8 / 9%. Only Paramedic license and Holiday count toward retirement.
+- **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
+- **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), the amount counted toward retirement.
+- **Overtime (the user's rule):** 1.5 × that hourly with premiums, and what one 24-hour overtime shift pays. **Later:** totals from the Worked OT days marked on the calendar (`overtime.js`).
+- **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
+- **Hidden for now:** vacation hours and the IDV rules (kept in `PAY`).
+- An estimate for planning, not a pay stub.
+
 ### Personal invite links (admin)
 - **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.
 - **Link:** `<app>/?join=<code>`: one use, expires after 14 days, made by a function. Reuses the trade-invite code paths (`createInvite`, `redeemInvite`) but in its own `joinInvites` collection, so trade invites stay untouched.
@@ -218,7 +229,6 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
-- Pay estimate on My page (Oct 2026): the 2026-27 uniformed pay sheet (07/01/26 – 01/01/27), classification from rank (H-2 step by years of service), premiums (EMT 5/8%, Apparatus Operator 5%, Rescue Boat 5%, Paramedic license 5%), longevity 2% from 21 years, vacation 240 hrs from 20 years with the IDV rules. Hire date: the saved one, else a guess from the academy class (hireDateGuess), with Save as my hire date. **Still needed:** longevity steps below 21 years and vacation tiers below 20 years.
 - "<year> so far" card (Oct 2026): on your own page (editors and admins on anyone's), this year to date: shifts worked, shifts on leave by code, holidays worked, overtime days and hours, trades away / worked for others, and the owed-shift balance. Counted from existing records; nothing stored.
 - Add to Home Screen banner (Oct 2026): first-time visitors to the employee app on a phone see how to add it (iPhone Safari: Share → Add to Home Screen; other iPhone browsers: open in Safari first; Android: Install, or ⋮ → Add to Home screen). Got it hides it for good on that phone; it never shows once opened from the home screen.
 - Google first, then the cell (Oct 2026): the first sign-in is Google; Add my cell on My page or Verify with your cell on the claim screen; then either opens the same account.

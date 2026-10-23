@@ -207,7 +207,7 @@ exports.myStaffCell = wrap(async (req) => {
   return { cell };
 });
 
-// Pay estimate on My page: your saved hire date, or a guess from your academy class (A.classHireGuess). Only a date.
+// Pay estimate (More → Pay estimate): your saved hire date, or a guess from your academy class (A.classHireGuess). Only a date.
 exports.hireDateGuess = wrap(async (req) => {
   const auth = signedIn(req);
   if (auth.token.active !== true || !auth.token.pos) return { date: null };
