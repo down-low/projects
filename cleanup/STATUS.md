@@ -91,6 +91,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - **Balance 4/1–6/30/2026 loaded (10/23):** 91 days, none missing; combined 295 days, uploaded and handed to the analysis chat. Per day: Apr sick 22.4 / hired 36.7; May 17.7 / 37.2 (vacation 26.2); Jun 23.7 / 41.8 (vacation 28.6), the highest month so far. Jul 1–Oct 22 left.
 - **Balance 7/1–10/22/2026 loaded (10/23):** 114 days, none missing. The zip held every day twice, so `balance_xlsx.py` now skips repeated files (same date, same rows) and flags conflicting ones. Combined: 387 days, 10/1/2025–10/22/2026, no gaps; handed to the analysis chat. Per day: Jul sick 22.7 / hired 38.8; Aug 22.7 / 29.6; Sep 20.3 / 25.4 (hires dropped while leave held); Oct 24.4 / 38.1. Next: a test pull of one future date (10/23–12/31 as a scheduled-leave snapshot, kept apart from actuals), then Jan–Sep 2025.
 
+- **Future balance test (10/23):** fir-sap2 returns future dates. For Sun 11/15/2026, already booked: disability 8 and vacation 8 (last year's same Sunday actual: 8 and 7); sick 1 (sick calls come on the day); no hires yet. `tools/reconcile/forecast.py` projects hires = −0.5 + 0.66 × (sick + vacation + disability) − 0.38 × OS. OS (extra people on the roster) runs high when hires run low. Backtests: about 9–11 hires/day off for a single day, about 11% off for a week's total. 10/23–12/31 pull in progress; then `check` as the days happen.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
