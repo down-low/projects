@@ -112,11 +112,26 @@ service cloud.firestore {
 
     // Shift trades. As on the claude.ai page, every approved member can read them; the page shows each person only
     // what's theirs or on the board. A set trade carries its cover and TR records (legs).
+    /* A set trade's legs become cover and TR records on everyone's schedule (store.js tradeLegs), so a poster may only
+       write the ones TourMath.pickLegs makes: the taker covers the posted seat and the poster is TR on the trade day,
+       and for a swap the reverse on the swap day; the taker must be the one who answered (their reply). No legs is fine. */
+    function coverLeg(l, who, seat, day) {
+      return l.kind == 'covers' && l.coverKey == who && isKey(seat) && l.targetPos == seat && l.start == day && l.end == day;
+    }
+    function trLeg(l, who, day) { return l.kind == 'statuses' && l.pos == who && l.code == 'TR' && l.start == day && l.end == day; }
+    function legsOk(t) {
+      return !('legs' in t) || t.legs == null || (t.legs is list && (t.legs.size() == 0 ||
+        ((t.legs.size() == 2 || t.legs.size() == 4) && isKey(t.replyId) &&
+          get(/databases/$(database)/documents/tradeReplies/$(t.replyId)).data.takerKey == t.takerKey &&
+          coverLeg(t.legs[0], t.takerKey, t.seatPos, t.date) && trLeg(t.legs[1], t.posterKey, t.date) &&
+          (t.legs.size() == 2 || (isDate(t.proposal.swapDate) && t.proposal.swapDate != t.date &&
+            coverLeg(t.legs[2], t.posterKey, t.legs[2].targetPos, t.proposal.swapDate) && trLeg(t.legs[3], t.takerKey, t.proposal.swapDate))))));
+    }
     match /trades/{id} {
       allow read: if active();
       allow create: if isAdmin() || (myPos() != null && data().posterKey == myPos() && data().status == 'open');
       allow update: if isAdmin() || (myPos() != null && resource.data.posterKey == myPos() && data().posterKey == myPos() &&
-          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt']));
+          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt']) && legsOk(data()));
       allow delete: if isAdmin();
     }
     match /tradeReplies/{id} {
