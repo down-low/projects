@@ -419,10 +419,18 @@
           out.querySelectorAll("[data-alert]").forEach(function (x) { vals[x.dataset.alert] = x.tagName === "SELECT" ? x.value : x.checked; });
           var b = backend(), msg = $("alert-msg");
           // Turning on app alerts asks this phone or browser for notification permission first (Firebase).
-          var ready = c.dataset.alert === "app" && c.checked && b.registerPush ? b.registerPush() : Promise.resolve();
+          var turnedOn = c.dataset.alert === "app" && c.checked && b.registerPush;
+          var ready = turnedOn ? b.registerPush() : Promise.resolve();
           ready.then(function () {
-            if (c.dataset.alert === "app" && c.checked && b.registerPush && msg) api.say(msg, "Notifications are on for this device.");
             return b.setAlerts(vals);
+          }).then(function () {
+            if (c.dataset.alert !== "app") return;
+            // Redraw so "Send me a test notification" shows (or hides), and send a sample at once so they see what alerts look like.
+            ui.alertsOpen = true;
+            renderTrades();
+            if (!turnedOn) return;
+            api.say($("alert-msg"), "Notifications are on for this device. A sample is on its way.");
+            if (b.pushTest) b.pushTest().catch(function () {});
           }).catch(function (er) {
             if (c.tagName !== "SELECT") c.checked = !c.checked;
             if (msg) api.say(msg, er.message, true);
