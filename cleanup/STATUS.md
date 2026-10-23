@@ -89,6 +89,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **Balance 1/1–3/31/2026 loaded (10/23):** 90 days, none missing. Combined file now 204 days (Jan–Mar 2026, Oct–Dec 2025, Oct 1–22 2026), uploaded to the dashboard's assets and handed to the analysis chat (it owns the `daily`/`codes` datasets). Per day: Jan sick 18.3 / hired 28.4; Feb 19.8 / 31.2; Mar 21.0 / 33.7. Apr–Jun and Jul–Oct 22 to follow.
 - **Balance 4/1–6/30/2026 loaded (10/23):** 91 days, none missing; combined 295 days, uploaded and handed to the analysis chat. Per day: Apr sick 22.4 / hired 36.7; May 17.7 / 37.2 (vacation 26.2); Jun 23.7 / 41.8 (vacation 28.6), the highest month so far. Jul 1–Oct 22 left.
+- **Balance 7/1–10/22/2026 loaded (10/23):** 114 days, none missing. The zip held every day twice, so `balance_xlsx.py` now skips repeated files (same date, same rows) and flags conflicting ones. Combined: 387 days, 10/1/2025–10/22/2026, no gaps; handed to the analysis chat. Per day: Jul sick 22.7 / hired 38.8; Aug 22.7 / 29.6; Sep 20.3 / 25.4 (hires dropped while leave held); Oct 24.4 / 38.1. Next: a test pull of one future date (10/23–12/31 as a scheduled-leave snapshot, kept apart from actuals), then Jan–Sep 2025.
 
 ## Next step
 1. **H 30: done 10/22.**

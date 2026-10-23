@@ -34,7 +34,7 @@ The status log is `STATUS.md` and the routine is `README.md`.
 |---|---|---|
 | `tools/reconcile/reconcile.js` | page dump plus station-roster / time-pull CSVs | numbered proposed fixes (with `pick.js`: write batches) |
 | `tools/reconcile/xlsx2csv.py` | station roster Excel files (folder or zip) | one station-roster CSV |
-| `tools/reconcile/balance_xlsx.py` | balance report Excel files (folder or zip) | `balance_bottom.csv` |
+| `tools/reconcile/balance_xlsx.py` | balance report Excel files (folder or zip) | `balance_bottom.csv`; one report per date (repeated files skipped, conflicts listed) |
 | `tools/reconcile/balance_summary.py` | `balance_bottom.csv` | one row per day: sick, vacation, disability (OFF/PM/FF), hired, the same weekday last year |
 | `tools/reconcile/trades.py` | battalion or time-pull CSVs | per person: TRW, TRO, net and partners; top-10 lists |
 | `tools/reconcile/load_phones.py` | current staff-list doc plus phone pull CSVs | the new staff-list doc (CELL, else HOME marked `home`; never replaces a number); counts only |

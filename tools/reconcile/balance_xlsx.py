@@ -72,15 +72,24 @@ def files(src):
         for n in sorted(os.listdir(src)):
             if n.lower().endswith('.xlsx'): yield n, open(os.path.join(src, n), 'rb').read()
 if __name__ == '__main__':
-    allrows, failed = [], []
+    # One report per date: a file repeated in the download (same date, same rows) is skipped, so counts aren't doubled;
+    # two different reports for one date keep the later file and are listed as conflicts.
+    bydate, failed, dupes, conflicts = {}, [], 0, []
     for name, data in files(sys.argv[1]):
         try:
             date, rows = balance(rows_of(data))
         except Exception as e:
             failed.append('%s (%s)' % (name, e)); continue
         print(name, date or '(no date)', len(rows), 'rows')
-        if rows: allrows += rows
-        else: failed.append('%s %s (no tables)' % (name, date))
+        if not rows: failed.append('%s %s (no tables)' % (name, date)); continue
+        if date in bydate:
+            same = sorted(map(repr, map(sorted, (r.items() for r in bydate[date])))) == sorted(map(repr, map(sorted, (r.items() for r in rows))))
+            if same: dupes += 1; continue
+            conflicts.append(date)
+        bydate[date] = rows
+    if dupes: print(dupes, 'duplicate files skipped (same date, same rows)')
+    if conflicts: print('conflict: different reports for', ', '.join(sorted(set(conflicts))), '(kept the later file)')
+    allrows = [r for d in sorted(bydate) for r in bydate[d]]
     allrows.sort(key=lambda r: (r['date'], r['table'] != 'status'))
     w = csv.DictWriter(open(sys.argv[2], 'w', newline=''), fieldnames=COLS, extrasaction='ignore'); w.writeheader(); w.writerows(allrows)
     print(len(allrows), 'rows; failed:', ', '.join(failed) or 'none')
