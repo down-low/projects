@@ -83,6 +83,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **E16/E35 licenses loaded (10/23, user OK):** 32 profiles (8 merged, keeping class; 24 new), 187 licenses; 19 expired (11 CDL-Health Questionnaire), 8 due within 90 days. **Every person tops out at 6 licenses, here and in the Stations 1/7/36 load**, so fir-db1 likely shows the list 6 rows a page and both loads are partial. The probe confirmed it (Babcock: "row(s) 1 - 6 of 14", an APEX classic report paged with `apex.widget.report.paginate`). The user says the first page holds the important ones, so no re-pull for now. Qualification rules (25 A-084 Attachment B) are outlined in `docs/position-qualifications.md` for a later phase.
 
+- **Battalion pull for trades (10/23):** `fir-pull-battalions-0922-1022.js`, 10 battalions × 31 days (310 pages), with the same timeout, resume and status box as the phone pull. Then `python3 -I tools/reconcile/trades.py <out.csv> <battalions.csv>` for the rankings.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.

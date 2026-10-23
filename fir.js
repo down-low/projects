@@ -458,19 +458,56 @@
       }
       return rows;
     };
-    const out = [], jobs = [];
+    const jobs = [];
     dates.forEach((d) => PLAN.battalions.forEach((b) => jobs.push([d, b])));
     const wait = () => new Promise((r) => setTimeout(r, 400));
+    // As the phone and license pulls: 30 seconds a page and one retry (then flagged "timeout"), progress saved every
+    // 10 pages so a sign-out or closed tab resumes where it stopped, and a status box on the page.
+    const get = async (url) => {
+      const ac = new AbortController(), t = setTimeout(() => ac.abort(), PLAN.timeoutMs || 30000);
+      try { return await (await fetch(url, { credentials: "same-origin", signal: ac.signal })).text(); }
+      catch (e) { throw e.name === "AbortError" ? new Error("timeout") : e; } finally { clearTimeout(t); }
+    };
+    const RK = "tour-schedule:battalions-" + from + "-" + to + "-" + PLAN.battalions.join("");
+    let saved = { k: 0, rows: [] };
+    try { saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const out = saved.rows.slice();
+    let k = saved.k, lastAt = Date.now(), note = "";
+    const save = () => { try { localStorage.setItem(RK, JSON.stringify({ k, rows: out })); } catch (e) { console.warn("Could not save progress: " + e.message); } };
+    if (k) console.log("battalion pull: resuming, " + k + " of " + jobs.length + " pages already done.");
+    const box = document.createElement("div");
+    box.style.cssText = "position:fixed;right:12px;bottom:12px;z-index:99999;padding:8px 12px;border-radius:6px;font:13px sans-serif;color:#fff;background:#2b6cb0;box-shadow:0 2px 8px rgba(0,0,0,.3)";
+    document.body.appendChild(box);
+    const show = (end) => {
+      const idle = Date.now() - lastAt > 60000;
+      box.style.background = end ? "#2f855a" : idle ? "#c53030" : "#2b6cb0";
+      box.textContent = "Battalion pull: " + k + "/" + jobs.length + " · " + (end || ((note ? note + " · " : "") + (idle ? "nothing new for " + Math.round((Date.now() - lastAt) / 1000) + " s" : "last update " + new Date(lastAt).toLocaleTimeString())));
+    };
+    const tick = setInterval(() => show(), 5000);
+    show();
     return (async () => {
-      for (let k = 0; k < jobs.length; k++) {
+      for (; k < jobs.length; ) {
         const [d, b] = jobs[k];
-        const html = await (await fetch(base + encodeURIComponent(d) + "," + b, { credentials: "same-origin" })).text();
-        const rows = read(html, d, b);
-        if (rows[0].flag === "signed-out") { alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in and run again (the file has what came in so far)."); out.push(...rows); break; }
+        let rows = null;
+        for (let tries = 0; tries < 2 && !rows; tries++) {
+          try { rows = read(await get(base + encodeURIComponent(d) + "," + b), d, b); } catch (e) {
+            if (tries === 1) rows = [{ mode: "co", pulledFor: d, date: d, query: b, flag: e.message === "timeout" ? "timeout" : "error", battalion: b }];
+            else console.warn("battalion pull: " + d + " " + b + " " + e.message + ", trying again");
+          }
+        }
+        if (rows[0].flag === "signed-out") {
+          save(); clearInterval(tick); show("stopped: signed out");
+          return alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in again, then paste and run this script again: it carries on where it stopped.");
+        }
         rows.forEach((r) => out.push(r));
-        console.log("battalion pull " + (k + 1) + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people)");
+        k++; lastAt = Date.now(); note = d + " " + b;
+        if (k % 10 === 0) save();
+        console.log("battalion pull " + k + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people" + (rows[0].flag === "timeout" || rows[0].flag === "error" ? ", " + rows[0].flag : "") + ")");
+        show();
         await wait();
       }
+      clearInterval(tick);
+      try { localStorage.removeItem(RK); } catch (e) { }
       const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
       const csv = [COLS.join(",")].concat(out.map((r) => COLS.map((c) => q(r[c])).join(","))).join("\n");
       const a = document.createElement("a");
@@ -478,11 +515,12 @@
       a.download = PLAN.fileName || ("fir-battalions-" + from.replace(/\//g, "-") + (to !== from ? "_to_" + to.replace(/\//g, "-") : "") + ".csv");
       document.body.appendChild(a); a.click(); a.remove();
       console.log("battalion pull done: " + out.filter((r) => !r.flag).length + " rows.");
+      show("done: " + out.filter((r) => !r.flag).length + " rows, file downloaded");
     })();
   }
   function battalionScript(plan) {
     return "/* Tour schedule: fir-db1 battalion roster pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
-      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "",
+      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "", timeoutMs: plan.timeoutMs || 30000,
         battalions: plan.battalions || ["BT01", "BT02", "BT03", "BT04", "BT05", "BT06", "BT07", "BT08", "BT09", "BT10"] }) + ");\n";
   }
 

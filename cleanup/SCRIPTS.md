@@ -11,7 +11,7 @@ The status log is `STATUS.md` and the routine is `README.md`.
 
 | Script | Run on | Reads | Gives |
 |---|---|---|---|
-| `fir-pull-battalions.js` | any fir-db1 page | Roster by Station (1021:11), all 10 battalions, every day in the range asked | everyone working each day: company, role, TRC, trade partner (`with`). One day is enough for crews; a 31-day range for trades. |
+| `fir-pull-battalions.js` (asks for dates), `fir-pull-battalions-0922-1022.js` (9/22–10/22/2026 preset) | any fir-db1 page | Roster by Station (1021:11), all 10 battalions, every day in the range asked | everyone working each day: company, role, TRC, trade partner (`with`). One day is enough for crews; a 31-day range for trades. Status box, 30 s timeouts, resumes after a sign-out. |
 | `fir-pull-balance.js` | Daily Balance Report on fir-sap2 | the report as Excel, per day, for the ranges asked | `balance_bottom.csv`: status counts (OFF/PM/FF) and overtime hired by rank. Falls back to one download per day. |
 | `fir-sap2-station-rosters.js` | any station roster report on fir-sap2 | all stations, ST01–ST51 | station, ID, name, reason (OWN/VR/OSE), rank, company |
 
