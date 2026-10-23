@@ -420,9 +420,10 @@ exports.pushTest = wrap(async (req) => {
   const snap = await db.doc("users/" + auth.uid).get();
   const tokens = (snap.exists && snap.data().pushTokens) || [];
   if (!tokens.length) return { devices: 0, sent: 0 };
+  const errors = [];
   const sent = await D.sendPush({ uid: auth.uid, pushTokens: tokens },
-    { subject: "Sample trade alert", text: "This is how alerts look: who's asking, the date and the terms. Tap one to open the trade." }, D.appUrl() + "/");
-  return { devices: tokens.length, sent };
+    { subject: "Sample trade alert", text: "This is how alerts look: who's asking, the date and the terms. Tap one to open the trade." }, D.appUrl() + "/", errors);
+  return { devices: tokens.length, sent, errors };
 });
 
 /* Admin announcements (Admin → Send announcement; checks and audience in announce.js): stored in announcements/{id},
