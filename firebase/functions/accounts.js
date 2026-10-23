@@ -100,6 +100,13 @@ function ownStaffCell(u, cell) {
   return normCell(cell) || null;
 }
 
+// Contact info: only the cell (and the share flag) lives in contacts/<uid>, which everyone reads when shared; the
+// contact email and other phone are private (contactsPrivate/<uid>, owner and admins). Returns {priv} to move, or null.
+function splitContact(c) {
+  if (!c || (!c.contactEmail && !c.phoneOther)) return null;
+  return { priv: { pos: c.pos || null, contactEmail: c.contactEmail || null, phoneOther: c.phoneOther || null } };
+}
+
 function claimsFor(user) {
   return { active: user.status === "active", role: ROLES.indexOf(user.role) !== -1 ? user.role : "member", pos: user.pos || null };
 }
@@ -335,5 +342,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, ownStaffCell, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, ownStaffCell, splitContact, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

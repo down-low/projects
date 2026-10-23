@@ -134,6 +134,14 @@ test("contact info: own, shared, or admin", async () => {
   await assertSucceeds(db(MEMBER).doc("contacts/mem1").set({ pos: "10EOC03M", phoneMobile: "415-555-0104", share: true }));
   await assertFails(db(MEMBER).doc("contacts/mem1").set({ pos: "11ENL01M", share: true })); // someone else's seat
   await assertFails(db(MEMBER).doc("contacts/mem2").set({ pos: "10EOC03M", share: true }));
+  // sharing shows only the cell: the email and other phone live in contactsPrivate (owner and admins)
+  await assertFails(db(MEMBER).doc("contacts/mem1").set({ pos: "10EOC03M", phoneMobile: "415-555-0104", contactEmail: "a@b.org", share: true }));
+  await assertSucceeds(db(MEMBER).doc("contactsPrivate/mem1").set({ pos: "10EOC03M", contactEmail: "a@b.org", phoneOther: null }));
+  await assertSucceeds(db(MEMBER).doc("contactsPrivate/mem1").get());
+  await assertFails(db(OTHER).doc("contactsPrivate/mem1").get());
+  await assertFails(db(OTHER).collection("contactsPrivate").get());
+  await assertFails(db(MEMBER).doc("contactsPrivate/mem1").set({ pos: "11ENL01M", contactEmail: "a@b.org" }));
+  await assertSucceeds(db(ADMIN).collection("contactsPrivate").get());
 });
 
 test("accounts: read your own, change only alerts and tabs", async () => {
