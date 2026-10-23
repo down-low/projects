@@ -46,7 +46,8 @@
     function repliesFor(t) {
       var by = {};
       (recs().tradeReplies || []).forEach(function (r) {
-        if (r.tradeId === t.id && (!by[r.takerKey] || r.createdAt > by[r.takerKey].createdAt)) by[r.takerKey] = r;
+        if (r.tradeId !== t.id || (t.reopenedAt && String(r.createdAt) < t.reopenedAt)) return; // answers from before a re-post don't count
+        if (!by[r.takerKey] || r.createdAt > by[r.takerKey].createdAt) by[r.takerKey] = r;
       });
       return Object.keys(by).map(function (k) { return by[k]; }).sort(function (a, b) { return a.createdAt.localeCompare(b.createdAt); });
     }
@@ -151,7 +152,10 @@
         if (ui.bt && where(byPos()[t.posterKey] || {}) !== ui.bt) return false;
         return canTake(mine, t);
       }).sort(byDate);
-      var own = all.filter(function (t) { return t.posterKey === key && (t.status !== "cancelled" || t.date >= t0); }).sort(byDate);
+      // A cancelled trade is left out once the same day has a live one (older data can hold both).
+      var own = all.filter(function (t) {
+        return t.posterKey === key && (t.status !== "cancelled" || (t.date >= t0 && !tradeFor(key, t.date)));
+      }).sort(byDate);
       var took = all.filter(function (t) { return t.status === "set" && t.takerKey === key && t.date >= t0; }).sort(byDate);
       var lines = owedLines(key);
 
@@ -805,18 +809,25 @@
       var w = wiz, msg = $("wz-msg");
       var to = w.send ? Object.keys(w.sel).filter(function (k) { return w.sel[k]; }) : [];
       if (!to.length && !w.board) return api.say(msg, "Pick people to send it to, or post it to the board.", true);
+      var btn = $("wz-post");
+      if (btn.disabled) return; // one save at a time: a double tap posts once
+      btn.disabled = true;
       api.say(msg, "Saving…");
-      var aud = { board: !!w.board, to: to };
+      var aud = { board: !!w.board, to: to }, b = backend();
+      var rec = Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
+        note: w.note, audience: aud });
+      // One trade per person per day: posting again after a cancel re-opens that trade with the new choices.
+      var gone = trades().filter(function (x) { return x.posterKey === w.poster.pos && x.date === w.date && x.status === "cancelled"; })
+        .sort(function (a, c) { return String(c.cancelledAt || c.createdAt).localeCompare(String(a.cancelledAt || a.createdAt)); })[0];
       var p = w.widen
-        ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
-        : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
-          note: w.note, audience: aud }));
+        ? b.widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
+        : gone && b.repostTrade ? b.repostTrade(gone, rec) : b.postTrade(rec);
       // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
       p.then(function (r) {
         var id = w.widen ? w.widen.id : r && r.id;
         if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
         closeWizard(); api.showTrades();
-      }, function (er) { api.say(msg, er.message, true); });
+      }, function (er) { btn.disabled = false; api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");
