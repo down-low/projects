@@ -19,19 +19,21 @@
 - **No server work:** signing up already works from the plain app address. The QR is drawn in the page from `vendor/qrcode.js` (Kazuhiko Arase's MIT QR encoder, bundled in the repo); `invite.js` holds the sheet.
 - On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
 
-### Overtime days on my calendar
+### Overtime days on my calendar (built Oct 23, 2026; `overtime.js`)
 - **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
 - **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
 - **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
-- **Private:** only the member and admins see them. One record per member, like corrections: page rules `overtime: read/write admin` and `overtime/{self}: read/write interact`; Firestore `match /overtime/{uid}` (owner or editor).
+- **Who sees what (the user's call, 10/23):** everyone signed in sees a person's Want OT / Worked OT marks on their calendar; the note only that member and admins. Marks in `overtime/<doc>` (page rule read `view`), notes in `overtimeNotes/<doc>` (owner and admins).
+- **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Members mark their own seat; admins mark anyone's from that person's page (stored as `seat-<pos>`, which the member sees but can't change). Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
-### Invite one person from the back office
-- **Where:** the Employee card (back office, admins) gets **Invite to the app**; the same action sits on each person in Admin → Invite people's list.
-- **Message:** opens Messages on the admin's phone, addressed to the person's staff-list cell, starting "Hi <first name>," with the app link.
-- **Reuses, doesn't change:** the launch-invite helpers in `admin.js` (`launchMsg`, `launchSms`) and the sent marks in `launchInvites/{pos}` (`store.js` `launchMark` / `launchSent`), so the card shows "Invited Oct 22" and the bulk list skips them.
-- **Trade invites stay exactly as they are:** `trades.js` (Invite, Copy text), the `tradeInvites` collection and the `createInvite` / `inviteInfo` / `answerFromInvite` / `redeemInvite` functions are not touched; the build checks trade invites still work.
-- **No cell on file:** the button reads "No cell on file" and points to adding one on the card.
+### Personal invite links (admin)
+- **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.
+- **Link:** `<app>/?join=<code>`: one use, expires after 14 days, made by a function. Reuses the trade-invite code paths (`createInvite`, `redeemInvite`) but in its own `joinInvites` collection, so trade invites stay untouched.
+- **First Google sign-in through the link:** a confirm card, "You're joining as David Lester · Captain E10: Yes, that's me / Not me". Yes links the account to that seat at once (no claim screen) and marks the invite Joined; for members the staff-list cell is then attached automatically (`planStaffCell`), so cell sign-in works right away. Not me goes to the normal claim screen and flags the invite for the admin.
+- **Tracking:** Invite people shows Sent → Opened → Joined per person, with Resend and Revoke.
+- **Safety:** one use, expiry and the confirm step; admin Undo (unlink) on the Users row; a link never gives more than member access.
+- **Later, separately:** the claim screen one step at a time (cell → code → done; name search behind a link). Users find it confusing; left as is for now.
 
 ### Divisions with their own real data (Airport, EMS, HQ)
 - **Real data, one Firebase project per division:** clone the Suppression project's setup into a new project (Airport, then EMS, then HQ). Same repo and code; GitHub deploys to each project as its own target.
@@ -216,6 +218,8 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
+- "<year> so far" card (Oct 2026): on your own page (editors and admins on anyone's), this year to date: shifts worked, shifts on leave by code, holidays worked, overtime days and hours, trades away / worked for others, and the owed-shift balance. Counted from existing records; nothing stored.
+- Add to Home Screen banner (Oct 2026): first-time visitors to the employee app on a phone see how to add it (iPhone Safari: Share → Add to Home Screen; other iPhone browsers: open in Safari first; Android: Install, or ⋮ → Add to Home screen). Got it hides it for good on that phone; it never shows once opened from the home screen.
 - Google first, then the cell (Oct 2026): the first sign-in is Google; Add my cell on My page or Verify with your cell on the claim screen; then either opens the same account.
 - Feedback button (Oct 2026): members send problems, ideas and questions about the app; admins answer, close and copy them from the Feedback view.
 - **Academy class** on the Employee card (identity section) and under **Personal details** on a person's page (admins). Kept in the private profile with the birth and hire dates; filled from the PX narrative rating report of 09/02/2026 (classes 129th–137th).

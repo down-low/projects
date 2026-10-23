@@ -229,3 +229,14 @@ test("staff cell: an active member with a seat gets that seat's staff-list cell 
   assert.equal(A.planStaffCell(Object.assign({}, u, { phone: "+14155550199" }), cells), null);
   assert.equal(A.planStaffCell(Object.assign({}, u, { pos: "11ENL01M" }), cells), null);
 });
+
+test("ownStaffCell: an approved account's own staff-list cell, admins and editors included, until it has one", () => {
+  const u = { status: "active", role: "member", pos: "10EOC03M", phone: null };
+  assert.equal(A.ownStaffCell(u, "(415) 555-0100"), "+14155550100");
+  assert.equal(A.ownStaffCell(Object.assign({}, u, { role: "admin" }), "415-555-0100"), "+14155550100");
+  assert.equal(A.ownStaffCell(Object.assign({}, u, { status: "pending" }), "415-555-0100"), null);
+  assert.equal(A.ownStaffCell(Object.assign({}, u, { pos: null }), "415-555-0100"), null);
+  assert.equal(A.ownStaffCell(Object.assign({}, u, { phone: "+14155550199" }), "415-555-0100"), null);
+  assert.equal(A.ownStaffCell(u, null), null);
+  assert.equal(A.ownStaffCell(u, "call the station"), null);
+});

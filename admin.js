@@ -158,8 +158,8 @@
     }
     function wireCellLink(pre) {
       var b = api.backend(), msg = $(pre + "-msg");
-      $(pre + "-form").onsubmit = function (e) {
-        e.preventDefault();
+      var send = function (e) {
+        if (e) e.preventDefault();
         api.say(msg, "Sending…");
         b.linkCell($(pre + "-cell").value, pre + "-send").then(function (n) {
           api.say(msg, "Code sent to " + n.slice(2, 5) + "-" + n.slice(5, 8) + "-" + n.slice(8) + ".");
@@ -167,6 +167,7 @@
           $(pre + "-code").focus();
         }, function (er) { api.say(msg, er.message, true); });
       };
+      if ($(pre + "-form")) $(pre + "-form").onsubmit = send; else $(pre + "-send").onclick = send;
       $(pre + "-confirm").onclick = function () {
         api.say(msg, "Checking…");
         b.confirmLink($(pre + "-code").value).catch(function (er) { api.say(msg, er.message, true); });
@@ -384,18 +385,21 @@
           "Ask an admin to link it if you work a tour.</p></div>";
       }
 
-      if (b.linkCell && !me.phone) {
-        html += '<div class="card">' + cellLinkHtml("ml", "Add my cell for sign-in", "Then you can sign in with your cell or with Google, and both open this same account.") + "</div>";
-      }
-      html += '<form class="card edit contact" id="me-contact" novalidate><h3>Contact info</h3>' +
+      // One card for your phone and contact info. The cell is also your sign-in cell: on the staff list it's filled in,
+      // and turning on cell sign-in texts a code to it, with nothing else to type.
+      var cellNow = me.phoneMobile || (me.phone ? root.TourMath.showCell(me.phone) : "");
+      html += '<form class="card edit contact" id="me-contact" novalidate><h3>Phone and contact</h3>' +
+        '<label>Cell<input type="tel" id="ml-cell" maxlength="40" autocomplete="tel" value="' + esc(cellNow) + '" placeholder="(415) 555-0100"></label>' +
+        '<p class="hint" id="ml-note">' + (me.phone ? "You can sign in with " + esc(root.TourMath.showCell(me.phone)) + " or with Google." : "") + "</p>" +
+        (b.linkCell && !me.phone ? '<div class="row"><button class="btn" type="button" id="ml-send">Turn on cell sign-in</button></div>' +
+          '<div class="row" id="ml-code-row" hidden><label>6-digit code<input type="text" id="ml-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+          '<button class="btn primary" type="button" id="ml-confirm">Verify</button></div><span class="msg" id="ml-msg" role="status"></span>' : "") +
         '<label>Contact email<input type="email" id="mc-email" maxlength="254" value="' + esc(me.contactEmail || "") + '" placeholder="' + esc(me.googleEmail) + '"></label>' +
-        '<p class="hint">Where people should reach you. Your Google sign-in stays ' + esc(me.googleEmail) + ".</p>" +
-        '<div class="row"><label>Mobile phone<input type="tel" id="mc-mobile" maxlength="40" value="' + esc(me.phoneMobile || "") + '" placeholder="(415) 555-0100"></label>' +
-        '<label>Other phone<input type="tel" id="mc-other" maxlength="40" value="' + esc(me.phoneOther || "") + '" placeholder="Optional"></label></div>' +
+        '<label>Other phone<input type="tel" id="mc-other" maxlength="40" value="' + esc(me.phoneOther || "") + '" placeholder="Optional"></label>' +
         '<label class="chk share"><input type="checkbox" id="mc-share"' + (me.shareContact ? " checked" : "") + '> Share my contact info for shift swaps</label>' +
         '<p class="hint">When this is on, anyone signed in to the schedule sees your contact email and phone numbers on your schedule page. ' +
-        "When it's off, only admins can see them.</p>" +
-        '<div class="row"><button class="btn primary" type="submit">Save contact info</button><span class="msg" id="mc-msg" role="status"></span></div></form>';
+        "When it's off, only admins can see them. Your Google sign-in stays " + esc(me.googleEmail) + ".</p>" +
+        '<div class="row"><button class="btn primary" type="submit">Save</button><span class="msg" id="mc-msg" role="status"></span></div></form>';
       if (me.pos) {
         var pf = me.profile || {};
         html += '<form class="card edit dates" id="me-dates" novalidate><h3>Birth and hire dates</h3>' +
@@ -408,7 +412,16 @@
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
-      if ($("ml-form")) wireCellLink("ml");
+      if ($("ml-send")) {
+        wireCellLink("ml");
+        // The staff-list cell for your seat, filled in when the box is empty.
+        if (b.myStaffCell) b.myStaffCell().then(function (cell) {
+          var input = $("ml-cell");
+          if (!cell || !input || input.value) return;
+          input.value = root.TourMath.showCell(cell);
+          $("ml-note").textContent = "From the staff list. Tap Turn on cell sign-in and enter the code we text you.";
+        });
+      }
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;
@@ -422,7 +435,7 @@
         var email = $("mc-email").value.trim();
         if (email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return api.say($("mc-msg"), "That email address doesn't look right.", true);
         api.say($("mc-msg"), "Saving…");
-        b.saveContact({ contactEmail: email, phoneMobile: $("mc-mobile").value.trim(), phoneOther: $("mc-other").value.trim(), shareContact: $("mc-share").checked })
+        b.saveContact({ contactEmail: email, phoneMobile: $("ml-cell").value.trim(), phoneOther: $("mc-other").value.trim(), shareContact: $("mc-share").checked })
           .then(function () { api.renderAll(true); api.say($("mc-msg"), "Saved."); }, function (er) { api.say($("mc-msg"), er.message, true); });
       };
     }
