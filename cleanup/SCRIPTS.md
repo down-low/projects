@@ -21,6 +21,7 @@ The status log is `STATUS.md` and the routine is `README.md`.
 |---|---|---|
 | `fir-pull-H30.js`, `-H20.js`, `-H3.js`, `-H40.js`, `-H40-dec-jan.js`, `-H3-dec-jan.js`, `-seats.js`, `-owners.js`, `-noid.js` | employee time pages (or company pages) for the people in question, over the dates asked | Employee cards → **Check with fir-db1** → Copy pull script (`FirCompare.script` in `fir.js`) |
 | `fir-pull-phones-00…09-*.js` | Phone numbers pop-up per Employee ID, one rank per file (CELL, else HOME) | `node tools/make_phone_pull.js <missing.json>` (from `tools/reconcile/missing_cells.js --json`) |
+| `fir-pull-time-balances-test.js` | Time Balance pop-up per Employee ID (type, hours, as-of, scheduled hours); test with Lester and Goforth | copy the file and edit the `people` list at the bottom |
 | `fir-pull-licenses-st01-07-36.js` | Licenses and Certs pop-up (name and expiration, never the number) | `licenseScript` in `fir.js` with a new people list |
 
 ## Probes (read-only, used once to learn a page's layout)
