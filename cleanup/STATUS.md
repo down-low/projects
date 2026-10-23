@@ -81,7 +81,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **Firefighter phones loaded (10/23, user OK):** 399 pulled; 396 cells and 2 home numbers (marked `home`) added, none replaced. Staff list v6: 1,220 numbers. Still missing (9): Dumont,Catherine (no phone in fir-db1); Lopez,R, Alba,K, Louie,T, Joyce,S, Dickerson,C (WE seats, no Employee ID); Alexander,M, Peery,M (Pilot), Mulholand,B (Marine Engineer), not pulled. The back office needs a fresh backup (Admin → Cut-over) to show them.
 
-- **E16/E35 licenses loaded (10/23, user OK):** 32 profiles (8 merged, keeping class; 24 new), 187 licenses; 19 expired (11 CDL-Health Questionnaire), 8 due within 90 days. **Every person tops out at 6 licenses, here and in the Stations 1/7/36 load**, so fir-db1 likely shows the list 6 rows a page and both loads are partial. `fir-licenses-paging-probe.js` (read-only) shows how it pages; then the pull reads every page and one re-pull covers Stations 1, 7, 36, E16 and E35.
+- **E16/E35 licenses loaded (10/23, user OK):** 32 profiles (8 merged, keeping class; 24 new), 187 licenses; 19 expired (11 CDL-Health Questionnaire), 8 due within 90 days. **Every person tops out at 6 licenses, here and in the Stations 1/7/36 load**, so fir-db1 likely shows the list 6 rows a page and both loads are partial. The probe confirmed it (Babcock: "row(s) 1 - 6 of 14", an APEX classic report paged with `apex.widget.report.paginate`). The user says the first page holds the important ones, so no re-pull for now. Qualification rules (25 A-084 Attachment B) are outlined in `docs/position-qualifications.md` for a later phase.
 
 ## Next step
 1. **H 30: done 10/22.**
