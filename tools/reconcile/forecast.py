@@ -9,8 +9,7 @@ project: for each date in the booked file:
   weekday that month, since vacation keeps getting booked closer to the day;
 - sick from the same weekday over the 8 weeks before --asof, scaled by the month's share in last year's data when
   that month is in the history (Nov and Dec 2025 are);
-- OS (extra people on the roster; high OS goes with low hires) as its average over the last 2 weeks;
-- hires from a straight-line fit on the whole history: hires = a + b * (sick + vacation + disability) + c * OS, refit on
+- hires from a straight-line fit on the whole history: hires = a + b * (sick + vacation + disability), refit on
   every run, with a typical miss (the fit's average daily error) as a +/- band.
 Holidays run low on sick and high on mandatory hires, which the fit doesn't know: a holiday that is in last year's
 history gets last year's gap (its hires minus a typical same weekday that month) added, shown as holiday_adj.
@@ -39,7 +38,7 @@ def holiday(day):
 
 
 def days(path):
-    """Per date: sick, vacation, disability, OS and hires (overtime Total) from a balance_bottom.csv."""
+    """Per date: sick, vacation, disability and hires (overtime Total) from a balance_bottom.csv; OS and OP are ignored."""
     out = defaultdict(Counter)
     n = lambda v: int(v) if (v or '').strip().lstrip('-').isdigit() else 0
     for r in csv.DictReader(open(path, newline='')):
@@ -51,7 +50,6 @@ def days(path):
             if c in SICK: d['sick'] += tot
             elif c in VAC: d['vacation'] += tot
             elif c in DIS: d['disability'] += tot
-            elif c == 'OS': d['os'] += tot
         elif r['table'] == 'overtime' and r['rank'] == 'Total':
             d['hired'] = n(r['total'])
     return out
@@ -71,10 +69,11 @@ def solve(A, b):
 
 
 def fit(hist):
-    X = [[1, h['sick'] + h['vacation'] + h['disability'], h['os']] for h in hist.values()]
+    # OS and OP on the balance sheet count neither people off nor hires (user), so they are not in the fit.
+    X = [[1, h['sick'] + h['vacation'] + h['disability']] for h in hist.values()]
     y = [h['hired'] for h in hist.values()]
-    A = [[sum(x[i] * x[j] for x in X) for j in range(3)] for i in range(3)]
-    coef = solve(A, [sum(x[i] * v for x, v in zip(X, y)) for i in range(3)])
+    A = [[sum(x[i] * x[j] for x in X) for j in range(2)] for i in range(2)]
+    coef = solve(A, [sum(x[i] * v for x, v in zip(X, y)) for i in range(2)])
     miss = st.mean(abs(sum(c * xi for c, xi in zip(coef, x)) - v) for x, v in zip(X, y))
     return coef, miss
 
@@ -96,8 +95,6 @@ def project(hist_path, booked_path, out_path, asof):
     for d, v in D.items():
         name, typ = holiday(d), wd_hires.get((d.year, d.month, d.weekday()))
         if name and typ: hol_gap[(d.year, name)] = v['hired'] - st.mean(typ)
-    # OS moves in blocks (it ran 20-28/day in Aug-Sep 2026, then dropped to ~10), so only the last two weeks count.
-    os_recent = st.mean(D[d]['os'] for d in D if asof - datetime.timedelta(14) < d <= asof)
     rows = []
     for k in sorted(booked):
         day = datetime.date.fromisoformat(k)
@@ -111,18 +108,18 @@ def project(hist_path, booked_path, out_path, asof):
         # actual last Nov-Dec), so use the larger of booked and last year's same weekday that month.
         ly_vac = wd_vac.get((day.year - 1, day.month, day.weekday()))
         vac = max(b['vacation'], st.mean(ly_vac)) if ly_vac else b['vacation']
-        hires = coef[0] + coef[1] * (sick + vac + b['disability']) + coef[2] * os_recent
+        hires = coef[0] + coef[1] * (sick + vac + b['disability'])
         hname = holiday(day)
         adj = hol_gap.get((day.year - 1, hname), 0) if hname else 0
         hires += adj
         rows.append({'date': k, 'weekday': day.strftime('%a'), 'holiday': hname, 'booked_vacation': b['vacation'],
                      'est_vacation': round(vac, 1), 'booked_disability': b['disability'], 'booked_sick': b['sick'], 'est_sick': round(sick, 1),
-                     'est_os': round(os_recent, 1), 'holiday_adj': round(adj, 1), 'est_hires': round(hires, 1), 'low': round(max(0, hires - miss), 1),
+                     'holiday_adj': round(adj, 1), 'est_hires': round(hires, 1), 'low': round(max(0, hires - miss), 1),
                      'high': round(hires + miss, 1), 'asof': asof.isoformat()})
     w = csv.DictWriter(open(out_path, 'w', newline=''), fieldnames=list(rows[0]))
     w.writeheader(); w.writerows(rows)
-    print(f"{len(rows)} days projected as of {asof}; hires = {coef[0]:.1f} + {coef[1]:.2f} x (sick+vacation+disability) "
-          f"{coef[2]:+.2f} x OS, typical miss {miss:.1f}/day; recent OS {os_recent:.1f}/day")
+    print(f"{len(rows)} days projected as of {asof}; hires = {coef[0]:.1f} + {coef[1]:.2f} x (sick+vacation+disability), "
+          f"typical miss {miss:.1f}/day")
     weeks = defaultdict(list)
     for r in rows:
         d = datetime.date.fromisoformat(r['date']); weeks[d - datetime.timedelta(d.weekday())].append(r['est_hires'])

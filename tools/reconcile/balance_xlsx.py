@@ -25,7 +25,8 @@ def rows_of(data):
     return out
 COLS = ['date', 'table', 'group', 'code', 'OFF', 'PM', 'FF', 'rank', 'voluntary', 'mandatory', 'advance', 'total']
 # Groups (user, 10/22/2026); WDO is an extra shift on a day off (overtime worked), kept apart from people off.
-GROUP = {'SL': 'sick', 'SP': 'sick', 'SPI': 'sick', 'VA': 'vacation', 'IDV': 'vacation', 'TC': 'vacation', 'DP': 'disability', 'WC': 'disability', 'WDO': 'overtime'}
+GROUP = {'SL': 'sick', 'SP': 'sick', 'SPI': 'sick', 'VA': 'vacation', 'IDV': 'vacation', 'TC': 'vacation', 'DP': 'disability', 'WC': 'disability', 'WDO': 'overtime',
+         'OS': 'ignore', 'OP': 'ignore'}  # OS and OP count neither people off nor hires (user); WDO only roughly matches hires because of them
 NAME = {'Voluntary': 'voluntary', 'Mandatory': 'mandatory', 'Advance Hire': 'advance', 'Advance': 'advance', 'Total': 'total'}
 def iso(d):
     m = re.fullmatch(r'(\d{1,2})/(\d{1,2})/(\d{4})', d or '')

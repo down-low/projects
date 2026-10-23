@@ -97,6 +97,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **PQF page (10/23):** fir-db1 1021:19 (item P19_EMPLID). The left column has appointment type, official rank, appointment date, job code, job entry date, SFFD hire date and seniority, and was checked by hand against Boldt BO3091. The right side (appointment history, course list) isn't needed (user). `fir-pull-pqf-test3.js` re-checks three people, including Seniority (the test missed it: its label has no colon); `fir-pull-pqf-all.js` covers 1,223 people. Loading into `profiles` waits for the user's OK.
 
+- **OS and OP ignored (10/23, user):** they count neither people off nor hires. WDO should equal the hires table's Total but is sometimes off because of them, so the hires Total is the overtime measure. `balance_xlsx.py` and `fir-pull-balance.js` tag them `ignore`; `balance_summary.py` skips them (other off is now about 3–4/day); `forecast.py` dropped its OS term (hires = −5.3 + 0.65 × (sick + vacation + disability); weekly backtest miss 14–21%). New files handed to the analysis chat. Supersedes the "OS = overtime straight" note.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.

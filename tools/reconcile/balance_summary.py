@@ -1,17 +1,19 @@
 """One row per date from balance_bottom.csv, for estimating sick leave from the same weekday last year:
 python3 -I tools/reconcile/balance_summary.py <balance_bottom.csv> <out.csv>
 
-Columns: date, weekday; sick, vacation and disability (each OFF, PM, FF and total); other off; WDO (overtime worked);
+Columns: date, weekday; sick, vacation and disability (each OFF, PM, FF and total); other off (OS and OP are left out: they count neither people off nor hires); WDO (overtime worked, about the hires Total);
 hired (overtime Total). Then the same columns for the same weekday a year earlier (364 days before), when that day is
 in the file, and sick_change (this year's sick total minus last year's). OFF = officers, PM = paramedics, FF = firefighters."""
 import sys, csv, datetime
 from collections import defaultdict
 GROUPS = ['sick', 'vacation', 'disability']
+IGNORE = {'OS', 'OP'}
 n = lambda v: int(v) if (v or '').strip().lstrip('-').isdigit() else 0
 days = defaultdict(lambda: defaultdict(int))
 for r in csv.DictReader(open(sys.argv[1])):
     d = days[r['date']]
     if r['table'] == 'status':
+        if r['code'] in IGNORE: continue  # OS and OP: neither people off nor hires (user)
         g = r['group']
         for c in ('OFF', 'PM', 'FF'):
             if g in GROUPS: d[g + '_' + c] += n(r[c])

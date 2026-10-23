@@ -73,7 +73,7 @@
   const NAME = { Voluntary: 'voluntary', Mandatory: 'mandatory', 'Advance Hire': 'advance', Advance: 'advance', Total: 'total' };
   // Groups (user, 10/22/2026): sick SL/SP/SPI; vacation VA/IDV/TC; disability DP/WC. WDO is an extra shift on a day off
   // (people working overtime, close to the overtime Total), so it is kept apart from the people-off groups.
-  const GROUP = { SL: 'sick', SP: 'sick', SPI: 'sick', VA: 'vacation', IDV: 'vacation', TC: 'vacation', DP: 'disability', WC: 'disability', WDO: 'overtime' };
+  const GROUP = { SL: 'sick', SP: 'sick', SPI: 'sick', VA: 'vacation', IDV: 'vacation', TC: 'vacation', DP: 'disability', WC: 'disability', WDO: 'overtime', OS: 'ignore', OP: 'ignore' };
   const isoOf = (d) => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
   function balance(rows, date) {
     const out = [], hi = rows.findIndex(([, c]) => Object.values(c).includes('Status') && Object.values(c).includes('OFF'));
