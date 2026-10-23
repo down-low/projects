@@ -108,7 +108,7 @@ class FirebaseBuild(unittest.TestCase):
         self.assertNotIn("firebase-messaging-sw.js", os.listdir(self.app))
         with tempfile.TemporaryDirectory() as tmp:
             subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_firebase.py"), tmp, "--app-url", "https://demo.web.app",
-                            "--vapid-key", "BKEY"], check=True, capture_output=True)
+                            "--vapid-key", "BKEY", "--app-id", "1:23:web:abc"], check=True, capture_output=True)
             app = os.path.join(tmp, "public-app")
             self.assertIn("firebase-messaging-sw.js", os.listdir(app))
             # The worker loads no SDK (a worker that throws while loading can't register) and shows each push itself.
@@ -121,6 +121,9 @@ class FirebaseBuild(unittest.TestCase):
             self.assertIn('window.FIREBASE_VAPID_KEY = "BKEY"', self.read(app, "index.html"))
             self.assertIn("firebase-messaging-compat.js", self.read(app, "index.html"))
             self.assertNotIn("BKEY", self.read(os.path.join(tmp, "public-admin"), "index.html"))
+            # The web app's ID, for messaging when Hosting's init.js has none: app site only
+            self.assertIn('window.FIREBASE_APP_ID = "1:23:web:abc"', self.read(app, "index.html"))
+            self.assertNotIn("1:23:web:abc", self.read(os.path.join(tmp, "public-admin"), "index.html"))
             # iPhone: notifications only from the Home Screen app, which needs its icon and full-screen launch
             self.assertIn("apple-touch-icon.png", os.listdir(app))
             self.assertIn('rel="apple-touch-icon"', self.read(app, "index.html"))
