@@ -8,10 +8,18 @@ import unittest
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-def estimate(code, yos, prem):
-    js = ("require(%s); const e = globalThis.PayViews.estimate(%s, %s, %s);"
-          "console.log(JSON.stringify(e));") % (json.dumps(os.path.join(ROOT, "pay.js")), json.dumps(code), json.dumps(yos), json.dumps(prem))
+def run(expr):
+    js = "require(%s); const P = globalThis.PayViews; console.log(JSON.stringify(%s));" % (json.dumps(os.path.join(ROOT, "pay.js")), expr)
     return json.loads(subprocess.run(["node", "-e", js], check=True, capture_output=True, text=True).stdout)
+
+
+def estimate(code, yos, prem):
+    return run("P.estimate(%s, %s, %s)" % (json.dumps(code), json.dumps(yos), json.dumps(prem)))
+
+
+def period(y, m, d):
+    p = run("P.payPeriodOf(new Date(%d, %d, %d))" % (y, m - 1, d))
+    return p["start"], p["end"]
 
 
 @unittest.skipUnless(shutil.which("node"), "node not installed")
@@ -43,6 +51,21 @@ class PayEstimate(unittest.TestCase):
         self.assertAlmostEqual(e["hourly"], 61.191 * 1.05)
         self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
         self.assertAlmostEqual(e["otShift"], 61.191 * 1.05 * 1.5 * 24)
+
+
+    def test_pay_periods_are_14_days_from_9_12_26(self):
+        self.assertEqual(period(2026, 9, 12), ("2026-09-12", "2026-09-25"))
+        self.assertEqual(period(2026, 9, 25), ("2026-09-12", "2026-09-25"))
+        self.assertEqual(period(2026, 10, 23), ("2026-10-10", "2026-10-23"))
+        self.assertEqual(period(2026, 10, 24), ("2026-10-24", "2026-11-06"))
+        self.assertEqual(period(2026, 9, 11), ("2026-08-29", "2026-09-11"))
+        self.assertEqual(period(2027, 3, 20), ("2027-03-13", "2027-03-26"))  # across a time change
+
+    def test_ot_worked_counts_worked_marks_in_range(self):
+        marks = {"2026-10-09": {"kind": "worked", "hours": 24}, "2026-10-12": {"kind": "worked", "hours": 12},
+                 "2026-10-15": {"kind": "worked"}, "2026-10-18": {"kind": "want"}, "2026-10-22": {"kind": "worked", "hours": 10}}
+        self.assertEqual(run("P.otWorked(%s, '2026-10-10', '2026-10-20')" % json.dumps(marks)), {"days": 2, "hours": 36})
+        self.assertEqual(run("P.otWorked({}, '2026-10-10', '2026-10-23')"), {"days": 0, "hours": 0})
 
 
 if __name__ == "__main__":

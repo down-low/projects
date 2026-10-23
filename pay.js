@@ -5,7 +5,8 @@
  *   person's academy class), shown as a guess. The person can type their own and save it as their hire date.
  * - Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step);
  *   anyone can pick another. Premiums are a % of base; longevity follows years of service.
- * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums.
+ * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums; the pay period's
+ *   total counts your own Worked OT marks (overtime.js) from the period's start through today.
  * - Vacation and IDV stay in PAY but aren't shown for now (the user's call, Oct 2026).
  * An estimate for planning, not a pay stub.
  */
@@ -74,6 +75,8 @@
     // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
     longevity: [{ yos: 21, pct: 2 }, { yos: 23, pct: 4 }, { yos: 26, pct: 6 }],
     otTimes: 1.5, otShiftHours: 24,
+    // Pay periods: 14 days, Saturday to Friday, from 9/12/26 – 9/25/26 (both ways).
+    payPeriod: { anchor: "2026-09-12", days: 14 },
     // Not shown for now. Vacation hours a year by years of service (only the tier we have).
     vacation: [{ yos: 20, hrs: 240 }],
     // Intermittent Daily Vacation: 12-hour watches that can be taken during the year, by hours accrued.
@@ -90,6 +93,25 @@
     var y = t.getFullYear() - h.getFullYear();
     if (t.getMonth() < h.getMonth() || (t.getMonth() === h.getMonth() && t.getDate() < h.getDate())) y--;
     return Math.max(0, y);
+  }
+  // The pay period a day falls in, as {start, end} ISO dates.
+  function payPeriodOf(d) {
+    var a = PAY.payPeriod.anchor.split("-").map(Number), day = 864e5, n = PAY.payPeriod.days;
+    var off = Math.round((Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) - Date.UTC(a[0], a[1] - 1, a[2])) / day);
+    var start = Date.UTC(a[0], a[1] - 1, a[2]) + Math.floor(off / n) * n * day;
+    function iso(t) { return new Date(t).toISOString().slice(0, 10); }
+    return { start: iso(start), end: iso(start + (n - 1) * day) };
+  }
+  // Worked OT marks ({iso: {kind, hours}}, as overtime.js marksFor) from `start` through `last`: days and hours (24 when blank).
+  function otWorked(marks, start, last) {
+    var days = 0, hours = 0;
+    Object.keys(marks || {}).forEach(function (k) {
+      var m = marks[k];
+      if (!m || m.kind !== "worked" || k < start || k > last) return;
+      days++;
+      hours += Number(m.hours) || PAY.otShiftHours;
+    });
+    return { days: days, hours: hours };
   }
   function rateFor(code, yos) {
     if (code === "H-2") code = "H-2/" + Math.min(7, (yos || 0) + 1);
@@ -131,6 +153,15 @@
     var ui = { code: null, prem: null, hire: null, guess: null, asked: false };
     function load(k) { try { return JSON.parse(localStorage.getItem("tour-schedule:pay:" + k)); } catch (e) { return null; } }
     function keep(k, v) { try { localStorage.setItem("tour-schedule:pay:" + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+    function md(iso) { var x = iso.split("-"); return Number(x[1]) + "/" + Number(x[2]); }
+    function otRow(e) {
+      if (!api.overtime || !api.myPos()) return "";
+      var t = api.today(), pp = payPeriodOf(t), last = t.getFullYear() + "-" + ("0" + (t.getMonth() + 1)).slice(-2) + "-" + ("0" + t.getDate()).slice(-2);
+      var w = otWorked(api.overtime(api.myPos()), pp.start, last < pp.end ? last : pp.end);
+      return "<tr><td>Overtime this pay period (" + md(pp.start) + " – " + md(pp.end) + "): " +
+        (w.days ? w.days + (w.days === 1 ? " day, " : " days, ") + w.hours + " hrs" : "None marked") + "</td><td>" +
+        (w.days ? money(w.hours * e.otHourly) : "") + "</td></tr>";
+    }
     function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
     function cents(n) { return "$" + n.toFixed(2); }
     function savedHire() { var me = api.backend().me(); return (me.profile && me.profile.hireDate) || null; }
@@ -180,7 +211,7 @@
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
           "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
-          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr></tbody></table>" : "");
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
@@ -207,4 +238,6 @@
   root.PayViews.PAY = PAY;
   root.PayViews.estimate = estimate;
   root.PayViews.yearsOf = yearsOf;
+  root.PayViews.payPeriodOf = payPeriodOf;
+  root.PayViews.otWorked = otWorked;
 })(typeof window !== "undefined" ? window : globalThis);

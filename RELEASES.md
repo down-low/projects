@@ -34,12 +34,12 @@
 - **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
 - **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), overtime hourly and one 24-hour overtime shift.
 - **Overtime (the user's rule):** 1.5 × that hourly with premiums, and what one 24-hour overtime shift pays.
-- **Next (specced Oct 23, 2026, not built): overtime this pay period.** One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
+- **Overtime this pay period** (built Oct 23, 2026). One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
   - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
   - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
   - **Pay:** hours × the overtime hourly above. None marked: "None marked", no amount.
   - **Where:** only in the Pay estimate card (private to the member); not on the year card.
-  - **Build:** pure `payPeriodOf(date)` and `otWorked(marks, start, today)` in `pay.js`, tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
+  - **As built:** pure `payPeriodOf(date)` and `otWorked(marks, start, last)` in `pay.js` (`PAY.payPeriod`), tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
 - **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
 - **Hidden for now:** vacation hours and the IDV rules (kept in `PAY`).
 - An estimate for planning, not a pay stub.
