@@ -73,6 +73,17 @@
       });
       return out;
     }
+    // One person's trades for a year (dates up to today) and their owed-shift balance, for the "so far" card.
+    function yearSummary(key, y) {
+      var pre = y + "-", t0 = todayIso(), out = { away: 0, forOthers: 0, owe: 0, owed: 0 };
+      trades().forEach(function (t) {
+        if (t.status !== "set" || t.date.indexOf(pre) !== 0 || t.date > t0) return;
+        if (t.posterKey === key) out.away++;
+        if (t.takerKey === key) out.forOthers++;
+      });
+      owed().forEach(function (o) { if (o.owes === key) out.owe++; if (o.to === key) out.owed++; });
+      return out;
+    }
     function owedLines(key) {
       return owed().filter(function (o) { return o.owes === key || o.to === key; }).map(function (o) {
         return o.owes === key
@@ -819,6 +830,7 @@
     }
     wireSheet();
 
-    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible };
+    return { renderTrades: renderTrades, tradeLink: tradeLink, canTradeFor: canTradeFor, forSomeone: forSomeone, tradeFor: tradeFor, personExtras: personExtras, openWizard: openWizard, visible: visible,
+      yearSummary: yearSummary };
   };
 })(window);
