@@ -30,10 +30,16 @@
 ### Pay estimate and overtime pay (built Oct 23, 2026 on `claude/pay-estimator`; waiting on the user's OK and more pay info; `pay.js`)
 - **Where:** More menu → **Pay estimate**, for a signed-in member linked to a seat (Firebase and server sites).
 - **Rates:** the 2026-27 uniformed pay sheet (07/01/26 – 01/01/27), every classification; yearly, hourly at 97.40 hrs and at 80 hrs. Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step); anyone can pick another.
-- **Premiums (% of base):** EMT 5% (engine/truck/rescue squad) or 8% (ambulance), one or the other; Apparatus Operator 5%; Rescue Boat Operator 5% (stacks with AO); Paramedic license 5%; **Holiday 9.09%** (on by default for suppression: H-2, H-20, H-30, H-40, H-110, H-120; can be unticked); **Training and education** None / 7 / 8 / 9%. Only Paramedic license and Holiday count toward retirement.
+- **Premiums (% of base):** EMT 5% (engine/truck/rescue squad) or 8% (ambulance), one or the other; Apparatus Operator 5%; Rescue Boat Operator 5% (stacks with AO); Paramedic license 5%; **Holiday 9.09%** (on by default for suppression: H-2, H-20, H-30, H-40, H-110, H-120; can be unticked); **Training and education** None / 7 / 8 / 9%. (Which premiums count toward retirement is kept in `PAY` but not shown, the user's call.)
 - **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
-- **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), the amount counted toward retirement.
-- **Overtime (the user's rule):** 1.5 × that hourly with premiums, and what one 24-hour overtime shift pays. **Later:** totals from the Worked OT days marked on the calendar (`overtime.js`).
+- **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), overtime hourly and one 24-hour overtime shift.
+- **Overtime (the user's rule):** 1.5 × that hourly with premiums, and what one 24-hour overtime shift pays.
+- **Next (specced Oct 23, 2026, not built): overtime this pay period.** One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
+  - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
+  - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
+  - **Pay:** hours × the overtime hourly above. None marked: "None marked", no amount.
+  - **Where:** only in the Pay estimate card (private to the member); not on the year card.
+  - **Build:** pure `payPeriodOf(date)` and `otWorked(marks, start, today)` in `pay.js`, tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
 - **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
 - **Hidden for now:** vacation hours and the IDV rules (kept in `PAY`).
 - An estimate for planning, not a pay stub.

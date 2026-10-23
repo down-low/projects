@@ -6073,7 +6073,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       ["H-3/10", "H3-L3 Firefighter/Paramedic, step 10", 170586, 67.3614, 82.0125],
       ["H-3/11", "H3-L3 Firefighter/Paramedic, step 11", 179140, 70.7392, 86.125],
     ],
-    // % of base. retire: counts toward retirement. group: only one of the group at a time.
+    // % of base. retire: counts toward retirement (kept in the data; not shown for now). group: only one of the group at a time.
     premiums: [
       { key: "emt5", label: "EMT on an Engine, Truck or Rescue Squad", pct: 5, retire: false, group: "emt" },
       { key: "emt8", label: "EMT assigned to an ambulance", pct: 8, retire: false, group: "emt" },
@@ -6183,19 +6183,17 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
         }).join("") + "</select></label>" +
         '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.map(function (x) {
-          return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%" +
-            (x.retire ? "" : ' <span class="hint">not counted for retirement</span>') + "</label>";
+          return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
         }).join("") +
         '<label class="chk">Training and education <select id="pay-train"><option value="0">None</option>' + PAY.training.pcts.map(function (n) {
           return '<option value="' + n + '"' + (train === n ? " selected" : "") + ">" + n + "%</option>";
-        }).join("") + '</select> <span class="hint">not counted for retirement</span></label></fieldset>' +
+        }).join("") + '</select></label></fieldset>' +
         (e ? '<table class="pay-table"><tbody>' +
           "<tr><th>Base (" + esc(e.rate[0].replace("/", " step ")) + ")</th><td>" + money(e.base) + "</td></tr>" +
           e.rows.map(function (x) { return "<tr><td>+ " + esc(x.label) + " " + x.pct + "%</td><td>" + money(x.amount) + "</td></tr>"; }).join("") +
           '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(e.total) + "</td></tr>" +
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
-          "<tr><td>Counts toward retirement</td><td>" + money(e.retire) + "</td></tr>" +
           "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
           "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr></tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
