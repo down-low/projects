@@ -9235,7 +9235,7 @@ module.exports = QRCode;
       var cover = s && !s.acting && s.swing && s.co !== p.company;
       var mark = ot[iso(d)];
       if (mark) { if (mark.kind === "worked") otWorked++; else otWant++; }
-      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : awayDay ? "Away" : mark && mark.kind === "worked" ? "OT" : "W" + M.watchFor(d);
+      var label = s && s.status ? s.status : s && (s.acting || s.swing) ? s.co : mark && mark.kind === "worked" ? "OT" : awayDay ? "Away" : "W" + M.watchFor(d);
       var cls = (s ? (s.status ? " off st-" + s.status : s.acting ? " work acting" : " work") : awayDay ? " away" : "") + Overtime.calClass(ot, iso(d));
       var tip = (s ? (s.status ? STATUS_LABEL[s.status] : (s.acting ? "acting at " : "working at ") + (s.co || home(p))) : awayDay ? "away, covering another position" : "off") +
         (mark ? " · " + Overtime.label(mark) : "");
@@ -9380,8 +9380,9 @@ module.exports = QRCode;
       leave = '<div class="day-leave"><span class="k">You marked this day ' + esc(mark.code) + '</span><div class="seg">' +
         '<button type="button" class="btn small" data-day-undo="' + esc(mark.id) + '">Undo</button></div><span class="msg" id="day-msg" role="status"></span></div>';
     }
-    // Overtime on your own page: a day you aren't scheduled (not away covering), or one already marked.
-    var otHtml = Overtime.dayHtml(p, dIso, !s && !(ownSeatOn(p, d) && M.actingOn(p.pos, d, recs.covers) && shift(ownSeatOn(p, d), d)));
+    // Overtime: a day they aren't scheduled (Away days included: their own tour day while covering elsewhere), or one
+    // already marked.
+    var otHtml = Overtime.dayHtml(p, dIso, !s);
     if (!acts.length && !leave && !otHtml) return; // nothing to do on this day
     var hol = M.holidayFor(d);
     $("day-title").textContent = shortDate(d);
