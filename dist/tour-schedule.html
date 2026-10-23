@@ -8690,7 +8690,7 @@ module.exports = QRCode;
     ul.hidden = false;
     $("person-input").setAttribute("aria-expanded", "true");
   }
-  // Today at a glance for a search result: "On · E09", a leave code, or "Off" with the next shift.
+  // Today at a glance for a search result: "On · E09", a leave code, or "Off today" with when they next work.
   function briefHtml(p) {
     var t = today(), s = day(p, t);
     if (s && !s.status) return '<span class="brief on">On · ' + esc(s.co || home(p)) + "</span>";
@@ -8698,7 +8698,7 @@ module.exports = QRCode;
     for (var k = 1; k <= 40; k++) {
       var d = addDays(t, k), s2 = day(p, d);
       if (s2 && !s2.status) {
-        return '<span class="brief">Off<small>' + (k === 1 ? "tomorrow" : k < 7 ? "next " + DOW[d.getDay()] : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
+        return '<span class="brief">Off today<small>Works ' + (k === 1 ? "tomorrow" : k < 7 ? DOW[d.getDay()].slice(0, 3) : MONTHS[d.getMonth()].slice(0, 3) + " " + d.getDate()) + "</small></span>";
       }
     }
     return '<span class="brief">Off</span>';
