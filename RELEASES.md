@@ -25,7 +25,7 @@
 - **No server work:** signing up already works from the plain app address. The QR is drawn in the page from `vendor/qrcode.js` (Kazuhiko Arase's MIT QR encoder, bundled in the repo); `invite.js` holds the sheet.
 - On the claude.ai page the link is the Firebase app address once set; until then the item is hidden.
 
-### Overtime days on my calendar (built Oct 23, 2026; `overtime.js`)
+### Overtime days on my calendar (shipped Oct 23, 2026; `overtime.js`)
 - **Where:** on your own Schedule calendar, tap a day you aren't scheduled to work.
 - **Marks:** **Want OT** (future days) and **Worked OT** (hired; past or upcoming days) with hours (default 24) and an optional note. Tap again to change or remove.
 - **Calendar:** its own day style (outline for Want OT, fill for Worked OT), a legend entry, and the month's totals under the calendar ("OT: 2 days, 48 hrs this month · 3 wanted").
@@ -223,6 +223,7 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Admin default:** an admin sets the starting tab set for new members (e.g. a "simple" preset of Schedule and Trades).
 
 ## Later
+- **Sign-in on the sites' own address** (built Oct 23, 2026, off): Google sign-in stays on `sffd-schedule.web.app` / `sffd-schedule-admin.web.app` instead of `sffd-schedule.firebaseapp.com`, which some phone browsers block. Turned on by the GitHub variable `FIREBASE_OWN_AUTH_DOMAIN=1` after the user adds both `/__/auth/handler` redirect URIs (`FIREBASE_SETUP.md`, step 13).
 - **Paste import for assignment-change notices:** paste the notice table, review each row (matched person, seat, dates), then apply; writes the move log and the cover or move together.
 - **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
@@ -242,6 +243,10 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
+- **Phone and contact** card on My page (Oct 23, 2026): one card (Cell, Contact email, Other phone, share) instead of Contact info plus Add my cell. The Cell box fills from the contact cell, else the sign-in cell, else the staff-list cell (`myStaffCell`); **Turn on cell sign-in** texts the code to it. **Share my cell with coworkers for shift swaps** shares only the cell; the email and other phone stay private (`contactsPrivate`). Sharing isn't trade text alerts (Trades → Alerts).
+- Security: a set trade's legs must match the trade (Oct 23, 2026; rules and tests).
+- Overtime marks on **Away** days (own tour day while covering elsewhere) (Oct 23, 2026).
+- Person search reads "Off today · Works tomorrow" (Oct 23, 2026).
 - "<year> so far" card (Oct 2026): on your own page (editors and admins on anyone's), this year to date: shifts worked, shifts on leave by code, holidays worked, overtime days and hours, trades away / worked for others, and the owed-shift balance. Counted from existing records; nothing stored.
 - Add to Home Screen banner (Oct 2026): first-time visitors to the employee app on a phone see how to add it (iPhone Safari: Share → Add to Home Screen; other iPhone browsers: open in Safari first; Android: Install, or ⋮ → Add to Home screen). Got it hides it for good on that phone; it never shows once opened from the home screen.
 - Google first, then the cell (Oct 2026): the first sign-in is Google; Add my cell on My page or Verify with your cell on the claim screen; then either opens the same account.

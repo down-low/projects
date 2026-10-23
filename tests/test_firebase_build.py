@@ -140,6 +140,15 @@ class FirebaseBuild(unittest.TestCase):
                 self.assertIn("match /staffCells/{key}", rules)
             self.assertIn("match /" + col + "/", rules, col)
 
+    def test_own_auth_domain_only_when_asked_and_before_init(self):
+        self.assertNotIn("authDomain", self.read(self.app, "index.html"))
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_firebase.py"), tmp, "--own-auth-domain"], check=True, capture_output=True)
+            for folder in ("public-app", "public-admin"):
+                html = self.read(os.path.join(tmp, folder), "index.html")
+                self.assertIn("authDomain: location.hostname", html)
+                self.assertLess(html.index("authDomain: location.hostname"), html.index("/__/firebase/init.js"))
+
     def test_push_worker_only_with_a_key(self):
         self.assertNotIn("firebase-messaging-sw.js", os.listdir(self.app))
         with tempfile.TemporaryDirectory() as tmp:

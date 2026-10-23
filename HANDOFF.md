@@ -4,7 +4,7 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
 
 ## Priorities, in order
 
-1. **Firebase launch.** Built (both sites). Next: Launch is **without Twilio texts** (app notifications, email, texts from the poster's own phone); the text opt-in page is planned in `RELEASES.md`, Shift-trade alerts.
+1. **Firebase launch.** Live: the employee app at https://sffd-schedule.web.app and the back office at https://sffd-schedule-admin.web.app (project `sffd-schedule`); every merge to `main` deploys. Next: Launch is **without Twilio texts** (app notifications, email, texts from the poster's own phone); the text opt-in page is planned in `RELEASES.md`, Shift-trade alerts.
    - the user's setup, in their own Google account (`FIREBASE_SETUP.md`);
    - an optional test beta on test data (`BETA.md`);
    - cut-over (`CUTOVER.md`).
@@ -12,6 +12,20 @@ The SFFD tour schedule tool: who works which seat on which day, covers / acting 
    Scope: `FIREBASE_PLAN.md`. Branch `claude/firebase-beta`.
 2. **UI simplification.** The pages are too much for a typical employee. Direction picked (A for members; the admin site is the back office). First step shipped on branch `claude/ui-mockups`: member tabs Schedule, Crew (your apparatus), Projection, Trades, More. Status and next steps: `docs/ui-simplification.md`.
 3. **Data cleanup.** Done in **one chat only** (the records chat, branch `claude/zen-wright-gqa6gq`). Its progress and next step live in `cleanup/STATUS.md`, its routine in `cleanup/README.md`; feature chats don't edit records.
+
+## Who works on what (Oct 23, 2026)
+
+Each chat has its own branch; check with the user before touching another chat's area.
+
+| Chat | Branch | Owns |
+|---|---|---|
+| Tour schedule calendar tool (this hand-off's main chat) | `claude/gracious-franklin-z5zsyz` | Member features, sign-in, contact info, security rules fixes, docs |
+| Records (cleanup) | `claude/zen-wright-gqa6gq` | All record edits and data cleanup (`cleanup/STATUS.md`) |
+| Pay and overtime pay estimators | `claude/pay-estimator` | `pay.js` (More → Pay estimate), `hireDateGuess` |
+| Admin back office | `claude/friendly-knuth-p8hhep` | Admin-site tools: filling open spots, OT lists, imports, audit view, **change history** (queued) |
+| App notifications and announcements | `claude/notifications-diagnose` | Push, announcements, accrual-tracking consent |
+| Shift trades | `claude/admin-trades-list` | `trades.js`, Admin: all trades |
+| Staffing data analysis | `claude/admiring-edison-qyy8s1` | Staffing and overtime patterns |
 
 ## Shape of the hosted tool
 
@@ -79,6 +93,9 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - **Cell numbers are admin-only.** They live only in the page database's `contacts/staff-list` (and `staffCells` on Firebase, rule `read, write: if isAdmin()`). Never put them in this repo, the view-only link, a member-readable collection, logs, or chat output. One exception (the user's call, Oct 2026): on Firebase, `createInvite` hands a trade's poster the cell of each person they sent the trade to who isn't on the tool yet, so Messages opens addressed to them; each one handed out is logged in `audit` (`inviteCell`). They move to Firebase only through the backup file the admin downloads and imports themselves; don't read `contacts` with ArtifactData.
 - **Your own cell, shown back to you** (the user's call, Oct 23, 2026): the `myStaffCell` function returns the signed-in person's own staff-list cell (approved, on a seat, no sign-in cell yet) so My page → Add my cell for sign-in is filled in; the texted code still proves they hold that phone. Each one is audited (`ownCell`). Never anyone else's.
 - **The staff-list cell is also an identity on Firebase** (the user's call, Oct 2026): signing in with a cell and its texted code links the account to the one seat with that staff-list cell, with no other check. Keep `staffCells` admin-only and accurate; a wrong cell there would let the wrong person in. Each link is audited (`cellLink`).
+- **Shared contact info is the cell only** (the user's call, Oct 23, 2026): `contacts/<uid>` (everyone reads it when `share` is on) holds only `pos`, `phoneMobile` and `share`; the contact email and other phone live in `contactsPrivate/<uid>` (owner and admins). The rules refuse the email and other phone in `contacts`; `syncMe` moves older records across (`splitContact`).
+- **Trade legs must match the trade** (security audit, Oct 23, 2026): a set trade's `legs` show on everyone's schedule as cover and TR records, so the rules accept only what `TourMath.pickLegs` makes (the answering taker covers the posted seat, the poster is TR on that day, and the reverse on a swap day).
+- **Record edits aren't fully logged yet:** adds stamp `createdBy`, edits only the last `updatedBy`, deletes leave no trace. A change history (who, when, before and after, Restore) is queued in the back-office chat.
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
 
@@ -90,12 +107,12 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Open questions for the user
 
-- Johnston and Capurro: Employee ID mismatches.
 - January double covers.
 - Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
 - Items from the officer roster check.
 - **Decided (user, 10/23): overtime marks are visible to everyone** who opens that person's page (Want OT / Worked OT, `overtime.js`), not only the member and admins.
-- **To enter once Overtime is live:** Spencer,Marcus D (`10EOE09M`, SP2764): Worked OT 2026-10-21 (24 hrs), Want OT 2026-10-27.
+- **To enter (the user, as an admin, on Spencer's page; Overtime is live):** Spencer,Marcus D (`10EOE09M`, SP2764): Worked OT 2026-10-21 (24 hrs), Want OT 2026-10-27.
+- **Sign-in on the sites' own address** is built but off: it waits on the user adding the two `/__/auth/handler` redirect URIs and the GitHub variable `FIREBASE_OWN_AUTH_DOMAIN=1` (`FIREBASE_SETUP.md`, step 13). Until then Google sign-in detours through `sffd-schedule.firebaseapp.com`, which some phone browsers block.
 
 ## Parked ideas (not now; ask before building)
 
