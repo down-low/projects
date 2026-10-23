@@ -532,7 +532,10 @@
       return app.messaging();
     }
     function pushToken() {
-      return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function (reg) {
+      // Wait for the worker to be active: asking for a token while it's still installing fails on the first try.
+      return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function () {
+        return navigator.serviceWorker.ready;
+      }).then(function (reg) {
         return messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
       }).then(function (token) {
         if (!token) throw new Error("This browser didn't give a notification token.");

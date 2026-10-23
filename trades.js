@@ -385,6 +385,12 @@
         esc(t.proposal && t.proposal.later ? "They owe you a shift." : terms(t.proposal) + ".") + "</p></article>";
     }
 
+    // What pushTest did: sent, no device saved, or Google's reason for refusing (shown so a failure can be fixed).
+    function pushResult(r) {
+      if (r.sent) return "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds.";
+      if (!r.devices) return "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone.";
+      return "It didn't go through" + (r.errors && r.errors.length ? " (" + r.errors[0] + ")" : "") + ".";
+    }
     function alertsHtml() {
       var b = backend(), m = b.myMember() || {}, a = m.alerts || {};
       // App notifications: on iPhone, only from the Home Screen app; once on, a test sends one to this account's devices.
@@ -430,7 +436,7 @@
             renderTrades();
             if (!turnedOn) return;
             api.say($("alert-msg"), "Notifications are on for this device. A sample is on its way.");
-            if (b.pushTest) b.pushTest().catch(function () {});
+            if (b.pushTest) b.pushTest().then(function (r) { if (!r.sent) api.say($("alert-msg"), pushResult(r), true); }, function (er) { api.say($("alert-msg"), er.message, true); });
           }).catch(function (er) {
             if (c.tagName !== "SELECT") c.checked = !c.checked;
             if (msg) api.say(msg, er.message, true);
@@ -444,9 +450,7 @@
           api.say($("alert-msg"), "Sending…");
           backend().pushTest().then(function (r) {
             x.disabled = false;
-            api.say($("alert-msg"), !r.devices ? "No device is registered yet. Turn \"Notify me in the app\" off and on again on this phone."
-              : r.sent ? "Sent to " + r.sent + (r.sent === 1 ? " device" : " devices") + ". It should arrive in a few seconds."
-              : "It didn't go through. Turn \"Notify me in the app\" off and on again on this phone.", !r.sent);
+            api.say($("alert-msg"), pushResult(r), !r.sent);
           }, function (er) { x.disabled = false; api.say($("alert-msg"), er.message, true); });
         };
       }
