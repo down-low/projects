@@ -88,6 +88,7 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 - **Battalion pull 9/22–10/22/2026 done (10/23):** 310 pages, 10,223 rows, no timeouts. Trades: 1,087 people seen, 884 traded, 1,684 TRW / 1,572 TRO days; the most active trade 12–13 of a cycle's shifts. TRO is counted only when the partner's TRW row names them, so it runs slightly low. Rankings were given in chat; names stay out of the repo. Aides: 13 people worked 3+ REG days at a B/D company, and all standing ones already match the tool; two short details (B01, B02) ended by 10/14. No fixes needed.
 
 - **Balance 1/1–3/31/2026 loaded (10/23):** 90 days, none missing. Combined file now 204 days (Jan–Mar 2026, Oct–Dec 2025, Oct 1–22 2026), uploaded to the dashboard's assets and handed to the analysis chat (it owns the `daily`/`codes` datasets). Per day: Jan sick 18.3 / hired 28.4; Feb 19.8 / 31.2; Mar 21.0 / 33.7. Apr–Jun and Jul–Oct 22 to follow.
+- **Balance 4/1–6/30/2026 loaded (10/23):** 91 days, none missing; combined 295 days, uploaded and handed to the analysis chat. Per day: Apr sick 22.4 / hired 36.7; May 17.7 / 37.2 (vacation 26.2); Jun 23.7 / 41.8 (vacation 28.6), the highest month so far. Jul 1–Oct 22 left.
 
 ## Next step
 1. **H 30: done 10/22.**
