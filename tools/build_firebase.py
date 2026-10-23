@@ -23,7 +23,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = "10.14.1"  # Firebase JS SDK (compat) served by Hosting
 APP_FILES = ["index.html", "style.css", "schedule.js", "organization.js", "store.js", "admin.js", "dashboard.js",
-             "trades.js", "awards.js", "corrections.js", "feedback.js", "fir.js", "card.js", "app.js"]
+             "trades.js", "awards.js", "corrections.js", "feedback.js", "vendor/qrcode.js", "invite.js", "fir.js", "card.js", "app.js"]
 # Admin-only screens left out of the employee app: same entry points as the real files, no screens behind them.
 STUBS = {
     "fir.js": "/* fir-db1 checks are on the admin site only. */\n",
@@ -73,6 +73,7 @@ def build_site(out, site, urls):
             with open(os.path.join(out, name), "w") as f:
                 f.write(STUBS[name])
         else:
+            os.makedirs(os.path.dirname(os.path.join(out, name)), exist_ok=True)  # vendor/qrcode.js
             shutil.copy(os.path.join(ROOT, name), os.path.join(out, name))
     path = os.path.join(out, "index.html")
     with open(path) as f:

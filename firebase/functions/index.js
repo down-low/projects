@@ -70,7 +70,7 @@ async function lookups() {
     if (r) return { pos: key, name: r.name, title: r.rank + (r.company ? " " + r.company : "") + " (added)" };
     return byPos.get(key) || null;
   };
-  return { rows, people: Array.from(added.values()), lookup, companies: new Set(rows.map((p) => p.company).filter(Boolean)),
+  return { rows, ids, people: Array.from(added.values()), lookup, companies: new Set(rows.map((p) => p.company).filter(Boolean)),
     emplOwner: (id) => {
       const pos = Object.keys(ids).find((k) => ids[k].id === id);
       if (pos) return (byPos.get(pos) && byPos.get(pos).name) || pos;
@@ -112,6 +112,13 @@ exports.syncMe = wrap(async (req) => {
   const { admins, domains } = settings();
   const ref = db.doc("users/" + auth.uid);
   const cells = phone ? await staffCellMap() : null;
+  // Google first: a cell number signs in only once it has been added to an account (My page, or "Verify with your
+  // cell" on the claim screen), and then Firebase signs straight into that account. A cell on no account yet starts
+  // nothing: the stray sign-in is removed and the page asks for Google. Accounts made by cell before this rule keep working.
+  if (phone && !email && !(await ref.get()).exists) {
+    await admin.auth().deleteUser(auth.uid).catch(() => {});
+    throw new HttpsError("permission-denied", "Sign in with Google the first time, then add your cell on My page.", { reason: "google_first" });
+  }
   const result = await db.runTransaction(async (t) => {
     const snap = await t.get(ref);
     const r = A.signIn(snap.exists ? snap.data() : null, { email, phone, name: auth.token.name || "", isAdmin: !!email && admins.includes(email),
@@ -131,6 +138,19 @@ exports.syncMe = wrap(async (req) => {
     // The cell they signed in with becomes the number for trade texts (My page).
     const c = db.doc("contacts/" + auth.uid), cs = await c.get();
     if (!cs.exists || !cs.data().phoneMobile) await c.set({ pos: result.cellLinked, phoneMobile: phone, share: false, updatedAt: now() }, { merge: true });
+  }
+  // The staff-list cell for their seat becomes a sign-in number too, so members never have to add it (planStaffCell).
+  const staffCell = A.planStaffCell(result.user, cells || await staffCellMap());
+  if (staffCell) {
+    try {
+      await admin.auth().updateUser(auth.uid, { phoneNumber: staffCell });
+      await ref.set({ phone: staffCell }, { merge: true });
+      result.user.phone = staffCell;
+      await audit(auth.uid, "staffCell", { pos: result.user.pos });
+    } catch (e) {
+      // Already the sign-in number of another account (e.g. one made by cell earlier): leave it; an admin can sort it out.
+      console.warn("staff cell for " + auth.uid + ": " + (e.code || e.message));
+    }
   }
   const changed = await syncClaims(auth.uid, result.user, auth.token);
   const { lookup } = await lookups();
@@ -171,7 +191,7 @@ exports.claim = wrap(async (req) => {
 exports.rosterNames = wrap(async (req) => {
   signedIn(req);
   const [ctx, taken] = await Promise.all([lookups(), takenMap()]);
-  return A.rosterNames(ctx.rows, ctx.people, new Set(taken.keys()));
+  return A.rosterNames(ctx.rows, ctx.people, new Set(taken.keys()), ctx.ids);
 });
 
 // Who's on the tool: positions with an active linked account. A trade's poster gets Invite for the people they sent it

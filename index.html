@@ -193,6 +193,7 @@
           <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
             <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
           </div></li>
+        <li data-need="invite"><button type="button" data-go="invite">Invite a coworker</button></li>
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
         <li data-need="admin"><button type="button" data-go="admin">Admin</button></li>
@@ -235,6 +236,16 @@
       <div class="trade-body" id="fix-body"></div>
     </section>
   </div>
+  <div class="sheet" id="invite-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+      <div class="sheet-head">
+        <h2 id="invite-title">Invite a coworker</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body" id="invite-body"></div>
+    </section>
+  </div>
   <div class="sheet" id="feedback-sheet" hidden>
     <div class="sheet-backdrop" data-close></div>
     <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="feedback-title">
@@ -265,6 +276,8 @@
 <script src="awards.js"></script>
 <script src="corrections.js"></script>
 <script src="feedback.js"></script>
+<script src="vendor/qrcode.js"></script>
+<script src="invite.js"></script>
 <script src="fir.js"></script>
 <script src="card.js"></script>
 <script src="app.js"></script>
