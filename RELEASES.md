@@ -218,6 +218,7 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
+- "<year> so far" card (Oct 2026): on your own page (editors and admins on anyone's), this year to date: shifts worked, shifts on leave by code, holidays worked, overtime days and hours, trades away / worked for others, and the owed-shift balance. Counted from existing records; nothing stored.
 - Add to Home Screen banner (Oct 2026): first-time visitors to the employee app on a phone see how to add it (iPhone Safari: Share → Add to Home Screen; other iPhone browsers: open in Safari first; Android: Install, or ⋮ → Add to Home screen). Got it hides it for good on that phone; it never shows once opened from the home screen.
 - Google first, then the cell (Oct 2026): the first sign-in is Google; Add my cell on My page or Verify with your cell on the claim screen; then either opens the same account.
 - Feedback button (Oct 2026): members send problems, ideas and questions about the app; admins answer, close and copy them from the Feedback view.

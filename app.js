@@ -579,7 +579,7 @@
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
-      movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
+      MyYear.html(p) + movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
@@ -1524,6 +1524,12 @@
   var Overtime = window.OvertimeViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, recs: function () { return recs; }, myPos: function () { return myPos(); },
     today: today, iso: iso,
+  });
+
+  var MyYear = window.MyYearViews({
+    esc: esc, backend: function () { return backend; }, myPos: function () { return myPos(); }, today: today, iso: iso, day: day,
+    statusPill: statusPill, fold: foldOpen, overtime: function (pos) { return Overtime.marksFor(pos); },
+    trades: function (pos, y) { return Trades.yearSummary(pos, y); },
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
