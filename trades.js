@@ -11,7 +11,7 @@
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -223,9 +223,14 @@
     // One of my posts: responses with their terms, Pick, Cancel, Widen.
     function ownCard(t) {
       var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] }, other = t.posterKey !== myKey();
-      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
+      // Collapsed to one line (date, status, a short count) until tapped, so a long list stays short.
+      var gist = st === "set" || st === "pending" ? nameOf(t.takerKey) + (st === "set" ? " works it" : " picked")
+        : st === "open" ? (reps.length ? reps.length + (reps.length === 1 ? " answer" : " answers")
+          : [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ")) : "";
+      var head = '<summary class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>" +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
+        (gist ? '<span class="' + (st === "open" && reps.length ? "trade-gist due" : "hint trade-gist") + '">' + esc(gist + (st === "open" && reps.length ? " · pick one" : "")) + "</span>" : "") + "</summary>" +
         (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
       if (st === "pending") {
@@ -250,7 +255,9 @@
           (ui.addOpen === t.id ? "" : '<button class="btn small" data-add="' + esc(t.id) + '">Add their answer</button>') +
           '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button><span class="msg" data-msg="' + esc(t.id) + '" role="status"></span></div>';
       }
-      return '<article class="trade mine">' + head + (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</article>";
+      var open = ui.openOwn[t.id] || ui.addOpen === t.id || (ui.inviteRun && ui.inviteRun.id === t.id) || ui.copyOpen === t.id;
+      return '<details class="trade mine" data-own="' + esc(t.id) + '"' + (open ? " open" : "") + ">" + head +
+        (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</details>";
     }
     /* ---------- Invites: people the trade was sent to who aren't on the tool yet ----------
        The text goes from the poster's own phone (Messages opens with it filled in; they pick the person from their contacts).
@@ -312,9 +319,9 @@
     function inviteHtml(t) {
       var keys = notOnTool(t);
       if (!keys.length) return "";
-      var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
+      var n = keys.length === 1 ? "1 person you chose isn't" : keys.length + " people you chose aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy each person's text and send it to them from Messages.</p>" +
+        return '<div class="invite-box"><p class="hint">' + n + " on the app yet. Copy each person's text and send it to them from Messages.</p>" +
           '<ul class="tlist">' + keys.map(function (k) {
             var done = ui.invited[t.id + "/" + k], id = t.id + "/" + k, name = api.firstName(k);
             return '<li class="invite-one"><div>' + who(byPos()[k]) +
@@ -328,9 +335,9 @@
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
       var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
-        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
-        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
+        (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
+        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
         (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
@@ -541,6 +548,11 @@
           if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm undo"; b.classList.add("danger"); return; }
           backend().unclaim(b.dataset.unclaim).then(function () { api.renderAll(true); }, function (er) { b.textContent = er.message; });
         };
+      });
+      var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
+      if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
+      out.querySelectorAll("details[data-own]").forEach(function (d) {
+        d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });
       var af = out.querySelector("details.trade-alerts");
       if (af) af.addEventListener("toggle", function () { ui.alertsOpen = af.open; });
@@ -775,7 +787,12 @@
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
           note: w.note, audience: aud }));
-      p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
+      // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
+      p.then(function (r) {
+        var id = w.widen ? w.widen.id : r && r.id;
+        if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
+        closeWizard(); api.showTrades();
+      }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");

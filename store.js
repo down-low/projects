@@ -77,7 +77,13 @@
     function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
     return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
   }
-  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
+  // Licenses and certifications from fir-db1 ({name, expires: ISO date or null}), loaded by admins; never license numbers.
+  function profileOut(x) {
+    return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo,
+      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null };
+  }
+  // What a profile save carries over untouched (set by imports, not the forms).
+  function profileKeep(cur) { return cur && Array.isArray(cur.licenses) ? { licenses: cur.licenses, licensesAsOf: cur.licensesAsOf || null } : {}; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -171,7 +177,7 @@
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
-            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
+            return db.collection("profiles").doc(key).set(Object.assign(profileKeep(cur), mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
             return Promise.resolve(records.profiles.map(profileOut));
@@ -472,6 +478,9 @@
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
+  // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
+  // file's trades are added only when new. A trade's covers and TR records are its legs, so they stay with it.
+  var KEEP_KINDS = ["trades", "tradeReplies"];
   function firebaseAdapter(onChange) {
     var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
     var fb = root.firebase;
@@ -479,14 +488,24 @@
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
     var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
     var phoneVerifier = null, phoneConfirm = null;
+    /* Our wording for a Firebase sign-in error, plus Firebase's own reason in brackets: one error code covers several
+       setup problems (provider off, region policy, wrong project), and the reason tells them apart. */
+    function phoneError(e, fallback) {
+      var mine = PHONE_ERRORS[e && e.code], theirs = e && e.message ? String(e.message).replace(/^Firebase:\s*/, "") : "";
+      return mine ? mine + (theirs ? " (" + theirs + ")" : "") : theirs || fallback;
+    }
     var PHONE_ERRORS = {
       "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
       "auth/code-expired": "That code has expired. Ask for a new one.",
       "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
       "auth/invalid-phone-number": "Enter your 10-digit cell number.",
       "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
-      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/operation-not-allowed": "Firebase won't send a code to this number. Use Google for now and tell an admin.",
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
+      "auth/credential-already-in-use": "This cell is already on another account. An admin can delete that extra account in the Firebase console (Authentication → Users), then try again.",
+      "auth/provider-already-linked": "Your account already has a cell number. Ask an admin to change it.",
+      "auth/invalid-app-credential": "The page check failed. Reload and try again.",
+      "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
       corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
@@ -647,13 +666,13 @@
         if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
         return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
           if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+          throw new Error(phoneError(e, "Couldn't send the code."));
         });
       },
       confirmCode: function (code) {
         if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
         return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+          throw new Error(phoneError(e, "That code didn't work."));
         });
       },
       // With the Employee ID on file for that position, the account is approved at once (functions: claim).
@@ -689,6 +708,26 @@
       },
       adminUsers: function () { return call("adminUsers"); },
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
+      /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
+         fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      linkCell: function (cell, buttonId) {
+        var digits = String(cell || "").replace(/[^0-9]/g, "");
+        if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+        if (digits.length !== 10) return Promise.reject(new Error("Enter your 10-digit cell number."));
+        if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
+        return auth.currentUser.linkWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
+          if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
+          throw new Error(phoneError(e, "Couldn't send the code."));
+        });
+      },
+      confirmLink: function (code) {
+        if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
+        return phoneConfirm.confirm(String(code || "").trim()).then(function () {
+          return auth.currentUser.getIdToken(true);
+        }).then(function () { location.reload(); }, function (e) {
+          throw new Error(phoneError(e, "That code didn't work."));
+        });
+      },
       stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
       addStatus: function (rec) { return write("statuses", rec); },
       // A member marks one of their own days VA or S (the rules allow only that: own seat, one day, self: true).
@@ -917,13 +956,21 @@
           }
           return chain;
         }
-        var removals = Promise.resolve([]);
+        var keep = !!(opts && opts.keepTrades);
+        var kept = !keep ? Promise.resolve() : Promise.all(KEEP_KINDS.map(function (k) { return fs.collection(k).get(); })).then(function (snaps) {
+          var have = {};
+          KEEP_KINDS.forEach(function (k, i) { have[k] = {}; snaps[i].docs.forEach(function (d) { have[k][d.id] = true; }); });
+          writes = writes.filter(function (x) { return !have[x[0]] || !have[x[0]][x[1]]; });
+        });
+        var removals = kept.then(function () { return []; });
         if (opts && opts.replace) {
-          removals = Promise.all(REPLACE_KINDS.map(function (k) {
-            return fs.collection(k).get().then(function (snap) {
-              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
-            });
-          })).then(function (lists) { return [].concat.apply([], lists); });
+          removals = kept.then(function () {
+            return Promise.all(REPLACE_KINDS.filter(function (k) { return !keep || KEEP_KINDS.indexOf(k) === -1; }).map(function (k) {
+              return fs.collection(k).get().then(function (snap) {
+                return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+              });
+            }));
+          }).then(function (lists) { return [].concat.apply([], lists); });
         }
         return w(removals.then(function (gone) {
           return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
@@ -933,7 +980,10 @@
           return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
         }).then(function (snaps) {
           var out = {};
-          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          REPLACE_KINDS.forEach(function (k, i) {
+            out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length };
+            if (keep && KEEP_KINDS.indexOf(k) !== -1) out[k].kept = true;
+          });
           return out;
         }));
       },

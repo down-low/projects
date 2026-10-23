@@ -65,10 +65,14 @@ test("claims: roster entry must exist and be free; requests are checked", () => 
     Object.assign({}, ctx, { emplOwner: () => "Lester,D" })), /already on Lester,D/);
 });
 
-test("roster names leave out linked positions and vacant seats", () => {
+test("roster names: vacant seats left out, linked ones flagged, staff-list full names added", () => {
   const out = A.rosterNames(Object.values(roster), [{ id: "p1", name: "New,A", rank: "Firefighter" }, { id: "p2", name: "Taken,B", rank: "ISS" }],
-    new Set(["person:p2"]));
-  assert.deepEqual(out.map((r) => r.pos), ["10EOC03M", "person:p1"]);
+    new Set(["person:p2"]), { "10EOC03M": { id: "WE1234", name: "Weddle,Todd" } });
+  assert.deepEqual(out.map((r) => r.pos), ["10EOC03M", "person:p1", "person:p2"]);
+  assert.equal(out[0].full, "Weddle,Todd");
+  assert.equal(out[0].taken, undefined);
+  assert.equal(out[2].taken, true);
+  assert.ok(!("id" in out[0]) && !JSON.stringify(out).includes("WE1234"), "Employee IDs never go to the claim screen");
 });
 
 test("admin actions: approve, link, role, disable, keep one admin", () => {
@@ -208,4 +212,20 @@ test("cell numbers are standardized to +1 and ten digits", () => {
     "555-0100": null, "": null, "n/a": null };
   Object.entries(cases).forEach(([raw, want]) => assert.equal(A.normCell(raw), want, raw));
   assert.equal(A.cellKey("cell 415-555-0100 / home 650-555-0199"), "4155550100");
+});
+
+test("cell seat: the one staff-list seat for a number", () => {
+  assert.equal(A.cellSeat("+14155550100", new Map([["10EOC03M", "415-555-0100"], ["11ENL01M", "415 555 0199"]])), "10EOC03M");
+  assert.equal(A.cellSeat("+14155550100", new Map([["a", "415-555-0100"], ["b", "(415) 555-0100"]])), null);
+});
+
+test("staff cell: an active member with a seat gets that seat's staff-list cell for sign-in", () => {
+  const cells = new Map([["10EOC03M", "(415) 555-0100"]]);
+  const u = { status: "active", role: "member", pos: "10EOC03M", phone: null };
+  assert.equal(A.planStaffCell(u, cells), "+14155550100");
+  assert.equal(A.planStaffCell(Object.assign({}, u, { role: "admin" }), cells), null);
+  assert.equal(A.planStaffCell(Object.assign({}, u, { role: "editor" }), cells), null);
+  assert.equal(A.planStaffCell(Object.assign({}, u, { status: "pending" }), cells), null);
+  assert.equal(A.planStaffCell(Object.assign({}, u, { phone: "+14155550199" }), cells), null);
+  assert.equal(A.planStaffCell(Object.assign({}, u, { pos: "11ENL01M" }), cells), null);
 });

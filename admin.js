@@ -11,6 +11,7 @@
     domain: "That Google account isn't from an allowed domain. Sign in with your department account.",
     disabled: "This account has been disabled. Contact an admin.",
     not_configured: "Google sign-in isn't set up on this server yet. An admin needs to add the Google settings.",
+    google_first: "Sign in with Google the first time. Then add your cell on My page to use it next time.",
   };
   var ROLE_LABEL = { member: "Member", editor: "Editor", admin: "Admin" };
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
@@ -34,11 +35,12 @@
     }
     function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
     function signInButton() {
-      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
-        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+      // Google first; the cell form is for people who already added their cell to their account (My page).
+      return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>' +
+        (api.backend().phoneSignIn ? '<details class="phone-later"><summary>Already added your cell? Sign in with it</summary>' + phoneHtml() + "</details>" : "");
     }
-    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
-       once; anyone else lands on the claim screen. */
+    /* Cell-number sign-in (Firebase), once the cell is on the account: the cell, a texted 6-digit code, done. A cell on
+       no account yet is refused (functions: syncMe, google_first). */
     function phoneHtml() {
       return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
         '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
@@ -144,6 +146,33 @@
     }
 
     /* ---------- Sign-in and claim screen ---------- */
+    /* "Verify with your cell": one texted code adds the cell to the signed-in account; the staff list then fills in the
+       seat (Firebase only, store.js linkCell / confirmLink). id prefix keeps the claim screen and My page apart. */
+    function cellLinkHtml(pre, title, lede) {
+      return '<form class="edit cell-link" id="' + pre + '-form" novalidate><h3>' + esc(title) + "</h3><p class=\"hint\">" + esc(lede) + "</p>" +
+        '<div class="row"><label>Cell number<input type="tel" id="' + pre + '-cell" maxlength="20" autocomplete="tel" placeholder="(415) 555-0100"></label>' +
+        '<button class="btn primary" type="submit" id="' + pre + '-send">Text me a code</button></div>' +
+        '<div class="row" id="' + pre + '-code-row" hidden><label>6-digit code<input type="text" id="' + pre + '-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+        '<button class="btn primary" type="button" id="' + pre + '-confirm">Verify</button></div>' +
+        '<span class="msg" id="' + pre + '-msg" role="status"></span></form>';
+    }
+    function wireCellLink(pre) {
+      var b = api.backend(), msg = $(pre + "-msg");
+      $(pre + "-form").onsubmit = function (e) {
+        e.preventDefault();
+        api.say(msg, "Sending…");
+        b.linkCell($(pre + "-cell").value, pre + "-send").then(function (n) {
+          api.say(msg, "Code sent to " + n.slice(2, 5) + "-" + n.slice(5, 8) + "-" + n.slice(8) + ".");
+          $(pre + "-code-row").hidden = false;
+          $(pre + "-code").focus();
+        }, function (er) { api.say(msg, er.message, true); });
+      };
+      $(pre + "-confirm").onclick = function () {
+        api.say(msg, "Checking…");
+        b.confirmLink($(pre + "-code").value).catch(function (er) { api.say(msg, er.message, true); });
+      };
+    }
+
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
@@ -167,7 +196,7 @@
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
-          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
+          (api.backend().phoneSignIn ? "Sign in with Google. After that you can add your cell on My page and sign in with either.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
         wireSignIn(el);
         return;
@@ -197,10 +226,14 @@
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
+        (api.backend().linkCell && !me.phone && !me.claimPos && !req
+          ? cellLinkHtml("gl", "Verify with your cell (fastest)", "We text you a code. If your cell is on the department's staff list, your position fills in by itself.") +
+            '<p class="hint">Or find yourself by name below.</p>'
+          : "") +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
         "<p>Find yourself on the roster so the schedule knows which position is yours.</p>" +
         '<label for="claim-q">Your name or position number</label>' +
-        '<input type="search" id="claim-q" autocomplete="off" placeholder="First and last name, e.g. Dave Lester">' +
+        '<input type="search" id="claim-q" autocomplete="off" placeholder="First or last name, or position number">' +
         '<ul class="pick" id="claim-list"></ul>' +
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
         (api.backend().hosted === "firebase"
@@ -224,6 +257,7 @@
         '<button class="linkish" type="button" id="back-to-list">Back to the roster search</button></div></form></div>';
 
       $("gate-out").onclick = function () { api.backend().signOut(); };
+      if ($("gl-form")) wireCellLink("gl");
       if ($("claim-change")) $("claim-change").onclick = function () {
         this.parentNode.hidden = true;
         if (req) {
@@ -247,22 +281,27 @@
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
-      // Names in any order ("dave lester", "lester d"); when only one name matches, it's picked for you.
+      // First name, last name or both, in any order ("dave", "lester", "dave lester"), or a position number: the
+      // roster's short name plus the staff-list full name (r.full). Always a list to tap, never an automatic pick.
+      // Seats already linked to an account show greyed, so their owner knows to sign in the way they did before.
       function showMatches() {
         var q = $("claim-q").value.trim();
-        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
-        var hits = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + r.title + " " + r.pos); }).slice(0, 12);
-        if (hits.length === 1) return pick(hits[0]);
         if (claimPick) unpick();
+        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
+        var all = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + (r.full || "") + " " + r.title + " " + r.pos); });
+        var hits = all.slice(0, 12);
         listEl.innerHTML = hits.length ? hits.map(function (r) {
-          return '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '"><b>' + esc(r.name) + "</b> " +
-            '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span></button></li>";
-        }).join("") : '<li class="hint">No unclaimed roster entry matches. Check the spelling or ask an admin.</li>';
+          var label = "<b>" + esc(r.full || r.name) + "</b> " + '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span>";
+          return r.taken
+            ? '<li><div class="pick-btn taken">' + label + '<div class="hint">Already linked to an account. If that\'s you, sign in the way you did before (Google or your cell), or ask an admin to move it.</div></div></li>'
+            : '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '">' + label + "</button></li>";
+        }).join("") + (all.length > hits.length ? '<li class="hint">More match: type more of your name.</li>' : "")
+          : '<li class="hint">No roster entry matches. Check the spelling, try your last name, or tap "I\'m not on the list" below.</li>';
       }
       function pick(r) {
         claimPick = r.pos;
         $("claim-chosen").hidden = false;
-        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
+        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.full || r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
           ' <button class="linkish" type="button" id="claim-not-me">Not me</button>';
         $("claim-not-me").onclick = function () { $("claim-q").value = ""; unpick(); $("claim-q").focus(); };
         listEl.innerHTML = "";
@@ -277,7 +316,8 @@
       listEl.onclick = function (e) {
         var b = e.target.closest("button[data-pos]");
         if (!b) return;
-        pick(roster.filter(function (x) { return x.pos === b.dataset.pos; })[0]);
+        var r = roster.filter(function (x) { return x.pos === b.dataset.pos && !x.taken; })[0];
+        if (r) pick(r);
       };
       $("claim-form").onsubmit = function (e) {
         e.preventDefault();
@@ -344,6 +384,9 @@
           "Ask an admin to link it if you work a tour.</p></div>";
       }
 
+      if (b.linkCell && !me.phone) {
+        html += '<div class="card">' + cellLinkHtml("ml", "Add my cell for sign-in", "Then you can sign in with your cell or with Google, and both open this same account.") + "</div>";
+      }
       html += '<form class="card edit contact" id="me-contact" novalidate><h3>Contact info</h3>' +
         '<label>Contact email<input type="email" id="mc-email" maxlength="254" value="' + esc(me.contactEmail || "") + '" placeholder="' + esc(me.googleEmail) + '"></label>' +
         '<p class="hint">Where people should reach you. Your Google sign-in stays ' + esc(me.googleEmail) + ".</p>" +
@@ -365,6 +408,7 @@
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
+      if ($("ml-form")) wireCellLink("ml");
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;
@@ -509,7 +553,7 @@
     function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
     function launchMsg() {
       return launch.msg != null ? launch.msg
-        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your Google account (then you can add your cell): " + appLink();
     }
     function launchSms(cells, body) {
       var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
@@ -557,7 +601,7 @@
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
       el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
-        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<p class="hint">They sign in with Google the first time; a cell on the staff list then fills in their position (Verify with your cell). After that they can add their cell on My page and sign in with either.</p>' +
         '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
         '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
         '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
@@ -667,10 +711,12 @@
       var mode = api.backend().siteMode ? api.backend().siteMode() : null;
       return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
         '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Refresh records (keep trades)</b>, while people test: this site's schedule records match the file; trades and answers made here are kept, and the page's trades are added if they're new. " +
         "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
         "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<div class="row"><button class="btn primary" type="button" id="import-refresh">Refresh records (keep trades)</button>' +
+        '<button class="btn" type="submit" id="import-test">Import as test copy</button>' +
         '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
         '<span class="msg" id="import-msg" role="status"></span></div>' +
         '<div class="table-wrap" id="import-counts" hidden></div>' +
@@ -683,6 +729,7 @@
     }
     function wireImport() {
       $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-refresh").onclick = function () { runImport(true, true); };
       $("import-replace").onclick = function () {
         if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
         this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
@@ -700,23 +747,24 @@
         }, function (er) { api.say($("mode-msg"), er.message, true); });
       };
     }
-    function runImport(replace) {
+    function runImport(replace, keepTrades) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
+        return api.backend().importBackup(data, { replace: replace, keepTrades: !!keepTrades }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return !counts[k].kept && counts[k].backup !== counts[k].firestore; });
         api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
           : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
         $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
           keys.map(function (k) {
             var c = counts[k], ok = c.backup === c.firestore;
-            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" +
+              (c.kept ? '<span class="hint">kept</span>' : ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
           }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }

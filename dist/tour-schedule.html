@@ -677,6 +677,14 @@ s.held + .st { margin-left: 2px; }
 .trade { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; }
 .trade-sec h3 + .trade, .trade-filters + .trade { border-top: 0; padding-top: 0; }
 .trade-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+details.trade { display: block; } /* older Safari ignores flex on <details> */
+details.trade > * + * { margin-top: 4px; }
+details.trade > summary.trade-head { cursor: pointer; list-style: none; padding: 2px 0; }
+details.trade > summary.trade-head::-webkit-details-marker { display: none; }
+details.trade > summary.trade-head::before { content: "▸"; color: var(--muted); width: 0.8em; }
+details.trade[open] > summary.trade-head::before { content: "▾"; }
+details.trade:not([open]) { padding-bottom: 6px; }
+.trade-gist.due { font-weight: 600; color: var(--accent); font-size: 0.85rem; }
 .trade-date { font-weight: 600; font-variant-numeric: tabular-nums; }
 .trade-who .hint { font-size: 0.82rem; }
 .trade-terms { margin: 0; font-size: 0.88rem; }
@@ -913,6 +921,18 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .fb-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 #feedback-detail .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 #feedback-detail .seg { margin: 8px 0 4px; }
+
+/* Invite a coworker (invite.js): the QR code stays dark on white in both themes so phone cameras read it */
+.qr-box { align-self: center; width: min(260px, 70vw); padding: 0; border-radius: 12px; overflow: hidden; border: 1px solid var(--line); background: #fff; }
+.qr-box .qr { display: block; width: 100%; height: auto; }
+#invite-body { display: flex; flex-direction: column; gap: 12px; }
+.invite-url { margin: 0; text-align: center; font-family: var(--font-data); font-size: 0.85rem; overflow-wrap: anywhere; user-select: all; }
+.invite-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
+.pick-btn.taken { cursor: default; opacity: 0.6; }
+.pick-btn.taken:hover { background: none; }
+.phone-later { margin-top: 12px; }
+.phone-later > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.phone-later[open] > summary { margin-bottom: 8px; }
 </style>
 
 <div class="page">
@@ -1099,6 +1119,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           <div class="theme-seg" role="group" aria-labelledby="theme-lbl">
             <button type="button" data-theme-set="system">Phone</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
           </div></li>
+        <li data-need="invite"><button type="button" data-go="invite">Invite a coworker</button></li>
         <li data-need="feedback"><button type="button" data-go="feedback">Feedback <span class="hint" id="feedback-count"></span></button></li>
         <li data-need="member"><button type="button" data-go="me">My page</button></li>
         <li data-need="admin"><button type="button" data-go="admin">Admin</button></li>
@@ -1139,6 +1160,16 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
       </div>
       <div class="trade-body" id="fix-body"></div>
+    </section>
+  </div>
+  <div class="sheet" id="invite-sheet" hidden>
+    <div class="sheet-backdrop" data-close></div>
+    <section class="sheet-panel trade-panel" role="dialog" aria-modal="true" aria-labelledby="invite-title">
+      <div class="sheet-head">
+        <h2 id="invite-title">Invite a coworker</h2>
+        <button class="btn icon sheet-x" type="button" data-close aria-label="Close">&times;</button>
+      </div>
+      <div class="trade-body" id="invite-body"></div>
     </section>
   </div>
   <div class="sheet" id="feedback-sheet" hidden>
@@ -1464,7 +1495,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
-/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026).
+/* Division → battalion → apparatus, from the SFFD Daily Balance Report (day, 10/15/2026), and the station each
+ * apparatus runs from (STATIONS), from fir-db1's Roster by Station for all 10 battalions (10/21/2026).
  * ALIASES map roster company names to the report's apparatus codes. Divisions marked hidden are left off the dashboard.
  */
 (function (root) {
@@ -1488,6 +1520,19 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       { id: "AO", name: "AO", apparatus: ["VR03", "VR10", "VR20", "VR30", "VR33", "VR40", "VR50"] },
     ] },
   ];
+  // Fire station → apparatus housed there (Bureau of Equipment, BE, has no station).
+  var STATIONS = {
+    1: ["E01", "T01", "RS1"], 2: ["B01", "E02", "T02"], 3: ["E03", "T03"], 4: ["E04", "T04"], 5: ["D2", "E05", "T05"],
+    6: ["E06", "T06"], 7: ["D3", "E07", "T07", "RS2"], 8: ["B03", "E08", "T08"], 9: ["B10", "E09", "T09"], 10: ["E10", "T10"],
+    11: ["B06", "E11", "T11", "RC3"], 12: ["E12", "T12"], 13: ["E13", "T13", "RC1"], 14: ["E14", "T14"], 15: ["B09", "E15", "T15"],
+    16: ["E16", "T16"], 17: ["E17", "T17"], 18: ["E18", "T18"], 19: ["E19", "T19"], 20: ["E20", "MA1"], 21: ["B05", "E21"],
+    22: ["E22"], 23: ["E23"], 24: ["E24"], 25: ["E25"], 26: ["E26"], 28: ["E28"], 29: ["E29"], 31: ["B07", "E31", "RC2"],
+    32: ["E32"], 33: ["E33"], 34: ["E34"], 35: ["E35", "FB3"], 36: ["B02", "E36"], 37: ["E37"], 38: ["B04", "E38"],
+    39: ["E39"], 40: ["B08", "E40"], 41: ["E41"], 42: ["E42"], 43: ["E43", "RC4"], 44: ["E44"], 48: ["E48", "T48", "HT48"],
+    51: ["E51"],
+  };
+  var stationOf = {};
+  Object.keys(STATIONS).forEach(function (n) { STATIONS[n].forEach(function (co) { stationOf[co] = +n; }); });
   var ALIASES = {
     "Rescue Captain 1": "RC1", "Rescue Captain 2": "RC2", "Rescue Captain 3": "RC3", "Rescue Captain 4": "RC4",
     "Pilot of Fire Boats": "FB3", "Marine Engineer of Fire Boats": "FB3",
@@ -1503,8 +1548,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     DIVISIONS: DIVISIONS,
     // The report's apparatus code for a roster company (or title), e.g. "Rescue Captain 1" -> "RC1".
     apparatus: function (co) { return ALIASES[co] || co; },
-    // {division, battalion} for an apparatus code, or null when it isn't in the report.
-    locate: function (co) { return where[ALIASES[co] || co] || null; },
+    STATIONS: STATIONS,
+    // {division, battalion, station (number or null)} for an apparatus code, or null when it isn't in the report.
+    locate: function (co) {
+      var c = ALIASES[co] || co, w = where[c];
+      return w ? { division: w.division, battalion: w.battalion, station: stationOf[c] || null } : null;
+    },
+    // Fire station number an apparatus runs from (E05 -> 5), or null.
+    station: function (co) { return stationOf[ALIASES[co] || co] || null; },
     // Sort key for an apparatus code in report order (division, battalion, apparatus); unknown codes last.
     order: function (co) { return orderOf[ALIASES[co] || co] != null ? orderOf[ALIASES[co] || co] : 1e6; },
   };
@@ -1591,7 +1642,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function pick(k) { return k in dates ? (dates[k] || null) : (cur[k] == null ? null : cur[k]); }
     return { birthDate: pick("birthDate"), hireDate: pick("hireDate"), classNo: pick("classNo") };
   }
-  function profileOut(x) { return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo }; }
+  // Licenses and certifications from fir-db1 ({name, expires: ISO date or null}), loaded by admins; never license numbers.
+  function profileOut(x) {
+    return { key: x.id, birthDate: x.birthDate || null, hireDate: x.hireDate || null, classNo: x.classNo == null ? null : x.classNo,
+      licenses: Array.isArray(x.licenses) ? x.licenses : [], licensesAsOf: x.licensesAsOf || null };
+  }
+  // What a profile save carries over untouched (set by imports, not the forms).
+  function profileKeep(cur) { return cur && Array.isArray(cur.licenses) ? { licenses: cur.licenses, licensesAsOf: cur.licensesAsOf || null } : {}; }
   // Average age and years of service on isoDate from [{birthDate, hireDate}] (used where dates are readable).
   function averages(rows, isoDate) {
     var on = new Date(isoDate + "T00:00:00"), yr = 365.25 * 864e5, ages = [], yos = [];
@@ -1685,7 +1742,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           setProfile: function (key, dates) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
             var cur = records.profiles.filter(function (x) { return x.id === key; })[0];
-            return db.collection("profiles").doc(key).set(Object.assign(mergeProfile(dates, cur), { updatedAt: nowIso() }));
+            return db.collection("profiles").doc(key).set(Object.assign(profileKeep(cur), mergeProfile(dates, cur), { updatedAt: nowIso() }));
           },
           profiles: function () {
             return Promise.resolve(records.profiles.map(profileOut));
@@ -1986,6 +2043,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
+  // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
+  // file's trades are added only when new. A trade's covers and TR records are its legs, so they stay with it.
+  var KEEP_KINDS = ["trades", "tradeReplies"];
   function firebaseAdapter(onChange) {
     var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
     var fb = root.firebase;
@@ -1993,14 +2053,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var auth = fb.auth(), fs = fb.firestore(), fns = fb.functions();
     var me = { signedIn: false, google: true }, claims = {}, user = null, listening = false, onTool = null;
     var phoneVerifier = null, phoneConfirm = null;
+    /* Our wording for a Firebase sign-in error, plus Firebase's own reason in brackets: one error code covers several
+       setup problems (provider off, region policy, wrong project), and the reason tells them apart. */
+    function phoneError(e, fallback) {
+      var mine = PHONE_ERRORS[e && e.code], theirs = e && e.message ? String(e.message).replace(/^Firebase:\s*/, "") : "";
+      return mine ? mine + (theirs ? " (" + theirs + ")" : "") : theirs || fallback;
+    }
     var PHONE_ERRORS = {
       "auth/invalid-verification-code": "That code isn't right. Check the text and try again.",
       "auth/code-expired": "That code has expired. Ask for a new one.",
       "auth/too-many-requests": "Too many tries from this phone. Wait a while, then try again.",
       "auth/invalid-phone-number": "Enter your 10-digit cell number.",
       "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
-      "auth/operation-not-allowed": "Cell-number sign-in isn't turned on yet. Use Google for now.",
+      "auth/operation-not-allowed": "Firebase won't send a code to this number. Use Google for now and tell an admin.",
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
+      "auth/credential-already-in-use": "This cell is already on another account. An admin can delete that extra account in the Firebase console (Authentication → Users), then try again.",
+      "auth/provider-already-linked": "Your account already has a cell number. Ask an admin to change it.",
+      "auth/invalid-app-credential": "The page check failed. Reload and try again.",
+      "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
       corrections: [], assignments: [], rosterOverrides: [], feedback: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], site: null };
@@ -2150,13 +2220,13 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
         return auth.signInWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
           if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "Couldn't send the code.");
+          throw new Error(phoneError(e, "Couldn't send the code."));
         });
       },
       confirmCode: function (code) {
         if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
         return phoneConfirm.confirm(String(code || "").trim()).then(function () { location.reload(); }, function (e) {
-          throw new Error(PHONE_ERRORS[e && e.code] || (e && e.message) || "That code didn't work.");
+          throw new Error(phoneError(e, "That code didn't work."));
         });
       },
       // With the Employee ID on file for that position, the account is approved at once (functions: claim).
@@ -2192,6 +2262,26 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       },
       adminUsers: function () { return call("adminUsers"); },
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
+      /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
+         fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      linkCell: function (cell, buttonId) {
+        var digits = String(cell || "").replace(/[^0-9]/g, "");
+        if (digits.length === 11 && digits[0] === "1") digits = digits.slice(1);
+        if (digits.length !== 10) return Promise.reject(new Error("Enter your 10-digit cell number."));
+        if (!phoneVerifier) phoneVerifier = new fb.auth.RecaptchaVerifier(buttonId, { size: "invisible" });
+        return auth.currentUser.linkWithPhoneNumber("+1" + digits, phoneVerifier).then(function (c) { phoneConfirm = c; return "+1" + digits; }, function (e) {
+          if (phoneVerifier) { try { phoneVerifier.clear(); } catch (x) { /* already gone */ } phoneVerifier = null; }
+          throw new Error(phoneError(e, "Couldn't send the code."));
+        });
+      },
+      confirmLink: function (code) {
+        if (!phoneConfirm) return Promise.reject(new Error("Ask for a code first."));
+        return phoneConfirm.confirm(String(code || "").trim()).then(function () {
+          return auth.currentUser.getIdToken(true);
+        }).then(function () { location.reload(); }, function (e) {
+          throw new Error(phoneError(e, "That code didn't work."));
+        });
+      },
       stats: function (isoDate) { return active() ? call("stats", { date: isoDate }) : Promise.resolve(null); },
       addStatus: function (rec) { return write("statuses", rec); },
       // A member marks one of their own days VA or S (the rules allow only that: own seat, one day, self: true).
@@ -2388,13 +2478,21 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           }
           return chain;
         }
-        var removals = Promise.resolve([]);
+        var keep = !!(opts && opts.keepTrades);
+        var kept = !keep ? Promise.resolve() : Promise.all(KEEP_KINDS.map(function (k) { return fs.collection(k).get(); })).then(function (snaps) {
+          var have = {};
+          KEEP_KINDS.forEach(function (k, i) { have[k] = {}; snaps[i].docs.forEach(function (d) { have[k][d.id] = true; }); });
+          writes = writes.filter(function (x) { return !have[x[0]] || !have[x[0]][x[1]]; });
+        });
+        var removals = kept.then(function () { return []; });
         if (opts && opts.replace) {
-          removals = Promise.all(REPLACE_KINDS.map(function (k) {
-            return fs.collection(k).get().then(function (snap) {
-              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
-            });
-          })).then(function (lists) { return [].concat.apply([], lists); });
+          removals = kept.then(function () {
+            return Promise.all(REPLACE_KINDS.filter(function (k) { return !keep || KEEP_KINDS.indexOf(k) === -1; }).map(function (k) {
+              return fs.collection(k).get().then(function (snap) {
+                return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+              });
+            }));
+          }).then(function (lists) { return [].concat.apply([], lists); });
         }
         return w(removals.then(function (gone) {
           return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
@@ -2404,7 +2502,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
         }).then(function (snaps) {
           var out = {};
-          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          REPLACE_KINDS.forEach(function (k, i) {
+            out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length };
+            if (keep && KEEP_KINDS.indexOf(k) !== -1) out[k].kept = true;
+          });
           return out;
         }));
       },
@@ -2531,6 +2632,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     domain: "That Google account isn't from an allowed domain. Sign in with your department account.",
     disabled: "This account has been disabled. Contact an admin.",
     not_configured: "Google sign-in isn't set up on this server yet. An admin needs to add the Google settings.",
+    google_first: "Sign in with Google the first time. Then add your cell on My page to use it next time.",
   };
   var ROLE_LABEL = { member: "Member", editor: "Editor", admin: "Admin" };
   var POS_RE = /([0-9]{1,2}[A-Z]{2,4}[0-9]{2,3}M)\s*\)?\s*$/;
@@ -2554,11 +2656,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function niceDate(s) { var d = api.fromIso(s); return api.shortDate(d) + ", " + d.getFullYear(); }
     function signInButton() {
-      return api.backend().phoneSignIn ? phoneHtml() + '<p class="hint gate-or">or</p><button class="btn big" type="button" id="gate-in">Sign in with Google</button>'
-        : '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>';
+      // Google first; the cell form is for people who already added their cell to their account (My page).
+      return '<button class="btn primary big" type="button" id="gate-in">Sign in with Google</button>' +
+        (api.backend().phoneSignIn ? '<details class="phone-later"><summary>Already added your cell? Sign in with it</summary>' + phoneHtml() + "</details>" : "");
     }
-    /* Cell-number sign-in (Firebase): the cell, a texted 6-digit code, done. A staff-list cell is linked to its seat at
-       once; anyone else lands on the claim screen. */
+    /* Cell-number sign-in (Firebase), once the cell is on the account: the cell, a texted 6-digit code, done. A cell on
+       no account yet is refused (functions: syncMe, google_first). */
     function phoneHtml() {
       return '<form class="edit phone-in" id="ph-form" novalidate><label>Your cell number<input type="tel" id="ph-cell" inputmode="tel" autocomplete="tel" placeholder="(415) 555-0123"></label>' +
         '<div class="row"><button class="btn primary big" type="submit" id="ph-send">Text me a code</button></div>' +
@@ -2664,6 +2767,33 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
 
     /* ---------- Sign-in and claim screen ---------- */
+    /* "Verify with your cell": one texted code adds the cell to the signed-in account; the staff list then fills in the
+       seat (Firebase only, store.js linkCell / confirmLink). id prefix keeps the claim screen and My page apart. */
+    function cellLinkHtml(pre, title, lede) {
+      return '<form class="edit cell-link" id="' + pre + '-form" novalidate><h3>' + esc(title) + "</h3><p class=\"hint\">" + esc(lede) + "</p>" +
+        '<div class="row"><label>Cell number<input type="tel" id="' + pre + '-cell" maxlength="20" autocomplete="tel" placeholder="(415) 555-0100"></label>' +
+        '<button class="btn primary" type="submit" id="' + pre + '-send">Text me a code</button></div>' +
+        '<div class="row" id="' + pre + '-code-row" hidden><label>6-digit code<input type="text" id="' + pre + '-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label>' +
+        '<button class="btn primary" type="button" id="' + pre + '-confirm">Verify</button></div>' +
+        '<span class="msg" id="' + pre + '-msg" role="status"></span></form>';
+    }
+    function wireCellLink(pre) {
+      var b = api.backend(), msg = $(pre + "-msg");
+      $(pre + "-form").onsubmit = function (e) {
+        e.preventDefault();
+        api.say(msg, "Sending…");
+        b.linkCell($(pre + "-cell").value, pre + "-send").then(function (n) {
+          api.say(msg, "Code sent to " + n.slice(2, 5) + "-" + n.slice(5, 8) + "-" + n.slice(8) + ".");
+          $(pre + "-code-row").hidden = false;
+          $(pre + "-code").focus();
+        }, function (er) { api.say(msg, er.message, true); });
+      };
+      $(pre + "-confirm").onclick = function () {
+        api.say(msg, "Checking…");
+        b.confirmLink($(pre + "-code").value).catch(function (er) { api.say(msg, er.message, true); });
+      };
+    }
+
     function renderGate() {
       var me = api.backend().me();
       var el = $("gate");
@@ -2687,7 +2817,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
             '<button class="btn" type="submit">Sign in</button></div></form>'
           : "";
         el.innerHTML = '<div class="card gate-card"><h2>Sign in</h2><p>The tour schedule is for department members: who\'s working, your own tour, and shift trades. ' +
-          (api.backend().phoneSignIn ? "Sign in with the cell number the department has for you; we text you a code.</p>" : "Sign in with your Google account.</p>") +
+          (api.backend().phoneSignIn ? "Sign in with Google. After that you can add your cell on My page and sign in with either.</p>" : "Sign in with your Google account.</p>") +
           errHtml + how + dev + "</div>";
         wireSignIn(el);
         return;
@@ -2717,10 +2847,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<p class="hint">Signed in as ' + esc(me.googleEmail) + ' · <button class="linkish" id="gate-out">Sign out</button></p>' +
         (me.phone && !me.claimPos && !req ? "<p>Your cell isn't on the department's staff list yet. Find yourself below and an admin will approve it.</p>" : "") +
         errHtml + waiting +
+        (api.backend().linkCell && !me.phone && !me.claimPos && !req
+          ? cellLinkHtml("gl", "Verify with your cell (fastest)", "We text you a code. If your cell is on the department's staff list, your position fills in by itself.") +
+            '<p class="hint">Or find yourself by name below.</p>'
+          : "") +
         '<form class="edit claim-form" id="claim-form"' + (me.claimPos ? " hidden" : "") + ' novalidate>' +
         "<p>Find yourself on the roster so the schedule knows which position is yours.</p>" +
         '<label for="claim-q">Your name or position number</label>' +
-        '<input type="search" id="claim-q" autocomplete="off" placeholder="First and last name, e.g. Dave Lester">' +
+        '<input type="search" id="claim-q" autocomplete="off" placeholder="First or last name, or position number">' +
         '<ul class="pick" id="claim-list"></ul>' +
         '<p id="claim-chosen" class="claim-chosen" hidden></p>' +
         (api.backend().hosted === "firebase"
@@ -2744,6 +2878,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         '<button class="linkish" type="button" id="back-to-list">Back to the roster search</button></div></form></div>';
 
       $("gate-out").onclick = function () { api.backend().signOut(); };
+      if ($("gl-form")) wireCellLink("gl");
       if ($("claim-change")) $("claim-change").onclick = function () {
         this.parentNode.hidden = true;
         if (req) {
@@ -2767,22 +2902,27 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           .then(renderGate, function (er) { api.say($("rq-msg"), er.message, true); });
       };
       var listEl = $("claim-list");
-      // Names in any order ("dave lester", "lester d"); when only one name matches, it's picked for you.
+      // First name, last name or both, in any order ("dave", "lester", "dave lester"), or a position number: the
+      // roster's short name plus the staff-list full name (r.full). Always a list to tap, never an automatic pick.
+      // Seats already linked to an account show greyed, so their owner knows to sign in the way they did before.
       function showMatches() {
         var q = $("claim-q").value.trim();
-        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
-        var hits = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + r.title + " " + r.pos); }).slice(0, 12);
-        if (hits.length === 1) return pick(hits[0]);
         if (claimPick) unpick();
+        if (!roster || q.length < 2) { listEl.innerHTML = ""; return; }
+        var all = roster.filter(function (r) { return root.TourMath.wordsMatch(q, r.name + " " + (r.full || "") + " " + r.title + " " + r.pos); });
+        var hits = all.slice(0, 12);
         listEl.innerHTML = hits.length ? hits.map(function (r) {
-          return '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '"><b>' + esc(r.name) + "</b> " +
-            '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span></button></li>";
-        }).join("") : '<li class="hint">No unclaimed roster entry matches. Check the spelling or ask an admin.</li>';
+          var label = "<b>" + esc(r.full || r.name) + "</b> " + '<span class="hint">' + esc(r.title) + " · " + esc(r.pos) + "</span>";
+          return r.taken
+            ? '<li><div class="pick-btn taken">' + label + '<div class="hint">Already linked to an account. If that\'s you, sign in the way you did before (Google or your cell), or ask an admin to move it.</div></div></li>'
+            : '<li><button type="button" class="pick-btn" data-pos="' + esc(r.pos) + '">' + label + "</button></li>";
+        }).join("") + (all.length > hits.length ? '<li class="hint">More match: type more of your name.</li>' : "")
+          : '<li class="hint">No roster entry matches. Check the spelling, try your last name, or tap "I\'m not on the list" below.</li>';
       }
       function pick(r) {
         claimPick = r.pos;
         $("claim-chosen").hidden = false;
-        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
+        $("claim-chosen").innerHTML = "That's you: <b>" + esc(r.full || r.name) + "</b> · " + esc(r.title) + " · " + esc(r.pos) +
           ' <button class="linkish" type="button" id="claim-not-me">Not me</button>';
         $("claim-not-me").onclick = function () { $("claim-q").value = ""; unpick(); $("claim-q").focus(); };
         listEl.innerHTML = "";
@@ -2797,7 +2937,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       listEl.onclick = function (e) {
         var b = e.target.closest("button[data-pos]");
         if (!b) return;
-        pick(roster.filter(function (x) { return x.pos === b.dataset.pos; })[0]);
+        var r = roster.filter(function (x) { return x.pos === b.dataset.pos && !x.taken; })[0];
+        if (r) pick(r);
       };
       $("claim-form").onsubmit = function (e) {
         e.preventDefault();
@@ -2864,6 +3005,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           "Ask an admin to link it if you work a tour.</p></div>";
       }
 
+      if (b.linkCell && !me.phone) {
+        html += '<div class="card">' + cellLinkHtml("ml", "Add my cell for sign-in", "Then you can sign in with your cell or with Google, and both open this same account.") + "</div>";
+      }
       html += '<form class="card edit contact" id="me-contact" novalidate><h3>Contact info</h3>' +
         '<label>Contact email<input type="email" id="mc-email" maxlength="254" value="' + esc(me.contactEmail || "") + '" placeholder="' + esc(me.googleEmail) + '"></label>' +
         '<p class="hint">Where people should reach you. Your Google sign-in stays ' + esc(me.googleEmail) + ".</p>" +
@@ -2885,6 +3029,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       out.innerHTML = html;
 
       if ($("me-cal")) $("me-cal").onclick = function () { api.choosePerson(me.pos); };
+      if ($("ml-form")) wireCellLink("ml");
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
         e.preventDefault();
         var bd = $("md-birth").value, hd = $("md-hire").value;
@@ -2941,7 +3086,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function appLink() { return root.FIREBASE_APP_URL || location.origin + "/"; }
     function launchMsg() {
       return launch.msg != null ? launch.msg
-        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your cell number: " + appLink();
+        : "I'm using the new SFFD tour schedule app to see who's working and trade shifts. Sign in with your Google account (then you can add your cell): " + appLink();
     }
     function launchSms(cells, body) {
       var ios = /iPhone|iPad|iPod|Macintosh/.test(navigator.userAgent), enc = encodeURIComponent(body);
@@ -2989,7 +3134,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var bad = all.filter(function (x) { return x.badCell; });
       var run = launch.run;
       el.innerHTML = '<details class="fold"' + (launch.open ? " open" : "") + ' id="launch-fold"><summary><h3>Invite people</h3><span class="fold-sum">Text the sign-up link</span></summary>' +
-        '<p class="hint">They sign in with the cell number on the staff list and a texted code, and land on their own schedule. No Google account or approval needed.</p>' +
+        '<p class="hint">They sign in with Google the first time; a cell on the staff list then fills in their position (Verify with your cell). After that they can add their cell on My page and sign in with either.</p>' +
         '<div class="trade-filters launch-filters"><label>Division<select data-l="dv"><option value="">All</option>' + opts(dvs, launch.dv) + "</select></label>" +
         '<label>Battalion<select data-l="bt"><option value="">All</option>' + opts(bts, launch.bt) + "</select></label>" +
         '<label>Station<select data-l="co"><option value="">All</option>' + opts(cos.map(function (c) { return [c, c]; }), launch.co) + "</select></label>" +
@@ -3099,10 +3244,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       var mode = api.backend().siteMode ? api.backend().siteMode() : null;
       return '<form class="card edit" id="import-form" novalidate><h3>Cut-over</h3>' +
         '<p class="hint">Loads the records from a backup file saved on the claude.ai page (<b>Download backup</b>). ' +
+        "<b>Refresh records (keep trades)</b>, while people test: this site's schedule records match the file; trades and answers made here are kept, and the page's trades are added if they're new. " +
         "<b>Import as test copy</b> adds and updates records. <b>Replace everything</b> (cut-over day) also removes records that aren't in the file, " +
         "so this site holds exactly the page's records; accounts and contact info stay. Afterwards, delete the file: it holds cell numbers.</p>" +
         '<label>Backup file<input type="file" id="import-file" accept=".json,application/json"></label>' +
-        '<div class="row"><button class="btn" type="submit" id="import-test">Import as test copy</button>' +
+        '<div class="row"><button class="btn primary" type="button" id="import-refresh">Refresh records (keep trades)</button>' +
+        '<button class="btn" type="submit" id="import-test">Import as test copy</button>' +
         '<button class="btn danger" type="button" id="import-replace">Replace everything (cut-over)</button>' +
         '<span class="msg" id="import-msg" role="status"></span></div>' +
         '<div class="table-wrap" id="import-counts" hidden></div>' +
@@ -3115,6 +3262,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function wireImport() {
       $("import-form").onsubmit = function (e) { e.preventDefault(); runImport(false); };
+      $("import-refresh").onclick = function () { runImport(true, true); };
       $("import-replace").onclick = function () {
         if (this.dataset.confirm !== "1") { this.dataset.confirm = "1"; this.textContent = "Confirm: replace everything"; return; }
         this.dataset.confirm = ""; this.textContent = "Replace everything (cut-over)";
@@ -3132,23 +3280,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         }, function (er) { api.say($("mode-msg"), er.message, true); });
       };
     }
-    function runImport(replace) {
+    function runImport(replace, keepTrades) {
       var file = $("import-file").files[0], msg = $("import-msg");
       if (!file) return api.say(msg, "Choose the backup file first.", true);
       api.say(msg, "Reading…");
       file.text().then(function (text) {
         var data;
         try { data = JSON.parse(text); } catch (er) { throw new Error("That file isn't a backup (not JSON)."); }
-        return api.backend().importBackup(data, { replace: replace }, function (t) { api.say(msg, t); });
+        return api.backend().importBackup(data, { replace: replace, keepTrades: !!keepTrades }, function (t) { api.say(msg, t); });
       }).then(function (counts) {
-        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return counts[k].backup !== counts[k].firestore; });
+        var keys = Object.keys(counts).sort(), off = keys.filter(function (k) { return !counts[k].kept && counts[k].backup !== counts[k].firestore; });
         api.say(msg, off.length ? "Done, but " + off.length + " collection" + (off.length === 1 ? "" : "s") + " don't match the file (marked below)."
           : "Done. Every count matches the file.", !!off.length);
         $("import-counts").hidden = false;
         $("import-counts").innerHTML = '<table class="list"><thead><tr><th>Collection</th><th class="num">In the file</th><th class="num">On this site</th><th></th></tr></thead><tbody>' +
           keys.map(function (k) {
             var c = counts[k], ok = c.backup === c.firestore;
-            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" + (ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
+            return "<tr><td>" + esc(k) + '</td><td class="num">' + c.backup + '</td><td class="num">' + c.firestore + "</td><td>" +
+              (c.kept ? '<span class="hint">kept</span>' : ok ? "✓" : '<b class="err">differs</b>') + "</td></tr>";
           }).join("") + "</tbody></table>";
       }, function (er) { api.say(msg, er.message, true); });
     }
@@ -3918,7 +4067,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
   root.TradeViews = function (api) {
     var $ = api.$, esc = api.esc;
     var ui = { from: "", to: "", bt: "", replyOpen: null, claimQ: "", claimPick: null, claimsOpen: false,
-      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {} };
+      addOpen: null, inviteRun: null, invited: {}, copyOpen: null, links: {}, openOwn: {} };
     var wiz = null; // the open wizard: {poster, date, seat, step (2 who, 3 post), note, sel: {key: true}, board, send, widen: trade|null}
 
     function backend() { return api.backend(); }
@@ -4130,9 +4279,14 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     // One of my posts: responses with their terms, Pick, Cancel, Widen.
     function ownCard(t) {
       var st = statusOf(t), reps = repliesFor(t), aud = t.audience || { to: [] }, other = t.posterKey !== myKey();
-      var head = '<div class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
+      // Collapsed to one line (date, status, a short count) until tapped, so a long list stays short.
+      var gist = st === "set" || st === "pending" ? nameOf(t.takerKey) + (st === "set" ? " works it" : " picked")
+        : st === "open" ? (reps.length ? reps.length + (reps.length === 1 ? " answer" : " answers")
+          : [aud.to && aud.to.length ? "Sent to " + aud.to.length : "", aud.board ? "On the board" : ""].filter(Boolean).join(" · ")) : "";
+      var head = '<summary class="trade-head"><span class="trade-date">' + esc(dateText(t.date)) + "</span>" +
         (other ? '<span class="trade-who">For ' + esc(byPos()[t.posterKey] ? nameOf(t.posterKey) : t.posterName || t.posterKey) + "</span>" : "") + '<span class="tag tag-st-' + st + '">' +
-        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span></div>" +
+        { open: "Open", set: "Set", pending: "Picked", cancelled: "Cancelled", expired: "Expired" }[st] + "</span>" +
+        (gist ? '<span class="' + (st === "open" && reps.length ? "trade-gist due" : "hint trade-gist") + '">' + esc(gist + (st === "open" && reps.length ? " · pick one" : "")) + "</span>" : "") + "</summary>" +
         (t.postedBy ? '<p class="hint">Posted by an admin' + (other ? "" : " for you") + "</p>" : "");
       var body = "";
       if (st === "pending") {
@@ -4157,7 +4311,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           (ui.addOpen === t.id ? "" : '<button class="btn small" data-add="' + esc(t.id) + '">Add their answer</button>') +
           '<button class="btn small" data-cancel="' + esc(t.id) + '">Cancel</button><span class="msg" data-msg="' + esc(t.id) + '" role="status"></span></div>';
       }
-      return '<article class="trade mine">' + head + (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</article>";
+      var open = ui.openOwn[t.id] || ui.addOpen === t.id || (ui.inviteRun && ui.inviteRun.id === t.id) || ui.copyOpen === t.id;
+      return '<details class="trade mine" data-own="' + esc(t.id) + '"' + (open ? " open" : "") + ">" + head +
+        (t.note ? '<p class="trade-note">' + esc(t.note) + "</p>" : "") + body + "</details>";
     }
     /* ---------- Invites: people the trade was sent to who aren't on the tool yet ----------
        The text goes from the poster's own phone (Messages opens with it filled in; they pick the person from their contacts).
@@ -4219,9 +4375,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     function inviteHtml(t) {
       var keys = notOnTool(t);
       if (!keys.length) return "";
-      var n = keys.length === 1 ? "1 person you sent it to isn't" : keys.length + " people you sent it to aren't";
+      var n = keys.length === 1 ? "1 person you chose isn't" : keys.length + " people you chose aren't";
       if (framed()) {
-        return '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Copy each person's text and send it to them from Messages.</p>" +
+        return '<div class="invite-box"><p class="hint">' + n + " on the app yet. Copy each person's text and send it to them from Messages.</p>" +
           '<ul class="tlist">' + keys.map(function (k) {
             var done = ui.invited[t.id + "/" + k], id = t.id + "/" + k, name = api.firstName(k);
             return '<li class="invite-one"><div>' + who(byPos()[k]) +
@@ -4235,9 +4391,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
       var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
-      var html = '<div class="invite-box"><p class="hint">' + n + " on the tool yet, so they won't see it. Text them from your phone: Messages opens with the text filled in" +
-        (personal ? ", their own link (they can answer before signing up)" + (cells.length ? " and their cell from the staff list" : "") : "") +
-        (cells.length === keys.length ? "." : "; pick them from your contacts" + (cells.length ? " when there's no cell on file." : ".")) + "</p>" +
+      var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
+        (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
+        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
         (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
@@ -4431,6 +4587,11 @@ table.fir-t td { white-space: normal; vertical-align: top; }
           if (b.dataset.confirm !== "1") { b.dataset.confirm = "1"; b.textContent = "Confirm undo"; b.classList.add("danger"); return; }
           backend().unclaim(b.dataset.unclaim).then(function () { api.renderAll(true); }, function (er) { b.textContent = er.message; });
         };
+      });
+      var jp = ui.justPosted && out.querySelector('details[data-own="' + ui.justPosted + '"]');
+      if (jp) { ui.justPosted = null; jp.scrollIntoView({ block: "center" }); }
+      out.querySelectorAll("details[data-own]").forEach(function (d) {
+        d.addEventListener("toggle", function () { ui.openOwn[d.dataset.own] = d.open; });
       });
       var af = out.querySelector("details.trade-alerts");
       if (af) af.addEventListener("toggle", function () { ui.alertsOpen = af.open; });
@@ -4665,7 +4826,12 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         ? backend().widenTrade(w.widen.id, { board: w.widen.audience.board || aud.board, to: Array.from(new Set((w.widen.audience.to || []).concat(to))) })
         : backend().postTrade(Object.assign(forSomeone(w.poster.pos) ? { postedBy: "admin" } : {}, { posterKey: w.poster.pos, posterName: w.poster.name, seatPos: w.seat, date: w.date,
           note: w.note, audience: aud }));
-      p.then(function () { closeWizard(); api.showTrades(); }, function (er) { api.say(msg, er.message, true); });
+      // The trade just posted (or widened) opens on the Trades tab; the others stay collapsed.
+      p.then(function (r) {
+        var id = w.widen ? w.widen.id : r && r.id;
+        if (id) { ui.openOwn = {}; ui.openOwn[id] = true; ui.justPosted = id; }
+        closeWizard(); api.showTrades();
+      }, function (er) { api.say(msg, er.message, true); });
     }
     function wireSheet() {
       var sh = $("trade-sheet");
@@ -5369,6 +5535,1361 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
+/* QR code encoder for the browser: Kazuhiko Arase's "QRCode for JavaScript" (MIT license, Copyright (c) 2009
+ * Kazuhiko Arase, http://www.d-project.com/), as modularized in qrcode-terminal 0.12.0 (vendor/QRCode), bundled into one
+ * file for invite.js. "QR Code" is a registered trademark of DENSO WAVE INCORPORATED.
+ * window.QRCodeLib = {QRCode, QRErrorCorrectLevel}: new QRCode(-1, QRErrorCorrectLevel.M); addData(text); make();
+ * getModuleCount(); isDark(row, col). Type -1 picks the smallest version that fits. */
+(function (root) {
+  "use strict";
+  var defs = {}, cache = {};
+  function req(name) {
+    var key = name.replace(/^\.\//, "").replace(/\.js$/, "");
+    if (cache[key]) return cache[key].exports;
+    var module = { exports: {} };
+    cache[key] = module;
+    defs[key](module, module.exports, req);
+    return module.exports;
+  }
+  defs["QR8bitByte"] = function (module, exports, require) {
+var QRMode = require('./QRMode');
+
+function QR8bitByte(data) {
+	this.mode = QRMode.MODE_8BIT_BYTE;
+	this.data = data;
+}
+
+QR8bitByte.prototype = {
+
+	getLength : function() {
+		return this.data.length;
+	},
+	
+	write : function(buffer) {
+		for (var i = 0; i < this.data.length; i++) {
+			// not JIS ...
+			buffer.put(this.data.charCodeAt(i), 8);
+		}
+	}
+};
+
+module.exports = QR8bitByte;
+
+  };
+  defs["QRBitBuffer"] = function (module, exports, require) {
+function QRBitBuffer() {
+	this.buffer = [];
+	this.length = 0;
+}
+
+QRBitBuffer.prototype = {
+
+	get : function(index) {
+		var bufIndex = Math.floor(index / 8);
+		return ( (this.buffer[bufIndex] >>> (7 - index % 8) ) & 1) == 1;
+	},
+	
+	put : function(num, length) {
+		for (var i = 0; i < length; i++) {
+			this.putBit( ( (num >>> (length - i - 1) ) & 1) == 1);
+		}
+	},
+	
+	getLengthInBits : function() {
+		return this.length;
+	},
+	
+	putBit : function(bit) {
+	
+		var bufIndex = Math.floor(this.length / 8);
+		if (this.buffer.length <= bufIndex) {
+			this.buffer.push(0);
+		}
+	
+		if (bit) {
+			this.buffer[bufIndex] |= (0x80 >>> (this.length % 8) );
+		}
+	
+		this.length++;
+	}
+};
+
+module.exports = QRBitBuffer;
+
+  };
+  defs["QRErrorCorrectLevel"] = function (module, exports, require) {
+module.exports = {
+	L : 1,
+	M : 0,
+	Q : 3,
+	H : 2
+};
+
+
+  };
+  defs["QRMaskPattern"] = function (module, exports, require) {
+module.exports = {
+	PATTERN000 : 0,
+	PATTERN001 : 1,
+	PATTERN010 : 2,
+	PATTERN011 : 3,
+	PATTERN100 : 4,
+	PATTERN101 : 5,
+	PATTERN110 : 6,
+	PATTERN111 : 7
+};
+
+  };
+  defs["QRMath"] = function (module, exports, require) {
+var QRMath = {
+
+	glog : function(n) {
+	
+		if (n < 1) {
+			throw new Error("glog(" + n + ")");
+		}
+		
+		return QRMath.LOG_TABLE[n];
+	},
+	
+	gexp : function(n) {
+	
+		while (n < 0) {
+			n += 255;
+		}
+	
+		while (n >= 256) {
+			n -= 255;
+		}
+	
+		return QRMath.EXP_TABLE[n];
+	},
+	
+	EXP_TABLE : new Array(256),
+	
+	LOG_TABLE : new Array(256)
+
+};
+	
+for (var i = 0; i < 8; i++) {
+	QRMath.EXP_TABLE[i] = 1 << i;
+}
+for (var i = 8; i < 256; i++) {
+	QRMath.EXP_TABLE[i] = QRMath.EXP_TABLE[i - 4]
+		^ QRMath.EXP_TABLE[i - 5]
+		^ QRMath.EXP_TABLE[i - 6]
+		^ QRMath.EXP_TABLE[i - 8];
+}
+for (var i = 0; i < 255; i++) {
+	QRMath.LOG_TABLE[QRMath.EXP_TABLE[i] ] = i;
+}
+
+module.exports = QRMath;
+
+  };
+  defs["QRMode"] = function (module, exports, require) {
+module.exports = {
+    MODE_NUMBER :       1 << 0,
+    MODE_ALPHA_NUM :    1 << 1,
+    MODE_8BIT_BYTE :    1 << 2,
+    MODE_KANJI :        1 << 3
+};
+
+  };
+  defs["QRPolynomial"] = function (module, exports, require) {
+var QRMath = require('./QRMath');
+
+function QRPolynomial(num, shift) {
+	if (num.length === undefined) {
+		throw new Error(num.length + "/" + shift);
+	}
+
+	var offset = 0;
+
+	while (offset < num.length && num[offset] === 0) {
+		offset++;
+	}
+
+	this.num = new Array(num.length - offset + shift);
+	for (var i = 0; i < num.length - offset; i++) {
+		this.num[i] = num[i + offset];
+	}
+}
+
+QRPolynomial.prototype = {
+
+	get : function(index) {
+		return this.num[index];
+	},
+	
+	getLength : function() {
+		return this.num.length;
+	},
+	
+	multiply : function(e) {
+	
+		var num = new Array(this.getLength() + e.getLength() - 1);
+	
+		for (var i = 0; i < this.getLength(); i++) {
+			for (var j = 0; j < e.getLength(); j++) {
+				num[i + j] ^= QRMath.gexp(QRMath.glog(this.get(i) ) + QRMath.glog(e.get(j) ) );
+			}
+		}
+	
+		return new QRPolynomial(num, 0);
+	},
+	
+	mod : function(e) {
+	
+		if (this.getLength() - e.getLength() < 0) {
+			return this;
+		}
+	
+		var ratio = QRMath.glog(this.get(0) ) - QRMath.glog(e.get(0) );
+	
+		var num = new Array(this.getLength() );
+		
+		for (var i = 0; i < this.getLength(); i++) {
+			num[i] = this.get(i);
+		}
+		
+		for (var x = 0; x < e.getLength(); x++) {
+			num[x] ^= QRMath.gexp(QRMath.glog(e.get(x) ) + ratio);
+		}
+	
+		// recursive call
+		return new QRPolynomial(num, 0).mod(e);
+	}
+};
+
+module.exports = QRPolynomial;
+
+  };
+  defs["QRRSBlock"] = function (module, exports, require) {
+var QRErrorCorrectLevel = require('./QRErrorCorrectLevel');
+
+function QRRSBlock(totalCount, dataCount) {
+	this.totalCount = totalCount;
+	this.dataCount  = dataCount;
+}
+
+QRRSBlock.RS_BLOCK_TABLE = [
+
+	// L
+	// M
+	// Q
+	// H
+
+	// 1
+	[1, 26, 19],
+	[1, 26, 16],
+	[1, 26, 13],
+	[1, 26, 9],
+	
+	// 2
+	[1, 44, 34],
+	[1, 44, 28],
+	[1, 44, 22],
+	[1, 44, 16],
+
+	// 3
+	[1, 70, 55],
+	[1, 70, 44],
+	[2, 35, 17],
+	[2, 35, 13],
+
+	// 4		
+	[1, 100, 80],
+	[2, 50, 32],
+	[2, 50, 24],
+	[4, 25, 9],
+	
+	// 5
+	[1, 134, 108],
+	[2, 67, 43],
+	[2, 33, 15, 2, 34, 16],
+	[2, 33, 11, 2, 34, 12],
+	
+	// 6
+	[2, 86, 68],
+	[4, 43, 27],
+	[4, 43, 19],
+	[4, 43, 15],
+	
+	// 7		
+	[2, 98, 78],
+	[4, 49, 31],
+	[2, 32, 14, 4, 33, 15],
+	[4, 39, 13, 1, 40, 14],
+	
+	// 8
+	[2, 121, 97],
+	[2, 60, 38, 2, 61, 39],
+	[4, 40, 18, 2, 41, 19],
+	[4, 40, 14, 2, 41, 15],
+	
+	// 9
+	[2, 146, 116],
+	[3, 58, 36, 2, 59, 37],
+	[4, 36, 16, 4, 37, 17],
+	[4, 36, 12, 4, 37, 13],
+	
+	// 10		
+	[2, 86, 68, 2, 87, 69],
+	[4, 69, 43, 1, 70, 44],
+	[6, 43, 19, 2, 44, 20],
+	[6, 43, 15, 2, 44, 16],
+
+	// 11
+	[4, 101, 81],
+	[1, 80, 50, 4, 81, 51],
+	[4, 50, 22, 4, 51, 23],
+	[3, 36, 12, 8, 37, 13],
+
+	// 12
+	[2, 116, 92, 2, 117, 93],
+	[6, 58, 36, 2, 59, 37],
+	[4, 46, 20, 6, 47, 21],
+	[7, 42, 14, 4, 43, 15],
+
+	// 13
+	[4, 133, 107],
+	[8, 59, 37, 1, 60, 38],
+	[8, 44, 20, 4, 45, 21],
+	[12, 33, 11, 4, 34, 12],
+
+	// 14
+	[3, 145, 115, 1, 146, 116],
+	[4, 64, 40, 5, 65, 41],
+	[11, 36, 16, 5, 37, 17],
+	[11, 36, 12, 5, 37, 13],
+
+	// 15
+	[5, 109, 87, 1, 110, 88],
+	[5, 65, 41, 5, 66, 42],
+	[5, 54, 24, 7, 55, 25],
+	[11, 36, 12],
+
+	// 16
+	[5, 122, 98, 1, 123, 99],
+	[7, 73, 45, 3, 74, 46],
+	[15, 43, 19, 2, 44, 20],
+	[3, 45, 15, 13, 46, 16],
+
+	// 17
+	[1, 135, 107, 5, 136, 108],
+	[10, 74, 46, 1, 75, 47],
+	[1, 50, 22, 15, 51, 23],
+	[2, 42, 14, 17, 43, 15],
+
+	// 18
+	[5, 150, 120, 1, 151, 121],
+	[9, 69, 43, 4, 70, 44],
+	[17, 50, 22, 1, 51, 23],
+	[2, 42, 14, 19, 43, 15],
+
+	// 19
+	[3, 141, 113, 4, 142, 114],
+	[3, 70, 44, 11, 71, 45],
+	[17, 47, 21, 4, 48, 22],
+	[9, 39, 13, 16, 40, 14],
+
+	// 20
+	[3, 135, 107, 5, 136, 108],
+	[3, 67, 41, 13, 68, 42],
+	[15, 54, 24, 5, 55, 25],
+	[15, 43, 15, 10, 44, 16],
+
+	// 21
+	[4, 144, 116, 4, 145, 117],
+	[17, 68, 42],
+	[17, 50, 22, 6, 51, 23],
+	[19, 46, 16, 6, 47, 17],
+
+	// 22
+	[2, 139, 111, 7, 140, 112],
+	[17, 74, 46],
+	[7, 54, 24, 16, 55, 25],
+	[34, 37, 13],
+
+	// 23
+	[4, 151, 121, 5, 152, 122],
+	[4, 75, 47, 14, 76, 48],
+	[11, 54, 24, 14, 55, 25],
+	[16, 45, 15, 14, 46, 16],
+
+	// 24
+	[6, 147, 117, 4, 148, 118],
+	[6, 73, 45, 14, 74, 46],
+	[11, 54, 24, 16, 55, 25],
+	[30, 46, 16, 2, 47, 17],
+
+	// 25
+	[8, 132, 106, 4, 133, 107],
+	[8, 75, 47, 13, 76, 48],
+	[7, 54, 24, 22, 55, 25],
+	[22, 45, 15, 13, 46, 16],
+
+	// 26
+	[10, 142, 114, 2, 143, 115],
+	[19, 74, 46, 4, 75, 47],
+	[28, 50, 22, 6, 51, 23],
+	[33, 46, 16, 4, 47, 17],
+
+	// 27
+	[8, 152, 122, 4, 153, 123],
+	[22, 73, 45, 3, 74, 46],
+	[8, 53, 23, 26, 54, 24],
+	[12, 45, 15, 28, 46, 16],
+
+	// 28
+	[3, 147, 117, 10, 148, 118],
+	[3, 73, 45, 23, 74, 46],
+	[4, 54, 24, 31, 55, 25],
+	[11, 45, 15, 31, 46, 16],
+
+	// 29
+	[7, 146, 116, 7, 147, 117],
+	[21, 73, 45, 7, 74, 46],
+	[1, 53, 23, 37, 54, 24],
+	[19, 45, 15, 26, 46, 16],
+
+	// 30
+	[5, 145, 115, 10, 146, 116],
+	[19, 75, 47, 10, 76, 48],
+	[15, 54, 24, 25, 55, 25],
+	[23, 45, 15, 25, 46, 16],
+
+	// 31
+	[13, 145, 115, 3, 146, 116],
+	[2, 74, 46, 29, 75, 47],
+	[42, 54, 24, 1, 55, 25],
+	[23, 45, 15, 28, 46, 16],
+
+	// 32
+	[17, 145, 115],
+	[10, 74, 46, 23, 75, 47],
+	[10, 54, 24, 35, 55, 25],
+	[19, 45, 15, 35, 46, 16],
+
+	// 33
+	[17, 145, 115, 1, 146, 116],
+	[14, 74, 46, 21, 75, 47],
+	[29, 54, 24, 19, 55, 25],
+	[11, 45, 15, 46, 46, 16],
+
+	// 34
+	[13, 145, 115, 6, 146, 116],
+	[14, 74, 46, 23, 75, 47],
+	[44, 54, 24, 7, 55, 25],
+	[59, 46, 16, 1, 47, 17],
+
+	// 35
+	[12, 151, 121, 7, 152, 122],
+	[12, 75, 47, 26, 76, 48],
+	[39, 54, 24, 14, 55, 25],
+	[22, 45, 15, 41, 46, 16],
+
+	// 36
+	[6, 151, 121, 14, 152, 122],
+	[6, 75, 47, 34, 76, 48],
+	[46, 54, 24, 10, 55, 25],
+	[2, 45, 15, 64, 46, 16],
+
+	// 37
+	[17, 152, 122, 4, 153, 123],
+	[29, 74, 46, 14, 75, 47],
+	[49, 54, 24, 10, 55, 25],
+	[24, 45, 15, 46, 46, 16],
+
+	// 38
+	[4, 152, 122, 18, 153, 123],
+	[13, 74, 46, 32, 75, 47],
+	[48, 54, 24, 14, 55, 25],
+	[42, 45, 15, 32, 46, 16],
+
+	// 39
+	[20, 147, 117, 4, 148, 118],
+	[40, 75, 47, 7, 76, 48],
+	[43, 54, 24, 22, 55, 25],
+	[10, 45, 15, 67, 46, 16],
+
+	// 40
+	[19, 148, 118, 6, 149, 119],
+	[18, 75, 47, 31, 76, 48],
+	[34, 54, 24, 34, 55, 25],
+	[20, 45, 15, 61, 46, 16]
+];
+
+QRRSBlock.getRSBlocks = function(typeNumber, errorCorrectLevel) {
+	
+	var rsBlock = QRRSBlock.getRsBlockTable(typeNumber, errorCorrectLevel);
+	
+	if (rsBlock === undefined) {
+		throw new Error("bad rs block @ typeNumber:" + typeNumber + "/errorCorrectLevel:" + errorCorrectLevel);
+	}
+
+	var length = rsBlock.length / 3;
+	
+	var list = [];
+	
+	for (var i = 0; i < length; i++) {
+
+		var count = rsBlock[i * 3 + 0];
+		var totalCount = rsBlock[i * 3 + 1];
+		var dataCount  = rsBlock[i * 3 + 2];
+
+		for (var j = 0; j < count; j++) {
+			list.push(new QRRSBlock(totalCount, dataCount) );	
+		}
+	}
+	
+	return list;
+};
+
+QRRSBlock.getRsBlockTable = function(typeNumber, errorCorrectLevel) {
+
+	switch(errorCorrectLevel) {
+	case QRErrorCorrectLevel.L :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 0];
+	case QRErrorCorrectLevel.M :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 1];
+	case QRErrorCorrectLevel.Q :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 2];
+	case QRErrorCorrectLevel.H :
+		return QRRSBlock.RS_BLOCK_TABLE[(typeNumber - 1) * 4 + 3];
+	default :
+		return undefined;
+	}
+};
+
+module.exports = QRRSBlock;
+
+  };
+  defs["QRUtil"] = function (module, exports, require) {
+var QRMode = require('./QRMode');
+var QRPolynomial = require('./QRPolynomial');
+var QRMath = require('./QRMath');
+var QRMaskPattern = require('./QRMaskPattern');
+
+var QRUtil = {
+
+    PATTERN_POSITION_TABLE : [
+        [],
+        [6, 18],
+        [6, 22],
+        [6, 26],
+        [6, 30],
+        [6, 34],
+        [6, 22, 38],
+        [6, 24, 42],
+        [6, 26, 46],
+        [6, 28, 50],
+        [6, 30, 54],        
+        [6, 32, 58],
+        [6, 34, 62],
+        [6, 26, 46, 66],
+        [6, 26, 48, 70],
+        [6, 26, 50, 74],
+        [6, 30, 54, 78],
+        [6, 30, 56, 82],
+        [6, 30, 58, 86],
+        [6, 34, 62, 90],
+        [6, 28, 50, 72, 94],
+        [6, 26, 50, 74, 98],
+        [6, 30, 54, 78, 102],
+        [6, 28, 54, 80, 106],
+        [6, 32, 58, 84, 110],
+        [6, 30, 58, 86, 114],
+        [6, 34, 62, 90, 118],
+        [6, 26, 50, 74, 98, 122],
+        [6, 30, 54, 78, 102, 126],
+        [6, 26, 52, 78, 104, 130],
+        [6, 30, 56, 82, 108, 134],
+        [6, 34, 60, 86, 112, 138],
+        [6, 30, 58, 86, 114, 142],
+        [6, 34, 62, 90, 118, 146],
+        [6, 30, 54, 78, 102, 126, 150],
+        [6, 24, 50, 76, 102, 128, 154],
+        [6, 28, 54, 80, 106, 132, 158],
+        [6, 32, 58, 84, 110, 136, 162],
+        [6, 26, 54, 82, 110, 138, 166],
+        [6, 30, 58, 86, 114, 142, 170]
+    ],
+
+    G15 : (1 << 10) | (1 << 8) | (1 << 5) | (1 << 4) | (1 << 2) | (1 << 1) | (1 << 0),
+    G18 : (1 << 12) | (1 << 11) | (1 << 10) | (1 << 9) | (1 << 8) | (1 << 5) | (1 << 2) | (1 << 0),
+    G15_MASK : (1 << 14) | (1 << 12) | (1 << 10)    | (1 << 4) | (1 << 1),
+
+    getBCHTypeInfo : function(data) {
+        var d = data << 10;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) >= 0) {
+            d ^= (QRUtil.G15 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G15) ) );    
+        }
+        return ( (data << 10) | d) ^ QRUtil.G15_MASK;
+    },
+
+    getBCHTypeNumber : function(data) {
+        var d = data << 12;
+        while (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) >= 0) {
+            d ^= (QRUtil.G18 << (QRUtil.getBCHDigit(d) - QRUtil.getBCHDigit(QRUtil.G18) ) );    
+        }
+        return (data << 12) | d;
+    },
+
+    getBCHDigit : function(data) {
+
+        var digit = 0;
+
+        while (data !== 0) {
+            digit++;
+            data >>>= 1;
+        }
+
+        return digit;
+    },
+
+    getPatternPosition : function(typeNumber) {
+        return QRUtil.PATTERN_POSITION_TABLE[typeNumber - 1];
+    },
+
+    getMask : function(maskPattern, i, j) {
+        
+        switch (maskPattern) {
+            
+        case QRMaskPattern.PATTERN000 : return (i + j) % 2 === 0;
+        case QRMaskPattern.PATTERN001 : return i % 2 === 0;
+        case QRMaskPattern.PATTERN010 : return j % 3 === 0;
+        case QRMaskPattern.PATTERN011 : return (i + j) % 3 === 0;
+        case QRMaskPattern.PATTERN100 : return (Math.floor(i / 2) + Math.floor(j / 3) ) % 2 === 0;
+        case QRMaskPattern.PATTERN101 : return (i * j) % 2 + (i * j) % 3 === 0;
+        case QRMaskPattern.PATTERN110 : return ( (i * j) % 2 + (i * j) % 3) % 2 === 0;
+        case QRMaskPattern.PATTERN111 : return ( (i * j) % 3 + (i + j) % 2) % 2 === 0;
+
+        default :
+            throw new Error("bad maskPattern:" + maskPattern);
+        }
+    },
+
+    getErrorCorrectPolynomial : function(errorCorrectLength) {
+
+        var a = new QRPolynomial([1], 0);
+
+        for (var i = 0; i < errorCorrectLength; i++) {
+            a = a.multiply(new QRPolynomial([1, QRMath.gexp(i)], 0) );
+        }
+
+        return a;
+    },
+
+    getLengthInBits : function(mode, type) {
+
+        if (1 <= type && type < 10) {
+
+            // 1 - 9
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 10;
+            case QRMode.MODE_ALPHA_NUM  : return 9;
+            case QRMode.MODE_8BIT_BYTE  : return 8;
+            case QRMode.MODE_KANJI      : return 8;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 27) {
+
+            // 10 - 26
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 12;
+            case QRMode.MODE_ALPHA_NUM  : return 11;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 10;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else if (type < 41) {
+
+            // 27 - 40
+
+            switch(mode) {
+            case QRMode.MODE_NUMBER     : return 14;
+            case QRMode.MODE_ALPHA_NUM  : return 13;
+            case QRMode.MODE_8BIT_BYTE  : return 16;
+            case QRMode.MODE_KANJI      : return 12;
+            default :
+                throw new Error("mode:" + mode);
+            }
+
+        } else {
+            throw new Error("type:" + type);
+        }
+    },
+
+    getLostPoint : function(qrCode) {
+        
+        var moduleCount = qrCode.getModuleCount();
+        var lostPoint = 0;
+        var row = 0; 
+        var col = 0;
+
+        
+        // LEVEL1
+        
+        for (row = 0; row < moduleCount; row++) {
+
+            for (col = 0; col < moduleCount; col++) {
+
+                var sameCount = 0;
+                var dark = qrCode.isDark(row, col);
+
+                for (var r = -1; r <= 1; r++) {
+
+                    if (row + r < 0 || moduleCount <= row + r) {
+                        continue;
+                    }
+
+                    for (var c = -1; c <= 1; c++) {
+
+                        if (col + c < 0 || moduleCount <= col + c) {
+                            continue;
+                        }
+
+                        if (r === 0 && c === 0) {
+                            continue;
+                        }
+
+                        if (dark === qrCode.isDark(row + r, col + c) ) {
+                            sameCount++;
+                        }
+                    }
+                }
+
+                if (sameCount > 5) {
+                    lostPoint += (3 + sameCount - 5);
+                }
+            }
+        }
+
+        // LEVEL2
+
+        for (row = 0; row < moduleCount - 1; row++) {
+            for (col = 0; col < moduleCount - 1; col++) {
+                var count = 0;
+                if (qrCode.isDark(row,     col    ) ) count++;
+                if (qrCode.isDark(row + 1, col    ) ) count++;
+                if (qrCode.isDark(row,     col + 1) ) count++;
+                if (qrCode.isDark(row + 1, col + 1) ) count++;
+                if (count === 0 || count === 4) {
+                    lostPoint += 3;
+                }
+            }
+        }
+
+        // LEVEL3
+
+        for (row = 0; row < moduleCount; row++) {
+            for (col = 0; col < moduleCount - 6; col++) {
+                if (qrCode.isDark(row, col) && 
+                        !qrCode.isDark(row, col + 1) && 
+                         qrCode.isDark(row, col + 2) && 
+                         qrCode.isDark(row, col + 3) && 
+                         qrCode.isDark(row, col + 4) && 
+                        !qrCode.isDark(row, col + 5) && 
+                         qrCode.isDark(row, col + 6) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount - 6; row++) {
+                if (qrCode.isDark(row, col) &&
+                        !qrCode.isDark(row + 1, col) &&
+                         qrCode.isDark(row + 2, col) &&
+                         qrCode.isDark(row + 3, col) &&
+                         qrCode.isDark(row + 4, col) &&
+                        !qrCode.isDark(row + 5, col) &&
+                         qrCode.isDark(row + 6, col) ) {
+                    lostPoint += 40;
+                }
+            }
+        }
+
+        // LEVEL4
+        
+        var darkCount = 0;
+
+        for (col = 0; col < moduleCount; col++) {
+            for (row = 0; row < moduleCount; row++) {
+                if (qrCode.isDark(row, col) ) {
+                    darkCount++;
+                }
+            }
+        }
+        
+        var ratio = Math.abs(100 * darkCount / moduleCount / moduleCount - 50) / 5;
+        lostPoint += ratio * 10;
+
+        return lostPoint;       
+    }
+
+};
+
+module.exports = QRUtil;
+
+  };
+  defs["index"] = function (module, exports, require) {
+//---------------------------------------------------------------------
+// QRCode for JavaScript
+//
+// Copyright (c) 2009 Kazuhiko Arase
+//
+// URL: http://www.d-project.com/
+//
+// Licensed under the MIT license:
+//   http://www.opensource.org/licenses/mit-license.php
+//
+// The word "QR Code" is registered trademark of 
+// DENSO WAVE INCORPORATED
+//   http://www.denso-wave.com/qrcode/faqpatent-e.html
+//
+//---------------------------------------------------------------------
+// Modified to work in node for this project (and some refactoring)
+//---------------------------------------------------------------------
+
+var QR8bitByte = require('./QR8bitByte');
+var QRUtil = require('./QRUtil');
+var QRPolynomial = require('./QRPolynomial');
+var QRRSBlock = require('./QRRSBlock');
+var QRBitBuffer = require('./QRBitBuffer');
+
+function QRCode(typeNumber, errorCorrectLevel) {
+	this.typeNumber = typeNumber;
+	this.errorCorrectLevel = errorCorrectLevel;
+	this.modules = null;
+	this.moduleCount = 0;
+	this.dataCache = null;
+	this.dataList = [];
+}
+
+QRCode.prototype = {
+	
+	addData : function(data) {
+		var newData = new QR8bitByte(data);
+		this.dataList.push(newData);
+		this.dataCache = null;
+	},
+	
+	isDark : function(row, col) {
+		if (row < 0 || this.moduleCount <= row || col < 0 || this.moduleCount <= col) {
+			throw new Error(row + "," + col);
+		}
+		return this.modules[row][col];
+	},
+
+	getModuleCount : function() {
+		return this.moduleCount;
+	},
+	
+	make : function() {
+		// Calculate automatically typeNumber if provided is < 1
+		if (this.typeNumber < 1 ){
+			var typeNumber = 1;
+			for (typeNumber = 1; typeNumber < 40; typeNumber++) {
+				var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, this.errorCorrectLevel);
+
+				var buffer = new QRBitBuffer();
+				var totalDataCount = 0;
+				for (var i = 0; i < rsBlocks.length; i++) {
+					totalDataCount += rsBlocks[i].dataCount;
+				}
+
+				for (var x = 0; x < this.dataList.length; x++) {
+					var data = this.dataList[x];
+					buffer.put(data.mode, 4);
+					buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+					data.write(buffer);
+				}
+				if (buffer.getLengthInBits() <= totalDataCount * 8)
+					break;
+			}
+			this.typeNumber = typeNumber;
+		}
+		this.makeImpl(false, this.getBestMaskPattern() );
+	},
+	
+	makeImpl : function(test, maskPattern) {
+		
+		this.moduleCount = this.typeNumber * 4 + 17;
+		this.modules = new Array(this.moduleCount);
+		
+		for (var row = 0; row < this.moduleCount; row++) {
+			
+			this.modules[row] = new Array(this.moduleCount);
+			
+			for (var col = 0; col < this.moduleCount; col++) {
+				this.modules[row][col] = null;//(col + row) % 3;
+			}
+		}
+	
+		this.setupPositionProbePattern(0, 0);
+		this.setupPositionProbePattern(this.moduleCount - 7, 0);
+		this.setupPositionProbePattern(0, this.moduleCount - 7);
+		this.setupPositionAdjustPattern();
+		this.setupTimingPattern();
+		this.setupTypeInfo(test, maskPattern);
+		
+		if (this.typeNumber >= 7) {
+			this.setupTypeNumber(test);
+		}
+	
+		if (this.dataCache === null) {
+			this.dataCache = QRCode.createData(this.typeNumber, this.errorCorrectLevel, this.dataList);
+		}
+	
+		this.mapData(this.dataCache, maskPattern);
+	},
+
+	setupPositionProbePattern : function(row, col)  {
+		
+		for (var r = -1; r <= 7; r++) {
+			
+			if (row + r <= -1 || this.moduleCount <= row + r) continue;
+			
+			for (var c = -1; c <= 7; c++) {
+				
+				if (col + c <= -1 || this.moduleCount <= col + c) continue;
+				
+				if ( (0 <= r && r <= 6 && (c === 0 || c === 6) ) || 
+                     (0 <= c && c <= 6 && (r === 0 || r === 6) ) || 
+                     (2 <= r && r <= 4 && 2 <= c && c <= 4) ) {
+					this.modules[row + r][col + c] = true;
+				} else {
+					this.modules[row + r][col + c] = false;
+				}
+			}		
+		}		
+	},
+	
+	getBestMaskPattern : function() {
+	
+		var minLostPoint = 0;
+		var pattern = 0;
+	
+		for (var i = 0; i < 8; i++) {
+			
+			this.makeImpl(true, i);
+	
+			var lostPoint = QRUtil.getLostPoint(this);
+	
+			if (i === 0 || minLostPoint >  lostPoint) {
+				minLostPoint = lostPoint;
+				pattern = i;
+			}
+		}
+	
+		return pattern;
+	},
+	
+	createMovieClip : function(target_mc, instance_name, depth) {
+	
+		var qr_mc = target_mc.createEmptyMovieClip(instance_name, depth);
+		var cs = 1;
+	
+		this.make();
+
+		for (var row = 0; row < this.modules.length; row++) {
+			
+			var y = row * cs;
+			
+			for (var col = 0; col < this.modules[row].length; col++) {
+	
+				var x = col * cs;
+				var dark = this.modules[row][col];
+			
+				if (dark) {
+					qr_mc.beginFill(0, 100);
+					qr_mc.moveTo(x, y);
+					qr_mc.lineTo(x + cs, y);
+					qr_mc.lineTo(x + cs, y + cs);
+					qr_mc.lineTo(x, y + cs);
+					qr_mc.endFill();
+				}
+			}
+		}
+		
+		return qr_mc;
+	},
+
+	setupTimingPattern : function() {
+		
+		for (var r = 8; r < this.moduleCount - 8; r++) {
+			if (this.modules[r][6] !== null) {
+				continue;
+			}
+			this.modules[r][6] = (r % 2 === 0);
+		}
+	
+		for (var c = 8; c < this.moduleCount - 8; c++) {
+			if (this.modules[6][c] !== null) {
+				continue;
+			}
+			this.modules[6][c] = (c % 2 === 0);
+		}
+	},
+	
+	setupPositionAdjustPattern : function() {
+	
+		var pos = QRUtil.getPatternPosition(this.typeNumber);
+		
+		for (var i = 0; i < pos.length; i++) {
+		
+			for (var j = 0; j < pos.length; j++) {
+			
+				var row = pos[i];
+				var col = pos[j];
+				
+				if (this.modules[row][col] !== null) {
+					continue;
+				}
+				
+				for (var r = -2; r <= 2; r++) {
+				
+					for (var c = -2; c <= 2; c++) {
+					
+						if (Math.abs(r) === 2 || 
+                            Math.abs(c) === 2 ||
+                            (r === 0 && c === 0) ) {
+							this.modules[row + r][col + c] = true;
+						} else {
+							this.modules[row + r][col + c] = false;
+						}
+					}
+				}
+			}
+		}
+	},
+	
+	setupTypeNumber : function(test) {
+	
+		var bits = QRUtil.getBCHTypeNumber(this.typeNumber);
+        var mod;
+	
+		for (var i = 0; i < 18; i++) {
+			mod = (!test && ( (bits >> i) & 1) === 1);
+			this.modules[Math.floor(i / 3)][i % 3 + this.moduleCount - 8 - 3] = mod;
+		}
+	
+		for (var x = 0; x < 18; x++) {
+			mod = (!test && ( (bits >> x) & 1) === 1);
+			this.modules[x % 3 + this.moduleCount - 8 - 3][Math.floor(x / 3)] = mod;
+		}
+	},
+	
+	setupTypeInfo : function(test, maskPattern) {
+	
+		var data = (this.errorCorrectLevel << 3) | maskPattern;
+		var bits = QRUtil.getBCHTypeInfo(data);
+        var mod;
+	
+		// vertical		
+		for (var v = 0; v < 15; v++) {
+	
+			mod = (!test && ( (bits >> v) & 1) === 1);
+	
+			if (v < 6) {
+				this.modules[v][8] = mod;
+			} else if (v < 8) {
+				this.modules[v + 1][8] = mod;
+			} else {
+				this.modules[this.moduleCount - 15 + v][8] = mod;
+			}
+		}
+	
+		// horizontal
+		for (var h = 0; h < 15; h++) {
+	
+			mod = (!test && ( (bits >> h) & 1) === 1);
+			
+			if (h < 8) {
+				this.modules[8][this.moduleCount - h - 1] = mod;
+			} else if (h < 9) {
+				this.modules[8][15 - h - 1 + 1] = mod;
+			} else {
+				this.modules[8][15 - h - 1] = mod;
+			}
+		}
+	
+		// fixed module
+		this.modules[this.moduleCount - 8][8] = (!test);
+	
+	},
+	
+	mapData : function(data, maskPattern) {
+		
+		var inc = -1;
+		var row = this.moduleCount - 1;
+		var bitIndex = 7;
+		var byteIndex = 0;
+		
+		for (var col = this.moduleCount - 1; col > 0; col -= 2) {
+	
+			if (col === 6) col--;
+	
+			while (true) {
+	
+				for (var c = 0; c < 2; c++) {
+					
+					if (this.modules[row][col - c] === null) {
+						
+						var dark = false;
+	
+						if (byteIndex < data.length) {
+							dark = ( ( (data[byteIndex] >>> bitIndex) & 1) === 1);
+						}
+	
+						var mask = QRUtil.getMask(maskPattern, row, col - c);
+	
+						if (mask) {
+							dark = !dark;
+						}
+						
+						this.modules[row][col - c] = dark;
+						bitIndex--;
+	
+						if (bitIndex === -1) {
+							byteIndex++;
+							bitIndex = 7;
+						}
+					}
+				}
+								
+				row += inc;
+	
+				if (row < 0 || this.moduleCount <= row) {
+					row -= inc;
+					inc = -inc;
+					break;
+				}
+			}
+		}
+		
+	}
+
+};
+
+QRCode.PAD0 = 0xEC;
+QRCode.PAD1 = 0x11;
+
+QRCode.createData = function(typeNumber, errorCorrectLevel, dataList) {
+	
+	var rsBlocks = QRRSBlock.getRSBlocks(typeNumber, errorCorrectLevel);
+	
+	var buffer = new QRBitBuffer();
+	
+	for (var i = 0; i < dataList.length; i++) {
+		var data = dataList[i];
+		buffer.put(data.mode, 4);
+		buffer.put(data.getLength(), QRUtil.getLengthInBits(data.mode, typeNumber) );
+		data.write(buffer);
+	}
+
+	// calc num max data.
+	var totalDataCount = 0;
+	for (var x = 0; x < rsBlocks.length; x++) {
+		totalDataCount += rsBlocks[x].dataCount;
+	}
+
+	if (buffer.getLengthInBits() > totalDataCount * 8) {
+		throw new Error("code length overflow. (" + 
+            buffer.getLengthInBits() + 
+            ">" +  
+            totalDataCount * 8 + 
+            ")");
+	}
+
+	// end code
+	if (buffer.getLengthInBits() + 4 <= totalDataCount * 8) {
+		buffer.put(0, 4);
+	}
+
+	// padding
+	while (buffer.getLengthInBits() % 8 !== 0) {
+		buffer.putBit(false);
+	}
+
+	// padding
+	while (true) {
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD0, 8);
+		
+		if (buffer.getLengthInBits() >= totalDataCount * 8) {
+			break;
+		}
+		buffer.put(QRCode.PAD1, 8);
+	}
+
+	return QRCode.createBytes(buffer, rsBlocks);
+};
+
+QRCode.createBytes = function(buffer, rsBlocks) {
+
+	var offset = 0;
+	
+	var maxDcCount = 0;
+	var maxEcCount = 0;
+	
+	var dcdata = new Array(rsBlocks.length);
+	var ecdata = new Array(rsBlocks.length);
+	
+	for (var r = 0; r < rsBlocks.length; r++) {
+
+		var dcCount = rsBlocks[r].dataCount;
+		var ecCount = rsBlocks[r].totalCount - dcCount;
+
+		maxDcCount = Math.max(maxDcCount, dcCount);
+		maxEcCount = Math.max(maxEcCount, ecCount);
+		
+		dcdata[r] = new Array(dcCount);
+		
+		for (var i = 0; i < dcdata[r].length; i++) {
+			dcdata[r][i] = 0xff & buffer.buffer[i + offset];
+		}
+		offset += dcCount;
+		
+		var rsPoly = QRUtil.getErrorCorrectPolynomial(ecCount);
+		var rawPoly = new QRPolynomial(dcdata[r], rsPoly.getLength() - 1);
+
+		var modPoly = rawPoly.mod(rsPoly);
+		ecdata[r] = new Array(rsPoly.getLength() - 1);
+		for (var x = 0; x < ecdata[r].length; x++) {
+            var modIndex = x + modPoly.getLength() - ecdata[r].length;
+			ecdata[r][x] = (modIndex >= 0)? modPoly.get(modIndex) : 0;
+		}
+
+	}
+	
+	var totalCodeCount = 0;
+	for (var y = 0; y < rsBlocks.length; y++) {
+		totalCodeCount += rsBlocks[y].totalCount;
+	}
+
+	var data = new Array(totalCodeCount);
+	var index = 0;
+
+	for (var z = 0; z < maxDcCount; z++) {
+		for (var s = 0; s < rsBlocks.length; s++) {
+			if (z < dcdata[s].length) {
+				data[index++] = dcdata[s][z];
+			}
+		}
+	}
+
+	for (var xx = 0; xx < maxEcCount; xx++) {
+		for (var t = 0; t < rsBlocks.length; t++) {
+			if (xx < ecdata[t].length) {
+				data[index++] = ecdata[t][xx];
+			}
+		}
+	}
+
+	return data;
+
+};
+
+module.exports = QRCode;
+
+  };
+  root.QRCodeLib = { QRCode: req("index"), QRErrorCorrectLevel: req("QRErrorCorrectLevel") };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
+/* Invite a coworker: the app's address as a QR code to scan in person, plus Share and Copy link, so more people install
+ * the app. Separate from trade invites (trades.js), which it doesn't touch.
+ * window.InviteViews(api) -> {open, canShow, wire}. `api` comes from app.js.
+ * - Shown to anyone signed in on the Firebase sites, where the employee app's address is known (FIREBASE_APP_URL, or this
+ *   site itself on the app). The claude.ai page doesn't know that address, so the item stays hidden there.
+ * - The QR code is drawn as SVG from vendor/qrcode.js, dark on a white card in either theme so phones can scan it.
+ */
+(function (root) {
+  "use strict";
+
+  root.InviteViews = function (api) {
+    var $ = api.$, esc = api.esc;
+
+    function appUrl() {
+      if (root.FIREBASE_APP_URL) return String(root.FIREBASE_APP_URL).replace(/\/?$/, "/");
+      return root.FIREBASE_SITE === "app" ? location.origin + "/" : null;
+    }
+    function canShow() {
+      var b = api.backend(), me = b && b.me ? b.me() : null;
+      return !!(appUrl() && root.QRCodeLib && me && me.signedIn);
+    }
+
+    // SVG for text: one path of dark modules, with a 4-module quiet zone (the scanner needs the white margin).
+    function qrSvg(text) {
+      var L = root.QRCodeLib, q = new L.QRCode(-1, L.QRErrorCorrectLevel.M);
+      q.addData(text);
+      q.make();
+      var n = q.getModuleCount(), pad = 4, size = n + pad * 2, d = "";
+      for (var r = 0; r < n; r++) {
+        for (var c = 0; c < n; c++) if (q.isDark(r, c)) d += "M" + (c + pad) + " " + (r + pad) + "h1v1h-1z";
+      }
+      return '<svg class="qr" viewBox="0 0 ' + size + " " + size + '" role="img" aria-label="QR code for ' + esc(text) +
+        '" shape-rendering="crispEdges"><rect width="' + size + '" height="' + size + '" fill="#fff"/><path d="' + d + '" fill="#000"/></svg>';
+    }
+
+    function open() {
+      var url = appUrl();
+      if (!url) return;
+      var share = !!navigator.share;
+      $("invite-body").innerHTML =
+        '<p class="hint">Have a coworker scan this with their phone camera, or send them the link.</p>' +
+        '<div class="qr-box">' + qrSvg(url) + "</div>" +
+        '<p class="invite-url" id="invite-url">' + esc(url) + "</p>" +
+        '<div class="row invite-acts">' +
+        (share ? '<button class="btn primary" type="button" id="invite-share">Share</button>' : "") +
+        '<button class="btn' + (share ? "" : " primary") + '" type="button" id="invite-copy">Copy link</button>' +
+        '<span class="msg" id="invite-msg" role="status"></span></div>' +
+        '<p class="hint">They sign in with Google the first time, then can add their cell. On iPhone, Share → Add to Home Screen installs it.</p>';
+      $("invite-sheet").hidden = false;
+      var msg = $("invite-msg");
+      if ($("invite-share")) $("invite-share").onclick = function () {
+        navigator.share({ title: "SFFD Tour Schedule", text: "SFFD tour schedule: sign in with your Google account.", url: url })
+          .catch(function () {}); // closing the share sheet isn't an error
+      };
+      $("invite-copy").onclick = function () {
+        var done = function () { api.say(msg, "Link copied."); };
+        var pick = function () {
+          var range = document.createRange();
+          range.selectNodeContents($("invite-url"));
+          var sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(range);
+          api.say(msg, "Selected. Copy it from here.");
+        };
+        try { navigator.clipboard.writeText(url).then(done, pick); } catch (e) { pick(); }
+      };
+      $("invite-copy").focus();
+    }
+    function close() { $("invite-sheet").hidden = true; }
+
+    function wire() {
+      $("invite-sheet").addEventListener("click", function (e) { if (e.target.closest("[data-close]")) close(); });
+      document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !$("invite-sheet").hidden) close(); });
+    }
+
+    return { open: open, canShow: canShow, wire: wire };
+  };
+})(typeof window !== "undefined" ? window : globalThis);
+</script>
+<script>
 /* Compare with fir-db1 (admins, Employee cards screen).
  * fir-db1 is the department's time system (Oracle APEX, city VPN only). Page 2 shows time entries either for one employee
  * (P2_WHICH=Empl: a run of days from a date) or for a company on a date (P2_WHICH=Co: everyone assigned there, with TRC "H" for
@@ -5376,7 +6897,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * about (targets()) and builds a console script for exactly those people (script()). Run in a signed-in fir-db1 tab, it pulls
  * each one's employee page, plus company pages for people without an Employee ID, and downloads one CSV. Choosing that CSV
  * compares every pulled day with the tool's own Projection for that day (app.js dayRows). The CSV stays in this browser.
- * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan),
+ * window.FirCompare = {LEVELS, targets(api, level, all), parseList(text), targetsFromList(list, api, group), script(plan), phoneScript(plan), licenseScript(plan), battalionScript(plan),
  * parseCsv(text), compare(rows, api)}. A list (e.g. cleanup/records-in-question.csv) can stand in for the tool's own questions.
  *
  * TRC (time reporting code): REG = working; H = off that day (not their shift); WDO = an extra shift on a day off (overtime,
@@ -5630,6 +7151,172 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
   }
 
+  /* Licenses and certifications (admins; cleanup/fir-pull-licenses-*.js): the Licenses and Certs pop-up (region
+     LICENSES_AND_CERTS) is in the HTML of fir-db1's employee page (app 1021, page 2), like phone numbers. plan: {people:
+     [{id, name, key}], label, concurrency, resumeKey, fileName}. Downloads key, emplId, name, description, expires, flag;
+     license numbers are never read into the file. Flags as phoneMain ("none", "mismatch", "unchecked", "no-region"). */
+  function licenseMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:2:" + m[2] + ":::RP,2:P2_EMPLID:";
+    const COLS = ["key", "emplId", "name", "description", "expires", "flag"], DATE = /\b(\d{1,2}\/\d{1,2}\/\d{2,4}|\d{4}-\d{2}-\d{2}|\d{1,2}-[A-Z]{3}-\d{2,4})\b/i;
+    const val = (c) => {
+      const k = c.cloneNode(true);
+      k.querySelectorAll("input, select, textarea").forEach((f) => {
+        const v = f.tagName === "SELECT" ? ((f.querySelector("option[selected]") || {}).textContent || "") : (f.type === "hidden" ? "" : f.getAttribute("value") || "");
+        f.replaceWith(c.ownerDocument.createTextNode(" " + v + " "));
+      });
+      return k.textContent.replace(/\s+/g, " ").trim();
+    };
+    const read = (html, id) => {
+      const doc = new DOMParser().parseFromString(html, "text/html");
+      const field = doc.getElementById("P2_EMPLID");
+      const shown = field ? (field.getAttribute("value") || field.textContent || "").trim().toUpperCase() : "";
+      if (shown && shown !== id) return { flag: "mismatch", items: [] };
+      const reg = doc.getElementById("LICENSES_AND_CERTS");
+      if (!reg) return { flag: "no-region", items: [] };
+      // Rows of the innermost tables: description, license number (skipped), expiration (the cell that is a date).
+      const items = [], seen = {};
+      [...reg.querySelectorAll("tr")].filter((tr) => !tr.querySelector("table")).forEach((tr) => {
+        const cells = [...tr.children].filter((c) => /^T[DH]$/.test(c.tagName)).map(val);
+        if (!cells.length || /^Description$/i.test(cells[0]) || !cells[0]) return;
+        const d = cells.slice(1).map((c) => DATE.exec(c)).filter(Boolean)[0];
+        const k = cells[0] + "|" + (d ? d[1] : "");
+        if (seen[k]) return;
+        seen[k] = 1;
+        items.push({ description: cells[0], expires: d ? d[1] : "" });
+      });
+      return { flag: items.length ? (shown ? "" : "unchecked") : "none", items };
+    };
+    const get = async (url) => { const h = await (await fetch(url, { credentials: "same-origin" })).text();
+      if (/type="password"/i.test(h) && !/LICENSES_AND_CERTS/.test(h)) throw new Error("signed-out"); return h; };
+    const RK = PLAN.resumeKey ? "tour-schedule:" + PLAN.resumeKey : null;
+    let saved = { done: [], rows: [] };
+    try { if (RK) saved = JSON.parse(localStorage.getItem(RK) || "null") || saved; } catch (e) { }
+    const done = new Set(saved.done), out = saved.rows.slice();
+    const save = () => { if (!RK) return; try { localStorage.setItem(RK, JSON.stringify({ done: [...done], rows: out })); } catch (e) { } };
+    const queue = PLAN.people.filter((p) => !done.has(p.id)), total = PLAN.people.length, wait = () => new Promise((r) => setTimeout(r, 400));
+    let n = done.size, stop = null;
+    const worker = async () => {
+      while (queue.length && !stop) {
+        const p = queue.shift();
+        try {
+          const r = read(await get(base + encodeURIComponent(p.id)), p.id);
+          if (!r.items.length) out.push([p.key, p.id, p.name, "", "", r.flag]);
+          r.items.forEach((it) => out.push([p.key, p.id, p.name, it.description, it.expires, r.flag]));
+          done.add(p.id);
+        } catch (e) { stop = e; queue.unshift(p); break; }
+        if (++n % 25 === 0) save();
+        console.log("license pull " + n + "/" + total + ": " + p.name + " " + p.id);
+        await wait();
+      }
+    };
+    return Promise.all(Array.from({ length: Math.max(1, PLAN.concurrency || 1) }, worker)).then(() => {
+      if (stop) { save(); return alert(stop.message === "signed-out" ? "fir-db1 signed you out after " + done.size + " of " + total + ". Sign in again, then paste and run this script again: it carries on where it stopped." : "The pull stopped (" + stop.message + ") after " + done.size + " of " + total + ". Paste and run it again to carry on."); }
+      if (RK) try { localStorage.removeItem(RK); } catch (e) { }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => r.map(q).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || "fir-licenses.csv";
+      document.body.appendChild(a); a.click(); a.remove();
+      console.log("license pull done: " + total + " people, " + out.filter((r) => r[3]).length + " licenses.");
+    });
+  }
+  function licenseScript(plan) {
+    return "/* Tour schedule: fir-db1 licenses and certifications pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + licenseMain.toString() + ")(" + JSON.stringify({ people: plan.people || [], concurrency: plan.concurrency || 1,
+        resumeKey: plan.resumeKey || "", fileName: plan.fileName || "" }) + ");\n";
+  }
+
+  /* Battalion rosters (admins; cleanup/fir-pull-battalions.js): fir-db1's Roster by Station (app 1021, page 11) lists one
+     day's crews for a battalion: station, company, role, name, Employee ID, TRC and trade partner. plan: {from, to
+     (MM/DD/YYYY), battalions: ["BT01", ...], fileName}. Rows use the COLS of script() with mode "co" and the company as
+     query, so the Employee card's fir-db1 comparison reads the file like company pages; station, battalion, with (trade
+     partner) and mark (the margin note, e.g. DP) are extra columns. A page with no rows downloads a structure note. */
+  function battalionMain(PLAN) {
+    const m = /[?&]p=(\d+):\d+:(\d+)/.exec(location.href);
+    if (!m) return alert("Open a fir-db1 page first (signed in), then run this again.");
+    const base = location.origin + location.pathname + "?p=1021:11:" + m[2] + "::NO::P11_FROMDT,P11_BATTALION:";
+    const ask = (q, d) => (prompt(q, d) || "").trim();
+    const t = new Date(), md = (d) => (d.getMonth() + 1) + "/" + d.getDate() + "/" + d.getFullYear();
+    const from = PLAN.from || ask("First date (MM/DD/YYYY)", md(t)), to = PLAN.to || ask("Last date (MM/DD/YYYY)", from);
+    const dt = (x) => { const a = x.split("/"); return new Date(+a[2], a[0] - 1, +a[1]); };
+    if (!/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(from) || !/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(to)) return alert("Use dates like 10/22/2026.");
+    const dates = [];
+    for (let d = dt(from); d <= dt(to); d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) dates.push(md(d));
+    const COLS = ["mode", "pulledFor", "date", "query", "emplId", "name", "co", "trc", "position", "role", "hours", "status", "flag", "station", "battalion", "with", "mark"];
+    const ID = /^[A-Z]{2}\d{4}$/, ROLE = /^[A-Z][A-Z\/]{1,5}$/;
+    const UNIT = { Engine: "E", Truck: "T", Battalion: "B", "Rescue Squad": "RS", "Rescue Captain": "RC", Fireboat: "FB", "Fire Boat": "FB", Medic: "M", "Hose Tender": "HT", "Mobile Air": "MA" };
+    const ROMAN = { I: 1, II: 2, III: 3, IV: 4 };
+    const coCode = (label) => {
+      if (/^Bureau of Equipment/.test(label)) return "BE";
+      const u = /^(Engine|Truck|Battalion|Rescue Squad|Rescue Captain|Fireboat|Fire Boat|Medic|Hose Tender|Mobile Air)\s+(\d+)/.exec(label);
+      if (u) return UNIT[u[1]] + (/^(E|T|B)$/.test(UNIT[u[1]]) ? ("0" + u[2]).slice(-2) : u[2]);
+      const dv = /^Division\s+([IV]+)/.exec(label);
+      return dv ? "D" + ROMAN[dv[1]] : label.replace(/\s+-\s+\d+\/\d+.*$/, "");
+    };
+    const cellText = (c) => { const k = c.cloneNode(true); k.querySelectorAll("script, noscript").forEach((x) => x.remove()); return k.textContent.replace(/\s+/g, " ").trim(); };
+    const read = (html, date, bt) => {
+      const doc = new DOMParser().parseFromString(html, "text/html"), rows = [], done = new Set();
+      let station = "", co = "";
+      const walk = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+      while (walk.nextNode()) {
+        const node = walk.currentNode, txt = node.nodeValue.replace(/\s+/g, " ").trim();
+        if (!txt) continue;
+        const tr = node.parentElement && node.parentElement.closest("tr");
+        const st = /^Fire Station\s+(\w+)/.exec(txt), unit = /^(.+?)\s+-\s+\d+\/\d+\b/.exec(txt);
+        if (st && !(tr && done.has(tr))) { station = st[1]; continue; }
+        if (unit && !(tr && done.has(tr))) { co = coCode(unit[1]); continue; }
+        if (!tr || done.has(tr)) continue;
+        const cells = [...tr.children].filter((c) => /^T[DH]$/.test(c.tagName)).map(cellText);
+        let i = cells.findIndex((c) => ID.test(c) || /\s[A-Z]{2}\d{4}$/.test(c));
+        if (i < 0) continue;
+        done.add(tr);
+        let name = "", id = cells[i];
+        const glued = /^(.*\S)\s+([A-Z]{2}\d{4})$/.exec(id);
+        if (glued) { name = glued[1]; id = glued[2]; } else name = cells[i - 1] || "";
+        const before = cells.slice(0, glued ? i : i - 1).filter(Boolean);
+        const role = before.length && ROLE.test(before[before.length - 1]) ? before.pop() : "";
+        const after = cells.slice(i + 1).filter(Boolean), trc = after.length && /^[A-Z]{1,4}$/.test(after[0]) ? after[0] : "";
+        const tw = after.map((c) => /\b(TR[OW])\s*([A-Z]{2}\d{4})\b/.exec(c)).filter(Boolean)[0];
+        rows.push({ mode: "co", pulledFor: date, date, query: co, emplId: id, name: name.replace(/\s*-ND$/, ""), co, trc, position: "", role,
+          hours: "", status: "", flag: "", station, battalion: bt, with: tw ? tw[1] + " " + tw[2] : "", mark: before.join(" ") });
+      }
+      if (!rows.length) {
+        const shape = [...doc.querySelectorAll("table")].slice(0, 5).map((tb) => tb.querySelectorAll("tr").length + " rows: " + cellText(tb).slice(0, 120)).join(" | ");
+        rows.push({ mode: "co", pulledFor: date, date, query: bt, flag: /type="password"/i.test(html) ? "signed-out" : "no-rows", name: shape.slice(0, 600), battalion: bt });
+      }
+      return rows;
+    };
+    const out = [], jobs = [];
+    dates.forEach((d) => PLAN.battalions.forEach((b) => jobs.push([d, b])));
+    const wait = () => new Promise((r) => setTimeout(r, 400));
+    return (async () => {
+      for (let k = 0; k < jobs.length; k++) {
+        const [d, b] = jobs[k];
+        const html = await (await fetch(base + encodeURIComponent(d) + "," + b, { credentials: "same-origin" })).text();
+        const rows = read(html, d, b);
+        if (rows[0].flag === "signed-out") { alert("fir-db1 signed you out after " + k + " of " + jobs.length + " pages. Sign in and run again (the file has what came in so far)."); out.push(...rows); break; }
+        rows.forEach((r) => out.push(r));
+        console.log("battalion pull " + (k + 1) + "/" + jobs.length + ": " + d + " " + b + " (" + rows.filter((r) => !r.flag).length + " people)");
+        await wait();
+      }
+      const q = (v) => { v = v == null ? "" : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+      const csv = [COLS.join(",")].concat(out.map((r) => COLS.map((c) => q(r[c])).join(","))).join("\n");
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+      a.download = PLAN.fileName || ("fir-battalions-" + from.replace(/\//g, "-") + (to !== from ? "_to_" + to.replace(/\//g, "-") : "") + ".csv");
+      document.body.appendChild(a); a.click(); a.remove();
+      console.log("battalion pull done: " + out.filter((r) => !r.flag).length + " rows.");
+    })();
+  }
+  function battalionScript(plan) {
+    return "/* Tour schedule: fir-db1 battalion roster pull (" + String(plan.label || "").replace(/\*\//g, "") + "). Paste in the console on a signed-in fir-db1 tab. */\n" +
+      "(" + battalionMain.toString() + ")(" + JSON.stringify({ from: plan.from || "", to: plan.to || "", fileName: plan.fileName || "",
+        battalions: plan.battalions || ["BT01", "BT02", "BT03", "BT04", "BT05", "BT06", "BT07", "BT08", "BT09", "BT10"] }) + ");\n";
+  }
+
   /* A list to check, e.g. cleanup/records-in-question.csv: any CSV with an employee_id (or emplId) column; rank_group,
      name, category and suggested_check are used when present. Returns {rows, groups}. */
   function parseList(text) {
@@ -5818,7 +7505,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       unknown: Object.keys(unknown).map(function (k) { return unknown[k]; }) };
   }
 
-  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
+  root.FirCompare = { LEVELS: LEVELS, targets: targets, parseList: parseList, targetsFromList: targetsFromList, script: script, phoneScript: phoneScript, licenseScript: licenseScript, battalionScript: battalionScript, parseCsv: parseCsv, compare: compare, firState: firState, COLS: COLS };
 })(typeof window !== "undefined" ? window : globalThis);
 </script>
 <script>
@@ -5826,7 +7513,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
  * window.CardViews(api) -> {render, open(key)}. With nobody open it shows the roster: rank tiles over a table of everyone. `api` comes from app.js. Admins only (page Editors, server admins); members
  * and viewers never see it, and the person page they use is unchanged.
  * Sections: identity (name, rank, Employee ID, academy class), own seat and moves, current assignment, leave, tour changes, cell number
- * (staff list), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
+ * (staff list), licenses and certifications (from fir-db1), "This is me" claim, corrections, and one history timeline with edit and delete for every record.
  * The status, cover and tour forms are the person page's (app.js statusForm / coverForm / tourForm), with other id prefixes.
  */
 (function (root) {
@@ -5900,6 +7587,24 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     }
     function coverer(c) { return byPos()[c.coverKey] || { pos: c.coverKey, name: c.coverName || c.coverKey }; }
     function list(rows, empty) { return rows.length ? '<ul class="hist card-list">' + rows.join("") + "</ul>" : '<p class="hint">' + empty + "</p>"; }
+    // Licenses and certifications (profiles, loaded from fir-db1 by admins): name and expiration, never the number.
+    function mdy(isoStr) { var a = String(isoStr).slice(0, 10).split("-"); return a.length === 3 ? +a[1] + "/" + +a[2] + "/" + a[0] : String(isoStr); }
+    function licDays(x) { return x.expires ? Math.round((api.fromIso(x.expires) - api.today()) / 864e5) : null; }
+    function licSummary(p) {
+      if (!api.profiles()) return "Loading…";
+      var l = profile(p).licenses || [];
+      if (!l.length) return "None on file";
+      var out = l.filter(function (x) { var d = licDays(x); return d != null && d < 0; }).length;
+      return l.length + " on file" + (out ? ' · <span class="err">' + out + " expired</span>" : "");
+    }
+    function licBody(p) {
+      var pf = profile(p), l = (pf.licenses || []).slice().sort(function (a, b) { return String(a.expires || "9").localeCompare(String(b.expires || "9")); });
+      if (!l.length) return '<p class="hint">None on file. They are loaded from fir-db1 (Licenses and Certs) by an admin.</p>';
+      return '<ul class="hist">' + l.map(function (x) {
+        var d = licDays(x), tag = d == null ? "" : d < 0 ? ' <span class="tag tag-away">Expired</span>' : d <= 90 ? ' <span class="tag">Expires in ' + d + " days</span>" : "";
+        return "<li><span>" + esc(x.name) + tag + '</span><span class="hint">' + (x.expires ? "expires " + esc(mdy(x.expires)) : "no expiration") + "</span></li>";
+      }).join("") + "</ul>" + (pf.licensesAsOf ? '<p class="hint">From fir-db1, as of ' + esc(mdy(pf.licensesAsOf)) + ". Admins only.</p>" : "");
+    }
     function section(id, title, sum, body, openDefault) {
       var open = ui.folds && id in ui.folds ? ui.folds[id] : openDefault !== false;
       return '<details class="card fold card-sec" data-cfold="' + id + '"' + (open ? " open" : "") + "><summary><h3>" + esc(title) + "</h3>" +
@@ -5929,7 +7634,10 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     var COLUMNS = [
       { key: "div", label: "Division", get: function (p) { var o = org(p); return o ? o.division.name : ""; }, on: true },
       { key: "batt", label: "Battalion", get: function (p) { var o = org(p); return o ? o.battalion.name : ""; }, on: true },
-      { key: "station", label: "Station", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
+      { key: "stn", label: "Station", get: function (p) { var o = org(p); return o && o.station ? o.station : null; }, num: true, on: true,
+        html: function (p) { var o = org(p); return o && o.station ? "Sta " + o.station : ""; } },
+      // Key kept as "station" so column choices saved in browsers still find it.
+      { key: "station", label: "Company", get: function (p) { return api.home(p) || ""; }, sortKey: function (p) { return coSort(api.home(p)); }, on: true, phone: true },
       { key: "name", label: "Name", get: function (p) { return p.name; }, on: true, phone: true,
         html: function (p) { return '<button type="button" class="linkish" data-ckey="' + esc(p.pos) + '">' + esc(p.name) + "</button>"; } },
       { key: "position", label: "Position", get: function (p) { return p.title + (p.added ? "" : " " + p.pos); }, on: true,
@@ -6380,6 +8088,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         section("leave", "Leave and statuses", curSt.length ? curSt.map(function (x) { return esc(x.code); }).join(" · ") : "None", leaveBody, !api.isPhone()) +
         section("tour", "Tour changes", p.added ? "—" : "Tour " + esc(tour) + (tcs.length ? " · " + tcs.length + " change" + (tcs.length === 1 ? "" : "s") : ""), tourBody, !api.isPhone()) +
         section("cell", "Cell number", c.staffList ? "On file" : "None", cellBody, !api.isPhone()) +
+        section("lic", "Licenses and certifications", licSummary(p), licBody(p), !api.isPhone()) +
         section("claim", "“This is me” claim", claimSum(key), claimBody, !api.isPhone()) +
         section("fixes", "Corrections", fx.filter(function (x) { return x.state === "open"; }).length + " open of " + fx.length, fixBody, !api.isPhone()) +
         section("hist", "History", hist.length + (hist.length === 1 ? " record" : " records"), histBody, !api.isPhone());
@@ -7361,7 +9070,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
       say($("pd-msg"), "Saving…");
       var classNo = cls ? +cls : null;
       backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
+        profilesCache[p.pos] = Object.assign({}, profilesCache[p.pos], { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo });
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -7729,6 +9438,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     wireList();
     Fix.wire();
     Feedback.wire();
+    Invite.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -7939,7 +9649,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback") };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow() };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -7980,6 +9690,7 @@ table.fir-t td { white-space: normal; vertical-align: top; }
         closeSheet();
         if (to === "signout") return backend.signOut();
         if (to === "feedback") return openFeedback();
+        if (to === "invite") return Invite.open();
         if (to === "seats") { state.seatsOpen = true; return setView("dash"); }
         if (to === "dash") state.seatsOpen = false;
         if (tabAllowed(to)) setView(to);
@@ -8076,6 +9787,8 @@ table.fir-t td { white-space: normal; vertical-align: top; }
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
   });
+
+  var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
 
   var Card = window.CardViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },

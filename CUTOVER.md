@@ -12,6 +12,8 @@ The two can't be kept in sync, so the switch happens once, all together. Allow a
 - You can sign in to the back office as an admin.
 - Optional: the test beta ([`BETA.md`](BETA.md)) is finished.
 
+**While people test (before the day):** to bring the page's latest records over, download the backup and click **Refresh records (keep trades)** under **Admin → Cut-over**. The schedule records then match the page, and the trades and answers testers made on Firebase stay as they are. The page's own trades come over only if they're new. Use **Replace everything** only on the day itself.
+
 ## Steps
 
 1. **Announce a time.**

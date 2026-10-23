@@ -34,9 +34,12 @@ class FirebaseBuild(unittest.TestCase):
         with open(os.path.join(folder, name), encoding="utf8") as f:
             return f.read()
 
+    def files(self, folder):
+        return sorted(os.path.relpath(os.path.join(d, f), folder) for d, _, fs in os.walk(folder) for f in fs)
+
     def test_only_static_app_files(self):
-        self.assertEqual(sorted(os.listdir(self.app)), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg", "apple-touch-icon.png"]))
-        self.assertEqual(sorted(os.listdir(self.admin)), sorted(build_firebase.APP_FILES))
+        self.assertEqual(self.files(self.app), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg", "apple-touch-icon.png"]))
+        self.assertEqual(self.files(self.admin), sorted(build_firebase.APP_FILES))
 
     def test_no_roster_names_or_ids(self):
         with open(os.path.join(ROOT, "data", "positions.json")) as f:
@@ -46,7 +49,7 @@ class FirebaseBuild(unittest.TestCase):
         # Hint-text and comment examples already in the app code ("e.g. Lester,D"), not roster data.
         examples = {"Lester,D", "Smith,J", "Pereira,J"}
         for folder in (self.app, self.admin):
-            text = "".join(self.read(folder, name) for name in os.listdir(folder) if not name.endswith(".png"))
+            text = "".join(self.read(folder, name) for name in self.files(folder) if not name.endswith(".png"))
             found = [n for n in names - examples if n in text] + [i for i in ids if re.search(r"\b" + i + r"\b", text)]
             self.assertEqual(found, [], "names or Employee IDs in the public Hosting files: " + folder)
 
@@ -82,6 +85,14 @@ class FirebaseBuild(unittest.TestCase):
         records = {"feedback": [{"id": "u1", "items": {}}], "statuses": []}
         build_artifact.fold_trades(records)
         self.assertNotIn("feedback", records)
+
+    def test_invite_a_coworker_on_both_sites_and_trades_untouched(self):
+        for folder in (self.app, self.admin):
+            html = self.read(folder, "index.html")
+            self.assertLess(html.index('src="vendor/qrcode.js"'), html.index('src="invite.js"'))
+            self.assertEqual(self.read(folder, "invite.js"), self.read(ROOT, "invite.js"))
+            self.assertEqual(self.read(folder, "trades.js"), self.read(ROOT, "trades.js"))
+        self.assertIn("MIT license", self.read(ROOT, "vendor/qrcode.js"))
 
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:

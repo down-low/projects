@@ -759,7 +759,7 @@
       say($("pd-msg"), "Saving…");
       var classNo = cls ? +cls : null;
       backend.setProfile(p.pos, { birthDate: bd, hireDate: hd, classNo: classNo }).then(function () {
-        profilesCache[p.pos] = { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo };
+        profilesCache[p.pos] = Object.assign({}, profilesCache[p.pos], { key: p.pos, birthDate: bd, hireDate: hd, classNo: classNo });
         say($("pd-msg"), "Saved.");
       }, function (er) { say($("pd-msg"), er.message, true); });
     };
@@ -1127,6 +1127,7 @@
     wireList();
     Fix.wire();
     Feedback.wire();
+    Invite.wire();
     $("date-input").onchange = function () { if (this.value) { state.date = fromIso(this.value); renderDate(); } };
     $("date-prev").onclick = function () { state.date = addDays(state.date, -1); renderDate(); };
     $("date-next").onclick = function () { state.date = addDays(state.date, 1); renderDate(); };
@@ -1337,7 +1338,7 @@
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback") };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow() };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1378,6 +1379,7 @@
         closeSheet();
         if (to === "signout") return backend.signOut();
         if (to === "feedback") return openFeedback();
+        if (to === "invite") return Invite.open();
         if (to === "seats") { state.seatsOpen = true; return setView("dash"); }
         if (to === "dash") state.seatsOpen = false;
         if (tabAllowed(to)) setView(to);
@@ -1508,6 +1510,8 @@
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     shortDate: shortDate, renderAll: renderAll, context: function () { return feedbackContext(); },
   });
+
+  var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });
 
   var Card = window.CardViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
