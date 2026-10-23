@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the two Firebase Hosting folders from the app files (FIREBASE_PLAN.md, "Two apps, one backend").
 
-Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY]
+Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY] [--app-id ID]
   out_dir defaults to firebase/; it gets public-app/ (the employee app) and public-admin/ (the back office).
   The URLs (set by the deploy workflow) let each site link to the other. --vapid-key (the Web Push key from Firebase
   Cloud Messaging) turns on app notifications for trade alerts; the app gets firebase-messaging-sw.js for them.
@@ -79,7 +79,9 @@ def sdk_tags(site, urls):
     libs = ["app", "auth", "firestore", "functions"] + (["messaging"] if site == "app" and urls.get("vapid") else [])
     tags = [f'<script src="/__/firebase/{SDK}/firebase-{lib}-compat.js"></script>' for lib in libs]
     cfg = {"FIREBASE_HOSTED": True, "FIREBASE_SITE": site, "FIREBASE_APP_URL": urls.get("app"), "FIREBASE_ADMIN_URL": urls.get("admin"),
-           "FIREBASE_VAPID_KEY": urls.get("vapid") if site == "app" else None}
+           "FIREBASE_VAPID_KEY": urls.get("vapid") if site == "app" else None,
+           # The web app's ID, for app notifications when Hosting's init.js leaves it out (no web app linked to the site).
+           "FIREBASE_APP_ID": urls.get("appid") if site == "app" else None}
     js = "".join(f"window.{k} = {json.dumps(v)};" for k, v in cfg.items())
     tags += ['<script src="/__/firebase/init.js"></script>', f"<script>{js}</script>"]
     return "\n".join(tags) + "\n"
@@ -129,7 +131,7 @@ def build_site(out, site, urls):
 def main():
     args = sys.argv[1:]
     urls = {}
-    for key, flag in (("app", "--app-url"), ("admin", "--admin-url"), ("vapid", "--vapid-key")):
+    for key, flag in (("app", "--app-url"), ("admin", "--admin-url"), ("vapid", "--vapid-key"), ("appid", "--app-id")):
         if flag in args:
             i = args.index(flag)
             if args[i + 1]:

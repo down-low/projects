@@ -2,7 +2,7 @@
 # (<project>-admin.web.app, or ADMIN_SITE), rules, functions, roster files and PDFs to Storage.
 # Setup (FIREBASE_SETUP.md): secret FIREBASE_SERVICE_ACCOUNT (the deploy key), variables FIREBASE_PROJECT_ID and
 # ADMIN_EMAILS, optional ALLOWED_DOMAINS and ADMIN_SITE. Until FIREBASE_PROJECT_ID is set the deploy job is skipped.
-# Trade alerts (optional; each channel is off until its settings are there): variable FIREBASE_VAPID_KEY (app
+# Trade alerts (optional; each channel is off until its settings are there): variables FIREBASE_VAPID_KEY and FIREBASE_APP_ID (app
 # notifications), secrets GMAIL_USER and GMAIL_APP_PASSWORD (email), TWILIO_SID, TWILIO_TOKEN and TWILIO_FROM (texts),
 # ALERT_KEY (signs one-tap links; also used by daily-alerts.yml).
 name: Firebase
@@ -71,9 +71,10 @@ jobs:
         run: |
           ADMIN_SITE="${ADMIN_SITE:-$PROJECT-admin}"
           echo "ADMIN_SITE=$ADMIN_SITE" >> "$GITHUB_ENV"
-          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY"
+          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY" --app-id "$APP_ID"
         env:
           VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
+          APP_ID: ${{ vars.FIREBASE_APP_ID }}
       - name: Function settings
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}

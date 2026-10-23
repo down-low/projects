@@ -522,9 +522,18 @@
     function notify(kind, id) { if (id) call("notify", { kind: kind, id: id }).catch(function (e) { if (root.console) console.warn("alerts: " + e.message); }); }
     // App notifications: register the service worker (firebase-messaging-sw.js) and save this device's token on the account.
     var HOME_SCREEN = "On iPhone, first add this app to your Home Screen (Share → Add to Home Screen), open it from there, then turn this on.";
+    // Messaging needs the web app's ID. Hosting's init.js only has it when a web app is linked to the site; otherwise a
+    // second app with the same settings plus FIREBASE_APP_ID (a GitHub variable, set at build) is used for messaging only.
+    function messaging() {
+      if (fb.app().options.appId) return fb.messaging();
+      if (!root.FIREBASE_APP_ID) throw new Error("App notifications need the app ID setting (FIREBASE_APP_ID). Tell the admin.");
+      var app = fb.apps.filter(function (a) { return a.name === "push"; })[0] ||
+        fb.initializeApp(Object.assign({}, fb.app().options, { appId: root.FIREBASE_APP_ID }), "push");
+      return app.messaging();
+    }
     function pushToken() {
       return navigator.serviceWorker.register("/firebase-messaging-sw.js").then(function (reg) {
-        return fb.messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
+        return messaging().getToken({ vapidKey: root.FIREBASE_VAPID_KEY, serviceWorkerRegistration: reg });
       }).then(function (token) {
         if (!token) throw new Error("This browser didn't give a notification token.");
         return w(fs.collection("users").doc(user.uid).update({ pushTokens: fb.firestore.FieldValue.arrayUnion(token) }));
@@ -807,7 +816,7 @@
       onPush: function (cb) {
         if (!adapter.canPush()) return;
         try {
-          fb.messaging().onMessage(function (m) { var n = (m && m.notification) || {}; cb(n.title || "", n.body || ""); });
+          messaging().onMessage(function (m) { var n = (m && m.notification) || {}; cb(n.title || "", n.body || ""); });
         } catch (e) { /* this browser has no push support */ }
       },
       /* Announcements (Admin → Send announcement; function announce): sent by admins, stored in announcements/{id};
