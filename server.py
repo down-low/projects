@@ -38,7 +38,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 PUBLIC = {"/": "index.html", "/index.html": "index.html", "/app.js": "app.js", "/schedule.js": "schedule.js",
-          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/fir.js": "fir.js", "/style.css": "style.css",
+          "/store.js": "store.js", "/admin.js": "admin.js", "/dashboard.js": "dashboard.js", "/organization.js": "organization.js", "/trades.js": "trades.js", "/awards.js": "awards.js", "/fill.js": "fill.js", "/corrections.js": "corrections.js", "/card.js": "card.js", "/fir.js": "fir.js", "/style.css": "style.css",
           "/feedback.js": "feedback.js", "/overtime.js": "overtime.js", "/myyear.js": "myyear.js", "/vendor/qrcode.js": "vendor/qrcode.js",
           "/invite.js": "invite.js", "/homescreen.js": "homescreen.js"}
 CODES = {"VA", "D", "S", "WE"}  # WE = working elsewhere (e.g. an admin assignment)
@@ -1204,7 +1204,7 @@ def make_handler(app):
             if path == "/api/admin/corrections":
                 self.require("editor")
                 return self.send_json(200, app.corrections())
-            if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json", "/data/vacancy-awards-2027.json"):
+            if path in ("/data/positions.json", "/data/required-staffing.json", "/data/employee-ids.json", "/data/vacancy-awards-2027.json", "/data/seat-qualifications.json"):
                 self.require("active")
                 self.path = path
                 return super().do_GET()

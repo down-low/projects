@@ -62,16 +62,18 @@
     function summarize(d) {
       var rows = api.dayRows(d), by = {}, defs = defaultRequired(), over = overrides();
       function bucket(co) {
-        return by[co] || (by[co] = { co: co, people: [], short: [], seats: 0 });
+        return by[co] || (by[co] = { co: co, people: [], short: [], openSeats: [], seats: 0 });
       }
       rows.forEach(function (r) {
         if (hiddenCo(r.co)) return;
         var b = bucket(Org.apparatus(r.co));
         if (!r.acting) b.seats++;
         if (r.name && !r.off) { b.people.push(r); return; }
+        // openSeats: the same seats as `short`, as {slot, row} (Fill open spots needs the seat's rank and title).
+        b.openSeats.push({ slot: r.slot, row: r });
         if (r.acting) { b.short.push(r.name + " (covering) · " + api.STATUS_LABEL[r.status]); return; }
         var covered = r.coveredBy && rows.some(function (x) { return x.acting === r.coveredBy && !x.off; });
-        if (covered) return;
+        if (covered) { b.openSeats.pop(); return; }
         if (!r.name) b.short.push("Vacant seat · " + r.slot.title + " (" + r.slot.pos + ")");
         else if (r.status) b.short.push(r.name + " · " + api.STATUS_LABEL[r.status] + " · not covered");
         else if (r.away) b.short.push(r.name + " · " + api.kindWord(r.away, 2).toLowerCase() + " " + ((api.byPos()[r.away.targetPos] || {}).company || r.away.targetPos));
@@ -85,7 +87,7 @@
         var covering = b.people.filter(isCovering).length;
         return { co: co, required: required, overridden: over[co] != null, defaultRequired: defs[co], working: working,
           regular: working - covering, covering: covering, open: Math.max(0, -total),
-          extra: Math.max(0, total), missing: Math.min(0, total), total: total, people: b.people, short: b.short };
+          extra: Math.max(0, total), missing: Math.min(0, total), total: total, people: b.people, short: b.short, openSeats: b.openSeats };
       });
     }
 

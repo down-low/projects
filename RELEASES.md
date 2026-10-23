@@ -27,6 +27,13 @@
 - **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Members mark their own seat; admins mark anyone's from that person's page (stored as `seat-<pos>`, which the member sees but can't change). Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
+### Fill open spots (back office; built Oct 23, 2026, view only; `fill.js`)
+- **Where:** admin site, More → **Fill open spots** (editors and admins). Never in the employee app (a stub there).
+- **Open spots:** for a date or From–To (up to 31 days), each apparatus working below its required staffing (the Staffing dashboard's Open count), with the seats left without their person (vacant, on leave and not covered, away). Filters: battalion and rank.
+- **Who can fill a seat (the user's calls, 10/23):** only people who marked **Want OT** that day, in the seat's rank group (the trade groups), off that day with no status. Fewest **Worked OT** hours this calendar year first (from the overtime marks), with back-to-back flags.
+- **Qualifications:** only Rescue Squad (RS), Hazmat (HT) and Fire boat (FB) seats need one: a fir-db1 license on the person's profile, unexpired, whose name is listed for that role in `data/seat-qualifications.json`. Until the names are filled in (from the records chat: the distinct license names in `profiles`), those seats say "qualification not set" and leave nobody out.
+- **Next:** a Fill button that records the cover (kind cover, no move) with a confirm step; then OT hours from fir-db1 instead of the marks, if wanted.
+
 ### Personal invite links (admin)
 - **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.
 - **Link:** `<app>/?join=<code>`: one use, expires after 14 days, made by a function. Reuses the trade-invite code paths (`createInvite`, `redeemInvite`) but in its own `joinInvites` collection, so trade invites stay untouched.

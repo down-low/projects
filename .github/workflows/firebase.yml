@@ -116,7 +116,7 @@ jobs:
           # The page reads these files from the browser, so the bucket allows the app's own addresses.
           printf '[{"origin":["https://%s.web.app","https://%s.firebaseapp.com","https://%s.web.app","https://%s.firebaseapp.com"],"method":["GET"],"responseHeader":["Authorization","Content-Type"],"maxAgeSeconds":3600}]' "$PROJECT" "$PROJECT" "$ADMIN_SITE" "$ADMIN_SITE" > cors.json
           gcloud storage buckets update "gs://$BUCKET" --cors-file=cors.json
-          gcloud storage cp --cache-control=no-cache data/positions.json data/required-staffing.json data/employee-ids.json data/vacancy-awards-2027.json "gs://$BUCKET/data/"
+          gcloud storage cp --cache-control=no-cache data/positions.json data/required-staffing.json data/employee-ids.json data/vacancy-awards-2027.json data/seat-qualifications.json "gs://$BUCKET/data/"
           gcloud storage rsync docs "gs://$BUCKET/docs" --delete-unmatched-destination-objects --cache-control=no-cache
           # One-time cleanup: an earlier deploy copied these into the functions upload bucket by mistake.
           for b in $(echo "$BUCKETS" | grep '^gcf-v2-uploads-'); do

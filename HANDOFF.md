@@ -58,6 +58,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 | Firebase: rules, functions (accounts and approval), rules tests; both Hosting sites | `firebase/`, `tools/build_firebase.py` |
 | Cut-over: page backup, Admin → Cut-over (replace and count check), frozen page build | `store.js`, `admin.js`, `tools/build_artifact.py --frozen`, `CUTOVER.md` |
 | Trades, Corrections, Employee cards, awards, admin | `trades.js`, `corrections.js`, `card.js`, `awards.js`, `admin.js` |
+| Back office: Fill open spots (open seats and who marked Want OT; seat qualifications) | `fill.js`, `data/seat-qualifications.json`, `firebase/functions/fill.test.js` |
 | App notifications (push) and admin announcements (Admin → Send announcement; function `announce`, `notices/{uid}`) | `store.js`, `admin.js`, `app.js`, `firebase/functions/announce.js`, `deliver.js` |
 | Self-hosted server (SQLite, Google sign-in); kept as the fallback | `server.py`, `tests/test_server.py` |
 | Builds the claude.ai page; `--capabilities` prints the access rules | `tools/build_artifact.py` |
