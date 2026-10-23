@@ -79,6 +79,8 @@ This file tracks the records chat (branch `claude/zen-wright-gqa6gq`). The routi
 
 - **Licenses E16 and E35 (10/23):** `fir-pull-licenses-e16-e35.js` covers 32 people (25 seat owners plus 7 covering a seat there today). The license and phone pulls now time out a page after 30 s (one retry, then flagged), save every 10 people and show a status box. Load after the user's OK.
 
+- **Firefighter phones loaded (10/23, user OK):** 399 pulled; 396 cells and 2 home numbers (marked `home`) added, none replaced. Staff list v6: 1,220 numbers. Still missing (9): Dumont,Catherine (no phone in fir-db1); Lopez,R, Alba,K, Louie,T, Joyce,S, Dickerson,C (WE seats, no Employee ID); Alexander,M, Peery,M (Pilot), Mulholand,B (Marine Engineer), not pulled. The back office needs a fresh backup (Admin → Cut-over) to show them.
+
 ## Next step
 1. **H 30: done 10/22.**
    - 6 of 7 already matched. For the four "OSE at own company" flags, the ownership is a move in the tool, not a cover.
