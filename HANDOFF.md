@@ -92,6 +92,8 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - January double covers.
 - Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
 - Items from the officer roster check.
+- **Decided (user, 10/23): overtime marks are visible to everyone** who opens that person's page (Want OT / Worked OT, `overtime.js`), not only the member and admins.
+- **To enter once Overtime is live:** Spencer,Marcus D (`10EOE09M`, SP2764): Worked OT 2026-10-21 (24 hrs), Want OT 2026-10-27.
 
 ## Parked ideas (not now; ask before building)
 
