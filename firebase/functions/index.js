@@ -421,7 +421,7 @@ exports.pushTest = wrap(async (req) => {
   const tokens = (snap.exists && snap.data().pushTokens) || [];
   if (!tokens.length) return { devices: 0, sent: 0 };
   const sent = await D.sendPush({ uid: auth.uid, pushTokens: tokens },
-    { subject: "Test notification", text: "App notifications work on this device." }, D.appUrl() + "/");
+    { subject: "Sample trade alert", text: "This is how alerts look: who's asking, the date and the terms. Tap one to open the trade." }, D.appUrl() + "/");
   return { devices: tokens.length, sent };
 });
 
