@@ -18,7 +18,7 @@
  * saveContact(), adminUsers(), adminAction().
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
- * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * postTrade(rec), repostTrade(cancelledTrade, rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
  * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
@@ -312,6 +312,10 @@
             rec.status = "open";
             return tw(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
           },
+          repostTrade: function (old, rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            return tw(db.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { return { id: old.id }; });
+          },
           widenTrade: function (id, audience) { return tw(db.collection("trades").doc(id).update({ audience: audience })); },
           replyTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -474,6 +478,14 @@
      app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
+  /* Posting again for a day whose trade was cancelled re-opens that trade (one trade per person per day) with the new
+     choices; answers from before (createdAt < reopenedAt) are ignored by the page. */
+  function reopenFields(rec) {
+    var f = { status: "open", audience: rec.audience, note: rec.note || "", seatPos: rec.seatPos, reopenedAt: nowIso(),
+      replyId: null, takerKey: null, proposal: null, setAt: null, cancelledAt: null, legs: [] };
+    if (rec.postedBy) f.postedBy = rec.postedBy;
+    return f;
+  }
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
@@ -771,6 +783,9 @@
       postTrade: function (rec) {
         rec.status = "open";
         return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
+      },
+      repostTrade: function (old, rec) {
+        return w(fs.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { notify("trade", old.id); return { id: old.id }; });
       },
       widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
       replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },

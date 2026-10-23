@@ -116,7 +116,7 @@ service cloud.firestore {
       allow read: if active();
       allow create: if isAdmin() || (myPos() != null && data().posterKey == myPos() && data().status == 'open');
       allow update: if isAdmin() || (myPos() != null && resource.data.posterKey == myPos() && data().posterKey == myPos() &&
-          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt']));
+          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt', 'note', 'seatPos', 'reopenedAt']));
       allow delete: if isAdmin();
     }
     match /tradeReplies/{id} {

@@ -173,6 +173,12 @@ test("trades: post as yourself, reply as yourself, only the poster sets or cance
   await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "set", takerKey: "11ENL01M", replyId: "r1", setAt: "x", legs: [] }));
   await assertFails(db(MEMBER).doc("trades/t1").update({ posterKey: "11ENL01M" }));
   await assertFails(db(MEMBER).doc("trades/t1").update({ date: "2026-12-01" }));
+  // posting again for the same day re-opens the cancelled trade, only by its poster
+  await assertSucceeds(db(MEMBER).doc("trades/t1").update({ status: "cancelled", cancelledAt: "x" }));
+  const reopen = { status: "open", audience: { board: true, to: [] }, note: "again", seatPos: "10EOC03M", reopenedAt: "y",
+    replyId: null, takerKey: null, proposal: null, setAt: null, cancelledAt: null, legs: [] };
+  await assertFails(db(OTHER).doc("trades/t1").update(reopen));
+  await assertSucceeds(db(MEMBER).doc("trades/t1").update(reopen));
 });
 
 test("admins post a trade for someone, record answers and pick; members can't post for others", async () => {
