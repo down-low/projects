@@ -49,9 +49,29 @@ MANIFEST = """{
 SITES = {"app": "public-app", "admin": "public-admin"}
 
 
-# App notifications (trade alerts): Firebase Cloud Messaging's service worker, at the site root.
-PUSH_WORKER = f"""importScripts("/__/firebase/{SDK}/firebase-app-compat.js", "/__/firebase/{SDK}/firebase-messaging-compat.js", "/__/firebase/init.js");
-firebase.messaging(); // shows each alert as a notification; tapping it opens the trade (webpush.fcmOptions.link)
+# App notifications (trade alerts, announcements): the service worker at the site root that Firebase Cloud Messaging
+# delivers to. It loads no SDK: the messaging SDK refuses to start inside some browsers' workers (Safari), and a worker
+# that throws while loading is rejected, so no device could register. The page still gets the token (store.js).
+PUSH_WORKER = """self.addEventListener("install", function () { self.skipWaiting(); });
+self.addEventListener("activate", function (e) { e.waitUntil(self.clients.claim()); });
+// FCM's web payload: {notification: {title, body}, fcmOptions: {link}, data}. Always show one (Safari stops silent pushes).
+self.addEventListener("push", function (e) {
+  var p = {};
+  try { p = e.data ? e.data.json() : {}; } catch (x) { p = { notification: { body: e.data && e.data.text() } }; }
+  var n = p.notification || {}, link = (p.fcmOptions && p.fcmOptions.link) || (p.data && p.data.link) || "/";
+  e.waitUntil(self.registration.showNotification(n.title || "SFFD Tour Schedule", { body: n.body || "", icon: "/apple-touch-icon.png", data: { link: link } }));
+});
+// Tapping it opens the app (a trade alert opens that trade): an open app window if there is one, else a new one.
+self.addEventListener("notificationclick", function (e) {
+  e.notification.close();
+  var link = (e.notification.data && e.notification.data.link) || "/";
+  e.waitUntil(self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(function (list) {
+    for (var i = 0; i < list.length; i++) {
+      if ("navigate" in list[i]) return list[i].focus().then(function (c) { return c.navigate(link); });
+    }
+    return self.clients.openWindow(link);
+  }));
+});
 """
 
 

@@ -6,6 +6,7 @@ Run: python3 -m unittest discover -s tests
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -110,6 +111,13 @@ class FirebaseBuild(unittest.TestCase):
                             "--vapid-key", "BKEY"], check=True, capture_output=True)
             app = os.path.join(tmp, "public-app")
             self.assertIn("firebase-messaging-sw.js", os.listdir(app))
+            # The worker loads no SDK (a worker that throws while loading can't register) and shows each push itself.
+            worker = self.read(app, "firebase-messaging-sw.js")
+            self.assertNotIn("importScripts", worker)
+            for event in ('"push"', '"notificationclick"', "showNotification"):
+                self.assertIn(event, worker)
+            if shutil.which("node"):
+                subprocess.run(["node", "--check", os.path.join(app, "firebase-messaging-sw.js")], check=True)
             self.assertIn('window.FIREBASE_VAPID_KEY = "BKEY"', self.read(app, "index.html"))
             self.assertIn("firebase-messaging-compat.js", self.read(app, "index.html"))
             self.assertNotIn("BKEY", self.read(os.path.join(tmp, "public-admin"), "index.html"))
