@@ -478,6 +478,9 @@
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Replaced on cut-over: every record collection (staff-list cells included); accounts, contact info, audit and settings stay.
   var REPLACE_KINDS = IMPORT_KINDS.concat(["staffCells"]);
+  // Kept on a refresh (opts.keepTrades): trades and answers made on Firebase are never removed or overwritten; the
+  // file's trades are added only when new. A trade's covers and TR records are its legs, so they stay with it.
+  var KEEP_KINDS = ["trades", "tradeReplies"];
   function firebaseAdapter(onChange) {
     var SITE = root.FIREBASE_SITE === "app" ? "app" : "admin";
     var fb = root.firebase;
@@ -921,13 +924,21 @@
           }
           return chain;
         }
-        var removals = Promise.resolve([]);
+        var keep = !!(opts && opts.keepTrades);
+        var kept = !keep ? Promise.resolve() : Promise.all(KEEP_KINDS.map(function (k) { return fs.collection(k).get(); })).then(function (snaps) {
+          var have = {};
+          KEEP_KINDS.forEach(function (k, i) { have[k] = {}; snaps[i].docs.forEach(function (d) { have[k][d.id] = true; }); });
+          writes = writes.filter(function (x) { return !have[x[0]] || !have[x[0]][x[1]]; });
+        });
+        var removals = kept.then(function () { return []; });
         if (opts && opts.replace) {
-          removals = Promise.all(REPLACE_KINDS.map(function (k) {
-            return fs.collection(k).get().then(function (snap) {
-              return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
-            });
-          })).then(function (lists) { return [].concat.apply([], lists); });
+          removals = kept.then(function () {
+            return Promise.all(REPLACE_KINDS.filter(function (k) { return !keep || KEEP_KINDS.indexOf(k) === -1; }).map(function (k) {
+              return fs.collection(k).get().then(function (snap) {
+                return snap.docs.filter(function (d) { return !want[k][d.id]; }).map(function (d) { return [k, d.id]; });
+              });
+            }));
+          }).then(function (lists) { return [].concat.apply([], lists); });
         }
         return w(removals.then(function (gone) {
           return inBatches(gone, function (b, x) { b.delete(fs.collection(x[0]).doc(x[1])); }, "Removed");
@@ -937,7 +948,10 @@
           return Promise.all(REPLACE_KINDS.map(function (k) { return fs.collection(k).get(); }));
         }).then(function (snaps) {
           var out = {};
-          REPLACE_KINDS.forEach(function (k, i) { out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length }; });
+          REPLACE_KINDS.forEach(function (k, i) {
+            out[k] = { backup: Object.keys(want[k]).length, firestore: snaps[i].docs.length };
+            if (keep && KEEP_KINDS.indexOf(k) !== -1) out[k].kept = true;
+          });
           return out;
         }));
       },
