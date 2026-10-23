@@ -502,7 +502,7 @@
       "auth/quota-exceeded": "The sign-in texts are used up for today. Try again tomorrow or use Google.",
       "auth/operation-not-allowed": "Firebase won't send a code to this number. Use Google for now and tell an admin.",
       "auth/captcha-check-failed": "The page check failed. Reload and try again.",
-      "auth/credential-already-in-use": "This cell is already on another account. An admin can merge the two (Admin → Users).",
+      "auth/credential-already-in-use": "This cell is already on another account. An admin can delete that extra account in the Firebase console (Authentication → Users), then try again.",
       "auth/provider-already-linked": "Your account already has a cell number. Ask an admin to change it.",
       "auth/invalid-app-credential": "The page check failed. Reload and try again.",
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
@@ -537,15 +537,6 @@
        server.py's /api/me. The ID token is refreshed when the claims changed, so the rules see them at once. */
     function syncMe() {
       return call("syncMe").then(function (j) {
-        // A cell whose seat belongs to another account: the server moved the cell there (functions: switchToOwner).
-        if (j && j.switchTo) return auth.signInWithCustomToken(j.switchTo).then(function () { location.reload(); return new Promise(function () {}); });
-        if (j && j.signInAgain) {
-          return auth.signOut().then(function () {
-            try { history.replaceState(null, "", location.pathname + "?auth_error=cell_moved"); } catch (x) { /* old browser */ }
-            location.reload();
-            return new Promise(function () {});
-          });
-        }
         me = j;
         return user.getIdTokenResult(!!j.claimsChanged);
       }).then(function (t) {
@@ -706,8 +697,6 @@
       },
       adminUsers: function () { return call("adminUsers"); },
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
-      // Admins: fold an extra account with no seat into the one to keep (its cell and Google sign-in move over).
-      mergeAccounts: function (from, into) { return call("mergeAccounts", { from: from, into: into }); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
       linkCell: function (cell, buttonId) {

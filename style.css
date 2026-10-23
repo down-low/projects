@@ -926,3 +926,6 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .invite-acts { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: center; }
 .pick-btn.taken { cursor: default; opacity: 0.6; }
 .pick-btn.taken:hover { background: none; }
+.phone-later { margin-top: 12px; }
+.phone-later > summary { cursor: pointer; color: var(--muted); font-size: 0.9rem; }
+.phone-later[open] > summary { margin-bottom: 8px; }

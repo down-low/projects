@@ -84,36 +84,13 @@ function planCellMatch(uid, u, phone, cells, takenBy, now) {
   return { pos: hits[0], status: "active", claimPos: null, claimNote: null, claimRequest: null, approvedBy: "cell", approvedAt: now };
 }
 
-/* One account per person. A cell sign-in whose number is the staff-list cell of a seat already linked to another
-   account (say, one made with Google) moves into that account instead of starting a second one.
-   caller: the signing-in account's users doc, or null if it's brand new; owner: {uid, role, status, phone} of the
-   account linked to the seat; callerHasData: the caller already has corrections or feedback of its own.
-   Returns {action: "switch"} (the caller's empty account is removed and the phone added to the owner),
-   {action: "refuse", reason: "staff" | "phone" | "disabled"}, or null when it doesn't apply.
-   Never into an editor or admin account: a wrong number on the staff list must not open admin access. */
-function planPhoneSwitch({ callerUid, caller, owner, phone, callerHasData }) {
-  if (!phone || !owner || owner.uid === callerUid) return null;
-  if (caller && (caller.pos || caller.claimPos || caller.claimRequest || caller.email || caller.role !== "member" || caller.status === "active")) return null;
-  if (callerHasData) return null;
-  if (owner.status === "disabled") return { action: "refuse", reason: "disabled" };
-  if (owner.role === "editor" || owner.role === "admin") return { action: "refuse", reason: "staff" };
-  if (owner.phone && cellKey(owner.phone) !== cellKey(phone)) return { action: "refuse", reason: "phone" };
-  return { action: "switch" };
-}
-
-/* Admin merge (Admin → Users): fold an extra account with no seat into the account to keep. from/into: users docs with
-   uid. Returns the fields the kept account gains ({phone?, email?}); throws when the extra account holds a seat or a
-   pending claim, or the two are the same. */
-function planMerge(from, into) {
-  if (!from || !into) throw new AccountError("not-found", "No such user");
-  if (from.uid === into.uid) throw bad("Pick a different account to keep.");
-  if (from.pos || from.claimPos || from.claimRequest) throw new AccountError("failed-precondition", "That account holds a seat or a claim. Unlink it first.");
-  if (from.role === "admin" && from.status === "active") throw new AccountError("failed-precondition", "That account is an admin. Change its role first.");
-  const gain = {};
-  if (from.phone && !into.phone) gain.phone = from.phone;
-  if (from.phone && into.phone && cellKey(from.phone) !== cellKey(into.phone)) throw new AccountError("failed-precondition", "Both accounts have different cell numbers.");
-  if (from.email && !into.email) gain.email = from.email;
-  return gain;
+/* Google first, cell for free: an active member account linked to a seat gets that seat's staff-list cell as a
+   sign-in number, so they can sign in with their cell without adding it. Returns the E.164 number to attach, or null.
+   Never for editors or admins (a wrong staff-list number must not open admin access), never over a number the account
+   already has. */
+function planStaffCell(u, cells) {
+  if (!u || u.status !== "active" || u.role !== "member" || !u.pos || u.phone) return null;
+  return normCell(cells.get(u.pos)) || null;
 }
 
 function claimsFor(user) {
@@ -351,5 +328,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  normCell, cellKey, cellSeat, planCellMatch, planPhoneSwitch, planMerge, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };
