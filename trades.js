@@ -279,10 +279,10 @@
       if (root.PAGE_URL) return root.PAGE_URL;
       return /^https?:$/.test(location.protocol) ? location.origin + location.pathname : "";
     }
-    // The text for one person: their personal link when there is one (Firebase), else the general link.
+    // The text for one person (or a group, without k). Always the general app link: personal ?t= links read as spam.
     function inviteText(t, k) {
       var p = byPos()[t.posterKey] || { name: t.posterName || t.posterKey, rank: "" }, seat = byPos()[t.seatPos];
-      var mine = k && inviteFor(t, k), link = mine && mine.code ? pageLink().replace(/\/?$/, "/") + "?t=" + mine.code : pageLink();
+      var link = pageLink();
       return (k ? "Hi " + api.firstName(k) + ", " : "") + p.name + (p.rank ? " (" + p.rank + ")" : "") + " wants to trade " + dateText(t.date) +
         ", 24 hrs" + (seat ? " at " + api.home(seat) : "") + ". You're off that day." + (t.note ? ' "' + t.note + '"' : "") +
         " Interested? Text me back: pay back later, or a day of yours I'd work instead." + (link ? " Sign up for Dept Scheduler & Trade Board: " + link : "");
@@ -345,11 +345,12 @@
       }
       loadLinks(t, keys);
       var run = ui.inviteRun && ui.inviteRun.id === t.id ? ui.inviteRun : null, links = ui.links[t.id] || {};
-      var personal = !!links.byKey, cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
+      // createInvite is used only for the staff-list cells, so Messages opens addressed to the person.
+      var cells = keys.map(function (k) { var m = inviteFor(t, k); return m && m.cell; }).filter(Boolean);
       var html = '<div class="invite-box"><p class="hint">' + n + " on the app yet. Text them from the button below. Your phone Messages opens with the text filled in" +
         (cells.length === keys.length ? ", and their cell." : cells.length ? ", and their cell when it's on file; pick the others from your contacts." : "; pick them from your contacts.") +
-        (personal ? " (They can answer before signing up.)" : "") + "</p>" +
-        (links.loading ? '<p class="hint">Getting their links…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
+        " (They can answer before signing up.)</p>" +
+        (links.loading ? '<p class="hint">Getting their numbers…</p>' : "") + (links.error ? '<p class="msg err">' + esc(links.error) + "</p>" : "");
       if (run) {
         var k = run.keys[run.i];
         html += k
