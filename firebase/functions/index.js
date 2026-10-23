@@ -84,9 +84,10 @@ async function takenMap() {
   return new Map(snap.docs.map((d) => [d.data().pos, d.id]));
 }
 async function meFor(uid, u, lookup) {
-  const [contact, profile] = await Promise.all([db.doc("contacts/" + uid).get(),
+  const [contact, priv, profile] = await Promise.all([db.doc("contacts/" + uid).get(), db.doc("contactsPrivate/" + uid).get(),
     u.pos ? db.doc("profiles/" + u.pos).get() : Promise.resolve(null)]);
-  return A.meJson(uid, u, { lookup, contact: contact.exists ? contact.data() : null, profile: profile && profile.exists ? profile.data() : null });
+  const c = contact.exists || priv.exists ? Object.assign({}, contact.exists ? contact.data() : {}, priv.exists ? priv.data() : {}) : null;
+  return A.meJson(uid, u, { lookup, contact: c, profile: profile && profile.exists ? profile.data() : null });
 }
 // Custom claims from the account doc; returns true when they changed (the page then refreshes its ID token).
 async function syncClaims(uid, u, current) {
@@ -152,6 +153,12 @@ exports.syncMe = wrap(async (req) => {
       // Already the sign-in number of another account (e.g. one made by cell earlier): leave it; an admin can sort it out.
       console.warn("staff cell for " + auth.uid + ": " + (e.code || e.message));
     }
+  }
+  // Older contact records kept the email and other phone with the shared cell: move them to the private record.
+  const pub = await db.doc("contacts/" + auth.uid).get(), split = pub.exists ? A.splitContact(pub.data()) : null;
+  if (split) {
+    await db.doc("contactsPrivate/" + auth.uid).set(Object.assign(split.priv, { updatedAt: now() }), { merge: true });
+    await db.doc("contacts/" + auth.uid).update({ contactEmail: admin.firestore.FieldValue.delete(), phoneOther: admin.firestore.FieldValue.delete() });
   }
   const changed = await syncClaims(auth.uid, result.user, auth.token);
   const { lookup } = await lookups();

@@ -555,7 +555,7 @@
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], contactsPrivate: [], myPrivate: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -618,8 +618,13 @@
     function contactMap() {
       var out = {};
       if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}) }]);
+      // The email and other phone are private (contactsPrivate: admins, and your own).
+      var priv = {};
+      records.contactsPrivate.concat(records.myPrivate).forEach(function (c) { if (c.pos) priv[c.pos] = c; });
       records.contacts.concat(records.myContact).forEach(function (c) {
-        if (c.pos) out[c.pos] = { email: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shared: !!c.share };
+        if (!c.pos) return;
+        var p = priv[c.pos] || {};
+        out[c.pos] = { email: p.contactEmail || c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: p.phoneOther || c.phoneOther || null, shared: !!c.share };
       });
       return out;
     }
@@ -645,6 +650,8 @@
         .forEach(function (kind) { watch(kind, fs.collection(kind)); });
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
+      watch("myPrivate", fs.collection("contactsPrivate").doc(user.uid));
+      if (admin()) watch("contactsPrivate", fs.collection("contactsPrivate"));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       watch("overtime", fs.collection("overtime"));
@@ -759,10 +766,15 @@
       inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
       answerInvite: function (code, proposal, note, emplId) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "", emplId: emplId || "" }); },
       redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
+      // Sharing shows only the cell: contacts/<uid> holds the cell and the share flag; the contact email and other phone
+      // go to contactsPrivate/<uid> (you and admins).
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
           phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
-        return w(fs.collection("contacts").doc(user.uid).set(rec)).then(function () {
+        return w(Promise.all([
+          fs.collection("contacts").doc(user.uid).set({ pos: rec.pos, phoneMobile: rec.phoneMobile, share: rec.share, updatedAt: rec.updatedAt }),
+          fs.collection("contactsPrivate").doc(user.uid).set({ pos: rec.pos, contactEmail: rec.contactEmail, phoneOther: rec.phoneOther, updatedAt: rec.updatedAt }),
+        ])).then(function () {
           Object.assign(me, { contactEmail: rec.contactEmail, phoneMobile: rec.phoneMobile, phoneOther: rec.phoneOther, shareContact: rec.share });
           return me;
         });

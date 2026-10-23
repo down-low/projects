@@ -396,9 +396,9 @@
           '<button class="btn primary" type="button" id="ml-confirm">Verify</button></div><span class="msg" id="ml-msg" role="status"></span>' : "") +
         '<label>Contact email<input type="email" id="mc-email" maxlength="254" value="' + esc(me.contactEmail || "") + '" placeholder="' + esc(me.googleEmail) + '"></label>' +
         '<label>Other phone<input type="tel" id="mc-other" maxlength="40" value="' + esc(me.phoneOther || "") + '" placeholder="Optional"></label>' +
-        '<label class="chk share"><input type="checkbox" id="mc-share"' + (me.shareContact ? " checked" : "") + '> Share my contact info for shift swaps</label>' +
-        '<p class="hint">When this is on, anyone signed in to the schedule sees your contact email and phone numbers on your schedule page. ' +
-        "When it's off, only admins can see them. Your Google sign-in stays " + esc(me.googleEmail) + ".</p>" +
+        '<label class="chk share"><input type="checkbox" id="mc-share"' + (me.shareContact ? " checked" : "") + '> Share my cell with coworkers for shift swaps</label>' +
+        '<p class="hint">When this is on, anyone signed in sees your cell on your schedule page, so they can call or text you about a swap. ' +
+        "Your email and other phone stay private (admins only). Trade text alerts are separate, under Trades → Alerts.</p>" +
         '<div class="row"><button class="btn primary" type="submit">Save</button><span class="msg" id="mc-msg" role="status"></span></div></form>';
       if (me.pos) {
         var pf = me.profile || {};
@@ -419,7 +419,6 @@
           var input = $("ml-cell");
           if (!cell || !input || input.value) return;
           input.value = root.TourMath.showCell(cell);
-          $("ml-note").textContent = "From the staff list. Tap Turn on cell sign-in and enter the code we text you.";
         });
       }
       if ($("me-dates")) $("me-dates").onsubmit = function (e) {
