@@ -138,6 +138,8 @@ Each kind of alert stays off until its settings are added, so do these in any or
 1. **The link key** (needed for the one-tap buttons in emails and for the daily summary). **Secrets** tab → **New repository secret**: name `ALERT_KEY`, value any long random text (for example, mash the keyboard for 40 characters). You never type it anywhere else.
 2. **App notifications.** Firebase console → ⚙ **Project settings** → **Cloud Messaging** tab → **Web configuration** → **Web Push certificates** → **Generate key pair**. Copy the long key it shows. **Variables** tab → **New repository variable**: name `FIREBASE_VAPID_KEY`, value the key. (It's a public key, so a variable is fine.)
    - On iPhone, notifications only work after the app is added to the Home Screen (Safari → Share → **Add to Home Screen**) and opened from there. Android and computers work in the browser.
+   - To check it: in the app, **Trades → Alerts**, tick **Notify me in the app**, allow notifications, then tap **Send me a test notification**. It should arrive within a few seconds.
+   - The same key also sends admin announcements (back office → **Admin** → **Send announcement**) to people who turned app notifications on; everyone else sees them at the top of the app.
 3. **Email**, sent from a department Gmail account:
    - Sign in to that Gmail account, open **https://myaccount.google.com/security**, and turn on **2-Step Verification** if it's off.
    - Open **https://myaccount.google.com/apppasswords**, create an app password named `Tour schedule`, and copy the 16-letter password.

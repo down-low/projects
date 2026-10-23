@@ -38,7 +38,7 @@ class FirebaseBuild(unittest.TestCase):
         return sorted(os.path.relpath(os.path.join(d, f), folder) for d, _, fs in os.walk(folder) for f in fs)
 
     def test_only_static_app_files(self):
-        self.assertEqual(self.files(self.app), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg"]))
+        self.assertEqual(self.files(self.app), sorted(build_firebase.APP_FILES + ["manifest.json", "icon.svg", "apple-touch-icon.png"]))
         self.assertEqual(self.files(self.admin), sorted(build_firebase.APP_FILES))
 
     def test_no_roster_names_or_ids(self):
@@ -49,7 +49,7 @@ class FirebaseBuild(unittest.TestCase):
         # Hint-text and comment examples already in the app code ("e.g. Lester,D"), not roster data.
         examples = {"Lester,D", "Smith,J", "Pereira,J"}
         for folder in (self.app, self.admin):
-            text = "".join(self.read(folder, name) for name in self.files(folder))
+            text = "".join(self.read(folder, name) for name in self.files(folder) if not name.endswith(".png"))
             found = [n for n in names - examples if n in text] + [i for i in ids if re.search(r"\b" + i + r"\b", text)]
             self.assertEqual(found, [], "names or Employee IDs in the public Hosting files: " + folder)
 
@@ -113,7 +113,21 @@ class FirebaseBuild(unittest.TestCase):
             self.assertIn('window.FIREBASE_VAPID_KEY = "BKEY"', self.read(app, "index.html"))
             self.assertIn("firebase-messaging-compat.js", self.read(app, "index.html"))
             self.assertNotIn("BKEY", self.read(os.path.join(tmp, "public-admin"), "index.html"))
+            # iPhone: notifications only from the Home Screen app, which needs its icon and full-screen launch
+            self.assertIn("apple-touch-icon.png", os.listdir(app))
+            self.assertIn('rel="apple-touch-icon"', self.read(app, "index.html"))
+            self.assertIn("apple-mobile-web-app-capable", self.read(app, "index.html"))
         self.assertTrue(os.path.exists(os.path.join(ROOT, "firebase", "functions", "lib", "schedule.js")))
+
+    def test_announcements_and_notices_rules(self):
+        with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
+            rules = f.read()
+        block = re.search(r"match /announcements/\{id\} \{(.*?)\}", rules, re.S).group(1)
+        self.assertIn("allow read: if isAdmin();", block)
+        self.assertIn("allow write: if false;", block)
+        block = re.search(r"match /notices/\{uid\} \{(.*?)\n    \}", rules, re.S).group(1)
+        self.assertIn("only(['dismissed'])", block)
+        self.assertNotIn("create", block)
 
     def test_cells_stay_admin_only(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:

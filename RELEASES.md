@@ -2,6 +2,17 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
+### App notifications test and announcements
+**Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
+- **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.
+- **iPhone:** notifications only work from the Home Screen app. On an iPhone in Safari, Trades → Alerts says so (Share → Add to Home Screen, open it from there, then turn them on) instead of asking for a permission Safari can't give. The app has a Home Screen icon and opens full screen.
+- **Small fixes:** a device's token is saved again on each visit (tokens change); alerts that arrive while the app is open show as a card at the top.
+- **Admin → Send announcement** (back office): title (80 characters), short message (300), optional `https://` link; to everyone with an account or to picked people; a preview and a confirm step.
+  - Everyone it goes to sees it as a card at the top of the app until they dismiss it; people with app notifications on also get it on their phone.
+  - Function `announce` (admins only) checks it, refuses anything that looks like a phone number (cells never go out), keeps it in `announcements/{id}` (admins read; only the function writes) and each person's copy in `notices/{uid}` (the owner reads it and may only mark it dismissed). Audited (`announce`).
+  - Sent announcements are listed under the form with how many people got them and how many by app notification.
+- **First use:** announcing sick and vacation accrual tracking. Accrual itself is a separate feature: it needs its own spec and a consent record first.
+
 ### Invite a coworker (built Oct 22, 2026; on the Firebase sites; the claude.ai page shows it once it knows the app address)
 - **Where:** More menu → **Invite a coworker**, for every signed-in member (employee app, back office and the claude.ai page).
 - **Sheet:** a large QR code of the employee app address, **Share** (the phone's share sheet: Messages and the like), **Copy link**, and a line saying they sign in with the cell number on the staff list.
@@ -21,11 +32,6 @@
 - **Reuses, doesn't change:** the launch-invite helpers in `admin.js` (`launchMsg`, `launchSms`) and the sent marks in `launchInvites/{pos}` (`store.js` `launchMark` / `launchSent`), so the card shows "Invited Oct 22" and the bulk list skips them.
 - **Trade invites stay exactly as they are:** `trades.js` (Invite, Copy text), the `tradeInvites` collection and the `createInvite` / `inviteInfo` / `answerFromInvite` / `redeemInvite` functions are not touched; the build checks trade invites still work.
 - **No cell on file:** the button reads "No cell on file" and points to adding one on the card.
-
-### App notifications test and announcements (own chat)
-- Finish the push setup (Firebase Cloud Messaging key), then add **Admin → Send announcement**: a title, a short message and an optional link, to everyone or chosen people; sent as an app notification and shown in the app for anyone without notifications on.
-- **First test:** Lester and Goforth (the records editor prepares them). iPhone users must add the app to the Home Screen first.
-- **First real use:** announcing sick and vacation accrual tracking, which needs its own spec and a saved consent record before any balances are stored.
 
 ### Divisions with their own real data (Airport, EMS, HQ)
 - **Real data, one Firebase project per division:** clone the Suppression project's setup into a new project (Airport, then EMS, then HQ). Same repo and code; GitHub deploys to each project as its own target.

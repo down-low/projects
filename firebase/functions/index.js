@@ -12,6 +12,7 @@ const admin = require("firebase-admin");
 const crypto = require("crypto");
 const A = require("./accounts");
 const AL = require("./alerts");
+const AN = require("./announce");
 
 admin.initializeApp();
 setGlobalOptions({ region: "us-central1", maxInstances: 5 });
@@ -410,6 +411,43 @@ exports.notify = wrap(async (req) => {
   if (typeof body.id !== "string" || !body.id) throw new HttpsError("invalid-argument", "id is required");
   const sent = body.kind === "reply" ? await D.reply(body.id) : await D.trade(body.id);
   return { sent };
+});
+
+// "Send me a test notification" (Trades → Alerts): one app notification to the caller's own registered devices.
+exports.pushTest = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true) throw new HttpsError("permission-denied", "Approved accounts only.");
+  const snap = await db.doc("users/" + auth.uid).get();
+  const tokens = (snap.exists && snap.data().pushTokens) || [];
+  if (!tokens.length) return { devices: 0, sent: 0 };
+  const sent = await D.sendPush({ uid: auth.uid, pushTokens: tokens },
+    { subject: "Test notification", text: "App notifications work on this device." }, D.appUrl() + "/");
+  return { devices: tokens.length, sent };
+});
+
+/* Admin announcements (Admin → Send announcement; checks and audience in announce.js): stored in announcements/{id},
+   shown in the app to every recipient (notices/{uid}), and sent as an app notification to those with app alerts on. */
+exports.announce = wrap(async (req) => {
+  const actor = requireAdmin(req);
+  const ann = AN.clean(req.data || {});
+  const users = await db.collection("users").where("status", "==", "active").get();
+  const list = AN.recipients(users.docs.map((d) => Object.assign({ uid: d.id }, d.data())), ann);
+  const ref = db.collection("announcements").doc(), at = now();
+  const item = { title: ann.title, message: ann.message, link: ann.link, at };
+  for (let i = 0; i < list.length; i += 400) {
+    const batch = db.batch();
+    list.slice(i, i + 400).forEach((r) => batch.set(db.doc("notices/" + r.uid), { items: { [ref.id]: item } }, { merge: true }));
+    await batch.commit();
+  }
+  let pushed = 0, devices = 0;
+  for (const r of list.filter((x) => x.push)) {
+    const n = await D.sendPush(r, { subject: ann.title, text: ann.message }, D.appUrl() + "/").catch((e) => { console.warn("push: " + e.message); return 0; });
+    if (n) { pushed++; devices += n; }
+  }
+  const counts = { recipients: list.length, pushed, devices };
+  await ref.set(Object.assign({}, ann, { at, by: actor.uid, counts }));
+  await audit(actor.uid, "announce", { id: ref.id, recipients: list.length, pushed });
+  return Object.assign({ id: ref.id }, counts);
 });
 
 const page = (title, inner) => '<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
