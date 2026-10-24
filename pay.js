@@ -78,6 +78,7 @@
     // Classifications not offered for now (the user, Oct 2026; more to follow). Someone whose own one is hidden gets no card.
     // Only 97.40-hour (24-hour shift) employees for now.
     hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110",
+      "H-18", "H-22", "H-28", "H-29",
       // H-3 Level 1 (EMT) and Level 2 (Paramedic): EMS, Station 49, a different department.
       "H-3/1", "H-3/2", "H-3/3", "H-3/4", "H-3/5", "H-3/6", "H-3/7", "H-3/8"],
     // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
@@ -221,13 +222,14 @@
       var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
         '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +
-        '<div class="row"><label>Hire date<input type="date" id="pay-hire" value="' + esc(hire || "") + '"></label>' +
+        '<div class="pay-field"><label for="pay-hire">Hire date</label><input type="date" id="pay-hire" value="' + esc(hire || "") + '">' +
         '<span class="hint" id="pay-hire-note">' + (ui.hire ? (yos != null ? yos + " years of service" : "") :
-          ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span></div>" +
+          ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span>" +
         (hire && hire !== savedHire() ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
-        '<label>Classification<select id="pay-code">' + opts.map(function (o) {
+        "</div>" +
+        '<div class="pay-field"><label for="pay-code">Classification</label><select id="pay-code">' + opts.map(function (o) {
           return '<option value="' + esc(o[0]) + '"' + (o[0] === shown ? " selected" : "") + ">" + esc(o[1]) + "</option>";
-        }).join("") + "</select></label>" +
+        }).join("") + "</select></div>" +
         '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.filter(function (x) { return premOffered(x, code); }).map(function (x) {
           return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
         }).join("") +
