@@ -89,7 +89,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay", "history"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -116,6 +116,7 @@
     else if (state.view === "card") Card.render();
     else if (state.view === "feedback") Feedback.render();
     else if (state.view === "pay") Pay.render();
+    else if (state.view === "history") History.render();
     else renderRank();
   }
 
@@ -1304,6 +1305,7 @@
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
+    if (v === "history") return serverMode() && backend.isAdmin() && !!backend.changeLog;
     if (v === "pay") return serverMode() && backend.isActive() && !!myPos() && window.PayViews.shows(byPos[myPos()]);
     return false;
   }
@@ -1350,7 +1352,7 @@
     // Menu sheet items marked data-need show only to people who can use them.
     var me = serverMode() && backend.me ? backend.me() : null;
     var can = { member: tabAllowed("me"), admin: tabAllowed("admin"), card: tabAllowed("card"), editor: !!(backend && backend.canEdit()), "signed-in": !!(me && me.signedIn),
-      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow(), pay: tabAllowed("pay") };
+      simple: simpleUi(), feedback: Feedback.canSend() || tabAllowed("feedback"), invite: Invite.canShow(), pay: tabAllowed("pay"), history: tabAllowed("history") };
     document.querySelectorAll("#more-sheet [data-need]").forEach(function (li) { li.hidden = !can[li.dataset.need]; });
     $("sheet-mode").textContent = !backend || backend.mode === "none" ? "View only" : backend.mode === "snapshot" ? snapshotLabel()
       : serverMode() ? "" : backend.canEdit() ? "Editing" : "View only";
@@ -1569,6 +1571,12 @@
   var Awards = window.AwardViews({
     $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     people: function () { return people; }, data: function () { return data; }, renderAll: renderAll, RANKS: RANK_ORDER,
+  });
+
+  // Change history (admin site only; a stub in the employee app).
+  var History = window.HistoryViews({
+    $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; },
+    today: today, iso: iso, fromIso: fromIso, addDays: addDays, shortDate: shortDate,
   });
 
   var Accounts = window.AccountViews({

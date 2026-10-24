@@ -1002,6 +1002,14 @@
         }
         return w(first.then(function () { return fs.collection(COLLECTIONS[kind]).doc(id).delete(); }));
       },
+      /* Admins: the change history (changeLog, written by the log<Collection> triggers) from one instant to another (ISO, UTC), newest first,
+         at most 1000 entries; and putting back the version a change replaced or deleted (function restoreChange). */
+      changeLog: function (fromIso, toIso) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        return w(fs.collection("changeLog").where("at", ">=", fromIso).where("at", "<", toIso).orderBy("at", "desc").limit(1000).get())
+          .then(function (snap) { return docs(snap); });
+      },
+      restoreChange: function (id) { return admin() ? call("restoreChange", { id: id }) : Promise.reject(new Error(NO_EDIT)); },
       fetchData: fetchData,
       // Opens a PDF from Cloud Storage; the tab is opened first so the browser doesn't block it as a pop-up.
       openDoc: function (file) {

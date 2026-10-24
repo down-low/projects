@@ -984,3 +984,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .pay-table td:last-child { text-align: right; }
 .pay-table .pay-total th, .pay-table .pay-total td { font-weight: 700; }
 .pay select { max-width: 100%; }
+
+/* ---------- Change history (history.js, admin site) ---------- */
+.hist-filters { flex-wrap: wrap; gap: 8px; align-items: center; }
+table.hist-t td { white-space: normal; vertical-align: top; }
+.hist-fields summary { cursor: pointer; }
+.hist-fields ul { margin: 4px 0 0; }

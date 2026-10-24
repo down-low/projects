@@ -38,7 +38,7 @@ jobs:
       - name: Python tests
         run: python3 -m unittest discover -s tests
       - name: Account, alert and announcement logic tests
-        run: node --test firebase/functions/accounts.test.js firebase/functions/alerts.test.js firebase/functions/announce.test.js
+        run: node --test firebase/functions/accounts.test.js firebase/functions/alerts.test.js firebase/functions/announce.test.js firebase/functions/changelog.test.js
       - name: Syntax check
         run: for f in *.js firebase/functions/*.js firebase/tests/*.js; do node --check "$f"; done
       - name: Install rules test tools

@@ -59,6 +59,16 @@
 - **Phase 2 ideas (not built; the user decides):** a line comparing a picked step with your own ("+$X a year"); the next step and the date it starts. Left out to keep the card uncluttered.
 - An estimate for planning, not a pay stub.
 
+### Change history for records (built Oct 23, 2026; admin site; `history.js`, triggers `logStatuses`, `logCovers` and the like)
+- **Why:** more people are getting editor and admin access. Before this, an edit kept only the last `updatedBy`, and a delete left no trace.
+- **What's logged:** every add, edit and delete to a schedule record (statuses, tour changes, covers, added people, required staffing, the move log, roster overrides, trades and trade answers, overtime marks, profiles), as `changeLog/{id}`. Each entry holds who did it, when, and the version before and after. An edit that only touches the update stamps isn't logged.
+- **Who did it:** taken from the write's own sign-in (Firestore's auth context), so a delete is tied to the person deleting, not the last editor. Writes made by the functions (trade alerts and the like) show as "The app (automatic)".
+- **Private:** cell numbers, phone, email and contact fields are dropped from every entry. Contacts, `staffCells`, accounts and overtime notes aren't logged at all. Names are shown from the roster, never an email or number.
+- **Access:** admins read it; nobody writes, edits or deletes it from a page (rules: `changeLog` read `isAdmin()`, write `false`; rules test). Only the triggers write it.
+- **Screen:** More → **Change history** (admins): dates (the last 7 days by default, up to 1,000 changes at a time), record type, changed by, and person or company. Each change shows what changed, with **Restore**: it puts back the version from before that change (an edit or a delete), with a confirm step. It runs through the `restoreChange` function (admins only, audited `restore`) and is itself logged as a restore.
+- **First deploy:** this is the project's first Firestore trigger (Eventarc). If the Actions deploy stops on an IAM or Eventarc permission error, see FIREBASE_SETUP.md, Troubleshooting.
+- **Later:** CSV export, and a link from the Employee card to that person's history.
+
 ### Personal invite links (admin)
 - **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.
 - **Link:** `<app>/?join=<code>`: one use, expires after 14 days, made by a function. Reuses the trade-invite code paths (`createInvite`, `redeemInvite`) but in its own `joinInvites` collection, so trade invites stay untouched.
