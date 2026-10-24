@@ -5,6 +5,7 @@
  *   sent     a trade sent to you (always)            answer   an answer to your trade (always)
  *   board    a new board post you could take (Board posts: "each"); "daily" gets one summary a day instead
  *   picked   your answer was picked (always)          cancelled  a set trade you were in was cancelled (always)
+ *   remind   the evening before a traded day you work (always; tradeReminders, once a day)
  * alertLog/{tradeId}: {to: [keys alerted], board: bool, status, taker} so asking twice never alerts twice.
  */
 "use strict";
@@ -146,6 +147,30 @@ function message(kind, ctx) {
   }
   throw new Error("unknown alert " + kind);
 }
+/* ---------- Reminders: the evening before a traded day ----------
+   Whoever works a set trade's day (each cover leg: the taker, and for a swap the poster on the swap day) hears about it
+   the evening before. Returns [{pos, tradeId, date, seatPos, forKey}] for members only; forKey is the person who is off. */
+function reminders(trades, members, day) {
+  const out = [];
+  (trades || []).forEach((t) => {
+    if (t.status !== "set" || !Array.isArray(t.legs)) return;
+    t.legs.forEach((l, i) => {
+      if (l.kind !== "covers" || l.start !== day || !members.has(l.coverKey)) return;
+      const off = t.legs[i + 1] && t.legs[i + 1].kind === "statuses" ? t.legs[i + 1].pos : null;
+      out.push({ pos: l.coverKey, tradeId: t.id, date: day, seatPos: l.targetPos, forKey: off });
+    });
+  });
+  return out;
+}
+function reminderMessage(r, world) {
+  const seat = world.byPos[r.seatPos], off = world.byPos[r.forKey];
+  const text = "Reminder: you're working a trade tomorrow, " + shortDate(r.date) + ", 24 hrs" + (seat ? " at " + home(seat) : "") +
+    (off ? ", for " + off.name : "") + ".";
+  return { subject: "Trade tomorrow: " + shortDate(r.date) + (seat ? " at " + home(seat) : ""), text, sms: text };
+}
+// The calendar date in Pacific time for an instant (the department's day), as YYYY-MM-DD, and the day after it.
+function pacificDay(ms) { return new Date(ms).toLocaleDateString("en-CA", { timeZone: "America/Los_Angeles" }); }
+function nextDay(iso) { const d = M.fromIsoDate(iso); d.setDate(d.getDate() + 1); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-"); }
 function digestMessage(trades, world) {
   const lines = trades.map((t) => "· " + shortDate(t.date) + ": " + whoText(world.byPos[t.posterKey]) + (t.note ? ' "' + t.note + '"' : ""));
   const text = (trades.length === 1 ? "1 new trade" : trades.length + " new trades") + " on the board you could take:\n" + lines.join("\n");
@@ -197,5 +222,5 @@ function twilioSignature(url, params, token) {
   return crypto.createHmac("sha1", token).update(Buffer.from(data, "utf-8")).digest("base64");
 }
 
-module.exports = { buildWorld, answerCheck, tradeAlerts, boardTakers, dailyDigest, message, digestMessage, signToken, readToken, parseSms,
+module.exports = { buildWorld, answerCheck, tradeAlerts, boardTakers, dailyDigest, message, digestMessage, reminders, reminderMessage, pacificDay, nextDay, signToken, readToken, parseSms,
   phoneKey, e164, twilioSignature, shortDate, termsText, M };
