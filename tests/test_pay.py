@@ -55,7 +55,8 @@ class PayEstimate(unittest.TestCase):
         e = estimate("H-2", 6, {"holiday": False, "ao": True})
         self.assertAlmostEqual(e["hourly"], 61.191 * 1.05)
         self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
-        self.assertAlmostEqual(e["otShift"], 61.191 * 1.05 * 1.5 * 24)
+        self.assertAlmostEqual(e["straightHourly"], 61.191 * 1.05)
+        self.assertAlmostEqual(e["otShift"], 61.191 * 1.05 * (10 + 14 * 1.5))  # 4-shift period: 10 straight, 14 at 1.5x
 
     def test_no_holiday_premium_on_overtime(self):
         e = estimate("H-2", 6, {"holiday": True, "ao": True})
@@ -82,7 +83,7 @@ class PayEstimate(unittest.TestCase):
         self.assertEqual(round(e["total"]), 223521)
         self.assertAlmostEqual(e["hourly"], 71.1294 * 1.2409)
         self.assertAlmostEqual(e["otHourly"], 71.1294 * 1.15 * 1.5)
-        self.assertEqual(round(e["otShift"]), 2945)
+        self.assertEqual(round(e["otShift"]), 2536)
 
     def test_emt_ao_boat_are_h2_only_and_paramedic_hidden(self):
         self.assertEqual(estimate("H-20", 6, {"holiday": False, "ao": True, "emt5": True, "boat": True, "medic": True})["total"], 180128)
@@ -97,6 +98,24 @@ class PayEstimate(unittest.TestCase):
         self.assertFalse(run("P.shows({hclass: 'H120'})"))
         self.assertFalse(run("P.shows({rank: 'Firefighter', hclass: 'H-3/8'})"))
         self.assertTrue(run("P.shows({rank: 'Firefighter', hclass: 'H-3/9'})"))
+
+
+    def test_overtime_is_straight_time_to_106_hours(self):
+        split = lambda reg, hrs: run("(({straight, overtime}) => [straight, overtime])(P.otPay({straightHourly: 1, otHourly: 1.5}, %d, %d))" % (reg, hrs))
+        self.assertEqual(split(96, 24), [10, 14])
+        self.assertEqual(split(120, 24), [0, 24])
+        self.assertEqual(split(72, 24), [24, 0])
+        self.assertEqual(split(72, 48), [34, 14])
+        self.assertEqual(run("P.otPay({straightHourly: 10, otHourly: 15}, 96, 24).amount"), 10 * 10 + 14 * 15)
+
+    def test_regular_hours_count_worked_and_traded_shifts_not_leave(self):
+        days = [{}, None, {"status": "VA"}, {"status": "S"}, {"status": "D"}, {"status": "TR"}, {"status": "WE"}, {"acting": True}]
+        self.assertEqual(run("P.regularHours(%s)" % json.dumps(days)), 4 * 24)
+
+    def test_lester_h30_24_hour_shift(self):
+        e = estimate("H-30", 26, {"train": 9})
+        self.assertAlmostEqual(e["straightHourly"], 81.191 * 1.15)
+        self.assertEqual(round(e["otShift"]), 2894)
 
 
 if __name__ == "__main__":

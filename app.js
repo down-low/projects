@@ -1537,7 +1537,7 @@
   var Pay = window.PayViews({
     $: $, esc: esc, say: say, backend: function () { return backend; }, today: today,
     person: function () { return byPos[myPos()] || null; }, myPos: function () { return myPos(); },
-    overtime: function (pos) { return Overtime.marksFor(pos); },
+    overtime: function (pos) { return Overtime.marksFor(pos); }, day: day,
   });
 
   var Invite = window.InviteViews({ $: $, esc: esc, say: say, backend: function () { return backend; } });

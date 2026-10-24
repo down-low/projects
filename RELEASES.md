@@ -46,11 +46,14 @@
 - **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
 - **Trimmed (the user, Oct 23, 2026; more to follow):** only 97.40-hour (24-hour shift) employees for now. Classifications H-40, H-41, H-43, H-32, H-24, H-23, H-22, H-29, H-28, H-18, H-16, H-9, H-6, H-4, H-120, H-110 and H-3 Level 1 and 2 (steps 1–8: EMS, Station 49, a different department) are hidden, and someone whose own classification is hidden gets no Pay estimate. The default classification is the seat's `hclass` (else from rank). EMT (engine/truck/rescue squad), Apparatus Operator and Rescue Boat Operator are H-2 only; Paramedic license and EMT assigned to an ambulance are hidden (kept in `PAY`).
 - **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), overtime hourly and one 24-hour overtime shift.
-- **Overtime (the user's rule):** 1.5 × that hourly with premiums, except the Holiday premium (none on overtime), and what one 24-hour overtime shift pays.
+- **Overtime (the user's rules):** the 97.40-hour hourly with premiums except Holiday (none on overtime).
+  - **Straight time until 106 hours worked in the pay period, then 1.5×.** 4 regular shifts (96 hrs) + a 24-hour OT shift: 10 hrs straight, 14 at 1.5×. 5 regular shifts (120 hrs): all OT at 1.5×. 3 regular shifts (72 hrs): straight time until 106.
+  - Toward the 106: only shifts worked count (not VA, S or D); a shift someone works for you (TR) counts as worked.
+  - The "24-hour overtime shift" row assumes a 4-shift period (10 straight + 14 at 1.5×). **Later:** what the next OT shift would pay in the current period.
 - **Overtime this pay period** (built Oct 23, 2026). One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
   - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
   - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
-  - **Pay:** hours × the overtime hourly above. None marked: "None marked", no amount.
+  - **Pay:** split at the 106 (scheduled shifts over the whole period, counted as above, plus the Worked OT hours): straight time up to it, 1.5× past it. None marked: "None marked", no amount.
   - **Where:** only in the Pay estimate card (private to the member); not on the year card.
   - **As built:** pure `payPeriodOf(date)` and `otWorked(marks, start, last)` in `pay.js` (`PAY.payPeriod`), tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
 - **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
