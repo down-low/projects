@@ -61,6 +61,14 @@ class FirebaseBuild(unittest.TestCase):
         self.assertIn('window.FIREBASE_SITE = "app"', self.read(self.app, "index.html"))
         self.assertIn('window.FIREBASE_SITE = "admin"', self.read(self.admin, "index.html"))
 
+    def test_fill_open_spots_on_the_admin_site_only(self):
+        app = self.read(self.app, "fill.js")
+        self.assertNotIn("FillMath", app)
+        self.assertNotIn("candidates", app)
+        self.assertIn("FillMath", self.read(self.admin, "fill.js"))
+        self.assertIn('data-go="fill"', self.read(self.app, "index.html"))  # hidden there: tabAllowed needs FillMath
+        self.assertIn('<li data-need="editor"><button type="button" data-go="fill">', self.read(ROOT, "index.html"))
+
     def test_index_loads_firebase_before_store(self):
         for folder in (self.app, self.admin):
             html = self.read(folder, "index.html")

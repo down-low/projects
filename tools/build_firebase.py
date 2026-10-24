@@ -23,7 +23,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = "10.14.1"  # Firebase JS SDK (compat) served by Hosting
 APP_FILES = ["index.html", "style.css", "schedule.js", "organization.js", "store.js", "admin.js", "dashboard.js",
-             "trades.js", "awards.js", "corrections.js", "feedback.js", "overtime.js", "myyear.js", "pay.js", "vendor/qrcode.js", "invite.js", "homescreen.js", "fir.js", "card.js", "app.js"]
+             "trades.js", "awards.js", "fill.js", "corrections.js", "feedback.js", "overtime.js", "myyear.js", "pay.js", "vendor/qrcode.js", "invite.js", "homescreen.js", "fir.js", "card.js", "app.js"]
 # Admin-only screens left out of the employee app: same entry points as the real files, no screens behind them.
 STUBS = {
     "fir.js": "/* fir-db1 checks are on the admin site only. */\n",
@@ -31,6 +31,8 @@ STUBS = {
                "window.CardViews = function () { return { render: function () {}, open: function () {} }; };\n",
     "awards.js": "/* 2027 awards import is on the admin site only. */\n"
                  "window.AwardViews = function () { return { render: function () {} }; };\n",
+    "fill.js": "/* Fill open spots is on the admin site only. */\n"
+               "window.FillViews = function () { return { render: function () {} }; };\n",
 }
 ICON = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="12" fill="#b3261e"/>
 <text x="32" y="42" font-family="Arial, sans-serif" font-size="26" font-weight="700" fill="#fff" text-anchor="middle">TS</text></svg>

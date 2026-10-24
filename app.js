@@ -89,7 +89,7 @@
   /* ---------- Tabs ---------- */
   function setView(v) {
     state.view = v;
-    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fixes", "card", "feedback", "pay"].forEach(function (k) {
+    ["dash", "date", "person", "crew", "rank", "me", "admin", "six", "trades", "awards", "fill", "fixes", "card", "feedback", "pay"].forEach(function (k) {
       $("view-" + k).hidden = k !== v;
       if ($("tab-" + k)) $("tab-" + k).setAttribute("aria-selected", k === v ? "true" : "false");
     });
@@ -112,6 +112,7 @@
     else if (state.view === "admin") Accounts.renderAdmin();
     else if (state.view === "trades") Trades.renderTrades();
     else if (state.view === "awards") Awards.render();
+    else if (state.view === "fill") Fill.render();
     else if (state.view === "fixes") Fix.render();
     else if (state.view === "card") Card.render();
     else if (state.view === "feedback") Feedback.render();
@@ -1301,6 +1302,7 @@
     if (v === "admin") return serverMode() && backend.isAdmin();
     if (v === "trades") return !!(backend && Trades.visible());
     if (v === "awards") return !!(backend && backend.canEdit() && window.AWARDS_2027);
+    if (v === "fill") return !!(backend && backend.canEdit() && window.FillMath);
     if (v === "fixes") return !!(backend && backend.canEdit() && backend.handleCorrection);
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
@@ -1569,6 +1571,22 @@
   var Awards = window.AwardViews({
     $: $, esc: esc, backend: function () { return backend; }, byPos: function () { return byPos; }, recs: function () { return recs; },
     people: function () { return people; }, data: function () { return data; }, renderAll: renderAll, RANKS: RANK_ORDER,
+  });
+
+  // Fill open spots (admin site only; a stub in the employee app). License names per seat role load when first opened.
+  var qualRules = null, qualLoading = false;
+  function loadQualRules() {
+    if (qualRules || qualLoading) return;
+    qualLoading = true;
+    getFile("data/seat-qualifications.json").then(function (r) { return r.ok ? r.json() : {}; }).then(function (j) {
+      qualRules = j || {}; qualLoading = false; if (state.view === "fill") render();
+    }, function () { qualRules = {}; qualLoading = false; });
+  }
+  var Fill = window.FillViews({
+    $: $, esc: esc, recs: function () { return recs; }, people: function () { return people; }, opts: opts, home: home,
+    today: today, iso: iso, fromIso: fromIso, addDays: addDays, longDate: longDate, STATUS_LABEL: STATUS_LABEL, RANKS: RANK_ORDER,
+    summarize: function (d) { return Dash.summarize(d); }, profiles: function () { return profilesCache; }, loadProfiles: loadProfiles,
+    qualRules: function () { if (window.SEAT_QUALIFICATIONS) return window.SEAT_QUALIFICATIONS; loadQualRules(); return qualRules; },
   });
 
   var Accounts = window.AccountViews({

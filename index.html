@@ -156,6 +156,10 @@
     <div id="awards-detail"></div>
   </section>
 
+  <section class="view" id="view-fill" role="region" aria-label="Fill open spots (admins)" hidden>
+    <div id="fill-detail"></div>
+  </section>
+
   <section class="view" id="view-trades" role="tabpanel" aria-labelledby="tab-trades" hidden>
     <div id="trades-detail"></div>
   </section>
@@ -186,6 +190,7 @@
         <li><button type="button" data-go="rank">Rank month grid</button></li>
         <li data-need="editor"><button type="button" data-go="seats">Open seats</button></li>
         <li data-need="editor"><button type="button" data-go="awards">2027 vacancy awards</button></li>
+        <li data-need="editor"><button type="button" data-go="fill">Fill open spots</button></li>
         <li data-need="editor"><button type="button" data-go="fixes">Corrections <span class="hint" id="fixes-count"></span></button></li>
         <li data-need="card"><button type="button" data-go="card">Employee cards</button></li>
       </ul>
@@ -279,6 +284,7 @@
 <script src="dashboard.js"></script>
 <script src="trades.js"></script>
 <script src="awards.js"></script>
+<script src="fill.js"></script>
 <script src="corrections.js"></script>
 <script src="feedback.js"></script>
 <script src="overtime.js"></script>

@@ -126,6 +126,7 @@ def main():
     data = data.replace("</", "<\\/")
     required = json.dumps(json.load(open(os.path.join(ROOT, "data", "required-staffing.json"))), separators=(",", ":"))
     ids = json.dumps(json.load(open(os.path.join(ROOT, "data", "employee-ids.json"))), separators=(",", ":")).replace("</", "<\\/")
+    quals = json.dumps(json.load(open(os.path.join(ROOT, "data", "seat-qualifications.json"))), separators=(",", ":")).replace("</", "<\\/")
     awards = json.dumps(json.load(open(os.path.join(ROOT, "data", "vacancy-awards-2027.json"))), separators=(",", ":")).replace("</", "<\\/")
     docs = json.dumps(json.load(open(os.path.join(ROOT, "docs", "index.json"))), separators=(",", ":")).replace("</", "<\\/")
     snap = ""
@@ -149,7 +150,7 @@ def main():
         f'<link rel="stylesheet" href="{fonts}">\n'
         f"<style>\n{read('style.css')}</style>\n"
         f"{banner}{body}\n"
-        f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};{snap}</script>\n"
+        f"<script>window.POSITIONS={data};window.DOCS={docs};window.REQUIRED_STAFFING={required};window.EMPLOYEE_IDS={ids};window.AWARDS_2027={awards};window.SEAT_QUALIFICATIONS={quals};{snap}</script>\n"
         f"<script>\n{read('schedule.js')}</script>\n"
         f"<script>\n{read('organization.js')}</script>\n"
         f"<script>\n{read('store.js')}</script>\n"
@@ -157,6 +158,7 @@ def main():
         f"<script>\n{read('dashboard.js')}</script>\n"
         f"<script>\n{read('trades.js')}</script>\n"
         f"<script>\n{read('awards.js')}</script>\n"
+        f"<script>\n{read('fill.js')}</script>\n"
         f"<script>\n{read('corrections.js')}</script>\n"
         f"<script>\n{read('feedback.js')}</script>\n"
         f"<script>\n{read('overtime.js')}</script>\n"
