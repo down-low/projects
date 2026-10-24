@@ -1,6 +1,21 @@
 {
- "_note": "fir-db1 license or cert names (as on the Licenses and Certs list) that qualify someone for each seat role in Fill open spots. Names only; never who holds them. Empty: not set yet.",
- "RS": [],
- "HT": [],
- "FB": []
+ "_note": "Fill open spots: who may work a specialty seat, from 25 A-084 Attachment B (minimum to apply) with the user's calls of Oct 23, 2026. places: where a check applies (companies, stations, or a seat-title pattern) and, per rank class (officer = Lieutenant and Captain; ff = Firefighter and FF/Paramedic; all = every rank), groups of certs: every group is needed, any one cert in a group will do. Other ranks (Rescue Captain, Battalion Chief outside Station 36, ISS, Pilot, Marine Engineer) aren't checked. certs: the fir-db1 Licenses and Certs names that count for each cert; names only, never who holds them. A cert with no names yet is 'not set' and leaves nobody out.",
+ "certs": {
+  "HazMat Specialist": [],
+  "Squad": [],
+  "SCUBA": [],
+  "Surf Rescue": [],
+  "Surf ICS": []
+ },
+ "places": [
+  { "name": "Haz-Mat (Station 36)", "stations": [36], "all": [["HazMat Specialist"]] },
+  { "name": "Rescue Squad", "companies": ["RS1", "RS2"],
+    "officer": [["HazMat Specialist"], ["Squad"], ["SCUBA"]], "ff": [["HazMat Specialist"], ["Squad"], ["SCUBA"]] },
+  { "name": "Surf Rescue", "companies": ["E14", "E18", "E23", "E34", "E51", "T14", "T18"],
+    "officer": [["Surf Rescue", "Surf ICS"]], "ff": [["Surf Rescue"]] },
+  { "name": "Station 16", "stations": [16], "officer": [["Surf Rescue"]], "ff": [["Surf Rescue"]] },
+  { "name": "Station 35 / Fireboat", "stations": [35], "titles": "Fire Boats",
+    "officer": [["Surf Rescue", "Surf ICS"]], "ff": [["Surf Rescue"]] },
+  { "name": "Station 51", "companies": ["E51"], "officer": [["Surf ICS"]], "ff": [["Surf Rescue"]] }
+ ]
 }

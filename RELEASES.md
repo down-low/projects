@@ -33,12 +33,21 @@
 - **As built:** marked from the day drawer (the same one as Trade and VA / S). Want OT for today on, Worked OT for any day (hours 1 to 48). Members mark their own seat; admins mark anyone's from that person's page (stored as `seat-<pos>`, which the member sees but can't change). Not part of the page backup import, so marks made on Firebase are never replaced at cut-over.
 - **Later:** admins use Want OT days to fill shortages.
 
-### Fill open spots (back office; built Oct 23, 2026, view only; `fill.js`)
+### Fill open spots (back office; built Oct 23–24, 2026, view only; `fill.js`)
 - **Where:** admin site, More → **Fill open spots** (editors and admins). Never in the employee app (a stub there).
-- **Open spots:** for a date or From–To (up to 31 days), each apparatus working below its required staffing (the Staffing dashboard's Open count), with the seats left without their person (vacant, on leave and not covered, away). Filters: battalion and rank.
-- **Who can fill a seat (the user's calls, 10/23):** only people who marked **Want OT** that day, in the seat's rank group (the trade groups), off that day with no status. Fewest **Worked OT** hours this calendar year first (from the overtime marks), with back-to-back flags.
-- **Qualifications:** only Rescue Squad (RS), Hazmat (HT) and Fire boat (FB) seats need one: a fir-db1 license on the person's profile, unexpired, whose name is listed for that role in `data/seat-qualifications.json`. Until the names are filled in (from the records chat: the distinct license names in `profiles`), those seats say "qualification not set" and leave nobody out.
-- **Next:** a Fill button that records the cover (kind cover, no move) with a confirm step; then OT hours from fir-db1 instead of the marks, if wanted.
+- **Open spots:** for a date or From–To (up to 31 days), each apparatus working below its required staffing (the Staffing dashboard's Open count), with the seats left without their person (vacant, on leave and not covered, away). Filters: battalion, rank, and who to list (extras, OT or both).
+- **Who can fill a seat (the user's calls, 10/23):** only two kinds of people, both in the seat's rank group (the trade groups) and qualified:
+  1. **Extra bodies**, listed first (no overtime): anyone working that day on an apparatus above its required staffing, same battalion first. Moving one leaves that apparatus at or above required; its surplus (+N) caps how many can go, and someone listed for several seats can fill only one (the screen says so).
+  2. **Want OT:** people who marked Want OT that day, off with no status, fewest **Worked OT** hours this calendar year first (the overtime marks), with back-to-back flags.
+- **Qualifications** (25 A-084 Attachment B, minimum to apply; `data/seat-qualifications.json`): each place lists, per rank class (officers = Lt and Capt; firefighters and paramedics; or every rank), the certs needed:
+  - **Haz-Mat, Station 36 (E36 and B02, every rank including the BC):** HazMat Specialist. HT48 needs nothing extra.
+  - **Rescue Squads (RS1, RS2):** HazMat, Squad and SCUBA (the user, "I think"; to confirm). Rescue Captain seats aren't checked.
+  - **Surf Rescue (E14, E18, E23, E34, E51, T14, T18):** officers Surf Rescue or Surf ICS; firefighters and paramedics Surf Rescue.
+  - **Station 16 (E16, T16):** Surf Rescue. **Station 35 / Fireboat (E35, FB3):** officers Surf Rescue or Surf ICS; others Surf Rescue.
+  - **Station 51 (E51):** officers Surf ICS; others Surf Rescue. E51 must meet both Surf Rescue and Station 51.
+  - Proof is an unexpired fir-db1 license on the person's profile (admin-only) whose name is listed for that cert under `certs`. **The names aren't filled in yet** (the user will confirm them): until then those seats say which certs are "not set" and leave nobody out.
+  - Driver, EMT and Paramedic seats aren't checked for now; the twelve-month "requirements to maintain" are ignored for single shifts.
+- **Next:** the license names; then a Fill button that records the cover (kind cover, no move) with a confirm step.
 
 ### Pay estimate and overtime pay (built Oct 23, 2026 on `claude/pay-estimator`; waiting on the user's OK and more pay info; `pay.js`)
 - **Where:** More menu → **Pay estimate**, for a signed-in member linked to a seat (Firebase and server sites).

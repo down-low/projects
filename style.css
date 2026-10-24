@@ -974,8 +974,9 @@ table.fir-t td { white-space: normal; vertical-align: top; }
 .fill-filters { flex-wrap: wrap; gap: 8px; align-items: center; }
 .fill-co { margin: 16px 0 6px; }
 table.fill-t { table-layout: fixed; width: 100%; }
-table.fill-t th:nth-child(1) { width: 28%; }
-table.fill-t th:nth-child(2) { width: 24%; }
+table.fill-t th:nth-child(1) { width: 22%; }
+table.fill-t th:nth-child(2) { width: 16%; }
+.fill-takers .num { white-space: nowrap; padding-left: 8px; }
 table.fill-t td { white-space: normal; vertical-align: top; }
 .fill-takers { margin: 0; }
 .fill-more summary { cursor: pointer; color: var(--muted); padding: 4px 0; }
