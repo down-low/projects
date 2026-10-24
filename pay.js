@@ -5,9 +5,9 @@
  *   person's academy class), shown as a guess. The person can type their own and save it as their hire date.
  * - Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step);
  *   anyone can pick another. Premiums are a % of base; longevity follows years of service.
- * - Overtime (the user's rule, Oct 2026): 1.5 x the 97.40-hour hourly rate with the person's premiums except
- *   Holiday (no holiday premium on overtime); the pay period's
- *   total counts your own Worked OT marks (overtime.js) from the period's start through today.
+ * - Overtime (the user's rules, Oct 2026): the 97.40-hour hourly with the person's premiums except Holiday, at straight
+ *   time until 106 hours worked in the pay period and 1.5x past that (PAY.otAfter). The pay period's total counts your
+ *   own Worked OT marks (overtime.js) from the period's start through today against your scheduled shifts.
  * - Vacation and IDV stay in PAY but aren't shown for now (the user's call, Oct 2026).
  * An estimate for planning, not a pay stub.
  */
@@ -77,13 +77,17 @@
     holidayDefault: ["H-2", "H-20", "H-30", "H-40", "H-110", "H-120"],
     // Classifications not offered for now (the user, Oct 2026; more to follow). Someone whose own one is hidden gets no card.
     // Only 97.40-hour (24-hour shift) employees for now.
-    hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110",
+    hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110", "H-21", "H-31", "H-39",
       "H-18", "H-22", "H-28", "H-29",
       // H-3 Level 1 (EMT) and Level 2 (Paramedic): EMS, Station 49, a different department.
       "H-3/1", "H-3/2", "H-3/3", "H-3/4", "H-3/5", "H-3/6", "H-3/7", "H-3/8"],
     // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
     longevity: [{ yos: 21, pct: 2 }, { yos: 23, pct: 4 }, { yos: 26, pct: 6 }],
     otTimes: 1.5, otShiftHours: 24,
+    // The department's rule (the user, Oct 2026): overtime is straight time until 106 hours worked in the pay period,
+    // then 1.5x. Shifts on VA, S or D don't count; a shift someone works for you (TR) does. The 24-hour row assumes a
+    // usual 4-shift period (96 hours: 10 hours straight, 14 at 1.5x).
+    otAfter: 106, typicalRegular: 96,
     // Pay periods: 14 days, Saturday to Friday, from 9/12/26 – 9/25/26 (both ways).
     payPeriod: { anchor: "2026-09-12", days: 14 },
     // Not shown for now. Vacation hours a year by years of service (only the tier we have).
@@ -95,12 +99,13 @@
   var RANK_DEFAULT = { "Battalion Chief": "H-40", "Rescue Captain": "H-33", Captain: "H-30", Lieutenant: "H-20", ISS: "H-10",
     Pilot: "H-120", "Marine Engineer": "H-110", Firefighter: "H-2", "FF/Paramedic": "H-2" };
 
-  // The person's own classification: their seat's hclass ("H20" -> "H-20"), else from rank.
+  // The person's own classification: from their rank in the records (admin roster edits included), else their seat's
+  // hclass ("H20" -> "H-20").
   function defaultCode(p) {
     if (!p) return "H-2";
+    if (RANK_DEFAULT[p.rank]) return RANK_DEFAULT[p.rank];
     var h = p.hclass ? "H-" + String(p.hclass).replace(/^H-?/i, "") : null;
-    if (h && (h === "H-2" || PAY.rates.some(function (r) { return r[0] === h; }))) return h;
-    return RANK_DEFAULT[p.rank] || "H-2";
+    return h && (h === "H-2" || PAY.rates.some(function (r) { return r[0] === h; })) ? h : "H-2";
   }
   // Whether someone gets the card: their own classification isn't hidden.
   function shows(p) { return offered(defaultCode(p)); }
@@ -136,6 +141,17 @@
     });
     return { days: days, hours: hours };
   }
+  // Regular hours toward the 106: 24 for each scheduled day (TourMath.dayFor results) worked, traded (TR) or WE.
+  function regularHours(days) {
+    var n = 0;
+    (days || []).forEach(function (s) { if (s && (!s.status || s.status === "TR" || s.status === "WE")) n += PAY.otShiftHours; });
+    return n;
+  }
+  // Overtime hours split at the 106: straight time up to it, 1.5x past it.
+  function otPay(e, regular, hours) {
+    var straight = Math.min(hours, Math.max(0, PAY.otAfter - regular)), over = hours - straight;
+    return { straight: straight, overtime: over, amount: straight * e.straightHourly + over * e.otHourly };
+  }
   function rateFor(code, yos) {
     if (code === "H-2") code = "H-2/" + Math.min(7, (yos || 0) + 1);
     return PAY.rates.filter(function (r) { return r[0] === code; })[0] || null;
@@ -167,9 +183,11 @@
     if (PAY.training.pcts.indexOf(Number(prem.train)) !== -1) add("Training and education", Number(prem.train), PAY.training.retire);
     var lp = longevityPct(yos);
     if (lp) add("Longevity (" + yos + " years)", lp, false);
-    var hourly = r[3] * total / base, otHourly = r[3] * otTotal / base * PAY.otTimes;
-    return { rate: r, base: base, rows: rows, total: total, biweekly: total / 26, retire: retire, hourly: hourly,
-      otHourly: otHourly, otShift: otHourly * PAY.otShiftHours };
+    var hourly = r[3] * total / base, straightHourly = r[3] * otTotal / base;
+    var e = { rate: r, base: base, rows: rows, total: total, biweekly: total / 26, retire: retire, hourly: hourly,
+      straightHourly: straightHourly, otHourly: straightHourly * PAY.otTimes };
+    e.otShift = otPay(e, PAY.typicalRegular, PAY.otShiftHours).amount;
+    return e;
   }
 
   root.PayViews = function (api) {
@@ -182,9 +200,13 @@
       if (!api.overtime || !api.myPos()) return "";
       var t = api.today(), pp = payPeriodOf(t), last = t.getFullYear() + "-" + ("0" + (t.getMonth() + 1)).slice(-2) + "-" + ("0" + t.getDate()).slice(-2);
       var w = otWorked(api.overtime(api.myPos()), pp.start, last < pp.end ? last : pp.end);
-      return "<tr><td>Overtime this pay period (" + md(pp.start) + " – " + md(pp.end) + "): " +
-        (w.days ? w.days + (w.days === 1 ? " day, " : " days, ") + w.hours + " hrs" : "None marked") + "</td><td>" +
-        (w.days ? money(w.hours * e.otHourly) : "") + "</td></tr>";
+      if (!w.days) return "<tr><td>Overtime this pay period (" + md(pp.start) + " – " + md(pp.end) + "): None marked</td><td></td></tr>";
+      // Regular hours over the whole period: the rest of it is already on the schedule.
+      var p = api.person(), days = [];
+      if (p && api.day) for (var d = new Date(pp.start + "T00:00:00"), end = new Date(pp.end + "T00:00:00"); d <= end; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) days.push(api.day(p, d));
+      var x = otPay(e, regularHours(days), w.hours);
+      return "<tr><td>Overtime this pay period (" + md(pp.start) + " – " + md(pp.end) + "): " + w.days + (w.days === 1 ? " day, " : " days, ") + w.hours + " hrs · " +
+        x.straight + " straight, " + x.overtime + " at 1.5×</td><td>" + money(x.amount) + "</td></tr>";
     }
     function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
     function cents(n) { return "$" + n.toFixed(2); }
@@ -242,8 +264,9 @@
           '<tr class="pay-total"><th>Estimated yearly</th><td>' + money(e.total) + "</td></tr>" +
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
-          "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
-          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
+          "<tr><td>Overtime straight time (to " + PAY.otAfter + " hrs)</td><td>" + cents(e.straightHourly) + "</td></tr>" +
+          "<tr><td>Overtime hourly (1.5× past " + PAY.otAfter + " hrs)</td><td>" + cents(e.otHourly) + "</td></tr>" +
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift (96-hr pay period)</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       // Picking your own step goes back to "by years of service", so it moves up with the next anniversary.
@@ -273,6 +296,8 @@
   root.PayViews.yearsOf = yearsOf;
   root.PayViews.payPeriodOf = payPeriodOf;
   root.PayViews.otWorked = otWorked;
+  root.PayViews.otPay = otPay;
+  root.PayViews.regularHours = regularHours;
   root.PayViews.defaultCode = defaultCode;
   root.PayViews.shows = shows;
 })(typeof window !== "undefined" ? window : globalThis);

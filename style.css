@@ -198,6 +198,11 @@ td.co { font-weight: 500; }
   display: flex; flex-direction: column; justify-content: space-between; font-variant-numeric: tabular-nums;
 }
 .cal .d .dn { font-weight: 600; font-size: 0.9rem; }
+.cal .d { position: relative; }
+/* A pay period with 3 or 5 shifts (72 / 120 hours) instead of 4, on its first day in the month. */
+.cal .d .pp-hrs, .legend .pp-key { font-family: var(--font-data); font-size: 0.62rem; font-weight: 700; line-height: 1; padding: 2px 3px;
+  border-radius: 3px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); }
+.cal .d .pp-hrs { position: absolute; top: 2px; right: 2px; font-size: 0.55rem; padding: 1px 2px; }
 .cal .d .w { font-family: var(--font-data); font-size: 0.68rem; color: var(--muted); }
 .cal .d.work { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .cal .d.work .w { color: var(--on-accent); opacity: 0.85; }
