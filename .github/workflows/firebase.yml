@@ -71,10 +71,12 @@ jobs:
         run: |
           ADMIN_SITE="${ADMIN_SITE:-$PROJECT-admin}"
           echo "ADMIN_SITE=$ADMIN_SITE" >> "$GITHUB_ENV"
-          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY" --app-id "$APP_ID"
+          # FIREBASE_OWN_AUTH_DOMAIN=1 (after adding both sites' /__/auth/handler to the OAuth client): sign-in stays on each site.
+          python3 tools/build_firebase.py --app-url "https://$PROJECT.web.app" --admin-url "https://$ADMIN_SITE.web.app" --vapid-key "$VAPID_KEY" --app-id "$APP_ID" ${OWN_AUTH:+--own-auth-domain}
         env:
           VAPID_KEY: ${{ vars.FIREBASE_VAPID_KEY }}
           APP_ID: ${{ vars.FIREBASE_APP_ID }}
+          OWN_AUTH: ${{ vars.FIREBASE_OWN_AUTH_DOMAIN == '1' && '1' || '' }}
       - name: Function settings
         env:
           ADMIN_EMAILS: ${{ vars.ADMIN_EMAILS }}

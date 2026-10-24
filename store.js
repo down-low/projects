@@ -555,7 +555,7 @@
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], contactsPrivate: [], myPrivate: [], staffCells: [], launchInvites: [], notices: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], contactsPrivate: [], myPrivate: [], leaveBanks: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -634,7 +634,7 @@
         staffing: records.staffing.map(function (x) { return { company: x.id, required: x.required }; }),
         members: [], trades: records.trades, tradeReplies: records.tradeReplies, contacts: contactMap(),
         corrections: flattenFixes(records.corrections), assignments: records.assignments, rosterOverrides: records.rosterOverrides,
-        feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes });
+        feedback: flattenFixes(records.feedback), overtime: records.overtime, overtimeNotes: records.overtimeNotes, leaveBanks: records.leaveBanks });
     }
     function docs(snap) { return snap.docs.map(function (d) { var o = Object.assign({}, d.data()); o.id = d.id; return o; }); }
     function watch(kind, ref) {
@@ -656,6 +656,7 @@
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       watch("overtime", fs.collection("overtime"));
       watch("overtimeNotes", admin() ? fs.collection("overtimeNotes") : fs.collection("overtimeNotes").doc(user.uid));
+      if (admin()) watch("leaveBanks", fs.collection("leaveBanks")); else if (me.pos) watch("leaveBanks", fs.collection("leaveBanks").doc(me.pos));
       if (admin()) { watch("profiles", fs.collection("profiles")); watch("staffCells", fs.collection("staffCells")); watch("launchInvites", fs.collection("launchInvites")); }
       watch("site", fs.collection("settings").doc("site"));
       watch("notices", fs.collection("notices").doc(user.uid));
@@ -783,6 +784,18 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      /* Leave bank (leavebank.js): leaveBanks/<seat> = {asOf, sp, va, tc, tcUsed, source, consentAt, consentVersion},
+         private to that member and admins. Never imported or replaced at cut-over. */
+      saveLeaveBank: function (pos, rec) {
+        if (!(admin() || (active() && me.pos === pos))) return Promise.reject(new Error(NO_EDIT));
+        var r = { asOf: rec.asOf, sp: rec.sp, va: rec.va, tc: rec.tc, tcUsed: rec.tcUsed || [], source: rec.source || "member",
+          consentAt: rec.consentAt || null, consentVersion: rec.consentVersion || null, updatedAt: nowIso(), updatedBy: user.uid };
+        return w(fs.collection("leaveBanks").doc(pos).set(r));
+      },
+      clearLeaveBank: function (pos) {
+        if (!(admin() || (active() && me.pos === pos))) return Promise.reject(new Error(NO_EDIT));
+        return w(fs.collection("leaveBanks").doc(pos).delete());
+      },
       // Pay estimate: your hire date, or a guess from your academy class (a date or null).
       hireDateGuess: function () { return call("hireDateGuess").then(function (r) { return (r && r.date) || null; }, function () { return null; }); },
       // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.

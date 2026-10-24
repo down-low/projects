@@ -131,6 +131,13 @@ class FirebaseBuild(unittest.TestCase):
         for src in re.findall(r'<script src="([^"]+)"', self.read(ROOT, "index.html")):
             self.assertIn("/" + src, server.PUBLIC, src)
 
+    def test_leave_bank_on_both_sites_and_private(self):
+        for folder in (self.app, self.admin):
+            html = self.read(folder, "index.html")
+            self.assertLess(html.index('src="leavebank.js"'), html.index('src="app.js"'))
+        rules = self.read(ROOT, "firebase/firestore.rules")
+        self.assertIn("match /leaveBanks/{pos}", rules)
+
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()
@@ -139,6 +146,15 @@ class FirebaseBuild(unittest.TestCase):
             if col == "contacts":  # the page's staff list is staffCells on Firebase; contacts/{uid} is per person there
                 self.assertIn("match /staffCells/{key}", rules)
             self.assertIn("match /" + col + "/", rules, col)
+
+    def test_own_auth_domain_only_when_asked_and_before_init(self):
+        self.assertNotIn("authDomain", self.read(self.app, "index.html"))
+        with tempfile.TemporaryDirectory() as tmp:
+            subprocess.run([sys.executable, os.path.join(ROOT, "tools", "build_firebase.py"), tmp, "--own-auth-domain"], check=True, capture_output=True)
+            for folder in ("public-app", "public-admin"):
+                html = self.read(os.path.join(tmp, folder), "index.html")
+                self.assertIn("authDomain: location.hostname", html)
+                self.assertLess(html.index("authDomain: location.hostname"), html.index("/__/firebase/init.js"))
 
     def test_push_worker_only_with_a_key(self):
         self.assertNotIn("firebase-messaging-sw.js", os.listdir(self.app))

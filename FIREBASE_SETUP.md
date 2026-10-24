@@ -152,6 +152,17 @@ Each kind of alert stays off until its settings are added, so do these in any or
 
 Texts go to the cell on each person's **My page**; email goes to their contact email there, or their sign-in address.
 
+## 13. Keep Google sign-in on your own address (recommended for phones)
+By default the Google sign-in window opens on `<project-id>.firebaseapp.com` and then returns to the site. Some phone browsers (Safari, and apps' built-in browsers) block that hand-off, and people get stuck on the firebaseapp.com page. To keep sign-in on each site's own address:
+1. **Google Cloud console** (console.cloud.google.com, same project) → **APIs & Services** → **Credentials** → under OAuth 2.0 Client IDs, open **Web client (auto created by Google Service)**.
+2. Under **Authorized redirect URIs**, add both, then **Save**:
+   - `https://<project-id>.web.app/__/auth/handler`
+   - `https://<project-id>-admin.web.app/__/auth/handler`
+3. **GitHub** → **Settings** → **Secrets and variables** → **Actions** → **Variables** tab → **New repository variable**: name `FIREBASE_OWN_AUTH_DOMAIN`, value `1`.
+4. **Actions** → **Firebase** → **Run workflow** (or merge anything to `main`). Then sign out and back in on a phone: the Google window now shows the site's own address.
+
+To undo it, delete the variable and run the workflow again. Don't set the variable before step 2, or Google sign-in shows "redirect_uri_mismatch".
+
 ---
 
 ## If something goes wrong

@@ -441,6 +441,56 @@
     function kv(k, v) { return '<div class="kv"><span class="k">' + esc(k) + '</span><span class="v">' + esc(v) + "</span></div>"; }
 
     /* ---------- Admin ---------- */
+    /* Leave balances import (leavebank.js): one line per person, "seat or Employee ID, as of, SP, VA, TC" (comma or tab
+       separated, a header line is skipped), checked and previewed, then saved as leaveBanks/<seat> (source "import"). */
+    function bankImportHtml() {
+      return '<details class="card fold" id="bank-import"><summary><h3>Leave balances import</h3><span class="fold-sum">SP, VA, TC</span></summary>' +
+        '<p class="hint">Paste one line per person: seat or Employee ID, as-of date (YYYY-MM-DD or MM/DD/YYYY), SP, VA, TC hours. ' +
+        "Each person then sees their balances on their page, with each pay period's accrual and their VA and S shifts since that date. Replaces what's there.</p>" +
+        '<textarea id="bank-text" rows="6" placeholder="AB1234, 2026-10-09, 412.5, 300, 64"></textarea>' +
+        '<div class="row"><button class="btn small" type="button" id="bank-check">Check</button><button class="btn small primary" type="button" id="bank-go" disabled>Import</button>' +
+        '<span class="msg" id="bank-msg" role="status"></span></div><div id="bank-preview"></div></details>';
+    }
+    function parseBankLines(text) {
+      var byId = {}, rows = [], bad = [];
+      api.people().forEach(function (p) { if (p.emplId) byId[p.emplId.toUpperCase()] = p; });
+      String(text || "").split(/\r?\n/).forEach(function (line, i) {
+        var f = line.split(/[\t,]/).map(function (x) { return x.trim(); });
+        if (!line.trim() || (i === 0 && !/\d/.test(f[2] || ""))) return;
+        var key = (f[0] || "").toUpperCase(), p = api.byPos()[f[0]] || byId[key];
+        var d = f[1] || "", m = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(d);
+        if (m) d = m[3] + "-" + ("0" + m[1]).slice(-2) + "-" + ("0" + m[2]).slice(-2);
+        var n = [f[2], f[3], f[4]].map(function (x) { return x === "" || x == null ? NaN : Number(x); });
+        var why = !p ? "no seat or Employee ID " + f[0] : !/^\d{4}-\d{2}-\d{2}$/.test(d) ? "date " + f[1] :
+          n.some(function (x, j) { return !(x >= 0 && x <= [1272, 600, 200][j]); }) ? "hours (SP up to 1272, VA 600, TC 200)" : null;
+        if (why) bad.push("Line " + (i + 1) + ": " + why);
+        else rows.push({ pos: p.pos, name: p.name, asOf: d, sp: n[0], va: n[1], tc: n[2] });
+      });
+      return { rows: rows, bad: bad };
+    }
+    function wireBankImport() {
+      var parsed = null, msg = $("bank-msg");
+      $("bank-check").onclick = function () {
+        parsed = parseBankLines($("bank-text").value);
+        $("bank-preview").innerHTML = (parsed.bad.length ? '<p class="msg error">' + parsed.bad.map(esc).join("<br>") + "</p>" : "") +
+          (parsed.rows.length ? '<ul class="tlist plain">' + parsed.rows.map(function (r) {
+            return "<li>" + esc(r.name) + ' <span class="hint">' + esc(r.pos) + " · as of " + esc(r.asOf) + "</span> SP " + r.sp + " · VA " + r.va + " · TC " + r.tc + "</li>";
+          }).join("") + "</ul>" : "");
+        $("bank-go").disabled = !parsed.rows.length || parsed.bad.length > 0;
+        api.say(msg, parsed.rows.length + " ready" + (parsed.bad.length ? ", " + parsed.bad.length + " to fix" : "") + ".");
+      };
+      $("bank-go").onclick = function () {
+        var b = api.backend(), rows = parsed ? parsed.rows : [], done = 0;
+        this.disabled = true;
+        api.say(msg, "Importing…");
+        rows.reduce(function (chain, r) {
+          return chain.then(function () {
+            return b.saveLeaveBank(r.pos, { asOf: r.asOf, sp: r.sp, va: r.va, tc: r.tc, tcUsed: [], source: "import" }).then(function () { done++; });
+          });
+        }, Promise.resolve()).then(function () { api.say(msg, "Imported " + done + "."); }, function (er) { api.say(msg, "Stopped after " + done + ": " + er.message, true); });
+      };
+    }
+
     function renderAdmin() {
       var out = $("admin-detail");
       if (!$("admin-users")) {
@@ -453,8 +503,9 @@
             return '<option value="' + esc(p.name + " · " + p.title + " (" + p.pos + ")") + '"></option>';
           }).join("") + "</datalist>" + (api.backend().announce ? '<div class="card" id="announce"></div>' : "") +
           (api.backend().launchSent ? '<div class="card launch" id="launch"></div>' : "") +
-          (api.backend().importBackup ? importHtml() : "");
+          (api.backend().importBackup ? importHtml() : "") + (api.backend().saveLeaveBank ? bankImportHtml() : "");
         if ($("import-form")) wireImport();
+        if ($("bank-import")) wireBankImport();
         $("admin-q").oninput = function () { adminFilter = this.value.trim().toLowerCase(); drawUsers(); };
         out.addEventListener("click", onAdminClick);
         out.addEventListener("change", onAdminChange);

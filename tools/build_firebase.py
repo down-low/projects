@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build the two Firebase Hosting folders from the app files (FIREBASE_PLAN.md, "Two apps, one backend").
 
-Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY] [--app-id ID]
+Usage: python3 tools/build_firebase.py [out_dir] [--app-url URL] [--admin-url URL] [--vapid-key KEY] [--app-id ID] [--own-auth-domain]
   out_dir defaults to firebase/; it gets public-app/ (the employee app) and public-admin/ (the back office).
   The URLs (set by the deploy workflow) let each site link to the other. --vapid-key (the Web Push key from Firebase
   Cloud Messaging) turns on app notifications for trade alerts; the app gets firebase-messaging-sw.js for them.
@@ -23,7 +23,7 @@ import sys
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SDK = "10.14.1"  # Firebase JS SDK (compat) served by Hosting
 APP_FILES = ["index.html", "style.css", "schedule.js", "organization.js", "store.js", "admin.js", "dashboard.js",
-             "trades.js", "awards.js", "corrections.js", "feedback.js", "overtime.js", "myyear.js", "pay.js", "vendor/qrcode.js", "invite.js", "homescreen.js", "fir.js", "card.js", "app.js"]
+             "trades.js", "awards.js", "corrections.js", "feedback.js", "overtime.js", "myyear.js", "leavebank.js", "pay.js", "vendor/qrcode.js", "invite.js", "homescreen.js", "fir.js", "card.js", "app.js"]
 # Admin-only screens left out of the employee app: same entry points as the real files, no screens behind them.
 STUBS = {
     "fir.js": "/* fir-db1 checks are on the admin site only. */\n",
@@ -83,6 +83,13 @@ def sdk_tags(site, urls):
            # The web app's ID, for app notifications when Hosting's init.js leaves it out (no web app linked to the site).
            "FIREBASE_APP_ID": urls.get("appid") if site == "app" else None}
     js = "".join(f"window.{k} = {json.dumps(v)};" for k, v in cfg.items())
+    if urls.get("ownauth"):
+        # Sign-in on the site's own address (Hosting serves /__/auth/handler on every site) instead of
+        # <project>.firebaseapp.com, which some phone browsers block. Needs each site's
+        # https://<site>.web.app/__/auth/handler in the OAuth client's authorized redirect URIs (FIREBASE_SETUP.md).
+        tags.append("<script>(function () { var init = firebase.initializeApp; firebase.initializeApp = function (o, n) {"
+                    " if (n == null && o && /\\.web\\.app$/.test(location.hostname)) o = Object.assign({}, o, { authDomain: location.hostname });"
+                    " return n == null ? init.call(this, o) : init.call(this, o, n); }; })();</script>")
     tags += ['<script src="/__/firebase/init.js"></script>', f"<script>{js}</script>"]
     return "\n".join(tags) + "\n"
 
@@ -137,6 +144,9 @@ def main():
             if args[i + 1]:
                 urls[key] = args[i + 1].rstrip("/")
             del args[i:i + 2]
+    if "--own-auth-domain" in args:
+        args.remove("--own-auth-domain")
+        urls["ownauth"] = True
     base = os.path.abspath(args[0]) if args else os.path.join(ROOT, "firebase")
     for site, folder in SITES.items():
         build_site(os.path.join(base, folder), site, urls)
