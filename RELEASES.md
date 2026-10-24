@@ -250,6 +250,11 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Competitive analysis (own non-code chat, low priority):** a claude.ai project with web search on the main competitor and others (features, pricing, who buys); then a separate chat builds the product website (what it is and does) from the findings.
 
 ## Shipped
+- **Leave bank** (built Oct 24, 2026; `leavebank.js`): **My leave bank** on your own page (editors and admins on anyone's) shows estimated SP, VA and TC balances.
+  - **Start:** the member's last pay stub (as-of date + SP / VA / TC hours, with a consent box) or an admin's import (Admin → Leave balances import: seat or Employee ID, as of, SP, VA, TC).
+  - **Accrual at each pay period's end** (14 days, Sat–Fri, anchored 9/12/26): SP 6 hrs (cap 1272); VA by years of service 4.615 (under 5, cap 480), 6.923 (5–15, cap 540), 9.231 (over 15, cap 600); TC 6.91 (cap 200, in lieu of holiday pay; 40 hrs carry over on promotion).
+  - **Used:** each VA or S shift on the schedule after the as-of date takes 24 hrs; TC used is entered by hand. Cap warnings; the next accrual date. An estimate: payroll is the official number.
+  - **Private:** `leaveBanks/<seat>`, the member (with consent) and admins only; never imported or replaced at cut-over.
 - **Phone and contact** card on My page (Oct 23, 2026): one card (Cell, Contact email, Other phone, share) instead of Contact info plus Add my cell. The Cell box fills from the contact cell, else the sign-in cell, else the staff-list cell (`myStaffCell`); **Turn on cell sign-in** texts the code to it. **Share my cell with coworkers for shift swaps** shares only the cell; the email and other phone stay private (`contactsPrivate`). Sharing isn't trade text alerts (Trades → Alerts).
 - Security: a set trade's legs must match the trade (Oct 23, 2026; rules and tests).
 - Overtime marks on **Away** days (own tour day while covering elsewhere) (Oct 23, 2026).

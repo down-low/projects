@@ -161,6 +161,7 @@ def main():
         f"<script>\n{read('feedback.js')}</script>\n"
         f"<script>\n{read('overtime.js')}</script>\n"
         f"<script>\n{read('myyear.js')}</script>\n"
+        f"<script>\n{read('leavebank.js')}</script>\n"
         f"<script>\n{read('pay.js')}</script>\n"
         f"<script>\n{read('vendor/qrcode.js')}</script>\n"
         f"<script>\n{read('invite.js')}</script>\n"

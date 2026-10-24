@@ -90,6 +90,17 @@ service cloud.firestore {
       allow write: if isAdmin() || (myPos() != null && key == myPos() &&
         request.resource.data.get('classNo', null) == (resource == null ? null : resource.data.get('classNo', null)));
     }
+    // Leave bank: leaveBanks/<seat> = {asOf, sp, va, tc, tcUsed, source, consentAt, ...}, the member's own balances
+    // (with their consent) or an admin's import; read and written only by that member and admins.
+    function bankOk(m) {
+      return isDate(m.asOf) && m.sp is number && m.sp >= 0 && m.sp <= 1272 && m.va is number && m.va >= 0 && m.va <= 600 &&
+        m.tc is number && m.tc >= 0 && m.tc <= 200 && m.tcUsed is list && m.tcUsed.size() <= 200 &&
+        m.source == 'member' && m.consentAt is string;
+    }
+    match /leaveBanks/{pos} {
+      allow read, delete: if isAdmin() || (myPos() != null && pos == myPos());
+      allow create, update: if isAdmin() || (myPos() != null && pos == myPos() && bankOk(data()));
+    }
     // The claude.ai page's "This is me" records, kept for reference after the import.
     match /members/{id} {
       allow read, write: if isAdmin();

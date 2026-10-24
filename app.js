@@ -580,7 +580,7 @@
           '</span><span class="rel">' + (n.k === 0 ? "Today" : n.k === 1 ? "Tomorrow" : "in " + n.k + " days") +
           " · W" + n.s.watch + '</span><span class="where">' + (n.s.status ? statusPill(n.s.status) : (n.s.acting ? kindWord(n.s.acting) + " · " : "") + esc(n.s.co || home(p)) + (n.s.role ? " " + esc(n.s.role) : "")) + "</span></li>";
       }).join("") + "</ol></details>" +
-      MyYear.html(p) + movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
+      MyYear.html(p) + LeaveBank.html(p) + movesCard(p) + historyCard(p, datesCard(p)) + "</div></div>";
 
     $("pm-prev").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() - 1, 1); renderPerson(); };
     $("pm-next").onclick = function () { state.personMonth = new Date(m.getFullYear(), m.getMonth() + 1, 1); renderPerson(); };
@@ -594,6 +594,7 @@
       this.setAttribute("aria-label", this.getAttribute("aria-label").replace(open ? "Show more" : "Show less", open ? "Show less" : "Show more"));
     };
     Fix.wireLinks($("person-detail"));
+    LeaveBank.wire(p);
     Fix.prefill(p);
     wireDates(p);
     // Tapping a calendar day or an upcoming shift opens that day's options (trade, leave, who's working).
@@ -1528,6 +1529,18 @@
     today: today, iso: iso,
   });
 
+  // Leave bank (leavebank.js): the hire date is your own (My page profile) or, for admins, from the profiles list.
+  var LeaveBank = window.LeaveBankViews({
+    $: $, esc: esc, say: say, backend: function () { return backend; }, myPos: function () { return myPos(); }, recs: function () { return recs; },
+    today: today, iso: iso, fromIso: fromIso, addDays: addDays, day: day, shortDate: shortDate, renderAll: renderAll,
+    hireDate: function (p) {
+      var me = backend && backend.me ? backend.me() : null;
+      if (me && me.pos === p.pos && me.profile && me.profile.hireDate) return me.profile.hireDate;
+      if (backend && backend.canAdmin && backend.canAdmin()) { loadProfiles(); return profilesCache && profilesCache[p.pos] ? profilesCache[p.pos].hireDate || null : null; }
+      return null;
+    },
+  });
+
   var MyYear = window.MyYearViews({
     esc: esc, backend: function () { return backend; }, myPos: function () { return myPos(); }, today: today, iso: iso, day: day,
     statusPill: statusPill, fold: foldOpen, overtime: function (pos) { return Overtime.marksFor(pos); },
@@ -1584,7 +1597,7 @@
     recs = { statuses: r.statuses || [], tourChanges: r.tourChanges || [], covers: r.covers || [], people: r.people || [],
       staffing: r.staffing || [], members: r.members || [], trades: r.trades || [], tradeReplies: r.tradeReplies || [],
       corrections: r.corrections || [], assignments: r.assignments || [], rosterOverrides: r.rosterOverrides || [], feedback: r.feedback || [],
-      overtime: r.overtime || [], overtimeNotes: r.overtimeNotes || [] };
+      overtime: r.overtime || [], overtimeNotes: r.overtimeNotes || [], leaveBanks: r.leaveBanks || [] };
     recsVersion++;
     fixesBadge();
     feedbackBadge();

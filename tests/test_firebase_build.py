@@ -131,6 +131,13 @@ class FirebaseBuild(unittest.TestCase):
         for src in re.findall(r'<script src="([^"]+)"', self.read(ROOT, "index.html")):
             self.assertIn("/" + src, server.PUBLIC, src)
 
+    def test_leave_bank_on_both_sites_and_private(self):
+        for folder in (self.app, self.admin):
+            html = self.read(folder, "index.html")
+            self.assertLess(html.index('src="leavebank.js"'), html.index('src="app.js"'))
+        rules = self.read(ROOT, "firebase/firestore.rules")
+        self.assertIn("match /leaveBanks/{pos}", rules)
+
     def test_rules_cover_every_page_collection(self):
         with open(os.path.join(ROOT, "firebase", "firestore.rules")) as f:
             rules = f.read()

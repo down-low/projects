@@ -258,6 +258,21 @@ test("overtime: everyone reads the marks; notes only the member and admins; admi
   await assertSucceeds(db(MEMBER).doc("overtime/mem1").delete());
 });
 
+test("leave bank: the member's own seat (with consent) and admins only", async () => {
+  const bank = (extra) => Object.assign({ asOf: "2026-10-09", sp: 100, va: 200, tc: 50, tcUsed: [], source: "member", consentAt: "2026-10-24T00:00:00Z", consentVersion: 1 }, extra);
+  await assertSucceeds(db(MEMBER).doc("leaveBanks/10EOC03M").set(bank()));
+  await assertSucceeds(db(MEMBER).doc("leaveBanks/10EOC03M").get());
+  await assertFails(db(MEMBER).doc("leaveBanks/11ENL01M").set(bank()));                   // someone else's seat
+  await assertFails(db(MEMBER).doc("leaveBanks/10EOC03M").set(bank({ va: 9999 })));       // over the cap
+  await assertFails(db(MEMBER).doc("leaveBanks/10EOC03M").set(bank({ consentAt: null }))); // no consent
+  await assertFails(db(MEMBER).doc("leaveBanks/10EOC03M").set(bank({ source: "import" })));
+  await assertFails(db(OTHER).doc("leaveBanks/10EOC03M").get());
+  await assertFails(db(EDITOR).collection("leaveBanks").get());
+  await assertSucceeds(db(ADMIN).collection("leaveBanks").get());
+  await assertSucceeds(db(ADMIN).doc("leaveBanks/11ENL01M").set(bank({ source: "import", consentAt: null })));
+  await assertSucceeds(db(MEMBER).doc("leaveBanks/10EOC03M").delete());
+});
+
 test("site mode: everyone approved reads it, only admins set it", async () => {
   await assertSucceeds(db(MEMBER).doc("settings/site").get());
   await assertFails(db(PENDING).doc("settings/site").get());

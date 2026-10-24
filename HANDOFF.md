@@ -96,6 +96,7 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - **Shared contact info is the cell only** (the user's call, Oct 23, 2026): `contacts/<uid>` (everyone reads it when `share` is on) holds only `pos`, `phoneMobile` and `share`; the contact email and other phone live in `contactsPrivate/<uid>` (owner and admins). The rules refuse the email and other phone in `contacts`; `syncMe` moves older records across (`splitContact`).
 - **Trade legs must match the trade** (security audit, Oct 23, 2026): a set trade's `legs` show on everyone's schedule as cover and TR records, so the rules accept only what `TourMath.pickLegs` makes (the answering taker covers the posted seat, the poster is TR on that day, and the reverse on a swap day).
 - **Record edits aren't fully logged yet:** adds stamp `createdBy`, edits only the last `updatedBy`, deletes leave no trace. A change history (who, when, before and after, Restore) is queued in the back-office chat.
+- **Leave balances** (`leaveBanks/<seat>`) are owner and admin only; a member's save must carry their consent (`consentAt`, `consentVersion`).
 - Birth / hire dates (`profiles`) are owner and admin only.
 - Corrections are per member (`corrections/<uid>`), readable only by that member and admins.
 
