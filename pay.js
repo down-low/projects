@@ -104,7 +104,9 @@
   // Whether someone gets the card: their own classification isn't hidden.
   function shows(p) { return offered(defaultCode(p)); }
   function offered(code) { return PAY.hidden.indexOf(code) === -1 && PAY.hidden.indexOf(code.split("/")[0]) === -1; }
-  function premOffered(x, code) { return !x.hidden && (!x.only || x.only.indexOf(code) !== -1); }
+  // A step ("H-2/3") counts as its classification ("H-2") for premiums.
+  function base(code) { return String(code).split("/")[0]; }
+  function premOffered(x, code) { return !x.hidden && (!x.only || x.only.indexOf(base(code)) !== -1); }
 
   function yearsOf(hire, today) {
     if (!hire) return null;
@@ -144,7 +146,7 @@
   }
   // Holiday premium is on for suppression classifications until the person unticks it.
   function premOn(prem, key, code) {
-    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(code) !== -1;
+    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(base(code)) !== -1;
     return !!prem[key];
   }
   // The whole estimate for a classification, years of service and premiums ({key: true, train: 7|8|9}).
@@ -208,8 +210,9 @@
     }
     function draw() {
       var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
-      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0 && offered(x[0]); })
-        .map(function (x) { return [x[0], x[0].split("/")[0] + " " + x[1]]; }));
+      // H-2: by years of service (the default), or any one step picked by hand.
+      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return offered(x[0]); })
+        .map(function (x) { return [x[0], x[0].indexOf("H-2/") === 0 ? "H-2 step " + x[0].split("/")[1] + " · " + x[1] : base(x[0]) + " " + x[1]]; }));
       var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
         '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +

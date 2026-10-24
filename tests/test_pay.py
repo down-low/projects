@@ -29,6 +29,11 @@ class PayEstimate(unittest.TestCase):
         self.assertEqual(estimate("H-2", 6, {"holiday": False})["base"], 154960)
         self.assertEqual(estimate("H-2", 30, {"holiday": False})["base"], 154960)
 
+    def test_h2_step_picked_by_hand(self):
+        # A step chosen in the picker wins over years of service, and still gets H-2's holiday premium.
+        self.assertEqual(estimate("H-2/3", 10, {"holiday": False})["base"], 110760)
+        self.assertAlmostEqual(estimate("H-2/5", 0, {})["total"], 140634 * 1.0909)
+
     def test_longevity_2_4_6(self):
         pct = lambda y: sum(r["pct"] for r in estimate("H-30", y, {"holiday": False})["rows"] if r["label"].startswith("Longevity"))
         self.assertEqual([pct(20), pct(21), pct(22), pct(23), pct(25), pct(26), pct(30)], [0, 2, 2, 4, 4, 6, 6])
