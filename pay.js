@@ -186,6 +186,20 @@
         (w.days ? money(w.hours * e.otHourly) : "") + "</td></tr>";
     }
     function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
+    function plus(n) { return (n >= 0 ? "+" : "−") + money(Math.abs(n)); }
+    // H-2 only: a picked step against your own, or your own against the next one (from your next hire anniversary).
+    function stepRow(e, shown, mine, yos, hire) {
+      if (!mine || shown.indexOf("H-2/") !== 0) return "";
+      var n = Number(shown.split("/")[1]);
+      if (n !== mine) {
+        var own = estimate("H-2/" + mine, yos, ui.prem);
+        return own ? '<tr class="pay-cmp"><td>Compared with your step ' + mine + "</td><td>" + plus(e.total - own.total) + " a year</td></tr>" : "";
+      }
+      if (mine >= 7) return "";
+      var next = estimate("H-2/" + (mine + 1), yos + 1, ui.prem), h = hire.split("-");
+      var on = Number(h[1]) + "/" + Number(h[2]) + "/" + (Number(h[0]) + yos + 1);
+      return next ? '<tr class="pay-cmp"><td>Next step (' + (mine + 1) + ") from " + on + ": " + money(next.total) + " a year</td><td>" + plus(next.total - e.total) + "</td></tr>" : "";
+    }
     function cents(n) { return "$" + n.toFixed(2); }
     function savedHire() { var me = api.backend().me(); return (me.profile && me.profile.hireDate) || null; }
 
@@ -210,9 +224,14 @@
     }
     function draw() {
       var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
-      // H-2: by years of service (the default), or any one step picked by hand.
-      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return offered(x[0]); })
-        .map(function (x) { return [x[0], x[0].indexOf("H-2/") === 0 ? "H-2 step " + x[0].split("/")[1] + " · " + x[1] : base(x[0]) + " " + x[1]]; }));
+      /* H-2: "H-2" follows years of service. With a hire date the menu shows that as their own step ("your step"); any
+         other step can be picked to compare, and the card shows the difference (or, on their own step, the next one). */
+      var mine = yos != null ? Math.min(7, yos + 1) : null, shown = code === "H-2" && mine ? "H-2/" + mine : code;
+      var opts = (mine ? [] : [["H-2", "Firefighter (H-2, step by years of service)"]]).concat(PAY.rates.filter(function (x) { return offered(x[0]); })
+        .map(function (x) {
+          var n = x[0].indexOf("H-2/") === 0 ? Number(x[0].split("/")[1]) : null;
+          return [x[0], n ? "H-2 step " + n + " · " + x[1].replace("Firefighter, ", "") + (n === mine ? " (your step)" : "") : base(x[0]) + " " + x[1]];
+        }));
       var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
         '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +
@@ -221,7 +240,7 @@
           ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span></div>" +
         (hire && hire !== savedHire() ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
         '<label>Classification<select id="pay-code">' + opts.map(function (o) {
-          return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+          return '<option value="' + esc(o[0]) + '"' + (o[0] === shown ? " selected" : "") + ">" + esc(o[1]) + "</option>";
         }).join("") + "</select></label>" +
         '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.filter(function (x) { return premOffered(x, code); }).map(function (x) {
           return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
@@ -236,10 +255,11 @@
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
           "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
-          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + stepRow(e, shown, mine, yos, hire) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
-      $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
+      // Picking your own step goes back to "by years of service", so it moves up with the next anniversary.
+      $("pay-code").onchange = function () { ui.code = mine && this.value === "H-2/" + mine ? "H-2" : this.value; keep("code", ui.code); draw(); };
       $("pay-train").onchange = function () { ui.prem.train = Number(this.value) || 0; keep("prem", ui.prem); draw(); };
       $("pay-body").querySelectorAll("[data-prem]").forEach(function (c) {
         c.onchange = function () {
