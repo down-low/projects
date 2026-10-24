@@ -49,6 +49,8 @@ const home = (p) => (p && (p.company || p.title)) || "";
    {alerts: [{pos, kind}], log: the new log}. */
 function tradeAlerts(trade, log, members, world, today) {
   log = log || {};
+  // Posted again after a cancel (the same trade re-opened): alert as a new post.
+  if (log.status === "cancelled" && trade.status === "open") log = {};
   const out = [];
   const to = (trade.audience && trade.audience.to) || [];
   const sentBefore = new Set(log.to || []);

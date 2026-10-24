@@ -95,11 +95,19 @@ service cloud.firestore {
       allow read, write: if isAdmin();
     }
 
-    // Contact info: the owner's own record; shared ones are readable by everyone approved.
+    // Contact info: the owner's own record; shared ones (the cell only) are readable by everyone approved. The contact
+    // email and other phone are private, in contactsPrivate.
     match /contacts/{uid} {
       allow read: if isAdmin() || (signedIn() && uid == request.auth.uid) || (active() && resource.data.share == true);
       allow create, update: if (active() && uid == request.auth.uid && data().pos == myPos() && data().share is bool &&
-          optText(data(), 'contactEmail', 254) && optText(data(), 'phoneMobile', 40) && optText(data(), 'phoneOther', 40)) || isAdmin();
+          optText(data(), 'phoneMobile', 40) && !('contactEmail' in data()) && !('phoneOther' in data())) || isAdmin();
+      allow delete: if (signedIn() && uid == request.auth.uid) || isAdmin();
+    }
+
+    match /contactsPrivate/{uid} {
+      allow read: if isAdmin() || (signedIn() && uid == request.auth.uid);
+      allow create, update: if (active() && uid == request.auth.uid && data().pos == myPos() &&
+          optText(data(), 'contactEmail', 254) && optText(data(), 'phoneOther', 40)) || isAdmin();
       allow delete: if (signedIn() && uid == request.auth.uid) || isAdmin();
     }
 
@@ -131,7 +139,7 @@ service cloud.firestore {
       allow read: if active();
       allow create: if isAdmin() || (myPos() != null && data().posterKey == myPos() && data().status == 'open');
       allow update: if isAdmin() || (myPos() != null && resource.data.posterKey == myPos() && data().posterKey == myPos() &&
-          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt']) && legsOk(data()));
+          only(['audience', 'status', 'replyId', 'takerKey', 'proposal', 'setAt', 'legs', 'cancelledAt', 'note', 'seatPos', 'reopenedAt']) && legsOk(data()));
       allow delete: if isAdmin();
     }
     match /tradeReplies/{id} {

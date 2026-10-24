@@ -26,8 +26,10 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
   }
   // Active accounts linked to a roster position: pos -> {uid, alerts, email, pushTokens, phone, contactEmail}.
   async function members() {
-    const [users, contacts] = await Promise.all([db.collection("users").where("pos", "!=", null).get(), db.collection("contacts").get()]);
+    const [users, contacts, privs] = await Promise.all([db.collection("users").where("pos", "!=", null).get(), db.collection("contacts").get(),
+      db.collection("contactsPrivate").get()]);
     const byUid = new Map(contacts.docs.map((d) => [d.id, d.data()]));
+    privs.docs.forEach((d) => byUid.set(d.id, Object.assign({}, byUid.get(d.id), d.data())));
     const out = new Map();
     users.docs.forEach((d) => {
       const u = d.data();

@@ -84,9 +84,10 @@ async function takenMap() {
   return new Map(snap.docs.map((d) => [d.data().pos, d.id]));
 }
 async function meFor(uid, u, lookup) {
-  const [contact, profile] = await Promise.all([db.doc("contacts/" + uid).get(),
+  const [contact, priv, profile] = await Promise.all([db.doc("contacts/" + uid).get(), db.doc("contactsPrivate/" + uid).get(),
     u.pos ? db.doc("profiles/" + u.pos).get() : Promise.resolve(null)]);
-  return A.meJson(uid, u, { lookup, contact: contact.exists ? contact.data() : null, profile: profile && profile.exists ? profile.data() : null });
+  const c = contact.exists || priv.exists ? Object.assign({}, contact.exists ? contact.data() : {}, priv.exists ? priv.data() : {}) : null;
+  return A.meJson(uid, u, { lookup, contact: c, profile: profile && profile.exists ? profile.data() : null });
 }
 // Custom claims from the account doc; returns true when they changed (the page then refreshes its ID token).
 async function syncClaims(uid, u, current) {
@@ -153,6 +154,12 @@ exports.syncMe = wrap(async (req) => {
       console.warn("staff cell for " + auth.uid + ": " + (e.code || e.message));
     }
   }
+  // Older contact records kept the email and other phone with the shared cell: move them to the private record.
+  const pub = await db.doc("contacts/" + auth.uid).get(), split = pub.exists ? A.splitContact(pub.data()) : null;
+  if (split) {
+    await db.doc("contactsPrivate/" + auth.uid).set(Object.assign(split.priv, { updatedAt: now() }), { merge: true });
+    await db.doc("contacts/" + auth.uid).update({ contactEmail: admin.firestore.FieldValue.delete(), phoneOther: admin.firestore.FieldValue.delete() });
+  }
   const changed = await syncClaims(auth.uid, result.user, auth.token);
   const { lookup } = await lookups();
   return Object.assign(await meFor(auth.uid, result.user, lookup), { claimsChanged: changed });
@@ -205,6 +212,19 @@ exports.myStaffCell = wrap(async (req) => {
   const cell = A.ownStaffCell(u.exists ? u.data() : null, c.exists ? c.data().cell : null);
   if (cell) await audit(auth.uid, "ownCell", { pos: auth.token.pos });
   return { cell };
+});
+
+// Pay estimate (More → Pay estimate): your saved hire date, or a guess from your academy class (A.classHireGuess). Only a date.
+exports.hireDateGuess = wrap(async (req) => {
+  const auth = signedIn(req);
+  if (auth.token.active !== true || !auth.token.pos) return { date: null };
+  const own = await db.doc("profiles/" + auth.token.pos).get();
+  const p = own.exists ? own.data() : {};
+  if (p.hireDate) return { date: p.hireDate, from: "profile" };
+  if (p.classNo == null) return { date: null };
+  const snap = await db.collection("profiles").where("classNo", "==", p.classNo).get();
+  const date = A.classHireGuess(snap.docs.map((d) => d.data().hireDate));
+  return { date, from: date ? "class" : null };
 });
 
 exports.onToolKeys = wrap(async (req) => {

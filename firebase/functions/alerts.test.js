@@ -26,6 +26,14 @@ test("a trade sent to people alerts the ones with accounts, once", () => {
   assert.deepEqual(A.tradeAlerts(wider, first.log, m, world, TODAY).alerts, [{ pos: OFF[2], kind: "sent" }]);
 });
 
+test("posted again after a cancel: the same trade alerts its people again", () => {
+  const m = members({ [OFF[0]]: member() });
+  const sent = A.tradeAlerts(TRADE, {}, m, world, TODAY);
+  const gone = A.tradeAlerts(Object.assign({}, TRADE, { status: "cancelled" }), sent.log, m, world, TODAY);
+  assert.deepEqual(gone.alerts, []);
+  assert.deepEqual(A.tradeAlerts(TRADE, gone.log, m, world, TODAY).alerts, [{ pos: OFF[0], kind: "sent" }]);
+});
+
 test("board posts alert members set to 'each' who could take it, not other rank groups or people working", () => {
   const t = Object.assign({}, TRADE, { audience: { board: true, to: [OFF[0]] } });
   const m = members({ [OFF[0]]: member("each"), [OFF[1]]: member("each"), [OFF[2]]: member("off"), [LT]: member("each"), [WORKING]: member("each") });

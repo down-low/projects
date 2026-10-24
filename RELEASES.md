@@ -2,6 +2,12 @@
 
 ## Next release (specced, not built; build one at a time: Invite first, then Overtime)
 
+### Admin: all trades (Trades tab)
+- **Where:** Trades tab, **Admin: all trades** (admins only, folded until opened; the count of active trades shows on it). Firebase admin site and the claude.ai page.
+- **List:** every trade by date, with the poster, a status tag and a short line (answers, sent to, who works it). Filters: name (poster or taker), status (Active by default, Open, Set, Cancelled, Expired, All), Upcoming only.
+- **Cancel** an open, picked or set trade; **Delete** any trade with its answers (a set trade's cover and TR go with it; the confirm says so).
+- Phase 2 (later): Edit the note or who it went to, and pick an answer for the poster.
+
 ### App notifications test and announcements
 **Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
 - **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.
@@ -33,6 +39,24 @@
 - **Who can fill a seat (the user's calls, 10/23):** only people who marked **Want OT** that day, in the seat's rank group (the trade groups), off that day with no status. Fewest **Worked OT** hours this calendar year first (from the overtime marks), with back-to-back flags.
 - **Qualifications:** only Rescue Squad (RS), Hazmat (HT) and Fire boat (FB) seats need one: a fir-db1 license on the person's profile, unexpired, whose name is listed for that role in `data/seat-qualifications.json`. Until the names are filled in (from the records chat: the distinct license names in `profiles`), those seats say "qualification not set" and leave nobody out.
 - **Next:** a Fill button that records the cover (kind cover, no move) with a confirm step; then OT hours from fir-db1 instead of the marks, if wanted.
+
+### Pay estimate and overtime pay (built Oct 23, 2026 on `claude/pay-estimator`; waiting on the user's OK and more pay info; `pay.js`)
+- **Where:** More menu → **Pay estimate**, for a signed-in member linked to a seat (Firebase and server sites).
+- **Rates:** the 2026-27 uniformed pay sheet (07/01/26 – 01/01/27), every classification; yearly, hourly at 97.40 hrs and at 80 hrs. Classification defaults from rank (Firefighter: H-2 by year of service, 7th year and up at the top step); anyone can pick another.
+- **Premiums (% of base):** EMT 5% (engine/truck/rescue squad) or 8% (ambulance), one or the other; Apparatus Operator 5%; Rescue Boat Operator 5% (stacks with AO); Paramedic license 5%; **Holiday 9.09%** (on by default for suppression: H-2, H-20, H-30, H-40, H-110, H-120; can be unticked); **Training and education** None / 7 / 8 / 9%. (Which premiums count toward retirement is kept in `PAY` but not shown, the user's call.)
+- **Longevity:** 2% at 21 years of service, 4% at 23, 6% at 26.
+- **Trimmed (the user, Oct 23, 2026; more to follow):** only 97.40-hour (24-hour shift) employees for now. Classifications H-40, H-41, H-43, H-32, H-24, H-23, H-16, H-9, H-6, H-4, H-120, H-110 and H-3 Level 1 and 2 (steps 1–8: EMS, Station 49, a different department) are hidden, and someone whose own classification is hidden gets no Pay estimate. The default classification is the seat's `hclass` (else from rank). EMT (engine/truck/rescue squad), Apparatus Operator and Rescue Boat Operator are H-2 only; Paramedic license and EMT assigned to an ambulance are hidden (kept in `PAY`).
+- **Shows:** yearly, every 2 weeks (/26), hourly (97.40-hour column with the premiums), overtime hourly and one 24-hour overtime shift.
+- **Overtime (the user's rule):** 1.5 × that hourly with premiums, except the Holiday premium (none on overtime), and what one 24-hour overtime shift pays.
+- **Overtime this pay period** (built Oct 23, 2026). One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
+  - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
+  - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
+  - **Pay:** hours × the overtime hourly above. None marked: "None marked", no amount.
+  - **Where:** only in the Pay estimate card (private to the member); not on the year card.
+  - **As built:** pure `payPeriodOf(date)` and `otWorked(marks, start, last)` in `pay.js` (`PAY.payPeriod`), tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
+- **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
+- **Hidden for now:** vacation hours and the IDV rules (kept in `PAY`).
+- An estimate for planning, not a pay stub.
 
 ### Personal invite links (admin)
 - **Where:** Admin → Invite people, and each person in Admin → Users and on the Employee card, get **Personal link** next to Text.

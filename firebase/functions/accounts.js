@@ -100,6 +100,22 @@ function ownStaffCell(u, cell) {
   return normCell(cell) || null;
 }
 
+// Contact info: only the cell (and the share flag) lives in contacts/<uid>, which everyone reads when shared; the
+// contact email and other phone are private (contactsPrivate/<uid>, owner and admins). Returns {priv} to move, or null.
+function splitContact(c) {
+  if (!c || (!c.contactEmail && !c.phoneOther)) return null;
+  return { priv: { pos: c.pos || null, contactEmail: c.contactEmail || null, phoneOther: c.phoneOther || null } };
+}
+
+// Pay estimate: a hire date guessed from the person's academy class, the hire date most of that class has on file
+// (ties: the earliest). Only the date comes back, never who it came from. null when nobody in the class has one.
+function classHireGuess(dates) {
+  const n = {};
+  (dates || []).forEach((d) => { if (typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)) n[d] = (n[d] || 0) + 1; });
+  const best = Object.keys(n).sort((a, b) => n[b] - n[a] || a.localeCompare(b))[0];
+  return best || null;
+}
+
 function claimsFor(user) {
   return { active: user.status === "active", role: ROLES.indexOf(user.role) !== -1 ? user.role : "member", pos: user.pos || null };
 }
@@ -335,5 +351,5 @@ function launchTargets(keys, cells, onTool, sent) {
 module.exports = {
   ROLES, RANKS, PERSON_PREFIX, AccountError, parseList, emailAllowed, signIn, claimsFor, claimsEqual, meJson,
   cleanPersonRequest, planClaim, rosterNames, planAdminAction, sortUsers, averages,
-  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, ownStaffCell, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
+  normCell, cellKey, cellSeat, planCellMatch, planStaffCell, ownStaffCell, splitContact, classHireGuess, launchTargets, INVITES_PER_DAY, ANSWERS_PER_INVITE, INVITE_ID_TRIES, checkInviteId, friendlyName, inviteProblem, inviteExpiry, inviteState, cleanInviteAnswer, planRedeem,
 };

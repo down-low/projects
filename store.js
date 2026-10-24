@@ -18,7 +18,7 @@
  * saveContact(), adminUsers(), adminAction().
  * Shift trades (both adapters; read-only and snapshot pages have none): canTrade(), myKey() (the claimed person, or null),
  * myMember(), claimMember({key, emplId, confirmedStation, confirmedTour}), unclaim(memberId) (admins), setAlerts({text, app}),
- * postTrade(rec), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
+ * postTrade(rec), repostTrade(cancelledTrade, rec), deleteTrade(trade) (admins), widenTrade(id, audience), replyTrade(rec), pickReply(trade, reply, writes), cancelTrade(trade).
  * replyTrade with rec.via "poster" is an answer the poster got by text and records for someone (Add their answer).
  * Firebase adds personal invite links: createInvite(tradeId, keys) -> [{key, code, cell}], inviteInfo(code),
  * answerInvite(code, proposal, note, emplId), redeemInvite(code, emplId); a picked unconfirmed link answer leaves the trade "pending".
@@ -339,6 +339,10 @@
             rec.status = "open";
             return tw(addRec("trades", rec)).then(function (ref) { return { id: ref && ref.id }; });
           },
+          repostTrade: function (old, rec) {
+            if (!tradeOk()) return Promise.reject(tradeErr());
+            return tw(db.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { return { id: old.id }; });
+          },
           widenTrade: function (id, audience) { return tw(db.collection("trades").doc(id).update({ audience: audience })); },
           replyTrade: function (rec) {
             if (!tradeOk()) return Promise.reject(tradeErr());
@@ -352,6 +356,13 @@
           // Cancelling a set trade drops its cover and TR records with it.
           cancelTrade: function (trade) {
             return tw(db.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() }));
+          },
+          // Admins (Trades tab, all trades): the trade and its answers. A set trade's cover and TR go with it (legs).
+          deleteTrade: function (trade) {
+            if (!editable) return Promise.reject(new Error(NO_EDIT));
+            var reps = records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; });
+            return tw(reps.reduce(function (p, r) { return p.then(function () { return db.collection("tradeReplies").doc(r.id).delete(); }); }, Promise.resolve())
+              .then(function () { return db.collection("trades").doc(trade.id).delete(); }));
           },
           remove: function (kind, id) {
             if (!editable) return Promise.reject(new Error(NO_EDIT));
@@ -501,6 +512,14 @@
      app), and "app", the employee build, where everyone works as a member (no edit forms or admin screens). The rules,
      not the site, decide what each account may read or write. settings/site {mode: "test" | "live"} drives the
      "Test copy" banner until cut-over (CUTOVER.md). */
+  /* Posting again for a day whose trade was cancelled re-opens that trade (one trade per person per day) with the new
+     choices; answers from before (createdAt < reopenedAt) are ignored by the page. */
+  function reopenFields(rec) {
+    var f = { status: "open", audience: rec.audience, note: rec.note || "", seatPos: rec.seatPos, reopenedAt: nowIso(),
+      replyId: null, takerKey: null, proposal: null, setAt: null, cancelledAt: null, legs: [] };
+    if (rec.postedBy) f.postedBy = rec.postedBy;
+    return f;
+  }
   var IMPORT_KINDS = ["statuses", "tourChanges", "covers", "people", "staffing", "profiles", "members", "trades", "tradeReplies",
     "corrections", "assignments", "rosterOverrides", "feedback"];
   // Overtime days aren't imported or replaced: members keep the ones they marked on Firebase.
@@ -536,7 +555,7 @@
       "auth/billing-not-enabled": "Text codes aren't set up on the server yet (they need the Firebase pay-as-you-go plan). Use Google for now and tell an admin.",
     };
     var records = { statuses: [], tourChanges: [], covers: [], people: [], staffing: [], profiles: [], trades: [], tradeReplies: [],
-      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], staffCells: [], launchInvites: [], notices: [], site: null };
+      corrections: [], assignments: [], rosterOverrides: [], feedback: [], overtime: [], overtimeNotes: [], contacts: [], myContact: [], contactsPrivate: [], myPrivate: [], staffCells: [], launchInvites: [], notices: [], site: null };
 
     function call(name, data) {
       return fns.httpsCallable(name)(data || {}).then(function (r) { return r.data; }, function (e) {
@@ -599,8 +618,13 @@
     function contactMap() {
       var out = {};
       if (admin()) out = staffContacts([{ cells: records.staffCells.reduce(function (o, d) { o[d.id] = d.cell; return o; }, {}) }]);
+      // The email and other phone are private (contactsPrivate: admins, and your own).
+      var priv = {};
+      records.contactsPrivate.concat(records.myPrivate).forEach(function (c) { if (c.pos) priv[c.pos] = c; });
       records.contacts.concat(records.myContact).forEach(function (c) {
-        if (c.pos) out[c.pos] = { email: c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: c.phoneOther || null, shared: !!c.share };
+        if (!c.pos) return;
+        var p = priv[c.pos] || {};
+        out[c.pos] = { email: p.contactEmail || c.contactEmail || null, phoneMobile: c.phoneMobile || null, phoneOther: p.phoneOther || c.phoneOther || null, shared: !!c.share };
       });
       return out;
     }
@@ -626,6 +650,8 @@
         .forEach(function (kind) { watch(kind, fs.collection(kind)); });
       watch("contacts", admin() ? fs.collection("contacts") : fs.collection("contacts").where("share", "==", true));
       watch("myContact", fs.collection("contacts").doc(user.uid));
+      watch("myPrivate", fs.collection("contactsPrivate").doc(user.uid));
+      if (admin()) watch("contactsPrivate", fs.collection("contactsPrivate"));
       watch("corrections", editable() ? fs.collection("corrections") : fs.collection("corrections").doc(user.uid));
       watch("feedback", editable() ? fs.collection("feedback") : fs.collection("feedback").doc(user.uid));
       watch("overtime", fs.collection("overtime"));
@@ -740,10 +766,15 @@
       inviteInfo: function (code) { return call("inviteInfo", { code: code }); },
       answerInvite: function (code, proposal, note, emplId) { return call("answerFromInvite", { code: code, proposal: proposal, note: note || "", emplId: emplId || "" }); },
       redeemInvite: function (code, emplId) { return call("redeemInvite", { code: code, emplId: emplId }).then(function (j) { me = j; return j; }); },
+      // Sharing shows only the cell: contacts/<uid> holds the cell and the share flag; the contact email and other phone
+      // go to contactsPrivate/<uid> (you and admins).
       saveContact: function (c) {
         var rec = { pos: me.pos || null, contactEmail: c.contactEmail || null, phoneMobile: c.phoneMobile || null,
           phoneOther: c.phoneOther || null, share: !!c.shareContact, updatedAt: nowIso() };
-        return w(fs.collection("contacts").doc(user.uid).set(rec)).then(function () {
+        return w(Promise.all([
+          fs.collection("contacts").doc(user.uid).set({ pos: rec.pos, phoneMobile: rec.phoneMobile, share: rec.share, updatedAt: rec.updatedAt }),
+          fs.collection("contactsPrivate").doc(user.uid).set({ pos: rec.pos, contactEmail: rec.contactEmail, phoneOther: rec.phoneOther, updatedAt: rec.updatedAt }),
+        ])).then(function () {
           Object.assign(me, { contactEmail: rec.contactEmail, phoneMobile: rec.phoneMobile, phoneOther: rec.phoneOther, shareContact: rec.share });
           return me;
         });
@@ -752,6 +783,8 @@
       adminAction: function (id, body) { return call("adminAction", Object.assign({ id: id }, body)); },
       /* Add a cell number to the signed-in account (Google users, or to change it): one texted code, then the staff list
          fills in the seat (syncMe). linkCell(cell, buttonId) sends the code; confirmLink(code) attaches it. */
+      // Pay estimate: your hire date, or a guess from your academy class (a date or null).
+      hireDateGuess: function () { return call("hireDateGuess").then(function (r) { return (r && r.date) || null; }, function () { return null; }); },
       // My page: your own staff-list cell (or null), to fill in Add my cell for sign-in.
       myStaffCell: function () { return call("myStaffCell").then(function (r) { return (r && r.cell) || null; }, function () { return null; }); },
       linkCell: function (cell, buttonId) {
@@ -816,6 +849,9 @@
         rec.status = "open";
         return w(addRec("trades", rec)).then(function (ref) { notify("trade", ref && ref.id); return { id: ref && ref.id }; });
       },
+      repostTrade: function (old, rec) {
+        return w(fs.collection("trades").doc(old.id).update(reopenFields(rec))).then(function () { notify("trade", old.id); return { id: old.id }; });
+      },
       widenTrade: function (id, audience) { return w(fs.collection("trades").doc(id).update({ audience: audience })).then(function () { notify("trade", id); }); },
       replyTrade: function (rec) { return w(addRec("tradeReplies", rec)).then(function (ref) { notify("reply", ref && ref.id); return ref; }); },
       // An answer from an invite link that isn't confirmed yet waits ("pending") until they sign in with their Employee ID.
@@ -825,6 +861,14 @@
           .then(function () { notify("trade", trade.id); });
       },
       cancelTrade: function (trade) { return w(fs.collection("trades").doc(trade.id).update({ status: "cancelled", cancelledAt: nowIso() })).then(function () { notify("trade", trade.id); }); },
+      // Admins (Trades tab, all trades): the trade and its answers, in one batch. A set trade's cover and TR go with it (legs).
+      deleteTrade: function (trade) {
+        if (!admin()) return Promise.reject(new Error(NO_EDIT));
+        var batch = fs.batch();
+        records.tradeReplies.filter(function (r) { return r.tradeId === trade.id; }).forEach(function (r) { batch.delete(fs.collection("tradeReplies").doc(r.id)); });
+        batch.delete(fs.collection("trades").doc(trade.id));
+        return w(batch.commit());
+      },
       // Trade alerts are on here (functions: notify, alertAction, smsReply, dailySummary). App notifications need the
       // Web Push key (FIREBASE_VAPID_KEY, set at build) and the person's permission; the token goes on their account.
       alertsLive: true,

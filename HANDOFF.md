@@ -46,6 +46,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 - Never delete the claude.ai page without the user's word.
 - **Before publishing the claude.ai links, merge `main` into your branch.** Several chats publish to the same links; publishing from a stale branch drops other chats' work. If a publish is refused, merge the newer live version, don't overwrite it.
 - Run `python3 -m unittest discover -s tests` before pushing.
+- **Spec features in two phases.** Propose a simple, fool-proof **Phase 1** to ship now and write the richer **Phase 2** down for a later release; build only Phase 1 unless the user says otherwise. Example: `SPEC-INVITES.md`.
 
 ## Where things live
 
@@ -62,6 +63,7 @@ The user built a similar, more complete but harder-to-use product earlier; its s
 | App notifications (push) and admin announcements (Admin → Send announcement; function `announce`, `notices/{uid}`) | `store.js`, `admin.js`, `app.js`, `firebase/functions/announce.js`, `deliver.js` |
 | Self-hosted server (SQLite, Google sign-in); kept as the fallback | `server.py`, `tests/test_server.py` |
 | Builds the claude.ai page; `--capabilities` prints the access rules | `tools/build_artifact.py` |
+| Pay estimate and overtime pay (More → Pay estimate; function `hireDateGuess`) | `pay.js`, `firebase/functions/index.js` |
 | Roster, required staffing, employee IDs (no phones), 2027 awards | `data/` |
 | Watch calendars, vacancy list, awards PDFs | `docs/` |
 
@@ -93,3 +95,9 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 - January double covers.
 - Ambiguous names in the staff list (93 unique matches applied; the rest wait on the user's name cleanup).
 - Items from the officer roster check.
+- **Decided (user, 10/23): overtime marks are visible to everyone** who opens that person's page (Want OT / Worked OT, `overtime.js`), not only the member and admins.
+- **To enter once Overtime is live:** Spencer,Marcus D (`10EOE09M`, SP2764): Worked OT 2026-10-21 (24 hrs), Want OT 2026-10-27.
+
+## Parked ideas (not now; ask before building)
+
+- **Admin → Trades list.** Phase 1: every trade, newest first, with a name search and a status filter, and Cancel and Delete per row (Delete removes its answers too); works on Firebase and the claude.ai page, and the rules already allow it. Phase 2: Edit (note, who it was sent to) and pick for the poster. For now the admin uses the Firebase console (Firestore → `trades`).

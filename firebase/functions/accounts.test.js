@@ -240,3 +240,16 @@ test("ownStaffCell: an approved account's own staff-list cell, admins and editor
   assert.equal(A.ownStaffCell(u, null), null);
   assert.equal(A.ownStaffCell(u, "call the station"), null);
 });
+
+test("splitContact: the email and other phone move out of the shared contact record", () => {
+  assert.deepEqual(A.splitContact({ pos: "10EOC03M", contactEmail: "a@b.org", phoneMobile: "x", share: true }),
+    { priv: { pos: "10EOC03M", contactEmail: "a@b.org", phoneOther: null } });
+  assert.equal(A.splitContact({ pos: "10EOC03M", phoneMobile: "x", share: true }), null);
+  assert.equal(A.splitContact(null), null);
+});
+
+test("classHireGuess: the hire date most of the class has, earliest on a tie", () => {
+  assert.equal(A.classHireGuess(["2015-03-02", "2015-03-02", "2015-04-01", null, "bad"]), "2015-03-02");
+  assert.equal(A.classHireGuess(["2016-01-04", "2015-12-01"]), "2015-12-01");
+  assert.equal(A.classHireGuess([]), null);
+});

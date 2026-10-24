@@ -171,7 +171,7 @@ One Firebase project with two Hosting sites, sharing Firestore (`FIREBASE_PLAN.m
 
 Both have Google sign-in and accounts and approval as on the server. The roster files and PDFs are in Cloud Storage, for approved accounts only.
 
-Setup: `FIREBASE_SETUP.md`; optional test beta: `BETA.md`; switching over from the claude.ai page: `CUTOVER.md`.
+Setup: `FIREBASE_SETUP.md`; optional test beta: `BETA.md`; switching over from the claude.ai page: `CUTOVER.md`; trade invites, now and later: `SPEC-INVITES.md`.
 
 - `python3 tools/build_firebase.py` builds `firebase/public-app/` and `firebase/public-admin/`. Neither has names or data files.
 - `firebase/firestore.rules`, `firebase/storage.rules`: access by role (custom claims set by `firebase/functions`). Cell numbers are in `staffCells`, admins only. The rules, not the site, decide what each account can do.
