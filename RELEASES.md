@@ -49,6 +49,8 @@
   - **As built:** pure `payPeriodOf(date)` and `otWorked(marks, start, last)` in `pay.js` (`PAY.payPeriod`), tested in `tests/test_pay.py`; app.js passes `Overtime.marksFor` to `PayViews`.
 - **Hire date:** the saved one; else a guess from the academy class (function `hireDateGuess`: the hire date most of `profiles.classNo` has; only a date comes back), with **Save as my hire date**. Admins may load hire dates into profiles.
 - **Hidden for now:** vacation hours and the IDV rules (kept in `PAY`).
+- **H-2 steps (Oct 24, 2026):** with a hire date the Classification menu selects the person's own step, marked "(your step)"; any step can be picked by hand (steps go up on the appointment anniversary, but people may remember the date wrong).
+- **Phase 2 ideas (not built; the user decides):** a line comparing a picked step with your own ("+$X a year"); the next step and the date it starts. Left out to keep the card uncluttered.
 - An estimate for planning, not a pay stub.
 
 ### Personal invite links (admin)
