@@ -1306,7 +1306,7 @@
     if (v === "card") return isCardAdmin();
     if (v === "feedback") return Feedback.isAdmin();
     if (v === "history") return serverMode() && backend.isAdmin() && !!backend.changeLog;
-    if (v === "pay") return serverMode() && backend.isActive() && !!myPos();
+    if (v === "pay") return serverMode() && backend.isActive() && !!myPos() && window.PayViews.shows(byPos[myPos()]);
     return false;
   }
   // Feedback: admins get the list (with its own Send feedback); everyone else the form.

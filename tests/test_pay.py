@@ -52,6 +52,11 @@ class PayEstimate(unittest.TestCase):
         self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
         self.assertAlmostEqual(e["otShift"], 61.191 * 1.05 * 1.5 * 24)
 
+    def test_no_holiday_premium_on_overtime(self):
+        e = estimate("H-2", 6, {"holiday": True, "ao": True})
+        self.assertAlmostEqual(e["hourly"], 61.191 * 1.1409)
+        self.assertAlmostEqual(e["otHourly"], 61.191 * 1.05 * 1.5)
+
 
     def test_pay_periods_are_14_days_from_9_12_26(self):
         self.assertEqual(period(2026, 9, 12), ("2026-09-12", "2026-09-25"))
@@ -66,6 +71,27 @@ class PayEstimate(unittest.TestCase):
                  "2026-10-15": {"kind": "worked"}, "2026-10-18": {"kind": "want"}, "2026-10-22": {"kind": "worked", "hours": 10}}
         self.assertEqual(run("P.otWorked(%s, '2026-10-10', '2026-10-20')" % json.dumps(marks)), {"days": 2, "hours": 36})
         self.assertEqual(run("P.otWorked({}, '2026-10-10', '2026-10-23')"), {"days": 0, "hours": 0})
+
+    def test_lester_h20_training_9_retention_6(self):
+        e = estimate("H-20", 26, {"train": 9})
+        self.assertEqual(round(e["total"]), 223521)
+        self.assertAlmostEqual(e["hourly"], 71.1294 * 1.2409)
+        self.assertAlmostEqual(e["otHourly"], 71.1294 * 1.15 * 1.5)
+        self.assertEqual(round(e["otShift"]), 2945)
+
+    def test_emt_ao_boat_are_h2_only_and_paramedic_hidden(self):
+        self.assertEqual(estimate("H-20", 6, {"holiday": False, "ao": True, "emt5": True, "boat": True, "medic": True})["total"], 180128)
+        self.assertAlmostEqual(estimate("H-2", 6, {"holiday": False, "ao": True, "medic": True, "emt8": True})["total"], 154960 * 1.05)
+
+    def test_default_classification_and_hidden_ones(self):
+        self.assertEqual(run("P.defaultCode({hclass: 'H20', rank: 'Captain'})"), "H-20")
+        self.assertEqual(run("P.defaultCode({hclass: 'H2', rank: 'Firefighter'})"), "H-2")
+        self.assertEqual(run("P.defaultCode({rank: 'Captain'})"), "H-30")
+        self.assertTrue(run("P.shows({hclass: 'H30'})"))
+        self.assertFalse(run("P.shows({hclass: 'H40'})"))
+        self.assertFalse(run("P.shows({hclass: 'H120'})"))
+        self.assertFalse(run("P.shows({rank: 'Firefighter', hclass: 'H-3/8'})"))
+        self.assertTrue(run("P.shows({rank: 'Firefighter', hclass: 'H-3/9'})"))
 
 
 if __name__ == "__main__":
