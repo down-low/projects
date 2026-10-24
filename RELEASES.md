@@ -8,6 +8,12 @@
 - **Cancel** an open, picked or set trade; **Delete** any trade with its answers (a set trade's cover and TR go with it; the confirm says so).
 - Phase 2 (later): Edit the note or who it went to, and pick an answer for the poster.
 
+### Trade reminders (the evening before a traded day)
+- **Who:** whoever works a set trade's day: the taker, and for a swap the poster on the swap day. Sent on their own alert channels (app, email, text), once per day worked.
+- **Says:** "Reminder: you're working a trade tomorrow, Sat Nov 14, 24 hrs at E10, for Goforth,T."
+- **When:** about 6 pm Pacific (7 pm in summer), from `.github/workflows/trade-reminders.yml` calling the function `tradeReminders` (ALERT_KEY header, like `dailySummary`). The day is counted in Pacific time. A cancelled trade never reminds. Logged in `alertLog/remind_*`, so a second run sends nothing new.
+- Phase 2 (later): a reminder to the person who's off, a reminder time per person, Add to my phone calendar.
+
 ### App notifications test and announcements
 **Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
 - **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.

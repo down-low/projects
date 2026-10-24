@@ -121,3 +121,26 @@ test("answers from an alert or a text follow the page's rules", () => {
   assert.match(A.answerCheck(TRADE, world.byPos[LT], { later: true }, world, TODAY).error, /rank group/);
   assert.match(A.answerCheck(TRADE, world.byPos[POSTER], { later: true }, world, TODAY).error, /own trade/);
 });
+
+test("reminders: the evening before, whoever works a set trade's day (both days of a swap)", () => {
+  const legs = [
+    { kind: "covers", coverKey: OFF[0], targetPos: POSTER, start: "2026-11-14", end: "2026-11-14" },
+    { kind: "statuses", pos: POSTER, code: "TR", start: "2026-11-14", end: "2026-11-14" },
+    { kind: "covers", coverKey: POSTER, targetPos: OFF[0], start: "2026-11-20", end: "2026-11-20" },
+    { kind: "statuses", pos: OFF[0], code: "TR", start: "2026-11-20", end: "2026-11-20" },
+  ];
+  const set = Object.assign({}, TRADE, { id: "t1", status: "set", takerKey: OFF[0], legs });
+  const m = members({ [OFF[0]]: member(), [POSTER]: member() });
+  assert.deepEqual(A.reminders([set], m, "2026-11-14"), [{ pos: OFF[0], tradeId: "t1", date: "2026-11-14", seatPos: POSTER, forKey: POSTER }]);
+  assert.deepEqual(A.reminders([set], m, "2026-11-20").map((r) => [r.pos, r.forKey]), [[POSTER, OFF[0]]]);
+  assert.deepEqual(A.reminders([Object.assign({}, set, { status: "cancelled" }), TRADE], m, "2026-11-14"), []);
+  assert.deepEqual(A.reminders([set], members({}), "2026-11-14"), []); // no account, no reminder
+  const msg = A.reminderMessage(A.reminders([set], m, "2026-11-14")[0], world);
+  assert.match(msg.text, /^Reminder: you're working a trade tomorrow, Sat Nov 14, 24 hrs at \S+, for /);
+});
+
+test("the department's day is Pacific time", () => {
+  assert.equal(A.pacificDay(Date.parse("2026-11-14T02:00:00Z")), "2026-11-13"); // 6 pm Friday in San Francisco
+  assert.equal(A.nextDay("2026-11-13"), "2026-11-14");
+  assert.equal(A.nextDay("2026-12-31"), "2027-01-01");
+});

@@ -148,6 +148,24 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
     return by.size;
   }
 
+  // The evening before a traded day: whoever works it (tradeReminders). alertLog/remind_<trade>_<date> keeps it to once.
+  async function remindTomorrow() {
+    const day = A.nextDay(A.pacificDay(Date.parse(now())));
+    const [ms, trades] = await Promise.all([members(), db.collection("trades").where("status", "==", "set").get()]);
+    const due = A.reminders(docs(trades), ms, day);
+    if (!due.length) return 0;
+    const w = await world();
+    let sent = 0;
+    for (const r of due) {
+      const lref = db.doc("alertLog/remind_" + r.tradeId + "_" + r.date + "_" + r.pos.replace(/[^A-Za-z0-9:_-]/g, ""));
+      if ((await lref.get()).exists) continue;
+      await lref.set({ at: now(), pos: r.pos });
+      await send(ms.get(r.pos), A.reminderMessage(r, w), { tradeId: r.tradeId });
+      sent++;
+    }
+    return sent;
+  }
+
   /* ---------- Acting on an alert (one-tap link or text reply) ---------- */
   // The person behind an account: their roster entry, or an error.
   async function personFor(uid, w) {
@@ -186,5 +204,5 @@ module.exports = function makeDeliver({ db, admin, roster, now }) {
     return pending ? "Picked " + name + ". It's set once they sign in from their invite link." : "Picked " + name + ". The trade is on the schedule.";
   }
 
-  return { trade, reply, daily, answer, pick, members, appUrl, fnUrl, sendText, sendPush };
+  return { trade, reply, daily, remindTomorrow, answer, pick, members, appUrl, fnUrl, sendText, sendPush };
 };
