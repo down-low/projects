@@ -99,4 +99,5 @@ Build: `python3 tools/build_artifact.py dist/tour-schedule.html` (main page); vi
 
 ## Parked ideas (not now; ask before building)
 
-- **Admin → Trades list.** Phase 1: every trade, newest first, with a name search and a status filter, and Cancel and Delete per row (Delete removes its answers too); works on Firebase and the claude.ai page, and the rules already allow it. Phase 2: Edit (note, who it was sent to) and pick for the poster. For now the admin uses the Firebase console (Firestore → `trades`).
+- **Admin: manage documents** (upload and remove the More → Documents PDFs from the admin site): phase 2, see `RELEASES.md` → Later. For now: `docs/` and `docs/index.json` on GitHub.
+- **Admin → Trades list** (built Oct 23, PR #33; Phase 2 still open). Phase 1: every trade, newest first, with a name search and a status filter, and Cancel and Delete per row (Delete removes its answers too); works on Firebase and the claude.ai page, and the rules already allow it. Phase 2: Edit (note, who it was sent to) and pick for the poster. For now the admin uses the Firebase console (Firestore → `trades`).
