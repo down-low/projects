@@ -187,18 +187,12 @@
     }
     function money(n) { return "$" + Math.round(n).toLocaleString("en-US"); }
     function plus(n) { return (n >= 0 ? "+" : "−") + money(Math.abs(n)); }
-    // H-2 only: a picked step against your own, or your own against the next one (from your next hire anniversary).
-    function stepRow(e, shown, mine, yos, hire) {
-      if (!mine || shown.indexOf("H-2/") !== 0) return "";
-      var n = Number(shown.split("/")[1]);
-      if (n !== mine) {
-        var own = estimate("H-2/" + mine, yos, ui.prem);
-        return own ? '<tr class="pay-cmp"><td>Compared with your step ' + mine + "</td><td>" + plus(e.total - own.total) + " a year</td></tr>" : "";
-      }
-      if (mine >= 7) return "";
-      var next = estimate("H-2/" + (mine + 1), yos + 1, ui.prem), h = hire.split("-");
-      var on = Number(h[1]) + "/" + Number(h[2]) + "/" + (Number(h[0]) + yos + 1);
-      return next ? '<tr class="pay-cmp"><td>Next step (' + (mine + 1) + ") from " + on + ": " + money(next.total) + " a year</td><td>" + plus(next.total - e.total) + "</td></tr>" : "";
+    /* H-2 only: a picked step against your own. Steps go up each year on the appointment anniversary, but people may
+       remember the date wrong, so they pick any step to see it (the user, Oct 2026). */
+    function stepRow(e, shown, mine, yos) {
+      if (!mine || shown.indexOf("H-2/") !== 0 || Number(shown.split("/")[1]) === mine) return "";
+      var own = estimate("H-2/" + mine, yos, ui.prem);
+      return own ? '<tr class="pay-cmp"><td>Compared with your step ' + mine + "</td><td>" + plus(e.total - own.total) + " a year</td></tr>" : "";
     }
     function cents(n) { return "$" + n.toFixed(2); }
     function savedHire() { var me = api.backend().me(); return (me.profile && me.profile.hireDate) || null; }
@@ -225,7 +219,7 @@
     function draw() {
       var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
       /* H-2: "H-2" follows years of service. With a hire date the menu shows that as their own step ("your step"); any
-         other step can be picked to compare, and the card shows the difference (or, on their own step, the next one). */
+         other step can be picked to compare, and the card shows the difference from their own. */
       var mine = yos != null ? Math.min(7, yos + 1) : null, shown = code === "H-2" && mine ? "H-2/" + mine : code;
       var opts = (mine ? [] : [["H-2", "Firefighter (H-2, step by years of service)"]]).concat(PAY.rates.filter(function (x) { return offered(x[0]); })
         .map(function (x) {
@@ -255,7 +249,7 @@
           "<tr><td>Every 2 weeks</td><td>" + money(e.biweekly) + "</td></tr>" +
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
           "<tr><td>Overtime hourly (1.5×)</td><td>" + cents(e.otHourly) + "</td></tr>" +
-          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + stepRow(e, shown, mine, yos, hire) + "</tbody></table>" : "");
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + stepRow(e, shown, mine, yos) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       // Picking your own step goes back to "by years of service", so it moves up with the next anniversary.
