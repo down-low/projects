@@ -1,0 +1,25 @@
+# Trade reminders: each evening, whoever works a traded day tomorrow gets a reminder on their alert channels
+# (firebase/functions: tradeReminders). Needs the ALERT_KEY secret and FIREBASE_PROJECT_ID variable; skipped until both
+# are set. Sends each reminder once, so running it again by hand (Run workflow) is safe.
+name: Trade reminders
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 6:00 pm Pacific in winter, 7:00 pm in summer
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  send:
+    if: vars.FIREBASE_PROJECT_ID != ''
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send tomorrow's reminders
+        env:
+          PROJECT: ${{ vars.FIREBASE_PROJECT_ID }}
+          ALERT_KEY: ${{ secrets.ALERT_KEY }}
+        run: |
+          if [ -z "$ALERT_KEY" ]; then echo "ALERT_KEY isn't set; skipping."; exit 0; fi
+          curl -fsS -X POST -H "X-Alert-Key: $ALERT_KEY" "https://us-central1-$PROJECT.cloudfunctions.net/tradeReminders"

@@ -8,6 +8,12 @@
 - **Cancel** an open, picked or set trade; **Delete** any trade with its answers (a set trade's cover and TR go with it; the confirm says so).
 - Phase 2 (later): Edit the note or who it went to, and pick an answer for the poster.
 
+### Trade reminders (the evening before a traded day)
+- **Who:** whoever works a set trade's day: the taker, and for a swap the poster on the swap day. Sent on their own alert channels (app, email, text), once per day worked.
+- **Says:** "Reminder: you're working a trade tomorrow, Sat Nov 14, 24 hrs at E10, for Goforth,T."
+- **When:** about 6 pm Pacific (7 pm in summer), from `.github/workflows/trade-reminders.yml` calling the function `tradeReminders` (ALERT_KEY header, like `dailySummary`). The day is counted in Pacific time. A cancelled trade never reminds. Logged in `alertLog/remind_*`, so a second run sends nothing new.
+- Phase 2 (later): a reminder to the person who's off, a reminder time per person, Add to my phone calendar.
+
 ### App notifications test and announcements
 **Built on branch `claude/notifications` (Oct 2026).** Live once merged and `FIREBASE_VAPID_KEY` is set (FIREBASE_SETUP.md, step 12).
 - **Getting app notifications working on real phones:** the Web Push key as the GitHub variable `FIREBASE_VAPID_KEY`, then a deploy. Tested with two people (Lester and Goforth) on iPhone and Android: turn on "Notify me in the app", **Send me a test notification**, then a trade sent from one to the other.
@@ -225,6 +231,7 @@ Most people use the tool on a phone, where a full tab bar is a lot. Each person 
 - **Admin default:** an admin sets the starting tab set for new members (e.g. a "simple" preset of Schedule and Trades).
 
 ## Later
+- **Admin: manage documents (phase 2).** Admins upload, rename, reorder and remove the More → Documents PDFs from the admin site, with no GitHub step: files go to Cloud Storage `docs/` and the list moves from `docs/index.json` to a Firestore `docs` collection (admins write, approved accounts read). The claude.ai page keeps the build-time list until cut-over. **Phase 1 (now):** put the PDF in `docs/` on GitHub and add its line to `docs/index.json` (file, title, ref), or send it to Claude to commit; the deploy copies it to Storage.
 - **Paste import for assignment-change notices:** paste the notice table, review each row (matched person, seat, dates), then apply; writes the move log and the cover or move together.
 - **Group text option for trade invites,** if one text per person proves too slow: the poster chooses **Individual texts** (default, a personal link each) or **One group text** with one shared trade link. Whoever opens it picks their own name from the people it was sent to and answers; the answer stays unverified until they sign in with Google and a matching Employee ID, which must happen before a pick sets the trade. Easier to send, but the link is easier to forward and everyone in the group sees the other names.
 - **By rank on phones:** pick a rank and company and show one or two weeks at a time (swipe or ‹ › to move) instead of the full 31-day month grid; keep the month grid on desktop.
