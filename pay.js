@@ -78,6 +78,7 @@
     // Classifications not offered for now (the user, Oct 2026; more to follow). Someone whose own one is hidden gets no card.
     // Only 97.40-hour (24-hour shift) employees for now.
     hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110",
+      "H-18", "H-22", "H-28", "H-29",
       // H-3 Level 1 (EMT) and Level 2 (Paramedic): EMS, Station 49, a different department.
       "H-3/1", "H-3/2", "H-3/3", "H-3/4", "H-3/5", "H-3/6", "H-3/7", "H-3/8"],
     // Years of service -> longevity % of base (cumulative: 2% at 21, 4% at 23, 6% at 26).
@@ -104,7 +105,9 @@
   // Whether someone gets the card: their own classification isn't hidden.
   function shows(p) { return offered(defaultCode(p)); }
   function offered(code) { return PAY.hidden.indexOf(code) === -1 && PAY.hidden.indexOf(code.split("/")[0]) === -1; }
-  function premOffered(x, code) { return !x.hidden && (!x.only || x.only.indexOf(code) !== -1); }
+  // A step ("H-2/3") counts as its classification ("H-2") for premiums.
+  function base(code) { return String(code).split("/")[0]; }
+  function premOffered(x, code) { return !x.hidden && (!x.only || x.only.indexOf(base(code)) !== -1); }
 
   function yearsOf(hire, today) {
     if (!hire) return null;
@@ -144,7 +147,7 @@
   }
   // Holiday premium is on for suppression classifications until the person unticks it.
   function premOn(prem, key, code) {
-    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(code) !== -1;
+    if (key === "holiday" && prem.holiday == null) return PAY.holidayDefault.indexOf(base(code)) !== -1;
     return !!prem[key];
   }
   // The whole estimate for a classification, years of service and premiums ({key: true, train: 7|8|9}).
@@ -208,18 +211,25 @@
     }
     function draw() {
       var hire = ui.hire || ui.guess, yos = yearsOf(hire, api.today()), code = ui.code, e = estimate(code, yos, ui.prem);
-      var opts = [["H-2", "Firefighter (H-2, step by years of service)"]].concat(PAY.rates.filter(function (x) { return x[0].indexOf("H-2/") !== 0 && offered(x[0]); })
-        .map(function (x) { return [x[0], x[0].split("/")[0] + " " + x[1]]; }));
+      /* H-2: "H-2" follows years of service. With a hire date the menu shows that as their own step ("your step"); any
+         other step can be picked (steps go up on the appointment anniversary, but people may remember the date wrong). */
+      var mine = yos != null ? Math.min(7, yos + 1) : null, shown = code === "H-2" && mine ? "H-2/" + mine : code;
+      var opts = (mine ? [] : [["H-2", "Firefighter (H-2, step by years of service)"]]).concat(PAY.rates.filter(function (x) { return offered(x[0]); })
+        .map(function (x) {
+          var n = x[0].indexOf("H-2/") === 0 ? Number(x[0].split("/")[1]) : null;
+          return [x[0], n ? "H-2 step " + n + " · " + x[1].replace("Firefighter, ", "") + (n === mine ? " (your step)" : "") : base(x[0]) + " " + x[1]];
+        }));
       var train = Number(ui.prem.train) || 0;
       $("pay-body").innerHTML =
         '<p class="hint">' + esc(PAY.title) + ". An estimate for planning, not a pay stub.</p>" +
-        '<div class="row"><label>Hire date<input type="date" id="pay-hire" value="' + esc(hire || "") + '"></label>' +
+        '<div class="pay-field"><label for="pay-hire">Hire date</label><input type="date" id="pay-hire" value="' + esc(hire || "") + '">' +
         '<span class="hint" id="pay-hire-note">' + (ui.hire ? (yos != null ? yos + " years of service" : "") :
-          ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span></div>" +
+          ui.guess ? "Our guess from your academy class (" + yos + " years). Change it if it's wrong." : "Enter your hire date.") + "</span>" +
         (hire && hire !== savedHire() ? '<div class="row"><button type="button" class="btn small" id="pay-save">Save as my hire date</button><span class="msg" id="pay-msg" role="status"></span></div>' : "") +
-        '<label>Classification<select id="pay-code">' + opts.map(function (o) {
-          return '<option value="' + esc(o[0]) + '"' + (o[0] === code ? " selected" : "") + ">" + esc(o[1]) + "</option>";
-        }).join("") + "</select></label>" +
+        "</div>" +
+        '<div class="pay-field"><label for="pay-code">Classification</label><select id="pay-code">' + opts.map(function (o) {
+          return '<option value="' + esc(o[0]) + '"' + (o[0] === shown ? " selected" : "") + ">" + esc(o[1]) + "</option>";
+        }).join("") + "</select></div>" +
         '<fieldset class="pay-prem"><legend>Premiums you get</legend>' + PAY.premiums.filter(function (x) { return premOffered(x, code); }).map(function (x) {
           return '<label class="chk"><input type="checkbox" data-prem="' + x.key + '"' + (premOn(ui.prem, x.key, code) ? " checked" : "") + "> " + esc(x.label) + " · " + x.pct + "%</label>";
         }).join("") +
@@ -236,7 +246,8 @@
           "<tr><td>" + PAY.otShiftHours + "-hour overtime shift</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
-      $("pay-code").onchange = function () { ui.code = this.value; keep("code", ui.code); draw(); };
+      // Picking your own step goes back to "by years of service", so it moves up with the next anniversary.
+      $("pay-code").onchange = function () { ui.code = mine && this.value === "H-2/" + mine ? "H-2" : this.value; keep("code", ui.code); draw(); };
       $("pay-train").onchange = function () { ui.prem.train = Number(this.value) || 0; keep("prem", ui.prem); draw(); };
       $("pay-body").querySelectorAll("[data-prem]").forEach(function (c) {
         c.onchange = function () {
