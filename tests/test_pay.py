@@ -90,14 +90,16 @@ class PayEstimate(unittest.TestCase):
         self.assertAlmostEqual(estimate("H-2", 6, {"holiday": False, "ao": True, "medic": True, "emt8": True})["total"], 154960 * 1.05)
 
     def test_default_classification_and_hidden_ones(self):
-        self.assertEqual(run("P.defaultCode({hclass: 'H20', rank: 'Captain'})"), "H-20")
+        self.assertEqual(run("P.defaultCode({hclass: 'H20', rank: 'Captain'})"), "H-30")  # rank wins (acting, roster edits)
+        self.assertEqual(run("P.defaultCode({hclass: 'H20', rank: 'Someone new'})"), "H-20")
         self.assertEqual(run("P.defaultCode({hclass: 'H2', rank: 'Firefighter'})"), "H-2")
         self.assertEqual(run("P.defaultCode({rank: 'Captain'})"), "H-30")
         self.assertTrue(run("P.shows({hclass: 'H30'})"))
         self.assertFalse(run("P.shows({hclass: 'H40'})"))
         self.assertFalse(run("P.shows({hclass: 'H120'})"))
-        self.assertFalse(run("P.shows({rank: 'Firefighter', hclass: 'H-3/8'})"))
-        self.assertTrue(run("P.shows({rank: 'Firefighter', hclass: 'H-3/9'})"))
+        self.assertFalse(run("P.shows({hclass: 'H21'})"))
+        self.assertFalse(run("P.shows({rank: 'EMS', hclass: 'H-3/8'})"))
+        self.assertTrue(run("P.shows({rank: 'EMS', hclass: 'H-3/9'})"))
 
 
     def test_overtime_is_straight_time_to_106_hours(self):

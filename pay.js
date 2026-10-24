@@ -77,7 +77,7 @@
     holidayDefault: ["H-2", "H-20", "H-30", "H-40", "H-110", "H-120"],
     // Classifications not offered for now (the user, Oct 2026; more to follow). Someone whose own one is hidden gets no card.
     // Only 97.40-hour (24-hour shift) employees for now.
-    hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110",
+    hidden: ["H-40", "H-41", "H-43", "H-32", "H-24", "H-23", "H-16", "H-9", "H-6", "H-4", "H-120", "H-110", "H-21", "H-31", "H-39",
       "H-18", "H-22", "H-28", "H-29",
       // H-3 Level 1 (EMT) and Level 2 (Paramedic): EMS, Station 49, a different department.
       "H-3/1", "H-3/2", "H-3/3", "H-3/4", "H-3/5", "H-3/6", "H-3/7", "H-3/8"],
@@ -99,12 +99,13 @@
   var RANK_DEFAULT = { "Battalion Chief": "H-40", "Rescue Captain": "H-33", Captain: "H-30", Lieutenant: "H-20", ISS: "H-10",
     Pilot: "H-120", "Marine Engineer": "H-110", Firefighter: "H-2", "FF/Paramedic": "H-2" };
 
-  // The person's own classification: their seat's hclass ("H20" -> "H-20"), else from rank.
+  // The person's own classification: from their rank in the records (admin roster edits included), else their seat's
+  // hclass ("H20" -> "H-20").
   function defaultCode(p) {
     if (!p) return "H-2";
+    if (RANK_DEFAULT[p.rank]) return RANK_DEFAULT[p.rank];
     var h = p.hclass ? "H-" + String(p.hclass).replace(/^H-?/i, "") : null;
-    if (h && (h === "H-2" || PAY.rates.some(function (r) { return r[0] === h; }))) return h;
-    return RANK_DEFAULT[p.rank] || "H-2";
+    return h && (h === "H-2" || PAY.rates.some(function (r) { return r[0] === h; })) ? h : "H-2";
   }
   // Whether someone gets the card: their own classification isn't hidden.
   function shows(p) { return offered(defaultCode(p)); }
