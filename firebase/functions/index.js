@@ -533,6 +533,13 @@ exports.dailySummary = onRequest({ invoker: "public" }, async (req, res) => {
   res.json({ sent: await D.daily() });
 });
 
+// Reminders the evening before a traded day; called once a day by .github/workflows/trade-reminders.yml with the ALERT_KEY.
+exports.tradeReminders = onRequest({ invoker: "public" }, async (req, res) => {
+  const key = process.env.ALERT_KEY || "";
+  if (!key || req.method !== "POST" || req.get("X-Alert-Key") !== key) { res.status(403).send("forbidden"); return; }
+  res.json({ sent: await D.remindTomorrow() });
+});
+
 /* Launch invites (admin site → Admin → Invite people). status: whether the department number can send; audit: log a
    contact-card download; send: a personal text from the department number to each chosen person not on the tool yet
    (Twilio; recorded in launchInvites/{pos} and audited). Group texts from the admin's own phone need no function. */
