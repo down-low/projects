@@ -266,7 +266,7 @@
           "<tr><td>Hourly (97.40-hour pay period)</td><td>" + cents(e.hourly) + "</td></tr>" +
           "<tr><td>Overtime straight time (to " + PAY.otAfter + " hrs)</td><td>" + cents(e.straightHourly) + "</td></tr>" +
           "<tr><td>Overtime hourly (1.5× past " + PAY.otAfter + " hrs)</td><td>" + cents(e.otHourly) + "</td></tr>" +
-          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift (4-shift pay period)</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
+          "<tr><td>" + PAY.otShiftHours + "-hour overtime shift (96-hr pay period)</td><td>" + money(e.otShift) + "</td></tr>" + otRow(e) + "</tbody></table>" : "");
       $("pay-sum").textContent = e ? money(e.total) + " a year" : "";
       $("pay-hire").onchange = function () { ui.hire = this.value || null; draw(); };
       // Picking your own step goes back to "by years of service", so it moves up with the next anniversary.

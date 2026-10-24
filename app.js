@@ -54,6 +54,23 @@
   }
 
   function today() { var d = new Date(); return new Date(d.getFullYear(), d.getMonth(), d.getDate()); }
+  /* Pay periods (pay.js) in the month whose scheduled shifts aren't the usual 4 (72 or 120 hours instead of 96, a couple
+     of times a year): {iso of the period's first day in the month: {hrs, tip}}. Counted from the tour, leave included. */
+  function oddPayPeriods(p, first, days) {
+    var out = {}, P = window.PayViews;
+    if (!P || !P.payPeriodOf || (p.added && !p.tour)) return out;
+    var last = new Date(first.getFullYear(), first.getMonth(), days), pp = P.payPeriodOf(first);
+    while (pp.start <= iso(last)) {
+      var start = fromIso(pp.start), n = 0;
+      for (var k = 0; k < 14; k++) if (day(p, addDays(start, k))) n++;
+      if (n !== 4) {
+        var at = start < first ? first : start;
+        out[iso(at)] = { hrs: n * 24, tip: "Pay period " + shortDate(start) + " – " + shortDate(fromIso(pp.end)) + ": " + n + " shifts (" + n * 24 + " hours)" };
+      }
+      pp = P.payPeriodOf(addDays(start, 14));
+    }
+    return out;
+  }
   function addDays(d, n) { return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n); }
   function sameDay(a, b) { return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
   function iso(d) { return d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate()); }
@@ -482,7 +499,7 @@
     for (var b = 0; b < first.getDay(); b++) cells += '<div class="d blank"></div>';
     var workCount = 0, offCount = 0, actingCount = 0, monthHolidays = [];
     var tappable = Trades.canTradeFor(p.pos) || !!(backend && backend.canEdit()) || markOwnDay(p) || Overtime.canMark(p);
-    var ot = Overtime.marksFor(p.pos), otWant = 0, otWorked = 0;
+    var ot = Overtime.marksFor(p.pos), otWant = 0, otWorked = 0, odd = oddPayPeriods(p, first, days);
     for (var i = 1; i <= days; i++) {
       var d = new Date(m.getFullYear(), m.getMonth(), i);
       var s = day(p, d);
@@ -500,7 +517,8 @@
       if (hol) monthHolidays.push({ d: d, h: hol });
       cells += '<div class="d' + (tappable ? " tap" : "") + cls + (cover && !s.status ? " cover" : "") + (sameDay(d, t) ? " today" : "") + '"' +
         (tappable ? ' data-day="' + iso(d) + '" role="button" tabindex="0"' : "") + ' title="' + esc(longDate(d) + " · watch " + M.watchFor(d) + " · " + tip + (hol ? " · " + hol.name : "")) + '">' +
-        '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span></div>";
+        '<span class="dn">' + i + (hol ? holidayDot(hol) : "") + '</span><span class="w">' + esc(label) + "</span>" +
+        (odd[iso(d)] ? '<span class="pp-hrs" title="' + esc(odd[iso(d)].tip) + '">' + odd[iso(d)].hrs + "</span>" : "") + "</div>";
     }
 
     var next = [], d2 = t;
@@ -570,6 +588,7 @@
       (p.swing ? '<span><i style="background:var(--swing)"></i>Covering another company</span>' : "") +
       (otWorked ? '<span><i class="sw-ot-worked"></i>Worked OT (' + otWorked + ")</span>" : "") +
       (otWant ? '<span><i class="sw-ot-want"></i>Want OT (' + otWant + ")</span>" : "") +
+      (Object.keys(odd).length ? '<span><b class="pp-key">72</b> / <b class="pp-key">120</b> Pay period with 3 / 5 shifts</span>' : "") +
       '<span><i style="box-shadow:inset 0 0 0 2px var(--today)"></i>Today</span><span>W = watch number</span></div>' + Overtime.summary(ot, m) + "</div>" +
       '<div class="side">' +
       foldOpen("next", '<details class="card fold" data-fold="next"', ">") + '<summary><h3>Next shifts</h3><span class="fold-sum">' +

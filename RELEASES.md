@@ -49,7 +49,8 @@
 - **Overtime (the user's rules):** the 97.40-hour hourly with premiums except Holiday (none on overtime).
   - **Straight time until 106 hours worked in the pay period, then 1.5×.** 4 regular shifts (96 hrs) + a 24-hour OT shift: 10 hrs straight, 14 at 1.5×. 5 regular shifts (120 hrs): all OT at 1.5×. 3 regular shifts (72 hrs): straight time until 106.
   - Toward the 106: only shifts worked count (not VA, S or D); a shift someone works for you (TR) counts as worked.
-  - The "24-hour overtime shift" row assumes a 4-shift period (10 straight + 14 at 1.5×). **Later:** what the next OT shift would pay in the current period.
+  - The "24-hour overtime shift (96-hr pay period)" row assumes a 4-shift period (10 straight + 14 at 1.5×).
+  - **Calendar:** a pay period with 3 or 5 scheduled shifts (72 or 120 hours, a couple of times a year) gets a small **72** / **120** badge on its first day in the month, with a legend entry. Counted from the tour, leave included. **Later:** what the next OT shift would pay in the current period.
 - **Overtime this pay period** (built Oct 23, 2026). One more row in the same card: "Overtime this pay period (10/10 – 10/23): 2 days, 48 hrs · $X".
   - **Pay periods:** 14 days, Saturday to Friday, anchored at 9/12/26 – 9/25/26 and repeating every 14 days (before and after).
   - **Counts:** the person's own **Worked OT** marks (`overtime.js`) from the period's start **through today**; hours as marked, 24 when blank. Want OT and upcoming days don't count.
